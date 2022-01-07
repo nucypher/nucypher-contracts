@@ -8,7 +8,6 @@ contract SubscriptionManager {
     uint256 public constant RATE_PER_SECOND = RATE_PER_DAY / 1 days;
 
     struct Policy { // TODO: Optimize struct layout
-        bool disabled;
         address payable sponsor;
         address owner;
         uint64 startTimestamp;
@@ -40,7 +39,13 @@ contract SubscriptionManager {
     {
         require(
             _startTimestamp < _endTimestamp &&
-            block.timestamp < _endTimestamp
+            block.timestamp < _endTimestamp,
+            "Invalid timestamps"
+        );
+        uint64 duration = _endTimestamp - _startTimestamp;
+        require(
+            duration > 0 &&
+            msg.value == RATE_PER_SECOND * uint64(duration)
         );
         //Policy storage policy = 
         _createPolicy(_policyId, _policyOwner, _startTimestamp, _endTimestamp);
@@ -61,13 +66,11 @@ contract SubscriptionManager {
     )
         internal returns (Policy storage policy)
     {
-        int64 duration = int64(_endTimestamp - _startTimestamp);
         policy = policies[_policyId];
         require(
-            duration > 0 &&
-            msg.value >= RATE_PER_SECOND * uint64(duration)
+            policy.endTimestamp < block.timestamp,
+            "Policy is currently active"
         );
-        require(!policy.disabled);
 
         policy.sponsor = payable(msg.sender);
         policy.startTimestamp = _startTimestamp;
@@ -84,6 +87,10 @@ contract SubscriptionManager {
             _startTimestamp,
             _endTimestamp
         );
+    }
+
+    function isPolicyActive(bytes16 _policyID) public view returns(bool){
+        return policies[_policyID].endTimestamp > block.timestamp;
     }
 
     function sweep(address payable recipient) external {
