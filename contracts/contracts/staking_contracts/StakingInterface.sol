@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.0;
 
 
-import "./AbstractStakingContract.sol";
-import "../NuCypherToken.sol";
-import "../StakingEscrow.sol";
-import "../PolicyManager.sol";
-import "../WorkLock.sol";
+import "contracts/staking_contracts/AbstractStakingContract.sol";
+import "contracts/NuCypherToken.sol";
+import "contracts/IStakingEscrow.sol";
+import "contracts/PolicyManager.sol";
+import "contracts/WorkLock.sol";
+import "threshold/IStaking.sol";
 
 
 /**
@@ -17,9 +18,10 @@ contract BaseStakingInterface {
 
     address public immutable stakingInterfaceAddress;
     NuCypherToken public immutable token;
-    StakingEscrow public immutable escrow;
+    IStakingEscrow public immutable escrow;
     PolicyManager public immutable policyManager;
     WorkLock public immutable workLock;
+    IStaking public immutable tStaking;
 
     /**
     * @notice Constructor sets addresses of the contracts
@@ -27,22 +29,26 @@ contract BaseStakingInterface {
     * @param _escrow Escrow contract
     * @param _policyManager PolicyManager contract
     * @param _workLock WorkLock contract
+    * @param _tStaking Threshold TokenStaking contract
     */
     constructor(
         NuCypherToken _token,
-        StakingEscrow _escrow,
+        IStakingEscrow _escrow,
         PolicyManager _policyManager,
-        WorkLock _workLock
+        WorkLock _workLock,
+        IStaking _tStaking
     ) {
         require(_token.totalSupply() > 0 &&
-            _escrow.secondsPerPeriod() > 0 &&
+            _escrow.token() == _token &&
             _policyManager.secondsPerPeriod() > 0 &&
+            _tStaking.stakedNu(address(0)) == 0 &&
             // in case there is no worklock contract
             (address(_workLock) == address(0) || _workLock.boostingRefund() > 0));
         token = _token;
         escrow = _escrow;
         policyManager = _policyManager;
         workLock = _workLock;
+        tStaking = _tStaking;
         stakingInterfaceAddress = address(this);
     }
 
@@ -70,30 +76,25 @@ contract BaseStakingInterface {
 /**
 * @notice Interface for accessing main contracts from a staking contract
 * @dev All methods must be stateless because this code will be executed by delegatecall call, use immutable fields.
-* @dev |v1.7.1|
+* @dev |v1.9.1|
 */
 contract StakingInterface is BaseStakingInterface {
 
-    event DepositedAsStaker(address indexed sender, uint256 value, uint16 periods);
     event WithdrawnAsStaker(address indexed sender, uint256 value);
-    event DepositedAndIncreased(address indexed sender, uint256 index, uint256 value);
-    event LockedAndCreated(address indexed sender, uint256 value, uint16 periods);
-    event LockedAndIncreased(address indexed sender, uint256 index, uint256 value);
-    event Divided(address indexed sender, uint256 index, uint256 newValue, uint16 periods);
-    event Merged(address indexed sender, uint256 index1, uint256 index2);
-    event Minted(address indexed sender);
     event PolicyFeeWithdrawn(address indexed sender, uint256 value);
     event MinFeeRateSet(address indexed sender, uint256 value);
-    event ReStakeSet(address indexed sender, bool reStake);
-    event WorkerBonded(address indexed sender, address worker);
-    event Prolonged(address indexed sender, uint256 index, uint16 periods);
-    event WindDownSet(address indexed sender, bool windDown);
-    event SnapshotSet(address indexed sender, bool snapshotsEnabled);
     event Bid(address indexed sender, uint256 depositedETH);
     event Claimed(address indexed sender, uint256 claimedTokens);
     event Refund(address indexed sender, uint256 refundETH);
     event BidCanceled(address indexed sender);
     event CompensationWithdrawn(address indexed sender);
+    event ThresholdNUStaked(
+        address indexed sender,
+        address indexed operator,
+        address beneficiary,
+        address authorizer
+    );
+    event ThresholdNUUnstaked(address indexed sender, address indexed operator, uint96 amount);
 
     /**
     * @notice Constructor sets addresses of the contracts
@@ -101,57 +102,17 @@ contract StakingInterface is BaseStakingInterface {
     * @param _escrow Escrow contract
     * @param _policyManager PolicyManager contract
     * @param _workLock WorkLock contract
+    * @param _tStaking Threshold TokenStaking contract
     */
     constructor(
         NuCypherToken _token,
-        StakingEscrow _escrow,
+        IStakingEscrow _escrow,
         PolicyManager _policyManager,
-        WorkLock _workLock
+        WorkLock _workLock,
+        IStaking _tStaking
     )
-        BaseStakingInterface(_token, _escrow, _policyManager, _workLock)
+        BaseStakingInterface(_token, _escrow, _policyManager, _workLock, _tStaking)
     {
-    }
-
-    /**
-    * @notice Bond worker in the staking escrow
-    * @param _worker Worker address
-    */
-    function bondWorker(address _worker) public onlyDelegateCall {
-        escrow.bondWorker(_worker);
-        emit WorkerBonded(msg.sender, _worker);
-    }
-
-    /**
-    * @notice Set `reStake` parameter in the staking escrow
-    * @param _reStake Value for parameter
-    */
-    function setReStake(bool _reStake) public onlyDelegateCall {
-        escrow.setReStake(_reStake);
-        emit ReStakeSet(msg.sender, _reStake);
-    }
-
-    /**
-    * @notice Deposit tokens to the staking escrow
-    * @param _value Amount of token to deposit
-    * @param _periods Amount of periods during which tokens will be locked
-    */
-    function depositAsStaker(uint256 _value, uint16 _periods) public onlyDelegateCall {
-        require(token.balanceOf(address(this)) >= _value);
-        token.approve(address(escrow), _value);
-        escrow.deposit(address(this), _value, _periods);
-        emit DepositedAsStaker(msg.sender, _value, _periods);
-    }
-
-    /**
-    * @notice Deposit tokens to the staking escrow
-    * @param _index Index of the sub-stake
-    * @param _value Amount of tokens which will be locked
-    */
-    function depositAndIncrease(uint256 _index, uint256 _value) public onlyDelegateCall {
-        require(token.balanceOf(address(this)) >= _value);
-        token.approve(address(escrow), _value);
-        escrow.depositAndIncrease(_index, _value);
-        emit DepositedAndIncreased(msg.sender, _index, _value);
     }
 
     /**
@@ -161,55 +122,6 @@ contract StakingInterface is BaseStakingInterface {
     function withdrawAsStaker(uint256 _value) public onlyDelegateCall {
         escrow.withdraw(_value);
         emit WithdrawnAsStaker(msg.sender, _value);
-    }
-
-    /**
-    * @notice Lock some tokens in the staking escrow
-    * @param _value Amount of tokens which should lock
-    * @param _periods Amount of periods during which tokens will be locked
-    */
-    function lockAndCreate(uint256 _value, uint16 _periods) public onlyDelegateCall {
-        escrow.lockAndCreate(_value, _periods);
-        emit LockedAndCreated(msg.sender, _value, _periods);
-    }
-
-    /**
-    * @notice Lock some tokens in the staking escrow
-    * @param _index Index of the sub-stake
-    * @param _value Amount of tokens which will be locked
-    */
-    function lockAndIncrease(uint256 _index, uint256 _value) public onlyDelegateCall {
-        escrow.lockAndIncrease(_index, _value);
-        emit LockedAndIncreased(msg.sender, _index, _value);
-    }
-
-    /**
-    * @notice Divide stake into two parts
-    * @param _index Index of stake
-    * @param _newValue New stake value
-    * @param _periods Amount of periods for extending stake
-    */
-    function divideStake(uint256 _index, uint256 _newValue, uint16 _periods) public onlyDelegateCall {
-        escrow.divideStake(_index, _newValue, _periods);
-        emit Divided(msg.sender, _index, _newValue, _periods);
-    }
-
-    /**
-    * @notice Merge two sub-stakes into one
-    * @param _index1 Index of the first sub-stake
-    * @param _index2 Index of the second sub-stake
-    */
-    function mergeStake(uint256 _index1, uint256 _index2) public onlyDelegateCall {
-        escrow.mergeStake(_index1, _index2);
-        emit Merged(msg.sender, _index1, _index2);
-    }
-
-    /**
-    * @notice Mint tokens in the staking escrow
-    */
-    function mint() public onlyDelegateCall {
-        escrow.mint();
-        emit Minted(msg.sender);
     }
 
     /**
@@ -226,35 +138,6 @@ contract StakingInterface is BaseStakingInterface {
     function setMinFeeRate(uint256 _minFeeRate) public onlyDelegateCall {
         policyManager.setMinFeeRate(_minFeeRate);
         emit MinFeeRateSet(msg.sender, _minFeeRate);
-    }
-
-
-    /**
-    * @notice Prolong active sub stake
-    * @param _index Index of the sub stake
-    * @param _periods Amount of periods for extending sub stake
-    */
-    function prolongStake(uint256 _index, uint16 _periods) public onlyDelegateCall {
-        escrow.prolongStake(_index, _periods);
-        emit Prolonged(msg.sender, _index, _periods);
-    }
-
-    /**
-    * @notice Set `windDown` parameter in the staking escrow
-    * @param _windDown Value for parameter
-    */
-    function setWindDown(bool _windDown) public onlyDelegateCall {
-        escrow.setWindDown(_windDown);
-        emit WindDownSet(msg.sender, _windDown);
-    }
-
-    /**
-    * @notice Set `snapshots` parameter in the staking escrow
-    * @param _enableSnapshots Value for parameter
-    */
-    function setSnapshots(bool _enableSnapshots) public onlyDelegateCall {
-        escrow.setSnapshots(_enableSnapshots);
-        emit SnapshotSet(msg.sender, _enableSnapshots);
     }
 
     /**
@@ -297,4 +180,24 @@ contract StakingInterface is BaseStakingInterface {
         emit Refund(msg.sender, refundETH);
     }
 
+    /**
+    * @notice Copies delegation from the legacy NU staking contract to T staking contract,
+    * additionally appointing beneficiary and authorizer roles.
+    */
+    function stakeNu(
+        address operator,
+        address payable beneficiary,
+        address authorizer
+    ) external onlyDelegateCall {
+        tStaking.stakeNu(operator, beneficiary, authorizer);
+        emit ThresholdNUStaked(msg.sender, operator, beneficiary, authorizer);
+    }
+
+    /**
+    * @notice Reduces cached legacy NU stake amount by the provided amount.
+    */
+    function unstakeNu(address operator, uint96 amount) external onlyDelegateCall {
+        tStaking.unstakeNu(operator, amount);
+        emit ThresholdNUUnstaked(msg.sender, operator, amount);
+    }
 }
