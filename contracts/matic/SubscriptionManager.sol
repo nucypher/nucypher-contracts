@@ -2,10 +2,15 @@
 
 pragma solidity ^0.8.0;
 
-contract SubscriptionManager {
+import "@openzeppelin-upgradeable/contracts/access/AccessControlUpgradeable.sol";
+import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
+
+contract SubscriptionManager is Initializable, AccessControlUpgradeable {
 
     uint256 private constant RATE_PER_DAY = 50 gwei;
     uint256 public constant RATE_PER_SECOND = RATE_PER_DAY / 1 days;
+    bytes32 public constant WITHDRAW_ROLE = 
+        keccak256("Power to withdraw funds from SubscriptionManager");
 
     struct Policy { // TODO: Optimize struct layout
         address payable sponsor;
@@ -22,11 +27,11 @@ contract SubscriptionManager {
         uint64 endTimestamp
     );
     
-    address payable public owner;
     mapping (bytes16 => Policy) public policies;
 
-    constructor(){
-        owner = payable(msg.sender);
+    function initialize(uint256 _x) public initializer {
+        _setupRole(WITHDRAW_ROLE, msg.sender);
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     function createPolicy(
@@ -93,8 +98,7 @@ contract SubscriptionManager {
         return policies[_policyID].endTimestamp > block.timestamp;
     }
 
-    function sweep(address payable recipient) external {
-        require(msg.sender == owner);
+    function sweep(address payable recipient) onlyRole(WITHDRAW_ROLE) external {
         uint256 balance = address(this).balance;
         (bool sent, ) = recipient.call{value: balance}("");
         require(sent, "Failed transfer");
