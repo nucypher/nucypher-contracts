@@ -7,8 +7,8 @@ import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
 
 contract SubscriptionManager is Initializable, AccessControlUpgradeable {
 
-    uint256 private constant RATE_PER_DAY = 50 gwei;
-    uint256 public constant RATE_PER_SECOND = RATE_PER_DAY / 1 days;
+    bytes32 public constant SET_RATE_ROLE = 
+        keccak256("Power to set the fee rate");
     bytes32 public constant WITHDRAW_ROLE = 
         keccak256("Power to withdraw funds from SubscriptionManager");
 
@@ -31,10 +31,18 @@ contract SubscriptionManager is Initializable, AccessControlUpgradeable {
         uint32 startTimestamp,
         uint32 endTimestamp
     );
-    
+
+    event FeeRateUpdated(uint256 oldFeeRate, uint256 newFeeRate);
+
+    // Per-second service fee rate
+    uint256 public feeRate;
+
+    // Mapping that stores policy structs, keyed by policy ID
     mapping (bytes16 => Policy) internal _policies;
 
-    function initialize(uint256 _x) public initializer {
+    function initialize(uint256 _feeRate) public initializer {
+        _setFeeRate(_feeRate);
+        _setupRole(SET_RATE_ROLE, msg.sender);
         _setupRole(WITHDRAW_ROLE, msg.sender);
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
@@ -56,7 +64,7 @@ contract SubscriptionManager is Initializable, AccessControlUpgradeable {
         uint32 duration = _endTimestamp - _startTimestamp;
         require(
             duration > 0 && _size > 0 &&
-            msg.value == RATE_PER_SECOND * _size * uint32(duration)
+            msg.value == feeRate * _size * uint32(duration)
         );
 
         _createPolicy(_policyId, _policyOwner, _size, _startTimestamp, _endTimestamp);
@@ -110,6 +118,16 @@ contract SubscriptionManager is Initializable, AccessControlUpgradeable {
 
     function isPolicyActive(bytes16 _policyID) public view returns(bool){
         return _policies[_policyID].endTimestamp > block.timestamp;
+    }
+
+    function _setFeeRate(uint256 newFee) internal {
+        uint256 oldFee = feeRate;
+        feeRate = newFee;
+        emit FeeRateUpdated(oldFee, newFee);
+    }
+
+    function setFeeRate(uint256 _rate_per_second) onlyRole(SET_RATE_ROLE) external {
+        _setFeeRate(_rate_per_second);
     }
 
     function sweep(address payable recipient) onlyRole(WITHDRAW_ROLE) external {
