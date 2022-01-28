@@ -12,22 +12,27 @@ contract SubscriptionManager is Initializable, AccessControlUpgradeable {
     bytes32 public constant WITHDRAW_ROLE = 
         keccak256("Power to withdraw funds from SubscriptionManager");
 
-    struct Policy { // TODO: Optimize struct layout
+    // The layout of policy struct is optimized, so sponsor, timestamps and size
+    // fit in a single 256-word.
+    struct Policy {
         address payable sponsor;
+        uint32 startTimestamp;
+        uint32 endTimestamp;
+        uint16 size; // also known as `N`
+        // There's still 2 bytes available here
         address owner;
-        uint64 startTimestamp;
-        uint64 endTimestamp;
     }
 
     event PolicyCreated(
         bytes16 indexed policyId,
         address indexed sponsor,
         address indexed owner,
-        uint64 startTimestamp,
-        uint64 endTimestamp
+        uint16 size,
+        uint32 startTimestamp,
+        uint32 endTimestamp
     );
     
-    mapping (bytes16 => Policy) public policies;
+    mapping (bytes16 => Policy) internal _policies;
 
     function initialize(uint256 _x) public initializer {
         _setupRole(WITHDRAW_ROLE, msg.sender);
@@ -37,8 +42,9 @@ contract SubscriptionManager is Initializable, AccessControlUpgradeable {
     function createPolicy(
         bytes16 _policyId,
         address _policyOwner,
-        uint64 _startTimestamp,
-        uint64 _endTimestamp
+        uint16 _size,
+        uint32 _startTimestamp,
+        uint32 _endTimestamp
     )
         external payable
     {
@@ -47,31 +53,33 @@ contract SubscriptionManager is Initializable, AccessControlUpgradeable {
             block.timestamp < _endTimestamp,
             "Invalid timestamps"
         );
-        uint64 duration = _endTimestamp - _startTimestamp;
+        uint32 duration = _endTimestamp - _startTimestamp;
         require(
-            duration > 0 &&
-            msg.value == RATE_PER_SECOND * uint64(duration)
+            duration > 0 && _size > 0 &&
+            msg.value == RATE_PER_SECOND * _size * uint32(duration)
         );
-        //Policy storage policy = 
-        _createPolicy(_policyId, _policyOwner, _startTimestamp, _endTimestamp);
+
+        _createPolicy(_policyId, _policyOwner, _size, _startTimestamp, _endTimestamp);
     }
 
     /**
     * @notice Create policy
     * @param _policyId Policy id
     * @param _policyOwner Policy owner. Zero address means sender is owner
+    * @param _size Number of nodes involved in the policy
     * @param _startTimestamp Start timestamp of the policy in seconds
     * @param _endTimestamp End timestamp of the policy in seconds
     */
     function _createPolicy(
         bytes16 _policyId,
         address _policyOwner,
-        uint64 _startTimestamp,
-        uint64 _endTimestamp
+        uint16 _size,
+        uint32 _startTimestamp,
+        uint32 _endTimestamp
     )
         internal returns (Policy storage policy)
     {
-        policy = policies[_policyId];
+        policy = _policies[_policyId];
         require(
             policy.endTimestamp < block.timestamp,
             "Policy is currently active"
@@ -80,6 +88,7 @@ contract SubscriptionManager is Initializable, AccessControlUpgradeable {
         policy.sponsor = payable(msg.sender);
         policy.startTimestamp = _startTimestamp;
         policy.endTimestamp = _endTimestamp;
+        policy.size = _size;
 
         if (_policyOwner != msg.sender && _policyOwner != address(0)) {
             policy.owner = _policyOwner;
@@ -89,13 +98,18 @@ contract SubscriptionManager is Initializable, AccessControlUpgradeable {
             _policyId,
             msg.sender,
             _policyOwner == address(0) ? msg.sender : _policyOwner,
+            _size,
             _startTimestamp,
             _endTimestamp
         );
     }
 
+    function getPolicy(bytes16 _policyID) public view returns(Policy memory){
+        return _policies[_policyID];
+    }
+
     function isPolicyActive(bytes16 _policyID) public view returns(bool){
-        return policies[_policyID].endTimestamp > block.timestamp;
+        return _policies[_policyID].endTimestamp > block.timestamp;
     }
 
     function sweep(address payable recipient) onlyRole(WITHDRAW_ROLE) external {
