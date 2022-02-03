@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.0;
 
-import "contracts/zeppelin/ownership/Ownable.sol";
-import "contracts/zeppelin/utils/Address.sol";
-import "contracts/zeppelin/token/ERC20/SafeERC20.sol";
-import "./StakingInterface.sol";
-import "contracts/zeppelin/proxy/Initializable.sol";
+import "zeppelin/ownership/Ownable.sol";
+import "zeppelin/utils/Address.sol";
+import "zeppelin/token/ERC20/SafeERC20.sol";
+import "contracts/staking_contracts/StakingInterface.sol";
+import "zeppelin/proxy/Initializable.sol";
 
 
 /**

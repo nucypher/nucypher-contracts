@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.0;
 
-import "./IForwarder.sol";
+import "contracts/dao/IForwarder.sol";
 
 // Interface for Voting contract, as found in https://github.com/aragon/aragon-apps/blob/master/apps/voting/contracts/Voting.sol
 interface Voting is IForwarder{

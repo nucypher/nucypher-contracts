@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.0; // TODO use 0.7.x version and revert changes ?
 
 
-import "contracts/zeppelin/math/SafeMath.sol";
-import "contracts/zeppelin/token/ERC20/SafeERC20.sol";
-import "contracts/zeppelin/utils/Address.sol";
-import "contracts/zeppelin/ownership/Ownable.sol";
-import "./NuCypherToken.sol";
-import "./StakingEscrow.sol";
-import "./lib/AdditionalMath.sol";
+import "zeppelin/math/SafeMath.sol";
+import "zeppelin/token/ERC20/SafeERC20.sol";
+import "zeppelin/utils/Address.sol";
+import "zeppelin/ownership/Ownable.sol";
+import "contracts/NuCypherToken.sol";
+import "contracts/IStakingEscrow.sol";
+import "contracts/lib/AdditionalMath.sol";
 
 
 /**
@@ -43,7 +43,7 @@ contract WorkLock is Ownable {
     uint256 private constant MAX_ETH_SUPPLY = 2e10 ether;
 
     NuCypherToken public immutable token;
-    StakingEscrow public immutable escrow;
+    IStakingEscrow public immutable escrow;
 
     /*
     * @dev WorkLock calculations:
@@ -96,7 +96,7 @@ contract WorkLock is Ownable {
     */
     constructor(
         NuCypherToken _token,
-        StakingEscrow _escrow,
+        IStakingEscrow _escrow,
         uint256 _startBidDate,
         uint256 _endBidDate,
         uint256 _endCancellationDate,
@@ -335,7 +335,7 @@ contract WorkLock is Ownable {
         if (refundETH > minAllowedBid) {
             bonusETHSupply = bonusETHSupply.sub(refundETH - minAllowedBid);
         }
-        msg.sender.sendValue(refundETH);
+        payable(msg.sender).sendValue(refundETH);
         emit Canceled(msg.sender, refundETH);
     }
 
@@ -353,7 +353,7 @@ contract WorkLock is Ownable {
     function internalShutdown() internal {
         startBidDate = 0;
         endBidDate = 0;
-        endCancellationDate = uint256(0) - 1; // "infinite" cancellation window
+        endCancellationDate = type(uint256).max; // "infinite" cancellation window
         token.safeTransfer(owner(), tokenSupply);
         emit Shutdown(msg.sender);
     }
@@ -444,7 +444,7 @@ contract WorkLock is Ownable {
         uint256 refund = compensation[msg.sender];
         require(refund > 0, "There is no compensation");
         compensation[msg.sender] = 0;
-        msg.sender.sendValue(refund);
+        payable(msg.sender).sendValue(refund);
         emit CompensationWithdrawn(msg.sender, refund);
     }
 
@@ -550,6 +550,6 @@ contract WorkLock is Ownable {
 
         info.completedWork = info.completedWork.add(completedWork);
         emit Refund(msg.sender, refundETH, completedWork);
-        msg.sender.sendValue(refundETH);
+        payable(msg.sender).sendValue(refundETH);
     }
 }
