@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.0;
 
-import "zeppelin/ownership/Ownable.sol";
-import "contracts/staking_contracts/AbstractStakingContract.sol";
+import "../../zeppelin/ownership/Ownable.sol";
+import "./AbstractStakingContract.sol";
 
 /**
  * @notice Contract acts as delegate for sub-stakers

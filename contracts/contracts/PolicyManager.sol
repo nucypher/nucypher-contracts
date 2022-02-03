@@ -3,15 +3,15 @@
 pragma solidity ^0.8.0;
 
 
-import "zeppelin/token/ERC20/SafeERC20.sol";
-import "zeppelin/math/SafeMath.sol";
-import "zeppelin/math/Math.sol";
-import "zeppelin/utils/Address.sol";
-import "contracts/lib/AdditionalMath.sol";
-import "contracts/lib/SignatureVerifier.sol";
-import "contracts/NuCypherToken.sol";
-import "contracts/proxy/Upgradeable.sol";
-import "contracts/IStakingEscrow.sol";
+import "../zeppelin/token/ERC20/SafeERC20.sol";
+import "../zeppelin/math/SafeMath.sol";
+import "../zeppelin/math/Math.sol";
+import "../zeppelin/utils/Address.sol";
+import "./lib/AdditionalMath.sol";
+import "./lib/SignatureVerifier.sol";
+import "./NuCypherToken.sol";
+import "./proxy/Upgradeable.sol";
+import "./IStakingEscrow.sol";
 
 
 /**

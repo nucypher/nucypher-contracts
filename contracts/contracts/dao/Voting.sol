@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import "contracts/dao/IForwarder.sol";
+import "./IForwarder.sol";
 
 // Interface for Voting contract, as found in https://github.com/aragon/aragon-apps/blob/master/apps/voting/contracts/Voting.sol
 interface Voting is IForwarder{

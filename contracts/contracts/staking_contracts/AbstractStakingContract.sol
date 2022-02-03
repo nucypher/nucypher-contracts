@@ -2,11 +2,11 @@
 
 pragma solidity ^0.8.0;
 
-import "zeppelin/ownership/Ownable.sol";
-import "zeppelin/utils/Address.sol";
-import "zeppelin/token/ERC20/SafeERC20.sol";
-import "contracts/staking_contracts/StakingInterface.sol";
-import "zeppelin/proxy/Initializable.sol";
+import "../../zeppelin/ownership/Ownable.sol";
+import "../../zeppelin/utils/Address.sol";
+import "../../zeppelin/token/ERC20/SafeERC20.sol";
+import "./StakingInterface.sol";
+import "../../zeppelin/proxy/Initializable.sol";
 
 
 /**
