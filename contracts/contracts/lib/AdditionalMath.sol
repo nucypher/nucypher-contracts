@@ -3,7 +3,7 @@
 pragma solidity ^0.8.0;
 
 
-import "zeppelin/math/SafeMath.sol";
+import "../../zeppelin/math/SafeMath.sol";
 
 
 /**

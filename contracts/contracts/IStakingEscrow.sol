@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import "contracts/NuCypherToken.sol";
+import "./NuCypherToken.sol";
 
 interface IStakingEscrow {
     function token() external view returns (NuCypherToken);

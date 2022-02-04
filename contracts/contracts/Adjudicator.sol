@@ -2,12 +2,12 @@
 
 pragma solidity ^0.8.0;
 
-import "contracts/lib/ReEncryptionValidator.sol";
-import "contracts/lib/SignatureVerifier.sol";
-import "contracts/IStakingEscrow.sol";
-import "contracts/proxy/Upgradeable.sol";
-import "zeppelin/math/SafeMath.sol";
-import "zeppelin/math/Math.sol";
+import "./lib/ReEncryptionValidator.sol";
+import "./lib/SignatureVerifier.sol";
+import "./IStakingEscrow.sol";
+import "./proxy/Upgradeable.sol";
+import "../zeppelin/math/SafeMath.sol";
+import "../zeppelin/math/Math.sol";
 
 
 /**

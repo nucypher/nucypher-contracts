@@ -3,8 +3,8 @@
 
 pragma solidity ^0.8.0;
 
-import "zeppelin/token/ERC20/IERC20.sol";
-import "zeppelin/utils/Address.sol";
+import "./IERC20.sol";
+import "../../utils/Address.sol";
 
 /**
  * @title SafeERC20

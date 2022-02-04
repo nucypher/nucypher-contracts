@@ -3,13 +3,13 @@
 pragma solidity ^0.8.0;
 
 
-import "aragon/interfaces/IERC900History.sol";
-import "contracts/NuCypherToken.sol";
-import "contracts/lib/Bits.sol";
-import "contracts/proxy/Upgradeable.sol";
-import "zeppelin/math/Math.sol";
-import "zeppelin/token/ERC20/SafeERC20.sol";
-import "threshold/IStaking.sol";
+import "../aragon/interfaces/IERC900History.sol";
+import "./NuCypherToken.sol";
+import "./lib/Bits.sol";
+import "./proxy/Upgradeable.sol";
+import "../zeppelin/math/Math.sol";
+import "../zeppelin/token/ERC20/SafeERC20.sol";
+import "../threshold/IStaking.sol";
 
 
 /**
