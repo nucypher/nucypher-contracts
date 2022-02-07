@@ -1,6 +1,6 @@
 {
-  "name": "nucypher-contracts",
-  "version": "0.0.1",
+  "name": "@nucypher/nucypher-contracts",
+  "version": "0.1.0",
   "license": "AGPL-3.0-or-later",
   "description": "NuCypher Network Smart Contracts",
   "author": "NuCypher"
