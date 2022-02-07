@@ -1,9 +1,17 @@
 # NuCypher contracts
 
-Contracts from the [main NuCypher codebase](https://github.com/nucypher/nucypher) extracted into a separate repo for ease of testing.
+Contracts from the [main NuCypher codebase](https://github.com/nucypher/nucypher) extracted into a separate repo for ease of testing and interoperability with other projects.
 
+## Structure
+
+* `artifacts`: ABI and address of deployed contracts
+* `contracts`: Source code for contracts
+* `scripts`: Deployment scripts
+* `tests`: Contract tests
 
 ## Installation
+
+We use [Brownie](https://eth-brownie.readthedocs.io/) as the testing and deployment framework of this project.
 
 ### Configuring Pre-commit
 
