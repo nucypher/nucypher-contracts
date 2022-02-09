@@ -8,3 +8,4 @@ reports/
 venv/
 .python-version
 bin/
+.vscode/
