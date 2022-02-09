@@ -63,7 +63,7 @@ contract SubscriptionManager is Initializable, AccessControlUpgradeable {
         );
         uint32 duration = _endTimestamp - _startTimestamp;
         require(
-            duration > 0 && _size > 0 &&
+            _size > 0 &&
             msg.value == feeRate * _size * uint32(duration)
         );
 
