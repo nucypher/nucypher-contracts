@@ -34,7 +34,7 @@ contract SubscriptionManager is Initializable, AccessControlUpgradeable {
 
     event FeeRateUpdated(uint256 oldFeeRate, uint256 newFeeRate);
 
-    // Per-second service fee rate
+    // Per-second, per-node service fee rate
     uint256 public feeRate;
 
     // Mapping that stores policy structs, keyed by policy ID
@@ -135,8 +135,8 @@ contract SubscriptionManager is Initializable, AccessControlUpgradeable {
         emit FeeRateUpdated(oldFee, newFee);
     }
 
-    function setFeeRate(uint256 _rate_per_second) onlyRole(SET_RATE_ROLE) external {
-        _setFeeRate(_rate_per_second);
+    function setFeeRate(uint256 _ratePerSecond) onlyRole(SET_RATE_ROLE) external {
+        _setFeeRate(_ratePerSecond);
     }
 
     function sweep(address payable recipient) onlyRole(WITHDRAW_ROLE) external {
