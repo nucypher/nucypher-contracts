@@ -9,8 +9,9 @@ INITIAL_FEE_RATE = Wei("1 gwei")
 def main():
     deployer = accounts.load('test')
 
+    # TODO: There has to be a better way to do this resolution. See #13
     brownie_packages = brownie._config._get_data_folder().joinpath('packages')
-    oz_dependency_path = 'OpenZeppelin/openzeppelin-contracts@4.4.2/'
+    oz_dependency_path = 'OpenZeppelin/openzeppelin-contracts@4.5.0/'
     oz = Project("OZ", brownie_packages.joinpath(oz_dependency_path))
     
     proxy_admin = deployer.deploy(oz.ProxyAdmin)
