@@ -47,6 +47,17 @@ contract SubscriptionManager is Initializable, AccessControlUpgradeable {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
+    function getPolicyCost(
+        uint16 _size,
+        uint32 _startTimestamp,
+        uint32 _endTimestamp
+    ) public view returns (uint256){
+        uint32 duration = _endTimestamp - _startTimestamp;
+        require(duration > 0, "Invalid timestamps");
+        require(_size > 0, "Invalid policy size");
+        return feeRate * _size * duration;
+    }
+
     function createPolicy(
         bytes16 _policyId,
         address _policyOwner,
@@ -57,14 +68,12 @@ contract SubscriptionManager is Initializable, AccessControlUpgradeable {
         external payable
     {
         require(
-            _startTimestamp < _endTimestamp &&
-            block.timestamp < _endTimestamp,
+            _startTimestamp < _endTimestamp && block.timestamp < _endTimestamp,
             "Invalid timestamps"
         );
-        uint32 duration = _endTimestamp - _startTimestamp;
         require(
-            _size > 0 &&
-            msg.value == feeRate * _size * uint32(duration)
+            msg.value == getPolicyCost(_size, _startTimestamp, _endTimestamp),
+            "Invalid policy cost"
         );
 
         _createPolicy(_policyId, _policyOwner, _size, _startTimestamp, _endTimestamp);

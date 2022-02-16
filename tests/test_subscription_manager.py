@@ -53,9 +53,13 @@ def test_create_policy(subscription_manager, accounts):
     alice = accounts[1]
     duration = 1000
     size = 3
-    fee = subscription_manager.feeRate() * duration * size
     start = chain.time()
     end = start + duration
+
+    expectedFee = subscription_manager.feeRate() * duration * size
+    fee = subscription_manager.getPolicyCost(size, start, end)
+    assert fee == expectedFee
+    
     subscription_manager.createPolicy(
         policy_id, alice, size, start, end, {"from": alice, "value": fee}
     )
@@ -75,15 +79,17 @@ def test_create_policy_with_same_id(subscription_manager, accounts):
     alice = accounts[1]
     duration = 1000
     size = 3
-    fee = subscription_manager.feeRate() * duration * size
+    start = chain.time()
+    end = start + duration
+    fee = subscription_manager.getPolicyCost(size, start, end)
 
     with brownie.reverts("Policy is currently active"):
         subscription_manager.createPolicy(
             policy_id,
             alice,
             size,
-            chain.time(),
-            chain.time() + duration,
+            start,
+            end,
             {"from": alice, "value": fee},
         )
 
@@ -93,8 +99,9 @@ def test_create_policy_again_after_duration_time(subscription_manager, accounts)
     alice = accounts[1]
     duration = 1000 + 1
     size = 3
-    fee = subscription_manager.feeRate() * duration * size
-
+    start = chain.time()
+    end = start + duration
+    fee = subscription_manager.getPolicyCost(size, start, end)
     chain.sleep(duration)
 
     subscription_manager.createPolicy(
@@ -109,9 +116,9 @@ def test_create_policy_transfers_eth(subscription_manager, accounts):
     alice = accounts[1]
     duration = 1000
     size = 3
-    fee = subscription_manager.feeRate() * duration * size
     start = chain.time()
     end = start + duration
+    fee = subscription_manager.getPolicyCost(size, start, end)
 
     alice_expected_balance = alice.balance() - fee
     contract_expected_balance = subscription_manager.balance() + fee
@@ -129,7 +136,7 @@ def test_create_policy_with_invalid_timestamp(subscription_manager, accounts):
     alice = accounts[1]
     duration = 1000
     size = 3
-    fee = subscription_manager.feeRate() * duration * size
+    fee = 0
     start = chain.time()
     invalid_end = chain.time() - duration
     with brownie.reverts("Invalid timestamps"):
