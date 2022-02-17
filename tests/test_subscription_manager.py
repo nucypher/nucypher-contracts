@@ -84,6 +84,41 @@ def test_create_policy(subscription_manager, accounts):
     assert event['cost'] == fee
 
 
+def test_create_policy_with_sponsor(subscription_manager, accounts):
+    policy_id = b"from the sponsor"
+    alice = accounts[1]
+    sponsor = accounts[2]
+    duration = 1000
+    size = 3
+    start = chain.time()
+    end = start + duration
+
+    fee = subscription_manager.getPolicyCost(size, start, end)
+    
+    tx = subscription_manager.createPolicy(
+        policy_id, alice, size, start, end, {"from": sponsor, "value": fee}
+    )
+
+    policy = subscription_manager.getPolicy(policy_id)
+
+    assert subscription_manager.isPolicyActive(policy_id)
+    assert policy[0] == sponsor
+    assert policy[1] == start
+    assert policy[2] == end
+    assert policy[3] == size
+    assert policy[4] == alice
+
+    assert 'PolicyCreated' in tx.events
+    event = tx.events['PolicyCreated']
+    assert bytes(event['policyId']) == policy_id
+    assert event['sponsor'] == sponsor
+    assert event['owner'] == alice
+    assert event['size'] == size
+    assert event['startTimestamp'] == start
+    assert event['endTimestamp'] == end
+    assert event['cost'] == fee
+
+
 def test_create_policy_with_same_id(subscription_manager, accounts):
     policy_id = b"feed your head!!"
     alice = accounts[1]
