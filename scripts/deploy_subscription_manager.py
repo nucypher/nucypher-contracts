@@ -9,8 +9,8 @@ from pathlib import Path
 
 INITIAL_FEE_RATE = Wei("1 gwei")
 
-def main():
-    deployer = accounts.load('test')
+def main(account_name : str = 'test'):
+    deployer = accounts.load(account_name)
 
     # TODO: There has to be a better way to do this resolution. See #13
     current_project = project.get_loaded_projects().pop()
