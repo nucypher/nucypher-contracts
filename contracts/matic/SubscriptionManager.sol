@@ -29,7 +29,8 @@ contract SubscriptionManager is Initializable, AccessControlUpgradeable {
         address indexed owner,
         uint16 size,
         uint32 startTimestamp,
-        uint32 endTimestamp
+        uint32 endTimestamp,
+        uint256 cost
     );
 
     event FeeRateUpdated(uint256 oldFeeRate, uint256 newFeeRate);
@@ -117,7 +118,8 @@ contract SubscriptionManager is Initializable, AccessControlUpgradeable {
             _policyOwner == address(0) ? msg.sender : _policyOwner,
             _size,
             _startTimestamp,
-            _endTimestamp
+            _endTimestamp,
+            msg.value
         );
     }
 

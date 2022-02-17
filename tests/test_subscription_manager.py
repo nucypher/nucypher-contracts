@@ -60,7 +60,7 @@ def test_create_policy(subscription_manager, accounts):
     fee = subscription_manager.getPolicyCost(size, start, end)
     assert fee == expectedFee
     
-    subscription_manager.createPolicy(
+    tx = subscription_manager.createPolicy(
         policy_id, alice, size, start, end, {"from": alice, "value": fee}
     )
 
@@ -72,6 +72,16 @@ def test_create_policy(subscription_manager, accounts):
     assert policy[2] == end
     assert policy[3] == size
     assert policy[4] == "0x0000000000000000000000000000000000000000"
+
+    assert 'PolicyCreated' in tx.events
+    event = tx.events['PolicyCreated']
+    assert bytes(event['policyId']) == policy_id
+    assert event['sponsor'] == alice
+    assert event['owner'] == alice
+    assert event['size'] == size
+    assert event['startTimestamp'] == start
+    assert event['endTimestamp'] == end
+    assert event['cost'] == fee
 
 
 def test_create_policy_with_same_id(subscription_manager, accounts):
