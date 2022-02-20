@@ -1,0 +1,13 @@
+{
+  "137": {
+    "ProxyAdmin": [
+      "0x16E74C81A68288B4d216720B65C3E4CF05E2E08d"
+    ],
+    "SubscriptionManager": [
+      "0x83283D9120a8e2494d735C681Ad9f53c20a34522"
+    ],
+    "TransparentUpgradeableProxy": [
+      "0xB0194073421192F6Cf38d72c791Be8729721A0b3"
+    ]
+  }
+}
