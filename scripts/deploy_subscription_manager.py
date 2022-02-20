@@ -20,15 +20,27 @@ def main(account_name : str = 'test'):
     # FIXME: This is a workaround to save deployment data in the same project
     oz._build_path = current_project._build_path
 
-    proxy_admin = deployer.deploy(oz.ProxyAdmin)
+    deployment_config = dict(gas_buffer=1.5,
+                             required_confs=3,
+                             publish_source=True)
 
-    subscription_manager_logic = deployer.deploy(SubscriptionManager)
+    # ProxyAdmin
+    proxy_admin = deployer.deploy(oz.ProxyAdmin, **deployment_config)
+
+    # SubscriptionManager implementation
+    subscription_manager_logic = deployer.deploy(SubscriptionManager,
+                                                 **deployment_config)
+
+    # TransparentUpgradeableProxy for SubscriptionManager (includes initialization)
     calldata = subscription_manager_logic.initialize.encode_input(INITIAL_FEE_RATE)
-    transparent_proxy = oz.TransparentUpgradeableProxy.deploy(
+    constructor_args = (
         subscription_manager_logic.address,
         proxy_admin.address,
-        calldata,
-        {'from': deployer})
+        calldata
+    )
+    transparent_proxy = deployer.deploy(oz.TransparentUpgradeableProxy,
+                                        *constructor_args,
+                                        **deployment_config)
 
     subscription_manager = Contract.from_abi("SubscriptionManager", transparent_proxy.address, subscription_manager_logic.abi, owner=None)
     return subscription_manager
