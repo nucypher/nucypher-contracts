@@ -19,7 +19,7 @@ along with nucypher.  If not, see <https://www.gnu.org/licenses/>.
 import brownie
 from brownie import Wei
 
-TOTAL_SUPPLY = Wei("1_000_000_000 ether")  # NU(1_000_000_000, 'NU').to_units()
+TOTAL_SUPPLY = Wei("1_000_000_000 ether")  # TODO NU(1_000_000_000, 'NU').to_units()
 
 
 def test_create_token(NuCypherToken, accounts):
