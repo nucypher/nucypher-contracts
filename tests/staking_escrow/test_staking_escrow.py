@@ -256,7 +256,7 @@ def test_withdraw(accounts, token, worklock, threshold_staking, escrow):
 
     # Set vesting for the staker
     threshold_staking.setStakedNu(staking_provider, value // 2, {"from": creator})
-    now = chain.time()
+    now = chain.time() + 1
     release_timestamp = now + ONE_HOUR
     rate = 2 * value // ONE_HOUR
     escrow.setupVesting([staker], [release_timestamp], [rate], {"from": creator})
@@ -273,7 +273,7 @@ def test_withdraw(accounts, token, worklock, threshold_staking, escrow):
     # Can't withdraw more than released
     to_withdraw = released
     with brownie.reverts():
-        escrow.withdraw(to_withdraw + 1, {"from": staker})
+        escrow.withdraw(to_withdraw + rate + 1, {"from": staker})
 
     tx = escrow.withdraw(to_withdraw, {"from": staker})
     assert escrow.getAllTokens(staker) == value - to_withdraw
@@ -286,7 +286,7 @@ def test_withdraw(accounts, token, worklock, threshold_staking, escrow):
     assert event["value"] == to_withdraw
 
     # Can't withdraw more than unstaked
-    chain.sleep(20 * 60)
+    chain.sleep(30 * 60)
     chain.mine()
     unstaked = value // 2 - to_withdraw
     with brownie.reverts():
@@ -394,7 +394,7 @@ def test_vesting(accounts, token, worklock, escrow):
     worklock.depositFromWorkLock(staker4, value, 0, {"from": creator})
 
     chain.mine(timedelta=0)
-    now = chain.time()
+    now = chain.time() + 1
     release_timestamp_2 = now + ONE_HOUR
     release_timestamp_3 = now + 2 * ONE_HOUR
     release_timestamp_4 = now + 2 * ONE_HOUR
@@ -408,9 +408,9 @@ def test_vesting(accounts, token, worklock, escrow):
         {"from": creator},
     )
 
-    assert escrow.getUnvestedTokens(staker2) == value // 2
-    assert escrow.getUnvestedTokens(staker3) == value // 2
-    assert escrow.getUnvestedTokens(staker4) == value
+    assert abs(escrow.getUnvestedTokens(staker2) - value // 2) <= rate_2
+    assert abs(escrow.getUnvestedTokens(staker3) - value // 2) <= rate_3
+    assert abs(escrow.getUnvestedTokens(staker4) - value) <= rate_4
     assert escrow.stakerInfo(staker2)[VESTING_RELEASE_TIMESTAMP_SLOT] == release_timestamp_2
     assert escrow.stakerInfo(staker2)[VESTING_RELEASE_RATE_SLOT] == rate_2
     assert escrow.stakerInfo(staker3)[VESTING_RELEASE_TIMESTAMP_SLOT] == release_timestamp_3
