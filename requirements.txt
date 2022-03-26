@@ -1,7 +1,10 @@
 black==22.1.0
+coincurve==17.0.0
+cryptography==36.0.2
 eth-brownie>=1.18.1,<2.0.0
 flake8==4.0.1
 isort==5.10.1
-pre-commit==2.17.0
-tox==3.24.5
 nucypher-core==0.1.1
+pre-commit==2.17.0
+pysha3==1.0.2
+tox==3.24.5
