@@ -7,7 +7,7 @@ import "../aragon/interfaces/IERC900History.sol";
 import "./NuCypherToken.sol";
 import "./lib/Bits.sol";
 import "./proxy/Upgradeable.sol";
-import "../zeppelin/math/Math.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../zeppelin/token/ERC20/SafeERC20.sol";
 import "../threshold/IStaking.sol";
 

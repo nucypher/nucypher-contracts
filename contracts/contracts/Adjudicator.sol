@@ -6,8 +6,8 @@ import "./lib/ReEncryptionValidator.sol";
 import "./lib/SignatureVerifier.sol";
 import "./IStakingEscrow.sol";
 import "./proxy/Upgradeable.sol";
-import "../zeppelin/math/SafeMath.sol";
-import "../zeppelin/math/Math.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 
 
 /**
