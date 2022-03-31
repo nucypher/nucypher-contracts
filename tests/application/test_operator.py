@@ -26,8 +26,8 @@ NULL_ADDRESS = brownie.convert.to_address("0x" + "0" * 40)  # TODO move to some 
 
 def test_bond_operator(accounts, threshold_staking, pre_application, chain):
     accounts.add()
-    creator, staking_provider_1, staking_provider_2, staking_provider_3, staking_provider_4, operator1, operator2, \
-    operator3, owner3, beneficiary, authorizer, *everyone_else = (
+    creator, staking_provider_1, staking_provider_2, staking_provider_3, staking_provider_4, \
+    operator1, operator2, operator3, owner3, beneficiary, authorizer, *everyone_else = (
         accounts
     )
     min_authorization = MIN_AUTHORIZATION
