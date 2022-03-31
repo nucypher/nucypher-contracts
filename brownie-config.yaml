@@ -3,6 +3,10 @@ dependencies:
   - OpenZeppelin/openzeppelin-contracts-upgradeable@4.5.0
 compiler:
   solc:
+    version: 0.8.9
+    optimizer:
+      enabled: true
+      runs: 200
     remappings:
       - "@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.5.0"
       - "@openzeppelin-upgradeable=OpenZeppelin/openzeppelin-contracts-upgradeable@4.5.0"

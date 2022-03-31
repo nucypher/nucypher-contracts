@@ -3,5 +3,10 @@
   "version": "0.3.0",
   "license": "AGPL-3.0-or-later",
   "description": "NuCypher Network Smart Contracts",
-  "author": "NuCypher"
+  "author": "NuCypher",
+  "files": [
+    "/contracts/**/*.sol",
+    "/build/contracts/*.json",
+    "!/contracts/test/**/*"
+  ]
 }
