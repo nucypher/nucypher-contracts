@@ -3,8 +3,7 @@
 pragma solidity ^0.8.0;
 
 
-import "../zeppelin/token/ERC20/ERC20.sol";
-import "../zeppelin/token/ERC20/ERC20Detailed.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 
 /**
@@ -12,7 +11,7 @@ import "../zeppelin/token/ERC20/ERC20Detailed.sol";
 * @notice ERC20 token
 * @dev Optional approveAndCall() functionality to notify a contract if an approve() has occurred.
 */
-contract NuCypherToken is ERC20, ERC20Detailed('NuCypher', 'NU', 18) {
+contract NuCypherToken is ERC20('NuCypher', 'NU') {
 
     /**
     * @notice Set amount of tokens
@@ -20,6 +19,18 @@ contract NuCypherToken is ERC20, ERC20Detailed('NuCypher', 'NU', 18) {
     */
     constructor (uint256 _totalSupplyOfTokens) {
         _mint(msg.sender, _totalSupplyOfTokens);
+    }
+
+    function approve(address spender, uint256 value) public override returns (bool) {
+
+        // To change the approve amount you first have to reduce the addresses`
+        //  allowance to zero by calling `approve(_spender, 0)` if it is not
+        //  already 0 to mitigate the race condition described here:
+        //  https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
+        require(value == 0 || allowance(msg.sender, spender) == 0);
+
+        _approve(msg.sender, spender, value);
+        return true;
     }
 
     /**
