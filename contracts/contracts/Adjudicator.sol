@@ -6,7 +6,7 @@ import "./lib/ReEncryptionValidator.sol";
 import "./lib/SignatureVerifier.sol";
 import "./IStakingEscrow.sol";
 import "./proxy/Upgradeable.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "./lib/AdditionalMath.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
 
@@ -17,7 +17,6 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 */
 contract Adjudicator is Upgradeable {
 
-    using SafeMath for uint256;
     using UmbralDeserializer for bytes;
 
     event CFragEvaluated(
@@ -181,11 +180,11 @@ contract Adjudicator is Upgradeable {
     function calculatePenaltyAndReward(address _staker, uint256 _stakerValue)
         internal returns (uint256 penalty, uint256 reward)
     {
-        penalty = basePenalty.add(penaltyHistoryCoefficient.mul(penaltyHistory[_staker]));
-        penalty = Math.min(penalty, _stakerValue.div(percentagePenaltyCoefficient));
-        reward = penalty.div(rewardCoefficient);
+        penalty = basePenalty + penaltyHistoryCoefficient * penaltyHistory[_staker];
+        penalty = Math.min(penalty, _stakerValue / percentagePenaltyCoefficient);
+        reward = penalty / rewardCoefficient;
         // TODO add maximum condition or other overflow protection or other penalty condition (#305?)
-        penaltyHistory[_staker] = penaltyHistory[_staker].add(1);
+        penaltyHistory[_staker] = penaltyHistory[_staker] + 1;
     }
 
     /// @dev the `onlyWhileUpgrading` modifier works through a call to the parent `verifyState`

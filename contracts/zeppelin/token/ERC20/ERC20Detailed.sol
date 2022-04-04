@@ -17,10 +17,10 @@ abstract contract ERC20Detailed is IERC20 {
     string private _symbol;
     uint8 private _decimals;
 
-    constructor (string memory name, string memory symbol, uint8 decimals) {
-        _name = name;
-        _symbol = symbol;
-        _decimals = decimals;
+    constructor (string memory name_, string memory symbol_, uint8 decimals_) {
+        _name = name_;
+        _symbol = symbol_;
+        _decimals = decimals_;
     }
 
     /**

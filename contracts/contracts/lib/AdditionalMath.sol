@@ -10,7 +10,6 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 * @notice Additional math operations
 */
 library AdditionalMath {
-    using SafeMath for uint256;
 
     function max16(uint16 a, uint16 b) internal pure returns (uint16) {
         return a >= b ? a : b;
@@ -24,7 +23,7 @@ library AdditionalMath {
     * @notice Division and ceil
     */
     function divCeil(uint256 a, uint256 b) internal pure returns (uint256) {
-        return (a.add(b) - 1) / b;
+        return (a + b - 1) / b;
     }
 
     /**
@@ -32,9 +31,9 @@ library AdditionalMath {
     */
     function addSigned(uint256 a, int256 b) internal pure returns (uint256) {
         if (b >= 0) {
-            return a.add(uint256(b));
+            return a + uint256(b);
         } else {
-            return a.sub(uint256(-b));
+            return a - uint256(-b);
         }
     }
 
@@ -43,9 +42,9 @@ library AdditionalMath {
     */
     function subSigned(uint256 a, int256 b) internal pure returns (uint256) {
         if (b >= 0) {
-            return a.sub(uint256(b));
+            return a - uint256(b);
         } else {
-            return a.add(uint256(-b));
+            return a + uint256(-b);
         }
     }
 
