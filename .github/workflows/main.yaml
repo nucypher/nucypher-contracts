@@ -44,6 +44,9 @@ jobs:
     - name: Run Tests
       run: brownie test
 
+    - name: Deploy Locally
+      run: brownie run scripts/deploy_subscription_manager.py --network development
+
     - name: Install Solhint
       run: npm install -g solhint
 
@@ -51,9 +54,8 @@ jobs:
       run: solhint 'contracts/**/*.sol'
       continue-on-error: true
 
-    - name: GitHub Action for pylint
+    - name: Python lint
       uses: cclauss/GitHub-Action-for-pylint@0.7.0
       continue-on-error: true
       with:
         args: "pylint **/*.py"
-
