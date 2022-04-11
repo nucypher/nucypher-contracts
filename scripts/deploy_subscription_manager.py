@@ -1,18 +1,25 @@
 #!/usr/bin/python3
-
-from pathlib import Path
-
-import brownie
-from brownie import SubscriptionManager, accounts, project, Contract, Wei
-from brownie.project import compiler
-from brownie.project.main import Project
-
+from brownie import Contract, SubscriptionManager, Wei, accounts, network, project
 
 INITIAL_FEE_RATE = Wei("1 gwei")
+# Can add local forks of networks here
+LOCAL_BLOCKCHAIN_ENVIRONMENTS = ["development"]
+PRODUCTION_ENVIRONMENTS = ["mainnet", "polygon-main"]
 
 
-def main(account_name: str = "test"):
-    deployer = accounts.load(account_name)
+def get_account(id):
+    if network.show_active() in PRODUCTION_ENVIRONMENTS:
+        if id is None:
+            raise ValueError("Must specify account id when deploying to production networks")
+        else:
+            return accounts.load(id)
+
+    if network.show_active() in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
+        return accounts[0]
+
+
+def main(id=None):
+    deployer = get_account(id)
     oz = project.load("OpenZeppelin/openzeppelin-contracts@4.5.0/")
 
     proxy_admin = deployer.deploy(oz.ProxyAdmin)
