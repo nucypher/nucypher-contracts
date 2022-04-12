@@ -1,13 +1,15 @@
 #!/usr/bin/python3
 
+from pathlib import Path
+
 import brownie
 from brownie import SubscriptionManager, accounts, project, Contract, Wei
 from brownie.project import compiler
 from brownie.project.main import Project
 
-from pathlib import Path
 
 INITIAL_FEE_RATE = Wei("1 gwei")
+
 
 def main(account_name : str = 'test'):
     deployer = accounts.load(account_name)
@@ -30,5 +32,6 @@ def main(account_name : str = 'test'):
         calldata,
         {'from': deployer})
 
-    subscription_manager = Contract.from_abi("SubscriptionManager", transparent_proxy.address, subscription_manager_logic.abi, owner=None)
+    subscription_manager = Contract.from_abi(
+        "SubscriptionManager", transparent_proxy.address, subscription_manager_logic.abi, owner=None)
     return subscription_manager
