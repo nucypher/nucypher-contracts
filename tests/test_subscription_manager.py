@@ -2,17 +2,13 @@ import brownie
 import pytest
 from brownie import Contract, chain
 from brownie.convert.datatypes import Wei
-from brownie.project.main import Project
 
 INITIAL_FEE_RATE = Wei("1 gwei")
 
 
 @pytest.fixture(scope="session")
-def oz():
-    # TODO: There has to be a better way to do this resolution. See #13
-    brownie_packages = brownie._config._get_data_folder().joinpath("packages")
-    oz_dependency_path = "OpenZeppelin/openzeppelin-contracts@4.5.0/"
-    project = Project("OZ", brownie_packages.joinpath(oz_dependency_path))
+def oz(pm):
+    project = pm("OpenZeppelin/openzeppelin-contracts@4.5.0/")
     return project
 
 
@@ -59,7 +55,7 @@ def test_create_policy(subscription_manager, accounts):
     expectedFee = subscription_manager.feeRate() * duration * size
     fee = subscription_manager.getPolicyCost(size, start, end)
     assert fee == expectedFee
-    
+
     tx = subscription_manager.createPolicy(
         policy_id, alice, size, start, end, {"from": alice, "value": fee}
     )
@@ -73,15 +69,15 @@ def test_create_policy(subscription_manager, accounts):
     assert policy[3] == size
     assert policy[4] == "0x0000000000000000000000000000000000000000"
 
-    assert 'PolicyCreated' in tx.events
-    event = tx.events['PolicyCreated']
-    assert bytes(event['policyId']) == policy_id
-    assert event['sponsor'] == alice
-    assert event['owner'] == alice
-    assert event['size'] == size
-    assert event['startTimestamp'] == start
-    assert event['endTimestamp'] == end
-    assert event['cost'] == fee
+    assert "PolicyCreated" in tx.events
+    event = tx.events["PolicyCreated"]
+    assert bytes(event["policyId"]) == policy_id
+    assert event["sponsor"] == alice
+    assert event["owner"] == alice
+    assert event["size"] == size
+    assert event["startTimestamp"] == start
+    assert event["endTimestamp"] == end
+    assert event["cost"] == fee
 
 
 def test_create_policy_with_sponsor(subscription_manager, accounts):
@@ -94,7 +90,7 @@ def test_create_policy_with_sponsor(subscription_manager, accounts):
     end = start + duration
 
     fee = subscription_manager.getPolicyCost(size, start, end)
-    
+
     tx = subscription_manager.createPolicy(
         policy_id, alice, size, start, end, {"from": sponsor, "value": fee}
     )
@@ -108,15 +104,15 @@ def test_create_policy_with_sponsor(subscription_manager, accounts):
     assert policy[3] == size
     assert policy[4] == alice
 
-    assert 'PolicyCreated' in tx.events
-    event = tx.events['PolicyCreated']
-    assert bytes(event['policyId']) == policy_id
-    assert event['sponsor'] == sponsor
-    assert event['owner'] == alice
-    assert event['size'] == size
-    assert event['startTimestamp'] == start
-    assert event['endTimestamp'] == end
-    assert event['cost'] == fee
+    assert "PolicyCreated" in tx.events
+    event = tx.events["PolicyCreated"]
+    assert bytes(event["policyId"]) == policy_id
+    assert event["sponsor"] == sponsor
+    assert event["owner"] == alice
+    assert event["size"] == size
+    assert event["startTimestamp"] == start
+    assert event["endTimestamp"] == end
+    assert event["cost"] == fee
 
 
 def test_create_policy_with_same_id(subscription_manager, accounts):
