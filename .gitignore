@@ -10,3 +10,4 @@ venv/
 bin/
 .vscode/
 .idea/
+node_modules/
