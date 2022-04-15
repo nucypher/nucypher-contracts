@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 * @notice ERC20 token
 * @dev Optional approveAndCall() functionality to notify a contract if an approve() has occurred.
 */
-contract NuCypherToken is ERC20('NuCypher', 'NU') {
+contract NuCypherToken is ERC20("NuCypher", "NU") {
 
     /**
     * @notice Set amount of tokens

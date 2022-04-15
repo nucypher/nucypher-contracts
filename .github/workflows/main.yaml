@@ -52,7 +52,6 @@ jobs:
 
     - name: Solidty Lint
       run: solhint 'contracts/**/*.sol'
-      continue-on-error: true
 
     - name: Python lint
       uses: cclauss/GitHub-Action-for-pylint@0.7.0
