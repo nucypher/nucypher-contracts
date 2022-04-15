@@ -33,3 +33,26 @@ In future, we may need to set the following:
 
 This project uses [tox](https://tox.readthedocs.io/en/latest/) to standardize the local and remote testing environments.
 Note that `tox` will install the dependencies from `requirements.txt` automatically and run a linter (`black`); if that is not desirable, you can just run `py.test`.
+
+## Deploy to Production and Test
+In order to deploy to **production** you will need to have configured brownie with the mainnet account you wish to use:
+```
+$ brownie accounts new <id>
+```
+You will be asked to input the private key, and to choose a password. The account will then be available as `<id>`.
+
+Then run the deploy script:
+```
+$ brownie run scripts/deploy_subscription_manager.py main <id> --network polygon-main
+```
+
+
+To deploy to a local ganache development environment:
+```
+$ brownie run scripts/deploy_subscription_manager.py --network development
+```
+
+The networks used here are standard brownie networks, you can see the full list with:
+```
+$ brownie networks list
+```
