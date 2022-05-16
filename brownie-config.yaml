@@ -14,6 +14,7 @@ networks:
   default: development
   rinkeby:
     nu_token: '0x78D591D90a4a768B9D2790deA465D472b6Fe0f18'
+    nu_token_supply: 1_000_000_000
     t_staking: '0x18eFb520dA5D387982C860a64855C14C0AcADF3F'
     work_lock: '0x0000000000000000000000000000000000000000'
     verify: True
@@ -23,4 +24,5 @@ networks:
     work_lock: '0xe9778E69a961e64d3cdBB34CF6778281d34667c2'
     verify: True
   development:
+    nu_token_supply: 1_000_000_000
     verify: False

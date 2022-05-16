@@ -6,6 +6,7 @@ from brownie import (
     WorkLockForStakingEscrowMock,
     config,
 )
+
 from scripts.utils import CURRENT_NETWORK, LOCAL_BLOCKCHAIN_ENVIRONMENTS, get_account
 
 
