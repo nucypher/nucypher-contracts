@@ -18,7 +18,7 @@ networks:
     t_staking: '0x18eFb520dA5D387982C860a64855C14C0AcADF3F'
     work_lock: '0x0000000000000000000000000000000000000000'
     staking_escrow: '0x6A6F917a3FF3d33d26BB4743140F205486cD6B4B'
-    adjudicator_hash_algorithm: 'SHA256' # one of KECCAK256, SHA256, RIPEMD160
+    adjudicator_hash_algorithm: 1 # one of 0: KECCAK256, 1: SHA256, 2: RIPEMD160
     adjudicator_base_penalty: 2
     adjudicator_penalty_history_coefficient: 0
     adjudicator_percentage_penalty_coefficient: 100000  # 0.001%
@@ -32,7 +32,7 @@ networks:
     verify: True
   development:
     nu_token_supply: 1_000_000_000
-    adjudicator_hash_algorithm: 'SHA256' # one of KECCAK256, SHA256, RIPEMD160
+    adjudicator_hash_algorithm: 1 # one of 0: KECCAK256, 1: SHA256, 2: RIPEMD160
     adjudicator_base_penalty: 2
     adjudicator_penalty_history_coefficient: 0
     adjudicator_percentage_penalty_coefficient: 100000  # 0.001%
