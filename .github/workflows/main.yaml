@@ -50,6 +50,12 @@ jobs:
     - name: Deploy Token Locally
       run: ape run scripts/deploy_nucypher_token.py --network ::test
 
+  linting:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
     - name: Install Solhint
       run: npm install -g solhint
 
