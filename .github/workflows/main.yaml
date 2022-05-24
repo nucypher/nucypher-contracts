@@ -44,11 +44,17 @@ jobs:
     - name: Run Tests
       run: ape test
 
-    - name: Deploy SubscriptionManager Locally
-      run: ape run scripts/deploy_subscription_manager.py --network ::test
-      
-    - name: Deploy Token Locally
-      run: ape run scripts/deploy_nucypher_token.py --network ::test
+    - name: Deploy NuCypher Token
+      run: brownie run scripts/deploy_nucypher_token.py --network development
+
+    - name: Deploy Simple PRE
+      run: brownie run scripts/deploy_simple_pre.py --network development
+
+    - name: Deploy Staking Escrow
+      run: brownie run scripts/deploy_staking_escrow.py --network development
+
+    - name: Deploy Subscription Manager
+      run: brownie run scripts/deploy_subscription_manager.py --network development
 
   linting:
     runs-on: ubuntu-latest
