@@ -44,7 +44,16 @@ jobs:
     - name: Run Tests
       run: brownie test
 
-    - name: Deploy Locally
+    - name: Deploy NuCypher Token
+      run: brownie run scripts/deploy_nucypher_token.py --network development
+
+    - name: Deploy Simple PRE
+      run: brownie run scripts/deploy_simple_pre.py --network development
+
+    - name: Deploy Staking Escrow
+      run: brownie run scripts/deploy_staking_escrow.py --network development
+
+    - name: Deploy Subscription Manager
       run: brownie run scripts/deploy_subscription_manager.py --network development
 
   linting:
