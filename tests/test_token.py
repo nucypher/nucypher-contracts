@@ -54,12 +54,8 @@ def test_create_token(NuCypherToken, accounts):
     assert 10 == token.balanceOf(token.address)
 
 
-def test_approve_and_call(NuCypherToken, ReceiveApprovalMethodMock, accounts):
-    creator = accounts[0]
-    account1 = accounts[1]
-    account2 = accounts[2]
-
-    token = creator.deploy(NuCypherToken, TOTAL_SUPPLY)
+def test_approve_and_call(creator, account1, account2, nu_token, ReceiveApprovalMethodMock):
+    token = nu_token
     mock = creator.deploy(ReceiveApprovalMethodMock)
 
     # Approve some value and check allowance
