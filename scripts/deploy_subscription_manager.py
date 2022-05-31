@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 from brownie import Contract, SubscriptionManager, Wei, project
+
 from scripts.utils import get_account
 
 INITIAL_FEE_RATE = Wei("1 gwei")
