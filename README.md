@@ -41,9 +41,20 @@ $ brownie accounts new <id>
 ```
 You will be asked to input the private key, and to choose a password. The account will then be available as `<id>`.
 
-Then run the deploy script:
+Then run the deployment scripts:
 ```
 $ brownie run scripts/deploy_subscription_manager.py main <id> --network polygon-main
+$ brownie run scripts/deploy_staking_escrow.py main <id> --network rinkeby
+```
+
+Configurations for the deployments are in `brownie-config.yaml`.
+For example, `StakingEscrow.sol` requires Nu token Contract, T Staking Contract, and Worklock Contract.
+These are defined by:
+```
+  mainnet:
+    nu_token: '0x4fE83213D56308330EC302a8BD641f1d0113A4Cc'
+    t_staking: '0x01B67b1194C75264d06F808A921228a95C765dd7'
+    work_lock: '0xe9778E69a961e64d3cdBB34CF6778281d34667c2'
 ```
 
 
