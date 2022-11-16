@@ -36,6 +36,9 @@ def test_initiate_ritual(coordinator, nodes):
     assert event["nodes"] == nodes
 
 def test_post_transcript(coordinator, nodes, web3):
+    with brownie.reverts("Node not part of ritual"):
+        coordinator.postTranscript(0, 5, os.urandom(10), {'from': nodes[0]})
+
     coordinator.initiateRitual(nodes)
     for i, node in enumerate(nodes):
         transcript = os.urandom(10)
@@ -53,7 +56,20 @@ def test_post_confirmation(coordinator, nodes):
         transcript = os.urandom(10)
         coordinator.postTranscript(0, i, transcript, {'from': node})
 
+    with brownie.reverts("Not waiting for confirmations"):
+        coordinator.postConfirmation(0, 0, [1, 2, 3], {'from': nodes[0]})
+
     chain.sleep(150)
+
+    with brownie.reverts("Node not part of ritual"):
+        coordinator.postConfirmation(0, 5, [1, 2, 3], {'from': nodes[0]})
+
+    with brownie.reverts("Invalid number of confirmations"):
+        coordinator.postConfirmation(0, 0, list(range(0, 42)), {'from': nodes[0]})
+
+    with brownie.reverts("Invalid node index"):
+        coordinator.postConfirmation(0, 0, [1, 2, 3, 42], {'from': nodes[0]})
+
     for i, node in enumerate(nodes):
         confirmed = [j for j in range(0, 8) if j!=i]
         tx = coordinator.postConfirmation(0, i, confirmed, {'from': node})

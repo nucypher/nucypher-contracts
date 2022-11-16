@@ -88,7 +88,11 @@ contract CoordinatorV1 {
     function postConfirmation(uint32 ritualID, uint256 nodeIndex, uint256[] calldata confirmedNodesIndexes) external {
         Ritual storage ritual = rituals[ritualID];
         require(getRitualState(ritual) == RitualState.WAITING_FOR_CONFIRMATIONS, "Not waiting for confirmations");
-        require(ritual.performance[nodeIndex].transcript != bytes32(0), "Node not part of ritual");
+        require(
+            ritual.performance[nodeIndex].node == msg.sender &&
+            ritual.performance[nodeIndex].transcript != bytes32(0),
+            "Node not part of ritual"
+        );
 
         require(confirmedNodesIndexes.length <= DKG_SIZE, "Invalid number of confirmations");
 
