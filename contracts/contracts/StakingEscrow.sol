@@ -66,7 +66,7 @@ contract StakingEscrowStub is Upgradeable {
 * @title StakingEscrow
 * @notice Contract holds and locks stakers tokens.
 * Each staker that locks their tokens will receive some compensation
-* @dev |v6.2.2|
+* @dev |v6.2.3|
 */
 contract StakingEscrow is Upgradeable, IERC900History {
 
@@ -139,6 +139,8 @@ contract StakingEscrow is Upgradeable, IERC900History {
 
     // indices for flags (0-4 were in use, skip it in future)
 //    uint8 internal constant SOME_FLAG_INDEX = 5;
+    address internal constant COMBINED_STAKER_ADDRESS = 0xcd087a44ED8EE2aCe79F497c803005Ff79A64A94; // SAFT + university
+    uint256 internal constant UNIVERSITY_UNVESTED_TOKENS = 1500000 * 10**18; // 1.5M
 
     NuCypherToken public immutable token;
     WorkLockInterface public immutable workLock;
@@ -292,6 +294,9 @@ contract StakingEscrow is Upgradeable, IERC900History {
         StakerInfo storage info = stakerInfo[_staker];
         if (info.vestingReleaseTimestamp <= block.timestamp) {
             return 0;
+        }
+        if (_staker == COMBINED_STAKER_ADDRESS) {
+            return UNIVERSITY_UNVESTED_TOKENS;
         }
         if (info.vestingReleaseRate == 0) {
             // this value includes all not withdrawn reward
