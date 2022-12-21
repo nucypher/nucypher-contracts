@@ -442,3 +442,36 @@ def test_vesting(accounts, token, worklock, escrow):
     assert escrow.getUnvestedTokens(staker2) == 0
     assert escrow.getUnvestedTokens(staker3) == 0
     assert escrow.getUnvestedTokens(staker4) == 0
+
+
+def test_combined_vesting(accounts, token, worklock, escrow):
+    staker = "0xcd087a44ED8EE2aCe79F497c803005Ff79A64A94"
+    value = Wei("1_500_000 ether")
+    
+    creator = accounts[0]
+
+    token.transfer(worklock.address, 10 * value, {"from": creator})
+    worklock.depositFromWorkLock(staker, 3 * value, 0, {"from": creator})
+
+    now = chain.time()
+    release_timestamp = now + ONE_HOUR
+    rate = 0
+
+    tx = escrow.setupVesting([staker], [release_timestamp], [rate], {"from": creator})
+    assert escrow.getUnvestedTokens(staker) == value
+    assert escrow.stakerInfo(staker)[VESTING_RELEASE_TIMESTAMP_SLOT] == release_timestamp
+    assert escrow.stakerInfo(staker)[VESTING_RELEASE_RATE_SLOT] == rate
+
+    assert "VestingSet" in tx.events
+    event = tx.events["VestingSet"]
+    assert event["staker"] == staker
+    assert event["releaseTimestamp"] == release_timestamp
+    assert event["releaseRate"] == rate
+
+    chain.mine(timedelta=40 * 60)
+    now = chain.time()
+    assert escrow.getUnvestedTokens(staker) == value
+
+    chain.sleep(20 * 60)
+    chain.mine(timedelta=0)
+    assert escrow.getUnvestedTokens(staker) == 0
