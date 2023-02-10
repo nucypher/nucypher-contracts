@@ -89,7 +89,7 @@ contract CoordinatorV3 is Upgradeable {
         return rites;
     }
 
-    function initiateRitual(address[] calldata nodes) external {
+    function initiateRitual(address[] calldata nodes) external returns (uint32) {
         // TODO: Check for payment
         // TODO: Check for expiration time
         // TODO: Improve DKG size choices
