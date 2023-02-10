@@ -5,24 +5,24 @@ pragma solidity ^0.8.0;
 import "./proxy/Upgradeable.sol";
 
 /**
-* @title CoordinatorV1
+* @title CoordinatorV3
 * @notice Coordination layer for DKG-TDec
 */
 contract CoordinatorV3 is Upgradeable {
 
     uint256 DKG_SIZE = 8;
 
-    // DKG state signals
-    event StartRitual(uint32 indexed ritualId, address[] nodes);
+    // Ritual
+    event StartRitual(uint32 indexed ritualId, address[] nodes, address initiator);
     event StartTranscriptRound(uint32 indexed ritualId);
     event StartAggregationRound(uint32 indexed ritualId);
-    event EndRitual(uint32 indexed ritualId, RitualStatus status);
+    event EndRitual(uint32 indexed ritualId, RitualStatus status, address initiator);
 
-    // Node events
+    // Node
     event TranscriptPosted(uint32 indexed ritualId, address indexed node, bytes32 transcriptDigest);
     event AggregationPosted(uint32 indexed ritualId, address indexed node, address[] confirmedNodes);
 
-    // Admin events
+    // Admin
     event TimeoutChanged(uint32 oldTimeout, uint32 newTimeout);
    // event DkgSizeChanged(uint32 oldSize, uint32 newSize);
 
@@ -42,9 +42,11 @@ contract CoordinatorV3 is Upgradeable {
 
     struct Ritual {
         uint32 id;
+        address initiator;
         uint32 initTimestamp;
         uint32 totalTranscripts;
         uint32 totalConfirmations;
+        uint32 threshold;
         RitualStatus status;
         Rite[DKG_SIZE] rite;
     }
@@ -77,11 +79,11 @@ contract CoordinatorV3 is Upgradeable {
         emit DkgSizeChanged(oldSize, newSize);
     }
 
-    function numberOfRituals() external view returns(uint256){
+    function numberOfRituals() external view returns(uint256) {
         return rituals.length;
     }
 
-    function getRites(uint32 ritualId) external view returns(Rite[] memory){
+    function getRites(uint32 ritualId) external view returns(Rite[] memory) {
         Rite[] memory rites = new Rite[](rituals[ritualId].rite.length);
         for(uint32 i=0; i < rituals[ritualId].rite.length; i++){
             rites[i] = rituals[ritualId].rite[i];
@@ -98,6 +100,8 @@ contract CoordinatorV3 is Upgradeable {
         uint32 id = uint32(rituals.length);
         Ritual storage ritual = rituals.push();
         ritual.id = id;
+        ritual.initiator = msg.sender;
+        ritual.threshold = threshold;
         ritual.initTimestamp = uint32(block.timestamp);
         ritual.status = RitualStatus.WAITING_FOR_TRANSCRIPTS;
 
@@ -112,7 +116,7 @@ contract CoordinatorV3 is Upgradeable {
             // TODO: Check nodes are eligible (staking, etc)
         }
 
-        emit StartRitual(id, nodes);
+        emit StartRitual(id, nodes, msg.sender);
         return ritual.id;
     }
 
@@ -144,7 +148,9 @@ contract CoordinatorV3 is Upgradeable {
         require(ritual.rite[nodeIndex].node == msg.sender, "Node not part of ritual");
         checkActiveRitual(ritualId);
 
-        ritual.rite[nodeIndex].transcript = aggregatedTranscripts;
+        // nodes commit to their aggregation result
+        bytes32 aggregatedTranscriptDigest = keccak256(aggregatedTranscripts);
+        ritual.rite[nodeIndex].transcript = aggregatedTranscriptDigest;
         ritual.rite[nodeIndex].aggregated = true;
         ritual.totalConfirmations++;
 
@@ -152,7 +158,7 @@ contract CoordinatorV3 is Upgradeable {
             ritual.status = RitualStatus.COMPLETED;
             emit EndRitual(ritualId, ritual.status);
         }
-        emit AggregationPosted(ritualId, msg.sender, confirmedNodes);
+        emit AggregationPosted(ritualId, msg.sender, aggregatedTranscripts);
     }
 
     function finalizeRitual(uint32 ritualId) {
@@ -172,7 +178,7 @@ contract CoordinatorV3 is Upgradeable {
 
         // mark as finalized
         ritual.status = RitualStatus.FINAL;
-        emit EndRitual(ritualId, ritual.status);
+        emit EndRitual(ritualId, ritual.status, ritual.initiator);
     }
 
 
