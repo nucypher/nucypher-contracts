@@ -15,7 +15,7 @@ contract Coordinator is Ownable {
     event StartTranscriptRound(uint32 indexed ritualId);
     event StartAggregationRound(uint32 indexed ritualId);
     // TODO: Do we want the public key here? If so, we want 2 events or do we reuse this event?
-    event EndRitual(uint32 indexed ritualId, address indexed initiator, RitualStatus status);
+    event EndRitual(uint32 indexed ritualId, address indexed initiator, RitualState status);
 
     // Node
     event TranscriptPosted(uint32 indexed ritualId, address indexed node, bytes32 transcriptDigest);
@@ -25,7 +25,7 @@ contract Coordinator is Ownable {
     event TimeoutChanged(uint32 oldTimeout, uint32 newTimeout);
     event MaxDkgSizeChanged(uint32 oldSize, uint32 newSize);
 
-    enum RitualStatus {
+    enum RitualState {
         NON_INITIATED,
         AWAITING_TRANSCRIPTS,
         AWAITING_AGGREGATIONS,
@@ -154,7 +154,7 @@ contract Coordinator is Ownable {
     function postTranscript(uint32 ritualId, uint256 nodeIndex, bytes calldata transcript) external {
         Ritual storage ritual = rituals[ritualId];
         require(
-            getRitualStatus(ritual) == RitualStatus.AWAITING_TRANSCRIPTS,
+            getRitualState(ritual) == RitualState.AWAITING_TRANSCRIPTS,
             "Not waiting for transcripts"
         );
         require(
@@ -181,7 +181,7 @@ contract Coordinator is Ownable {
     function postAggregation(uint32 ritualId, uint256 nodeIndex, bytes calldata aggregatedTranscript) external {
         Ritual storage ritual = rituals[ritualId];
         require(
-            getRitualStatus(ritual) == RitualStatus.AWAITING_AGGREGATIONS,
+            getRitualState(ritual) == RitualState.AWAITING_AGGREGATIONS,
             "Not waiting for aggregations"
         );
         require(
@@ -200,7 +200,7 @@ contract Coordinator is Ownable {
         
         if (ritual.aggregatedTranscriptHash != aggregatedTranscriptDigest){
             ritual.aggregationMismatch = true;
-            emit EndRitual(ritualId, ritual.initiator, RitualStatus.INVALID);
+            emit EndRitual(ritualId, ritual.initiator, RitualState.INVALID);
             // TODO: Invalid ritual
             // TODO: Consider freeing ritual storage
             return;
@@ -210,7 +210,7 @@ contract Coordinator is Ownable {
         
         // end round - Last node posting aggregation will finalize 
         if (ritual.totalAggregations == ritual.dkgSize){
-            emit EndRitual(ritualId, ritual.initiator, RitualStatus.FINALIZED);
+            emit EndRitual(ritualId, ritual.initiator, RitualState.FINALIZED);
             // TODO: Last node extracts public key bytes from aggregated transcript
             // and store in ritual.publicKey
         }
