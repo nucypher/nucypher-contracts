@@ -11,10 +11,10 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract CoordinatorV3 is Ownable {
 
     // Ritual
-    event StartRitual(uint32 indexed ritualId, address[] nodes, address initiator);
+    event StartRitual(uint32 indexed ritualId, address indexed initiator, address[] nodes);
     event StartTranscriptRound(uint32 indexed ritualId);
     event StartAggregationRound(uint32 indexed ritualId);
-    event EndRitual(uint32 indexed ritualId, RitualStatus status, address initiator);
+    event EndRitual(uint32 indexed ritualId, address indexed initiator, RitualStatus status);
 
     // Node
     event TranscriptPosted(uint32 indexed ritualId, address indexed node, bytes32 transcriptDigest);
@@ -66,7 +66,7 @@ contract CoordinatorV3 is Ownable {
         uint32 delta = uint32(block.timestamp) - _ritual.initTimestamp;
         if (delta > timeout) {
             _ritual.status = RitualStatus.TIMED_OUT;
-            emit EndRitual(_ritual.id, _ritual.status); // penalty hook, missing nodes can be known at this stage
+            emit EndRitual(_ritual.id, _ritual.initiator, _ritual.status); // penalty hook, missing nodes can be known at this stage
             revert("Ritual timed out");
         }
     }
@@ -122,7 +122,7 @@ contract CoordinatorV3 is Ownable {
             // TODO: Check nodes are eligible (staking, etc)
         }
 
-        emit StartRitual(id, nodes, msg.sender);
+        emit StartRitual(id, msg.sender, nodes);
         return ritual.id;
     }
 
@@ -163,7 +163,7 @@ contract CoordinatorV3 is Ownable {
         // end round
         if (ritual.totalAggregations == ritual.dkgSize){
             ritual.status = RitualStatus.AWAITING_FINALIZATION;
-            emit EndRitual(ritualId, ritual.status, ritual.initiator);
+            emit EndRitual(ritualId, ritual.initiator, ritual.status);
         }
     }
 
@@ -176,14 +176,14 @@ contract CoordinatorV3 is Ownable {
             bytes32 currentRiteDigest = keccak256(ritual.rite[i].transcript);
             if (firstRiteDigest != currentRiteDigest) {
                 ritual.status = RitualStatus.INVALID;
-                emit EndRitual(ritualId, ritual.status, ritual.initiator);
+                emit EndRitual(ritualId, ritual.initiator, ritual.status);
                 revert('aggregated transcripts do not match');
             }
         }
 
         ritual.publicMaterial = firstRiteDigest;
         ritual.status = RitualStatus.FINALIZED;
-        emit EndRitual(ritualId, ritual.status, ritual.initiator);
+        emit EndRitual(ritualId, ritual.initiator, ritual.status);
     }
 
 }
