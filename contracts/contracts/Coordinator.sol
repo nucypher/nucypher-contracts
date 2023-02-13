@@ -44,10 +44,9 @@ contract Coordinator is Ownable {
 
     // TODO: Optimize layout
     struct Ritual {
-        uint32 id;
+        uint32 id;  // TODO: Redundant? ID is index of rituals array
         address initiator;
         uint32 dkgSize;
-        uint32 threshold;
         uint32 initTimestamp;
         uint32 totalTranscripts;
         uint32 totalAggregations;
@@ -68,7 +67,7 @@ contract Coordinator is Ownable {
         maxDkgSize = _maxDkgSize;
     }
 
-    function getRitualState(uint256 ritualID) external view returns (RitualState){
+    function getRitualState(uint256 ritualId) external view returns (RitualState){
         // TODO: restrict to ritualID < rituals.length?
         return getRitualState(rituals[ritualId]);
     }
@@ -78,9 +77,9 @@ contract Coordinator is Ownable {
         uint32 deadline = t0 + timeout;
         if(t0 == 0){
             return RitualState.NON_INITIATED;
-        } else if (ritual.publicKey != 0x0){ // TODO: Improve check
+        } else if (ritual.publicKey[0] != 0x0){ // TODO: Improve check
             return RitualState.FINALIZED;
-        } else if (!ritual.aggregationMismatch){
+        } else if (ritual.aggregationMismatch){
             return RitualState.INVALID;
         } else if (block.timestamp > deadline){
             return RitualState.TIMEOUT;
@@ -132,19 +131,19 @@ contract Coordinator is Ownable {
         Ritual storage ritual = rituals.push();
         ritual.id = id;  // TODO: Possibly redundant
         ritual.initiator = msg.sender;  // TODO: Consider sponsor model
-        ritual.threshold = threshold;  // TODO?
         ritual.dkgSize = uint32(nodes.length);
         ritual.initTimestamp = uint32(block.timestamp);
 
-        address previousNode = nodes[0];
-        ritual.participant[0].node = previousNode;
-        address currentNode;
-        for(uint256 i=1; i < nodes.length; i++){
-            currentNode = nodes[i];
-            ritual.participant[i].node = currentNode;
+        address previousNode = address(0);
+        for(uint256 i=0; i < nodes.length; i++){
+            Participant storage newParticipant = ritual.participant.push();
+            address currentNode = nodes[i];
+            newParticipant.node = currentNode;
+            require(previousNode < currentNode, "Nodes must be sorted");
             previousNode = currentNode;
             // TODO: Check nodes are eligible (staking, etc)
         }
+        // TODO: Compute cohort fingerprint as hash(nodes)
 
         emit StartRitual(id, msg.sender, nodes);
         emit StartTranscriptRound(id);
@@ -165,6 +164,8 @@ contract Coordinator is Ownable {
             ritual.participant[nodeIndex].transcript.length == 0,
             "Node already posted transcript"
         );
+
+        // TODO: Validate transcript size based on dkg size
 
         // Nodes commit to their transcript
         bytes32 transcriptDigest = keccak256(transcript);
@@ -196,9 +197,11 @@ contract Coordinator is Ownable {
         // nodes commit to their aggregation result
         bytes32 aggregatedTranscriptDigest = keccak256(aggregatedTranscript);
         ritual.participant[nodeIndex].aggregated = true;
-        emit AggregationPosted(ritualId, msg.sender, aggregatedTranscript);
-        
-        if (ritual.aggregatedTranscriptHash != aggregatedTranscriptDigest){
+        emit AggregationPosted(ritualId, msg.sender, aggregatedTranscriptDigest);
+
+        if (ritual.aggregatedTranscriptHash == bytes32(0)){
+            ritual.aggregatedTranscriptHash = aggregatedTranscriptDigest;
+        } else if (ritual.aggregatedTranscriptHash != aggregatedTranscriptDigest){
             ritual.aggregationMismatch = true;
             emit EndRitual(ritualId, ritual.initiator, RitualState.INVALID);
             // TODO: Invalid ritual
@@ -213,6 +216,7 @@ contract Coordinator is Ownable {
             emit EndRitual(ritualId, ritual.initiator, RitualState.FINALIZED);
             // TODO: Last node extracts public key bytes from aggregated transcript
             // and store in ritual.publicKey
+            ritual.publicKey[0] = bytes1(0x42);
         }
     }
 }
