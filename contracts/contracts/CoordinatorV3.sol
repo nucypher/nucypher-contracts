@@ -5,10 +5,10 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
-* @title CoordinatorV3
+* @title CoordinatorV1
 * @notice Coordination layer for DKG-TDec
 */
-contract CoordinatorV3 is Ownable {
+contract CoordinatorV1 is Ownable {
 
     // Ritual
     event StartRitual(uint32 indexed ritualId, address indexed initiator, address[] nodes);
