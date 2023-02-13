@@ -2,13 +2,13 @@
 
 pragma solidity ^0.8.0;
 
-import "./proxy/Upgradeable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
 * @title CoordinatorV3
 * @notice Coordination layer for DKG-TDec
 */
-contract CoordinatorV3 is Upgradeable {
+contract CoordinatorV3 is Ownable {
 
     // Ritual
     event StartRitual(uint32 indexed ritualId, address[] nodes, address initiator);
