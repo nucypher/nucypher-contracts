@@ -2,126 +2,217 @@
 
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
+
 /**
-* @title CoordinatorV1
+* @title Coordinator
 * @notice Coordination layer for DKG-TDec
 */
-contract CoordinatorV1 {
+contract Coordinator is Ownable {
 
-    uint8 public constant DKG_SIZE = 8;
+    // Ritual
+    event StartRitual(uint32 indexed ritualId, address indexed initiator, address[] nodes);
+    event StartTranscriptRound(uint32 indexed ritualId);
+    event StartAggregationRound(uint32 indexed ritualId);
+    // TODO: Do we want the public key here? If so, we want 2 events or do we reuse this event?
+    event EndRitual(uint32 indexed ritualId, address indexed initiator, RitualStatus status);
 
-    event NewRitual(uint32 indexed ritualID, address[] nodes);
-    event TranscriptPosted(uint32 indexed ritualID, address indexed node, bytes32 transcriptDigest);
-    event ConfirmationPosted(uint32 indexed ritualID, address indexed node, address[] confirmedNodes);
+    // Node
+    event TranscriptPosted(uint32 indexed ritualId, address indexed node, bytes32 transcriptDigest);
+    event AggregationPosted(uint32 indexed ritualId, address indexed node, bytes32 aggregatedTranscriptDigest);
 
-    enum RitualState {
+    // Admin
+    event TimeoutChanged(uint32 oldTimeout, uint32 newTimeout);
+    event MaxDkgSizeChanged(uint32 oldSize, uint32 newSize);
+
+    enum RitualStatus {
         NON_INITIATED,
-        WAITING_FOR_TRANSCRIPTS,
-        WAITING_FOR_CONFIRMATIONS,
-        ENDED
+        AWAITING_TRANSCRIPTS,
+        AWAITING_AGGREGATIONS,
+        TIMEOUT,
+        INVALID,
+        FINALIZED
     }
 
-    // TODO: Find better name
-    struct Performance {
+    uint256 public constant PUBLIC_KEY_SIZE = 48;
+
+    struct Participant {
         address node;
-        uint96 confirmedBy;
-        bytes32 transcript;
+        bool aggregated;
+        bytes transcript;  // TODO: Consider event processing complexity vs storage cost
     }
 
+    // TODO: Optimize layout
     struct Ritual {
         uint32 id;
+        address initiator;
+        uint32 dkgSize;
+        uint32 threshold;
         uint32 initTimestamp;
-        Performance[DKG_SIZE] performance;
+        uint32 totalTranscripts;
+        uint32 totalAggregations;
+        bytes1[PUBLIC_KEY_SIZE] publicKey;
+        bytes32 aggregatedTranscriptHash;
+        bool aggregationMismatch;
+        bytes aggregatedTranscript;
+        Participant[] participant;
     }
 
-    uint32 public immutable transcriptsWindow;
-    uint32 public immutable confirmationsWindow;
     Ritual[] public rituals;
 
-    constructor(uint32 _transcriptsWindow, uint32 _confirmationsWindow){
-        transcriptsWindow = _transcriptsWindow;
-        confirmationsWindow = _confirmationsWindow;
+    uint32 public timeout;
+    uint32 public maxDkgSize;
+
+    constructor(uint32 _timeout, uint32 _maxDkgSize) {
+        timeout = _timeout;
+        maxDkgSize = _maxDkgSize;
     }
 
-    function numberOfRituals() external view returns(uint256){
-        return rituals.length;
-    }
-
-    function initiateRitual(address[] calldata nodes) external {
-        // TODO: Check for payment
-        // TODO: Check for expiration time
-        // TODO: Improve DKG size choices
-        require(nodes.length == DKG_SIZE, "Invalid number of nodes");
-
-
-        uint32 id = uint32(rituals.length);
-        Ritual storage ritual = rituals.push();
-        ritual.id = id;
-        ritual.initTimestamp = uint32(block.timestamp);
-
-        address previousNode = nodes[0];
-        ritual.performance[0].node = previousNode;
-        address currentNode;
-        for(uint256 i=1; i < nodes.length; i++){
-            currentNode = nodes[i];
-            require(currentNode > previousNode, "Nodes must be sorted");
-            ritual.performance[i].node = currentNode;
-            previousNode = currentNode;
-            // TODO: Check nodes are eligible (staking, etc)
-        }
-
-        emit NewRitual(id, nodes);
-    }
-
-    function postTranscript(uint32 ritualID, uint256 nodeIndex, bytes calldata transcript) external {
-        Ritual storage ritual = rituals[ritualID];
-        require(getRitualState(ritual) == RitualState.WAITING_FOR_TRANSCRIPTS, "Not waiting for transcripts");
-        require(ritual.performance[nodeIndex].node == msg.sender, "Node not part of ritual");
-
-        // Nodes commit to their transcript
-        bytes32 transcriptDigest = keccak256(transcript);
-        ritual.performance[nodeIndex].transcript = transcriptDigest;
-        
-        emit TranscriptPosted(ritualID, msg.sender, transcriptDigest);
-    }
-
-    function postConfirmation(uint32 ritualID, uint256 nodeIndex, uint256[] calldata confirmedNodesIndexes) external {
-        Ritual storage ritual = rituals[ritualID];
-        require(getRitualState(ritual) == RitualState.WAITING_FOR_CONFIRMATIONS, "Not waiting for confirmations");
-        require(
-            ritual.performance[nodeIndex].node == msg.sender &&
-            ritual.performance[nodeIndex].transcript != bytes32(0),
-            "Node not part of ritual"
-        );
-
-        require(confirmedNodesIndexes.length <= DKG_SIZE, "Invalid number of confirmations");
-
-        address[] memory confirmedNodes = new address[](confirmedNodesIndexes.length);
-        
-        // First, node adds itself to its list of confirmers
-        uint96 caller = uint96(2 ** nodeIndex);
-        ritual.performance[nodeIndex].confirmedBy |= caller;
-        for(uint256 i=0; i < confirmedNodesIndexes.length; i++){
-            uint256 confirmedNodeIndex = confirmedNodesIndexes[i];
-            require(confirmedNodeIndex < DKG_SIZE, "Invalid node index");
-            // We add caller to the list of confirmations of each confirmed node
-            ritual.performance[confirmedNodeIndex].confirmedBy |= caller;
-            confirmedNodes[i] = ritual.performance[confirmedNodeIndex].node;
-        }
-        emit ConfirmationPosted(ritualID, msg.sender, confirmedNodes);
+    function getRitualState(uint256 ritualID) external view returns (RitualState){
+        // TODO: restrict to ritualID < rituals.length?
+        return getRitualState(rituals[ritualId]);
     }
 
     function getRitualState(Ritual storage ritual) internal view returns (RitualState){
         uint32 t0 = ritual.initTimestamp;
+        uint32 deadline = t0 + timeout;
         if(t0 == 0){
             return RitualState.NON_INITIATED;
-        } else if (block.timestamp < t0 + transcriptsWindow){
-            return RitualState.WAITING_FOR_TRANSCRIPTS;
-        } else if (block.timestamp < t0 + transcriptsWindow + confirmationsWindow){
-            return RitualState.WAITING_FOR_CONFIRMATIONS;
+        } else if (ritual.publicKey != 0x0){ // TODO: Improve check
+            return RitualState.FINALIZED;
+        } else if (!ritual.aggregationMismatch){
+            return RitualState.INVALID;
+        } else if (block.timestamp > deadline){
+            return RitualState.TIMEOUT;
+        } else if (ritual.totalTranscripts < ritual.dkgSize) {
+            return RitualState.AWAITING_TRANSCRIPTS;
+        } else if (ritual.totalAggregations < ritual.dkgSize) {
+            return RitualState.AWAITING_AGGREGATIONS;
         } else {
-            return RitualState.ENDED;
+            // TODO: Is it possible to reach this state?
+            //   - No public key
+            //   - All transcripts and all aggregations
+            //   - Still within the deadline
+        }
+    }
+    
+
+    function setTimeout(uint32 newTimeout) external onlyOwner {
+        uint32 oldTimeout = timeout;
+        timeout = newTimeout;
+        emit TimeoutChanged(oldTimeout, newTimeout);
+    }
+
+    function setMaxDkgSize(uint32 newSize) external onlyOwner {
+        uint32 oldSize = maxDkgSize;
+        maxDkgSize = newSize;
+        emit MaxDkgSizeChanged(oldSize, newSize);
+    }
+
+    function numberOfRituals() external view returns(uint256) {
+        return rituals.length;
+    }
+
+    function getParticipants(uint32 ritualId) external view returns(Participant[] memory) {
+        Ritual storage ritual = rituals[ritualId];
+        Participant[] memory participants = new Participant[](
+            ritual.participant.length
+        );
+        for(uint32 i=0; i < ritual.participant.length; i++){
+            participants[i] = ritual.participant[i];
+        }
+        return participants;
+    }
+
+    function initiateRitual(address[] calldata nodes) external returns (uint32) {
+        // TODO: Validate service fees, expiration dates, threshold
+        require(nodes.length <= maxDkgSize, "Invalid number of nodes");
+
+        uint32 id = uint32(rituals.length);
+        Ritual storage ritual = rituals.push();
+        ritual.id = id;  // TODO: Possibly redundant
+        ritual.initiator = msg.sender;  // TODO: Consider sponsor model
+        ritual.threshold = threshold;  // TODO?
+        ritual.dkgSize = uint32(nodes.length);
+        ritual.initTimestamp = uint32(block.timestamp);
+
+        address previousNode = nodes[0];
+        ritual.participant[0].node = previousNode;
+        address currentNode;
+        for(uint256 i=1; i < nodes.length; i++){
+            currentNode = nodes[i];
+            ritual.participant[i].node = currentNode;
+            previousNode = currentNode;
+            // TODO: Check nodes are eligible (staking, etc)
+        }
+
+        emit StartRitual(id, msg.sender, nodes);
+        emit StartTranscriptRound(id);
+        return ritual.id;
+    }
+
+    function postTranscript(uint32 ritualId, uint256 nodeIndex, bytes calldata transcript) external {
+        Ritual storage ritual = rituals[ritualId];
+        require(
+            getRitualStatus(ritual) == RitualStatus.AWAITING_TRANSCRIPTS,
+            "Not waiting for transcripts"
+        );
+        require(
+            ritual.participant[nodeIndex].node == msg.sender,
+            "Node not part of ritual"
+        );
+        require(
+            ritual.participant[nodeIndex].transcript.length == 0,
+            "Node already posted transcript"
+        );
+
+        // Nodes commit to their transcript
+        bytes32 transcriptDigest = keccak256(transcript);
+        ritual.participant[nodeIndex].transcript = transcript;  // TODO: ???
+        emit TranscriptPosted(ritualId, msg.sender, transcriptDigest);
+        ritual.totalTranscripts++;
+
+        // end round
+        if (ritual.totalTranscripts == ritual.dkgSize){
+            emit StartAggregationRound(ritualId);
         }
     }
 
+    function postAggregation(uint32 ritualId, uint256 nodeIndex, bytes calldata aggregatedTranscript) external {
+        Ritual storage ritual = rituals[ritualId];
+        require(
+            getRitualStatus(ritual) == RitualStatus.AWAITING_AGGREGATIONS,
+            "Not waiting for aggregations"
+        );
+        require(
+            ritual.participant[nodeIndex].node == msg.sender,
+            "Node not part of ritual"
+        );
+        require(
+            !ritual.participant[nodeIndex].aggregated,
+            "Node already posted aggregation"
+        );
+
+        // nodes commit to their aggregation result
+        bytes32 aggregatedTranscriptDigest = keccak256(aggregatedTranscript);
+        ritual.participant[nodeIndex].aggregated = true;
+        emit AggregationPosted(ritualId, msg.sender, aggregatedTranscript);
+        
+        if (ritual.aggregatedTranscriptHash != aggregatedTranscriptDigest){
+            ritual.aggregationMismatch = true;
+            emit EndRitual(ritualId, ritual.initiator, RitualStatus.INVALID);
+            // TODO: Invalid ritual
+            // TODO: Consider freeing ritual storage
+            return;
+        }
+        
+        ritual.totalAggregations++;
+        
+        // end round - Last node posting aggregation will finalize 
+        if (ritual.totalAggregations == ritual.dkgSize){
+            emit EndRitual(ritualId, ritual.initiator, RitualStatus.FINALIZED);
+            // TODO: Last node extracts public key bytes from aggregated transcript
+            // and store in ritual.publicKey
+        }
+    }
 }
