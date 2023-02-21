@@ -44,6 +44,14 @@ deployments:
       - nu_token_supply: 1_000_000_000
         pre_min_authorization: 40000000000000000000000
         pre_min_operator_seconds: 86400  # one day in seconds
+        pre_hash_algorithm: 1
+        pre_base_penalty: 2
+        pre_penalty_history_coefficient: 0
+        pre_percentage_penalty_coefficient: 100000
+        pre_min_authorization: 40000000000000000000000
+        pre_min_operator_seconds: 86400  # one day in seconds
+        reward_duration: 604800  # one week in seconds
+        deauthorization_duration: 5184000  # 60 days in seconds
         verify: False
     rinkeby:
       - nu_token: '0x78D591D90a4a768B9D2790deA465D472b6Fe0f18'
