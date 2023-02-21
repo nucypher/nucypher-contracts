@@ -41,21 +41,20 @@ def test_bond_operator(accounts, threshold_staking, pre_application, chain):
     min_authorization = MIN_AUTHORIZATION
     min_operator_seconds = MIN_OPERATOR_SECONDS
 
-    # Prepare staking providers: two with intermediary contract and two just a staking provider
+    # Prepare staking providers
     threshold_staking.setRoles(staking_provider_1, sender=creator)
-    threshold_staking.setStakes(staking_provider_1, min_authorization, 0, 0, sender=creator)
-    threshold_staking.setRoles(staking_provider_2, sender=creator)
-    threshold_staking.setStakes(
-        staking_provider_2,
-        min_authorization // 3,
-        min_authorization // 3,
-        min_authorization // 3 - 1,
-        sender=creator,
+    threshold_staking.authorizationIncreased(
+        staking_provider_1, 0, min_authorization, sender=creator
     )
+    threshold_staking.setRoles(staking_provider_2, sender=creator)
     threshold_staking.setRoles(staking_provider_3, owner3, beneficiary, authorizer, sender=creator)
-    threshold_staking.setStakes(staking_provider_3, 0, min_authorization, 0, sender=creator)
+    threshold_staking.authorizationIncreased(
+        staking_provider_3, 0, min_authorization, sender=creator
+    )
     threshold_staking.setRoles(staking_provider_4, sender=creator)
-    threshold_staking.setStakes(staking_provider_4, 0, 0, min_authorization, sender=creator)
+    threshold_staking.authorizationIncreased(
+        staking_provider_4, 0, min_authorization, sender=creator
+    )
 
     assert pre_application.getOperatorFromStakingProvider(staking_provider_1) == ZERO_ADDRESS
     assert pre_application.stakingProviderFromOperator(staking_provider_1) == ZERO_ADDRESS
@@ -110,6 +109,7 @@ def test_bond_operator(accounts, threshold_staking, pre_application, chain):
     event = events[0]
     assert event["stakingProvider"] == staking_provider_3
     assert event["operator"] == operator1
+    assert event["previousOperator"] == ZERO_ADDRESS
     assert event["startTimestamp"] == timestamp
 
     # After confirmation operator is becoming active
@@ -123,12 +123,11 @@ def test_bond_operator(accounts, threshold_staking, pre_application, chain):
     with ape.reverts():
         pre_application.bondOperator(staking_provider_4, operator1, sender=staking_provider_4)
 
-    # # Operator can't be a staking provider
-    # threshold_staking.setRoles(operator1, sender=creator)
-    # threshold_staking.setStakes(operator1, min_authorization, 0, 0, sender=creator)
-    # with ape.reverts():
-    #     threshold_staking.increaseAuthorization(
-    #         operator1, min_authorization, pre_application.address, {'from': operator1})
+    # Operator can't be a staking provider
+    threshold_staking.setRoles(operator1, sender=creator)
+    with ape.reverts():
+        threshold_staking.authorizationIncreased(operator1, 0, min_authorization, sender=operator1)
+    threshold_staking.setRoles(operator1, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, sender=creator)
 
     # Can't bond operator twice too soon
     with ape.reverts():
@@ -161,6 +160,7 @@ def test_bond_operator(accounts, threshold_staking, pre_application, chain):
     assert event["stakingProvider"] == staking_provider_3
     # Now the operator has been unbonded ...
     assert event["operator"] == ZERO_ADDRESS
+    assert event["previousOperator"] == operator1
     # ... with a new starting period.
     assert event["startTimestamp"] == timestamp
 
@@ -179,6 +179,7 @@ def test_bond_operator(accounts, threshold_staking, pre_application, chain):
     event = events[0]
     assert event["stakingProvider"] == staking_provider_3
     assert event["operator"] == operator2
+    assert event["previousOperator"] == ZERO_ADDRESS
     assert event["startTimestamp"] == timestamp
 
     # Now the previous operator can no longer make a confirmation
@@ -190,7 +191,8 @@ def test_bond_operator(accounts, threshold_staking, pre_application, chain):
     assert pre_application.isOperatorConfirmed(operator2)
     assert pre_application.stakingProviderInfo(staking_provider_3)[CONFIRMATION_SLOT]
 
-    # Another staker can bond a free operator
+    # Another staking provider can bond a free operator
+    assert pre_application.authorizedOverall() == min_authorization
     tx = pre_application.bondOperator(staking_provider_4, operator1, sender=staking_provider_4)
     timestamp = tx.timestamp
     assert pre_application.getOperatorFromStakingProvider(staking_provider_4) == operator1
@@ -199,25 +201,27 @@ def test_bond_operator(accounts, threshold_staking, pre_application, chain):
     assert not pre_application.stakingProviderInfo(staking_provider_4)[CONFIRMATION_SLOT]
     assert pre_application.getStakingProvidersLength() == 2
     assert pre_application.stakingProviders(1) == staking_provider_4
+    assert pre_application.authorizedOverall() == min_authorization
 
     events = pre_application.OperatorBonded.from_receipt(tx)
     assert len(events) == 1
     event = events[0]
     assert event["stakingProvider"] == staking_provider_4
     assert event["operator"] == operator1
+    assert event["previousOperator"] == ZERO_ADDRESS
     assert event["startTimestamp"] == timestamp
 
-    # # The first operator still can't be a staking provider
-    # threshold_staking.setRoles(operator1, sender=creator)
-    # threshold_staking.setStakes(operator1, min_authorization, 0, 0, sender=creator)
-    # with ape.reverts():
-    #     threshold_staking.increaseAuthorization(
-    #         operator1, min_authorization, pre_application.address, {'from': operator1})
+    # The first operator still can't be a staking provider
+    threshold_staking.setRoles(operator1, sender=creator)
+    with ape.reverts():
+        threshold_staking.authorizationIncreased(operator1, 0, min_authorization, sender=operator1)
+    threshold_staking.setRoles(operator1, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, sender=creator)
 
     # Bond operator again
     pre_application.confirmOperatorAddress(sender=operator1)
     assert pre_application.isOperatorConfirmed(operator1)
     assert pre_application.stakingProviderInfo(staking_provider_4)[CONFIRMATION_SLOT]
+    assert pre_application.authorizedOverall() == 2 * min_authorization
     chain.pending_timestamp += min_operator_seconds
     tx = pre_application.bondOperator(staking_provider_4, operator3, sender=staking_provider_4)
     timestamp = tx.timestamp
@@ -229,6 +233,7 @@ def test_bond_operator(accounts, threshold_staking, pre_application, chain):
     assert not pre_application.stakingProviderInfo(staking_provider_4)[CONFIRMATION_SLOT]
     assert pre_application.getStakingProvidersLength() == 2
     assert pre_application.stakingProviders(1) == staking_provider_4
+    assert pre_application.authorizedOverall() == min_authorization
 
     # Resetting operator removes from active list before next confirmation
     all_locked, staking_providers = pre_application.getActiveStakingProviders(1, 0)
@@ -240,19 +245,12 @@ def test_bond_operator(accounts, threshold_staking, pre_application, chain):
     event = events[0]
     assert event["stakingProvider"] == staking_provider_4
     assert event["operator"] == operator3
+    assert event["previousOperator"] == operator1
     assert event["startTimestamp"] == timestamp
 
-    # The first operator is free and can deposit tokens and become a staker
+    # The first operator is free and can deposit tokens and become a staking provider
     threshold_staking.setRoles(operator1, sender=creator)
-    threshold_staking.setStakes(
-        operator1,
-        min_authorization // 3,
-        min_authorization // 3,
-        min_authorization // 3,
-        sender=creator,
-    )
-    # threshold_staking.increaseAuthorization(
-    #     operator1, min_authorization, pre_application.address, {'from': operator1})
+    threshold_staking.authorizationIncreased(operator1, 0, min_authorization, sender=operator1)
     assert pre_application.getOperatorFromStakingProvider(operator1) == ZERO_ADDRESS
     assert pre_application.stakingProviderFromOperator(operator1) == ZERO_ADDRESS
 
@@ -278,19 +276,19 @@ def test_bond_operator(accounts, threshold_staking, pre_application, chain):
     event = events[0]
     assert event["stakingProvider"] == staking_provider_1
     assert event["operator"] == staking_provider_1
+    assert event["previousOperator"] == ZERO_ADDRESS
     assert event["startTimestamp"] == timestamp
 
-    # If stake will be less than minimum then confirmation is not possible
-    threshold_staking.setStakes(staking_provider_1, 0, min_authorization - 1, 0, sender=creator)
-
-    with ape.reverts():
-        pre_application.confirmOperatorAddress(sender=staking_provider_1)
-
-    # Now provider can make a confirmation
-    threshold_staking.setStakes(staking_provider_1, 0, 0, min_authorization, sender=creator)
+    # If stake will be less than minimum then confirmation is still possible
+    threshold_staking.involuntaryAuthorizationDecrease(
+        staking_provider_1, min_authorization, min_authorization - 1, sender=creator
+    )
     pre_application.confirmOperatorAddress(sender=staking_provider_1)
 
     # If stake will be less than minimum then provider is not active
+    threshold_staking.authorizationIncreased(
+        staking_provider_1, min_authorization - 1, min_authorization, sender=creator
+    )
     all_locked, staking_providers = pre_application.getActiveStakingProviders(0, 0)
     assert all_locked == 2 * min_authorization
     assert len(staking_providers) == 2
@@ -298,10 +296,23 @@ def test_bond_operator(accounts, threshold_staking, pre_application, chain):
     assert staking_providers[0][1] == min_authorization
     assert to_checksum_address(staking_providers[1][0]) == staking_provider_1
     assert staking_providers[1][1] == min_authorization
-    threshold_staking.setStakes(staking_provider_1, 0, min_authorization - 1, 0, sender=creator)
+    threshold_staking.involuntaryAuthorizationDecrease(
+        staking_provider_1, min_authorization, min_authorization - 1, sender=creator
+    )
     all_locked, staking_providers = pre_application.getActiveStakingProviders(1, 0)
     assert all_locked == 0
     assert len(staking_providers) == 0
+
+    # Unbond and rebond oeprator
+    pre_application.bondOperator(staking_provider_3, ZERO_ADDRESS, sender=staking_provider_3)
+    pre_application.bondOperator(staking_provider_3, operator2, sender=staking_provider_3)
+    assert not pre_application.isOperatorConfirmed(operator2)
+
+    # Operator can be unbonded before confirmation without restriction
+    pre_application.bondOperator(staking_provider_3, ZERO_ADDRESS, sender=staking_provider_3)
+    assert pre_application.getOperatorFromStakingProvider(staking_provider_3) == ZERO_ADDRESS
+    assert pre_application.stakingProviderFromOperator(staking_provider_3) == ZERO_ADDRESS
+    assert pre_application.stakingProviderFromOperator(operator2) == ZERO_ADDRESS
 
 
 def test_confirm_address(accounts, threshold_staking, pre_application, chain, project):
@@ -309,19 +320,16 @@ def test_confirm_address(accounts, threshold_staking, pre_application, chain, pr
     min_authorization = MIN_AUTHORIZATION
     min_operator_seconds = MIN_OPERATOR_SECONDS
 
-    # Operator must be associated with provider that has minimum amount of tokens
+    # Operator must be associated with staking provider
     with ape.reverts():
         pre_application.confirmOperatorAddress(sender=staking_provider)
     threshold_staking.setRoles(staking_provider, sender=creator)
-    threshold_staking.setStakes(staking_provider, min_authorization - 1, 0, 0, sender=creator)
-    with ape.reverts():
-        pre_application.confirmOperatorAddress(sender=staking_provider)
 
     # Deploy intermediary contract
     intermediary = creator.deploy(project.Intermediary, pre_application.address, sender=creator)
 
     # Bond contract as an operator
-    threshold_staking.setStakes(staking_provider, min_authorization, 0, 0, sender=creator)
+    threshold_staking.authorizationIncreased(staking_provider, 0, min_authorization, sender=creator)
     pre_application.bondOperator(staking_provider, intermediary.address, sender=staking_provider)
 
     # But can't make a confirmation using an intermediary contract
@@ -331,9 +339,11 @@ def test_confirm_address(accounts, threshold_staking, pre_application, chain, pr
     # Bond operator again and make confirmation
     chain.pending_timestamp += min_operator_seconds
     pre_application.bondOperator(staking_provider, operator, sender=staking_provider)
+    assert pre_application.authorizedOverall() == 0
     tx = pre_application.confirmOperatorAddress(sender=operator)
     assert pre_application.isOperatorConfirmed(operator)
     assert pre_application.stakingProviderInfo(staking_provider)[CONFIRMATION_SLOT]
+    assert pre_application.authorizedOverall() == min_authorization
 
     events = pre_application.OperatorConfirmed.from_receipt(tx)
     assert len(events) == 1
@@ -344,3 +354,16 @@ def test_confirm_address(accounts, threshold_staking, pre_application, chain, pr
     # Can't confirm twice
     with ape.reverts():
         pre_application.confirmOperatorAddress(sender=operator)
+
+
+def test_slash(accounts, threshold_staking, pre_application):
+    creator, staking_provider, investigator, *everyone_else = accounts[0:]
+    min_authorization = MIN_AUTHORIZATION
+    penalty = min_authorization
+
+    pre_application.testSlash(staking_provider, penalty, investigator, sender=creator)
+    assert threshold_staking.amountToSeize() == penalty
+    assert threshold_staking.rewardMultiplier() == 100
+    assert threshold_staking.notifier() == investigator
+    assert threshold_staking.stakingProvidersToSeize(0) == staking_provider
+    assert threshold_staking.getLengthOfStakingProvidersToSeize() == 1

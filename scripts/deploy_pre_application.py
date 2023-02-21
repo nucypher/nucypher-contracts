@@ -14,15 +14,24 @@ def main(account_id=None):
     deployments_config = DEPLOYMENTS_CONFIG
 
     if CURRENT_NETWORK in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
-        _, _, t_staking, _, _ = deploy_mocks(deployer)
+        _, _, t_staking, _, _, t_token = deploy_mocks(deployer)
     else:
         t_staking = deployments_config.get("t_staking")
+        t_token = deployments_config.get("t_token")
 
-    simple_pre = project.SimplePREApplication.deploy(
+    # TODO deploy proxy
+    pre_app = project.PREApplication.deploy(
+        t_token,
         t_staking,
+        deployments_config.get("pre_hash_algorithm"),
+        deployments_config.get("pre_base_penalty"),
+        deployments_config.get("pre_penalty_history_coefficient"),
+        deployments_config.get("pre_percentage_penalty_coefficient"),
         deployments_config.get("pre_min_authorization"),
         deployments_config.get("pre_min_operator_seconds"),
+        deployments_config.get("reward_duration"),
+        deployments_config.get("deauthorization_duration"),
         sender=deployer,
         publish=deployments_config.get("verify"),
     )
-    return simple_pre
+    return pre_app
