@@ -1,0 +1,20 @@
+name: nucypher-contracts
+contracts_folder: contracts
+
+plugins:
+  - name: solidity
+    version: 0.6.0
+
+dependencies:
+  - name: OpenZeppelin
+    github: OpenZeppelin/openzeppelin-contracts
+    version: 4.8.1
+  - name: OpenZeppelin-Upgradeable
+    github: OpenZeppelin/openzeppelin-contracts-upgradeable
+    version: 4.8.1
+
+solidity:
+  version: 0.8.17
+  import_remapping:
+    - "@openzeppelin-upgradeable=OpenZeppelin-Upgradeable/4.8.1"
+    - "@openzeppelin=OpenZeppelin/4.8.1"

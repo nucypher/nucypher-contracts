@@ -1,7 +1,8 @@
 black==22.1.0
 coincurve==17.0.0
 cryptography==36.0.2
-eth-brownie>=1.18.1,<2.0.0
+eth-ape>=0.6.3,<0.7.0
+ape-solidity==0.6.0
 flake8==4.0.1
 isort==5.10.1
 nucypher-core==0.1.1

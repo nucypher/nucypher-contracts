@@ -1,9 +1,9 @@
-import brownie
+import ape
 import pytest
-from brownie import Contract, chain
-from brownie.convert.datatypes import Wei
+from ape import Contract, chain
+from web3 import Web3
 
-INITIAL_FEE_RATE = Wei("1 gwei")
+INITIAL_FEE_RATE = Web3.to_wei("1 gwei")
 
 
 @pytest.fixture(scope="session")
@@ -124,7 +124,7 @@ def test_create_policy_with_same_id(subscription_manager, accounts):
     end = start + duration
     fee = subscription_manager.getPolicyCost(size, start, end)
 
-    with brownie.reverts("Policy is currently active"):
+    with ape.reverts("Policy is currently active"):
         subscription_manager.createPolicy(
             policy_id,
             alice,
@@ -180,7 +180,7 @@ def test_create_policy_with_invalid_timestamp(subscription_manager, accounts):
     fee = 0
     start = chain.time()
     invalid_end = chain.time() - duration
-    with brownie.reverts("Invalid timestamps"):
+    with ape.reverts("Invalid timestamps"):
         subscription_manager.createPolicy(
             policy_id, alice, size, start, invalid_end, {"from": alice, "value": fee}
         )
@@ -192,7 +192,7 @@ def test_create_policy_with_invalid_fee(subscription_manager, accounts):
     duration = 1000
     size = 3
     fee = (subscription_manager.feeRate() * duration * size) - 1
-    with brownie.reverts():
+    with ape.reverts():
         subscription_manager.createPolicy(
             policy_id,
             alice,
@@ -209,7 +209,7 @@ def test_create_policy_with_invalid_node_size(subscription_manager, accounts):
     duration = 1000
     size = 0
     fee = subscription_manager.feeRate() * duration * size
-    with brownie.reverts():
+    with ape.reverts():
         subscription_manager.createPolicy(
             policy_id,
             alice,
@@ -228,13 +228,13 @@ def test_set_fee_rate(subscription_manager, accounts):
 
 def test_set_fee_rate_with_no_set_rate_role(subscription_manager, accounts):
     new_rate = Wei("10 gwei")
-    with brownie.reverts():
+    with ape.reverts():
         subscription_manager.setFeeRate(new_rate, {"from": accounts[1]})
 
 
 def test_sweep_with_no_withdraw_role(subscription_manager, accounts):
     recipient = accounts[2]
-    with brownie.reverts():
+    with ape.reverts():
         subscription_manager.sweep(recipient, {"from": accounts[1]})
 
 
