@@ -39,6 +39,11 @@ networks:
     pre_min_authorization: 40000000000000000000000
     pre_min_operator_seconds: 86400  # one day in seconds
     verify: True
+  goerli-oryx:
+    t_staking: '0xf91afFE7cf1d9c367Cb56eDd70C0941a4E8570d9'
+    verify: True
+    pre_min_authorization: 40000000000000000000000
+    pre_min_operator_seconds: 86400  # one day in seconds
   development:
     nu_token_supply: 1_000_000_000
     pre_min_authorization: 40000000000000000000000
