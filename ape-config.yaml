@@ -34,12 +34,17 @@ deployments:
         pre_min_authorization: 40000000000000000000000
         pre_min_operator_seconds: 86400  # one day in seconds
         verify: True
-    goerli:
-      - t_staking: '0x09B5065d2924De33C85F76474A89A27189402064'
-        pre_min_authorization: 40000000000000000000000
-        pre_min_operator_seconds: 86400  # one day in seconds
-        verify: True
-    goerli-lynx:
+    # goerli-tapir:
+    #   - t_staking: '0x09B5065d2924De33C85F76474A89A27189402064'
+    #     pre_min_authorization: 40000000000000000000000
+    #     pre_min_operator_seconds: 86400  # one day in seconds
+    #     verify: True
+    # goerli-oryx:
+    #   t_staking: '0xf91afFE7cf1d9c367Cb56eDd70C0941a4E8570d9'
+    #   verify: True
+    #   pre_min_authorization: 40000000000000000000000
+    #   pre_min_operator_seconds: 86400  # one day in seconds
+    goerli:  # lynx
       - t_staking: '0x81eEefb7B1b3313C89976910096F8f1487301Bb1'
         pre_min_authorization: 40000000000000000000000
         pre_min_operator_seconds: 86400  # one day in seconds
