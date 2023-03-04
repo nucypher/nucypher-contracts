@@ -3,18 +3,17 @@ contracts_folder: contracts
 
 plugins:
   - name: solidity
-    version: 0.6.0
 
 dependencies:
-  - name: OpenZeppelin
+  - name: openzeppelin
     github: OpenZeppelin/openzeppelin-contracts
     version: 4.8.1
-  - name: OpenZeppelin-Upgradeable
+  - name: openzeppelin-upgradeable
     github: OpenZeppelin/openzeppelin-contracts-upgradeable
     version: 4.8.1
 
 solidity:
   version: 0.8.17
   import_remapping:
-    - "@openzeppelin-upgradeable=OpenZeppelin-Upgradeable/4.8.1"
-    - "@openzeppelin=OpenZeppelin/4.8.1"
+    - "@openzeppelin/contracts=openzeppelin/v4.8.1"
+    - "@openzeppelin-upgradeable/contracts=openzeppelin-upgradeable/v4.8.1"
