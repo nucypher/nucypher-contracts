@@ -18,8 +18,8 @@ contract Coordinator is Ownable {
     event EndRitual(uint32 indexed ritualId, address indexed initiator, RitualState status);
 
     // Node
-    event TranscriptPosted(uint32 indexed ritualId, address indexed node, bytes32 transcriptDigest);
-    event AggregationPosted(uint32 indexed ritualId, address indexed node, bytes32 aggregatedTranscriptDigest);
+    event TranscriptCommitted(uint32 indexed ritualId, address indexed node, bytes32 transcriptDigest);
+    event AggregationCommitted(uint32 indexed ritualId, address indexed node, bytes32 aggregatedTranscriptDigest);
 
     // Admin
     event TimeoutChanged(uint32 oldTimeout, uint32 newTimeout);
@@ -39,7 +39,7 @@ contract Coordinator is Ownable {
     struct Participant {
         address node;
         bool aggregated;
-        bytes transcript;  // TODO: Consider event processing complexity vs storage cost
+        bytes32 transcriptCommitment;
     }
 
     // TODO: Optimize layout
@@ -142,7 +142,7 @@ contract Coordinator is Ownable {
         return ritual.id;
     }
 
-    function postTranscript(uint32 ritualId, uint256 nodeIndex, bytes calldata transcript) external {
+    function commitToTranscript(uint32 ritualId, uint256 nodeIndex, bytes32 transcriptCommitment) external {
         Ritual storage ritual = rituals[ritualId];
         require(
             getRitualState(ritual) == RitualState.AWAITING_TRANSCRIPTS,
@@ -154,16 +154,13 @@ contract Coordinator is Ownable {
             "Node not part of ritual"
         );
         require(
-            participant.transcript.length == 0,
+            participant.transcriptCommitment == bytes32(0),
             "Node already posted transcript"
         );
 
-        // TODO: Validate transcript size based on dkg size
-
         // Nodes commit to their transcript
-        bytes32 transcriptDigest = keccak256(transcript);
-        participant.transcript = transcript;  // TODO: ???
-        emit TranscriptPosted(ritualId, msg.sender, transcriptDigest);
+        participant.transcriptCommitment = transcriptCommitment;
+        emit TranscriptCommitted(ritualId, msg.sender, transcriptCommitment);
         ritual.totalTranscripts++;
 
         // end round
@@ -172,7 +169,7 @@ contract Coordinator is Ownable {
         }
     }
 
-    function postAggregation(uint32 ritualId, uint256 nodeIndex, bytes calldata aggregatedTranscript) external {
+    function commitToAggregation(uint32 ritualId, uint256 nodeIndex, bytes32 aggregatedTranscriptCommittment) external {
         Ritual storage ritual = rituals[ritualId];
         require(
             getRitualState(ritual) == RitualState.AWAITING_AGGREGATIONS,
@@ -189,13 +186,12 @@ contract Coordinator is Ownable {
         );
 
         // nodes commit to their aggregation result
-        bytes32 aggregatedTranscriptDigest = keccak256(aggregatedTranscript);
         participant.aggregated = true;
-        emit AggregationPosted(ritualId, msg.sender, aggregatedTranscriptDigest);
+        emit AggregationCommitted(ritualId, msg.sender, aggregatedTranscriptCommittment);
 
         if (ritual.aggregatedTranscriptHash == bytes32(0)){
-            ritual.aggregatedTranscriptHash = aggregatedTranscriptDigest;
-        } else if (ritual.aggregatedTranscriptHash != aggregatedTranscriptDigest){
+            ritual.aggregatedTranscriptHash = aggregatedTranscriptCommittment;
+        } else if (ritual.aggregatedTranscriptHash != aggregatedTranscriptCommittment){
             ritual.aggregationMismatch = true;
             emit EndRitual(ritualId, ritual.initiator, RitualState.INVALID);
             // TODO: Invalid ritual

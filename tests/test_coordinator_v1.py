@@ -4,6 +4,7 @@ from enum import IntEnum
 
 import os
 
+TRANSCRIPT_SIZE = 4000
 TIMEOUT = 1000
 MAX_DKG_SIZE = 64
 
@@ -53,59 +54,68 @@ def test_initiate_ritual(coordinator, nodes, initiator):
 
     assert coordinator.getRitualState(0) == RitualState.AWAITING_TRANSCRIPTS
 
-def test_post_transcript(coordinator, nodes, web3):
+def test_commit_to_transcript(coordinator, nodes, web3):
     coordinator.initiateRitual(nodes)
 
     for i, node in enumerate(nodes):
         assert coordinator.getRitualState(0) == RitualState.AWAITING_TRANSCRIPTS
 
-        transcript = os.urandom(10)
-        tx = coordinator.postTranscript(0, i, transcript, {'from': node})
+        transcript = os.urandom(TRANSCRIPT_SIZE)
+        digest = web3.keccak(transcript)
+        tx = coordinator.commitToTranscript(0, i, digest, {'from': node})
         
-        assert "TranscriptPosted" in tx.events
-        event = tx.events["TranscriptPosted"]
+        assert "TranscriptCommitted" in tx.events
+        event = tx.events["TranscriptCommitted"]
         assert event["ritualId"] == 0
         assert event["node"] == node
-        assert event["transcriptDigest"] == web3.keccak(transcript).hex()
+        assert event["transcriptDigest"] == digest.hex()
 
     assert coordinator.getRitualState(0) == RitualState.AWAITING_AGGREGATIONS
 
-def test_post_transcript_but_not_part_of_ritual(coordinator, nodes):
+def test_commit_to_transcript_but_not_part_of_ritual(coordinator, nodes, web3):
     coordinator.initiateRitual(nodes)
     with brownie.reverts("Node not part of ritual"):
-        coordinator.postTranscript(0, 5, os.urandom(10), {'from': nodes[0]})
+        transcript = os.urandom(TRANSCRIPT_SIZE)
+        digest = web3.keccak(transcript)
+        coordinator.commitToTranscript(0, 5, digest, {'from': nodes[0]})
 
-def test_post_transcript_but_already_posted_transcript(coordinator, nodes):
+def test_commit_to_transcript_twice(coordinator, nodes, web3):
+    transcript = os.urandom(TRANSCRIPT_SIZE)
+    digest = web3.keccak(transcript)
     coordinator.initiateRitual(nodes)
-    coordinator.postTranscript(0, 0, os.urandom(10), {'from': nodes[0]})
+    coordinator.commitToTranscript(0, 0, digest, {'from': nodes[0]})
     with brownie.reverts("Node already posted transcript"):
-        coordinator.postTranscript(0, 0, os.urandom(10), {'from': nodes[0]})
+        coordinator.commitToTranscript(0, 0, digest, {'from': nodes[0]})
 
-def test_post_transcript_but_not_waiting_for_transcripts(coordinator, nodes):
+def test_commit_to_transcript_but_not_waiting_for_transcripts(coordinator, nodes, web3):
     coordinator.initiateRitual(nodes)
     for i, node in enumerate(nodes):
-        transcript = os.urandom(10)
-        coordinator.postTranscript(0, i, transcript, {'from': node})
+        transcript = os.urandom(TRANSCRIPT_SIZE)
+        digest = web3.keccak(transcript)
+        coordinator.commitToTranscript(0, i, digest, {'from': node})
 
     with brownie.reverts("Not waiting for transcripts"):
-        coordinator.postTranscript(0, 1, os.urandom(10), {'from': nodes[1]})
+        coordinator.commitToTranscript(0, 1, digest, {'from': nodes[1]})
 
 def test_post_aggregation(coordinator, nodes, web3, initiator):
     coordinator.initiateRitual(nodes, {'from': initiator})
-    transcript = os.urandom(10)
+    
     for i, node in enumerate(nodes):
-        coordinator.postTranscript(0, i, transcript, {'from': node})
+        transcript = os.urandom(TRANSCRIPT_SIZE)
+        digest = web3.keccak(transcript)
+        coordinator.commitToTranscript(0, i, digest, {'from': node})
 
-    aggregated = os.urandom(10)
+    aggregated = os.urandom(TRANSCRIPT_SIZE)
     for i, node in enumerate(nodes):
         assert coordinator.getRitualState(0) == RitualState.AWAITING_AGGREGATIONS
-        tx = coordinator.postAggregation(0, i, aggregated, {'from': node})
+        digest = web3.keccak(aggregated)
+        tx = coordinator.commitToAggregation(0, i, digest, {'from': node})
 
-        assert "AggregationPosted" in tx.events
-        event = tx.events["AggregationPosted"]
+        assert "AggregationCommitted" in tx.events
+        event = tx.events["AggregationCommitted"]
         assert event["ritualId"] == 0
         assert event["node"] == node.address
-        assert event["aggregatedTranscriptDigest"] == web3.keccak(aggregated).hex()
+        assert event["aggregatedTranscriptDigest"] == digest.hex()
 
     assert coordinator.getRitualState(0) == RitualState.FINALIZED
     assert "EndRitual" in tx.events
