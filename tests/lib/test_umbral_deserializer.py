@@ -18,15 +18,15 @@ along with nucypher.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
 
-import brownie
+import ape
 import pytest
 from nucypher_core import MessageKit
 from nucypher_core.umbral import SecretKey, Signer, generate_kfrags, reencrypt
 
 
 @pytest.fixture()
-def deserializer(UmbralDeserializerMock, accounts):
-    contract = accounts[0].deploy(UmbralDeserializerMock)
+def deserializer(project, accounts):
+    contract = accounts[0].deploy(project.UmbralDeserializerMock)
     return contract
 
 
@@ -55,9 +55,9 @@ def fragments():
 
 def test_capsule(deserializer, fragments):
     # Wrong number of bytes to deserialize capsule
-    with brownie.reverts():
+    with ape.reverts():
         deserializer.toCapsule(os.urandom(97))
-    with brownie.reverts():
+    with ape.reverts():
         deserializer.toCapsule(os.urandom(99))
 
     # Check random capsule bytes
@@ -74,7 +74,7 @@ def test_capsule(deserializer, fragments):
 
 def test_cfrag(deserializer, fragments):
     # Wrong number of bytes to deserialize cfrag
-    with brownie.reverts():
+    with ape.reverts():
         deserializer.toCapsuleFrag(os.urandom(358))
 
     # Check random cfrag bytes

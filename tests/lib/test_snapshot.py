@@ -22,8 +22,8 @@ from web3 import Web3
 
 
 @pytest.fixture(scope="module")
-def snapshot(accounts, SnapshotMock):
-    contract = accounts[0].deploy(SnapshotMock)
+def snapshot(accounts, project):
+    contract = accounts[0].deploy(project.SnapshotMock)
     return contract
 
 
@@ -48,25 +48,25 @@ def test_snapshot(accounts, snapshot, block_number, value):
         return snapshot.decodeSnapshot(_snapshot)
 
     encoded_snapshot = encode(block_number, value)
-    assert decode(encoded_snapshot) == [block_number, value]
+    assert decode(encoded_snapshot) == (block_number, value)
     expected_encoded_snapshot_as_bytes = block_number.to_bytes(4, "big") + value.to_bytes(12, "big")
-    assert Web3.toBytes(encoded_snapshot).rjust(16, b"\x00") == expected_encoded_snapshot_as_bytes
+    assert Web3.to_bytes(encoded_snapshot).rjust(16, b"\x00") == expected_encoded_snapshot_as_bytes
 
     # Testing adding new snapshots
     account = accounts[0]
 
     data = [(block_number + i * 10, value + i) for i in range(10)]
     for i, (block_i, value_i) in enumerate(data):
-        snapshot.addSnapshot(block_i, value_i, {"from": account})
+        snapshot.addSnapshot(block_i, value_i, sender=account)
 
         assert snapshot.length() == i + 1
-        assert snapshot.history(i) == encode(block_i, value_i)
-        assert snapshot.lastSnapshot() == [block_i, value_i]
+        assert snapshot.call_view_method("history", i) == encode(block_i, value_i)
+        assert snapshot.lastSnapshot() == (block_i, value_i)
 
     # Testing getValueAt: simple case, when asking for the exact block number that was recorded
     for i, (block_i, value_i) in enumerate(data):
         assert snapshot.getValueAt(block_i) == value_i
-        assert snapshot.history(i) == encode(block_i, value_i)
+        assert snapshot.call_view_method("history", i) == encode(block_i, value_i)
 
     # Testing getValueAt: general case, when retrieving block numbers in-between snapshots
     # Special cases are before first snapshot (where value should be 0) and after the last one
@@ -79,4 +79,4 @@ def test_snapshot(accounts, snapshot, block_number, value):
     assert snapshot.getValueAt(last_block + 100) == last_value
 
     # Clear history for next test
-    snapshot.deleteHistory({"from": account})
+    snapshot.deleteHistory(sender=account)

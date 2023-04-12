@@ -17,9 +17,10 @@ along with nucypher.  If not, see <https://www.gnu.org/licenses/>.
 
 
 import pytest
-from brownie import Wei
+from web3 import Web3
 
-MIN_AUTHORIZATION = Wei("40_000 ether")
+MIN_AUTHORIZATION = Web3.to_wei(40_000, "ether")
+
 MIN_OPERATOR_SECONDS = 24 * 60 * 60
 
 # @pytest.fixture()
@@ -30,17 +31,17 @@ MIN_OPERATOR_SECONDS = 24 * 60 * 60
 
 
 @pytest.fixture()
-def threshold_staking(ThresholdStakingForPREApplicationMock, accounts):
-    threshold_staking = accounts[0].deploy(ThresholdStakingForPREApplicationMock)
+def threshold_staking(project, accounts):
+    threshold_staking = accounts[0].deploy(project.ThresholdStakingForPREApplicationMock)
     return threshold_staking
 
 
 @pytest.fixture()
-def pre_application(SimplePREApplication, accounts, threshold_staking):
+def pre_application(project, accounts, threshold_staking):
     contract = accounts[0].deploy(
-        SimplePREApplication, threshold_staking.address, MIN_AUTHORIZATION, MIN_OPERATOR_SECONDS
+        project.SimplePREApplication, threshold_staking.address, MIN_AUTHORIZATION, MIN_OPERATOR_SECONDS
     )
 
-    threshold_staking.setApplication(contract.address)
+    threshold_staking.setApplication(contract.address, sender=accounts[0])
 
     return contract

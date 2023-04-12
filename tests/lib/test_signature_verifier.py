@@ -18,7 +18,7 @@ along with nucypher.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
 
-import brownie
+import ape
 import coincurve
 import pytest
 import sha3
@@ -130,8 +130,8 @@ def pubkey_as_uncompressed_bytes(umbral_pubkey):
 
 
 @pytest.fixture()
-def signature_verifier(SignatureVerifierMock, accounts):
-    contract = accounts[0].deploy(SignatureVerifierMock)
+def signature_verifier(project, accounts):
+    contract = accounts[0].deploy(project.SignatureVerifierMock)
     return contract
 
 
@@ -172,12 +172,12 @@ def test_recover(signature_verifier):
 
     # Only number 0,1,27,28 are supported for v
     recoverable_signature = bytes(signature) + bytes([2])
-    with brownie.reverts():
+    with ape.reverts():
         signature_verifier.recover(message_hash, recoverable_signature)
 
     # Signature must include r, s and v
     recoverable_signature = bytes(signature)
-    with brownie.reverts():
+    with ape.reverts():
         signature_verifier.recover(message_hash, recoverable_signature)
 
 
