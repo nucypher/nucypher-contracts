@@ -16,46 +16,44 @@ along with nucypher.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import pytest
-from brownie import Contract, Wei
+import ape
+from web3 import Web3
 
-TOTAL_SUPPLY = Wei("1_000_000_000 ether")  # TODO NU(1_000_000_000, 'NU').to_units()
+TOTAL_SUPPLY = Web3.to_wei(1_000_000_000, "ether")  # TODO NU(1_000_000_000, 'NU').to_units()
 
 
 @pytest.fixture()
-def token(NuCypherToken, accounts):
+def token(project, accounts):
     # Create an ERC20 token
-    token = accounts[0].deploy(NuCypherToken, TOTAL_SUPPLY)
+    token = accounts[0].deploy(project.NuCypherToken, TOTAL_SUPPLY)
     return token
 
 
 @pytest.fixture()
-def worklock(WorkLockForStakingEscrowMock, token, accounts):
-    worklock = accounts[0].deploy(WorkLockForStakingEscrowMock, token.address)
+def worklock(project, token, accounts):
+    worklock = accounts[0].deploy(project.WorkLockForStakingEscrowMock, token.address)
     return worklock
 
 
 @pytest.fixture()
-def threshold_staking(ThresholdStakingForStakingEscrowMock, accounts):
-    threshold_staking = accounts[0].deploy(ThresholdStakingForStakingEscrowMock)
+def threshold_staking(project, accounts):
+    threshold_staking = accounts[0].deploy(project.ThresholdStakingForStakingEscrowMock)
     return threshold_staking
 
 
 @pytest.fixture(params=[False, True])
-def escrow(
-    Dispatcher, EnhancedStakingEscrow, token, worklock, threshold_staking, request, accounts
-):
-    contract = accounts[0].deploy(
-        EnhancedStakingEscrow, token.address, worklock.address, threshold_staking.address
+def escrow(project, token, worklock, threshold_staking, request, accounts):
+    creator = accounts[0]
+    contract = creator.deploy(
+        project.EnhancedStakingEscrow, token.address, worklock.address, threshold_staking.address
     )
 
     if request.param:
-        dispatcher = accounts[0].deploy(Dispatcher, contract.address)
-        contract = Contract.from_abi(
-            name="EnhancedStakingEscrow", abi=contract.abi, address=dispatcher.address
-        )
+        dispatcher = creator.deploy(project.Dispatcher, contract.address)
+        contract = project.EnhancedStakingEscrow.at(dispatcher.address)
 
-    worklock.setStakingEscrow(contract.address)
-    threshold_staking.setStakingEscrow(contract.address)
+    worklock.setStakingEscrow(contract.address, sender=creator)
+    threshold_staking.setStakingEscrow(contract.address, sender=creator)
 
     assert contract.token() == token.address
     assert contract.workLock() == worklock.address

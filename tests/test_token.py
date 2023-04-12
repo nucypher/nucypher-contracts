@@ -76,14 +76,14 @@ def test_approve_and_call(project, accounts):
     assert 50 == token.allowance(creator, account1)
 
     # The result of approveAndCall is increased allowance and method execution in the mock contract
-    token.approveAndCall(mock.address, 25, Web3.toBytes(111), sender=account1)
+    token.approveAndCall(mock.address, 25, Web3.to_bytes(111), sender=account1)
     assert 50 == token.balanceOf(account2)
     assert 50 == token.allowance(creator, account1)
     assert 25 == token.allowance(account1, mock.address)
     assert account1 == mock.sender()
     assert 25 == mock.value()
     assert token.address == mock.tokenContract()
-    assert 111 == Web3.toInt(mock.extraData())
+    assert 111 == Web3.to_int(mock.extraData())
 
     # Can't approve non zero value
     with ape.reverts():
