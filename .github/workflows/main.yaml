@@ -45,7 +45,7 @@ jobs:
       run: ape test
 
     - name: Deploy Locally
-      run: ape run scripts/deploy_subscription_manager.py --network development
+      run: ape run scripts/deploy_subscription_manager.py --network ::test
 
     - name: Install Solhint
       run: npm install -g solhint

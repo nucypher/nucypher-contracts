@@ -1,20 +1,16 @@
 import ape
 import pytest
+from ape import project
 from web3 import Web3
 
 INITIAL_FEE_RATE = Web3.to_wei(1, "gwei")
-
-
-# @pytest.fixture(scope="session")
-# def oz(project):
-#     temp = project.path
-#     project = pm("OpenZeppelin/openzeppelin-contracts@4.5.0/")
-#     return project
+dependency = project.dependencies["openzeppelin"]["4.8.1"]
 
 
 @pytest.fixture(scope="session")
 def proxy_admin(project, accounts):
-    return accounts[0].deploy(project.ProxyAdminExt)
+    admin = dependency.get("ProxyAdmin")
+    return accounts[0].deploy(admin)
 
 
 @pytest.fixture(scope="session")
@@ -24,9 +20,10 @@ def subscription_manager_logic(project, accounts):
 
 @pytest.fixture(scope="session")
 def transparent_proxy(project, proxy_admin, subscription_manager_logic, accounts):
+    proxy = dependency.get("TransparentUpgradeableProxy")
 
     calldata = subscription_manager_logic.initialize.encode_input(INITIAL_FEE_RATE)
-    return project.TransparentUpgradeableProxyExt.deploy(
+    return proxy.deploy(
         subscription_manager_logic.address, proxy_admin.address, calldata, sender=accounts[0]
     )
 
@@ -130,7 +127,8 @@ def test_create_policy_with_same_id(subscription_manager, accounts, chain):
         size,
         start,
         end,
-        sender=alice, value=fee,
+        sender=alice,
+        value=fee,
     )
     with ape.reverts("Policy is currently active"):
         subscription_manager.createPolicy(
@@ -139,7 +137,8 @@ def test_create_policy_with_same_id(subscription_manager, accounts, chain):
             size,
             start,
             end,
-            sender=alice, value=fee,
+            sender=alice,
+            value=fee,
         )
 
 
@@ -154,12 +153,13 @@ def test_create_policy_again_after_duration_time(subscription_manager, accounts,
     chain.pending_timestamp += duration
 
     subscription_manager.createPolicy(
-        policy_id, 
-        alice, 
-        size, 
-        chain.pending_timestamp, 
-        chain.pending_timestamp + duration, 
-        sender=alice, value=fee
+        policy_id,
+        alice,
+        size,
+        chain.pending_timestamp,
+        chain.pending_timestamp + duration,
+        sender=alice,
+        value=fee,
     )
 
     assert subscription_manager.isPolicyActive(policy_id)
@@ -178,7 +178,13 @@ def test_create_policy_transfers_eth(subscription_manager, accounts, chain):
     contract_expected_balance = subscription_manager.balance + fee
 
     tx = subscription_manager.createPolicy(
-        policy_id, alice, size, start, end, sender=alice, value=fee,
+        policy_id,
+        alice,
+        size,
+        start,
+        end,
+        sender=alice,
+        value=fee,
     )
 
     assert alice.balance == alice_expected_balance - tx.total_fees_paid
@@ -212,7 +218,8 @@ def test_create_policy_with_invalid_fee(subscription_manager, accounts, chain):
             size,
             chain.pending_timestamp,
             chain.pending_timestamp + duration,
-            sender=alice, value=fee,
+            sender=alice,
+            value=fee,
         )
 
 
@@ -229,7 +236,8 @@ def test_create_policy_with_invalid_node_size(subscription_manager, accounts, ch
             size,
             chain.pending_timestamp,
             chain.pending_timestamp + duration,
-            sender=alice, value=fee,
+            sender=alice,
+            value=fee,
         )
 
 
