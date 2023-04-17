@@ -1,12 +1,9 @@
-from ape import (
-    project,
-    accounts,
-    networks,
-)
+from ape import accounts, config, networks, project
 
 LOCAL_BLOCKCHAIN_ENVIRONMENTS = ["local"]
 PRODUCTION_ENVIRONMENTS = ["mainnet", "polygon-main"]
 CURRENT_NETWORK = networks.network.name
+DEPLOYMENTS_CONFIG = config.get_config("deployments")["ethereum"][CURRENT_NETWORK][0]
 
 
 def deploy_mocks(deployer):
