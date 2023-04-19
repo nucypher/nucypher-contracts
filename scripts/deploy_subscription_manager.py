@@ -9,14 +9,12 @@ INITIAL_FEE_RATE = Web3.to_wei(1, "gwei")
 def main(id=None):
     deployer = get_account(id)
     dependency = project.dependencies["openzeppelin"]["4.8.1"]
-    admin = dependency.get("ProxyAdmin")
-    proxy = dependency.get("TransparentUpgradeableProxy")
 
-    proxy_admin = deployer.deploy(admin)
+    proxy_admin = deployer.deploy(dependency.ProxyAdmin)
 
     subscription_manager_logic = deployer.deploy(project.SubscriptionManager)
     calldata = subscription_manager_logic.initialize.encode_input(INITIAL_FEE_RATE)
-    transparent_proxy = proxy.deploy(
+    transparent_proxy = dependency.TransparentUpgradeableProxy.deploy(
         subscription_manager_logic.address, proxy_admin.address, calldata, sender=deployer
     )
 

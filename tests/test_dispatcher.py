@@ -17,8 +17,7 @@ along with nucypher.  If not, see <https://www.gnu.org/licenses/>.
 
 import ape
 import pytest
-
-NULL_ADDRESS = "0x" + "0" * 40  # TODO move to some test constants
+from ape.utils import ZERO_ADDRESS
 
 
 def test_dispatcher(project, accounts):
@@ -48,7 +47,7 @@ def test_dispatcher(project, accounts):
     events = dispatcher.Upgraded.from_receipt(tx)
     assert len(events) == 1
     event = events[0]
-    assert NULL_ADDRESS == event["from"]
+    assert ZERO_ADDRESS == event["from"]
     assert contract1_lib.address == event["to"]
     assert creator == event["owner"]
 
@@ -383,7 +382,7 @@ def test_selfdestruct(project, accounts):
 
     # Can't create dispatcher using address without contract
     with ape.reverts():
-        creator.deploy(project.Dispatcher, NULL_ADDRESS)
+        creator.deploy(project.Dispatcher, ZERO_ADDRESS)
     with ape.reverts():
         creator.deploy(project.Dispatcher, account)
     with ape.reverts():
@@ -401,7 +400,7 @@ def test_selfdestruct(project, accounts):
 
     # Can't upgrade to an address without contract
     with ape.reverts():
-        dispatcher.upgrade(NULL_ADDRESS, sender=creator)
+        dispatcher.upgrade(ZERO_ADDRESS, sender=creator)
     with ape.reverts():
         dispatcher.upgrade(account, sender=creator)
     with ape.reverts():
@@ -415,7 +414,7 @@ def test_selfdestruct(project, accounts):
 
     # Can't upgrade to an address without contract
     with ape.reverts():
-        dispatcher.upgrade(NULL_ADDRESS, sender=creator)
+        dispatcher.upgrade(ZERO_ADDRESS, sender=creator)
     with ape.reverts():
         dispatcher.upgrade(account, sender=creator)
     with ape.reverts():

@@ -8,9 +8,8 @@ dependency = project.dependencies["openzeppelin"]["4.8.1"]
 
 
 @pytest.fixture(scope="session")
-def proxy_admin(project, accounts):
-    admin = dependency.get("ProxyAdmin")
-    return accounts[0].deploy(admin)
+def proxy_admin(accounts):
+    return accounts[0].deploy(dependency.ProxyAdmin)
 
 
 @pytest.fixture(scope="session")
@@ -19,11 +18,9 @@ def subscription_manager_logic(project, accounts):
 
 
 @pytest.fixture(scope="session")
-def transparent_proxy(project, proxy_admin, subscription_manager_logic, accounts):
-    proxy = dependency.get("TransparentUpgradeableProxy")
-
+def transparent_proxy(proxy_admin, subscription_manager_logic, accounts):
     calldata = subscription_manager_logic.initialize.encode_input(INITIAL_FEE_RATE)
-    return proxy.deploy(
+    return dependency.TransparentUpgradeableProxy.deploy(
         subscription_manager_logic.address, proxy_admin.address, calldata, sender=accounts[0]
     )
 

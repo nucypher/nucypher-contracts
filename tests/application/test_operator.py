@@ -15,18 +15,28 @@ You should have received a copy of the GNU Affero General Public License
 along with nucypher.  If not, see <https://www.gnu.org/licenses/>.
 """
 import ape
-from web3 import Web3
+from ape.utils import ZERO_ADDRESS
 from eth_utils import to_checksum_address
+from web3 import Web3
 
 CONFIRMATION_SLOT = 1
 MIN_AUTHORIZATION = Web3.to_wei(40_000, "ether")
 MIN_OPERATOR_SECONDS = 24 * 60 * 60
-NULL_ADDRESS = "0x" + "0" * 40  # TODO move to some test constants
 
 
 def test_bond_operator(accounts, threshold_staking, pre_application, chain):
-    creator, staking_provider_1, staking_provider_2, staking_provider_3, staking_provider_4, \
-    operator1, operator2, operator3, owner3, beneficiary = accounts[0:]
+    (
+        creator,
+        staking_provider_1,
+        staking_provider_2,
+        staking_provider_3,
+        staking_provider_4,
+        operator1,
+        operator2,
+        operator3,
+        owner3,
+        beneficiary,
+    ) = accounts[0:]
     authorizer = creator
     min_authorization = MIN_AUTHORIZATION
     min_operator_seconds = MIN_OPERATOR_SECONDS
@@ -42,21 +52,19 @@ def test_bond_operator(accounts, threshold_staking, pre_application, chain):
         min_authorization // 3 - 1,
         sender=creator,
     )
-    threshold_staking.setRoles(
-        staking_provider_3, owner3, beneficiary, authorizer, sender=creator
-    )
+    threshold_staking.setRoles(staking_provider_3, owner3, beneficiary, authorizer, sender=creator)
     threshold_staking.setStakes(staking_provider_3, 0, min_authorization, 0, sender=creator)
     threshold_staking.setRoles(staking_provider_4, sender=creator)
     threshold_staking.setStakes(staking_provider_4, 0, 0, min_authorization, sender=creator)
 
-    assert pre_application.getOperatorFromStakingProvider(staking_provider_1) == NULL_ADDRESS
-    assert pre_application.stakingProviderFromOperator(staking_provider_1) == NULL_ADDRESS
-    assert pre_application.getOperatorFromStakingProvider(staking_provider_2) == NULL_ADDRESS
-    assert pre_application.stakingProviderFromOperator(staking_provider_2) == NULL_ADDRESS
-    assert pre_application.getOperatorFromStakingProvider(staking_provider_3) == NULL_ADDRESS
-    assert pre_application.stakingProviderFromOperator(staking_provider_3) == NULL_ADDRESS
-    assert pre_application.getOperatorFromStakingProvider(staking_provider_4) == NULL_ADDRESS
-    assert pre_application.stakingProviderFromOperator(staking_provider_4) == NULL_ADDRESS
+    assert pre_application.getOperatorFromStakingProvider(staking_provider_1) == ZERO_ADDRESS
+    assert pre_application.stakingProviderFromOperator(staking_provider_1) == ZERO_ADDRESS
+    assert pre_application.getOperatorFromStakingProvider(staking_provider_2) == ZERO_ADDRESS
+    assert pre_application.stakingProviderFromOperator(staking_provider_2) == ZERO_ADDRESS
+    assert pre_application.getOperatorFromStakingProvider(staking_provider_3) == ZERO_ADDRESS
+    assert pre_application.stakingProviderFromOperator(staking_provider_3) == ZERO_ADDRESS
+    assert pre_application.getOperatorFromStakingProvider(staking_provider_4) == ZERO_ADDRESS
+    assert pre_application.stakingProviderFromOperator(staking_provider_4) == ZERO_ADDRESS
 
     # Staking provider can't confirm operator address because there is no operator by default
     with ape.reverts():
@@ -128,17 +136,15 @@ def test_bond_operator(accounts, threshold_staking, pre_application, chain):
 
     # She can't unbond her operator too, until enough time has passed
     with ape.reverts():
-        pre_application.bondOperator(staking_provider_3, NULL_ADDRESS, sender=staking_provider_3)
+        pre_application.bondOperator(staking_provider_3, ZERO_ADDRESS, sender=staking_provider_3)
 
     # Let's advance some time and unbond the operator
     chain.pending_timestamp += min_operator_seconds
-    tx = pre_application.bondOperator(
-        staking_provider_3, NULL_ADDRESS, sender=staking_provider_3
-    )
+    tx = pre_application.bondOperator(staking_provider_3, ZERO_ADDRESS, sender=staking_provider_3)
     timestamp = tx.timestamp
-    assert pre_application.getOperatorFromStakingProvider(staking_provider_3) == NULL_ADDRESS
-    assert pre_application.stakingProviderFromOperator(staking_provider_3) == NULL_ADDRESS
-    assert pre_application.stakingProviderFromOperator(operator1) == NULL_ADDRESS
+    assert pre_application.getOperatorFromStakingProvider(staking_provider_3) == ZERO_ADDRESS
+    assert pre_application.stakingProviderFromOperator(staking_provider_3) == ZERO_ADDRESS
+    assert pre_application.stakingProviderFromOperator(operator1) == ZERO_ADDRESS
     assert not pre_application.stakingProviderInfo(staking_provider_3)[CONFIRMATION_SLOT]
     assert not pre_application.isOperatorConfirmed(operator1)
     assert pre_application.getStakingProvidersLength() == 1
@@ -154,7 +160,7 @@ def test_bond_operator(accounts, threshold_staking, pre_application, chain):
     event = events[0]
     assert event["stakingProvider"] == staking_provider_3
     # Now the operator has been unbonded ...
-    assert event["operator"] == NULL_ADDRESS
+    assert event["operator"] == ZERO_ADDRESS
     # ... with a new starting period.
     assert event["startTimestamp"] == timestamp
 
@@ -217,7 +223,7 @@ def test_bond_operator(accounts, threshold_staking, pre_application, chain):
     timestamp = tx.timestamp
     assert pre_application.getOperatorFromStakingProvider(staking_provider_4) == operator3
     assert pre_application.stakingProviderFromOperator(operator3) == staking_provider_4
-    assert pre_application.stakingProviderFromOperator(operator1) == NULL_ADDRESS
+    assert pre_application.stakingProviderFromOperator(operator1) == ZERO_ADDRESS
     assert not pre_application.isOperatorConfirmed(operator3)
     assert not pre_application.isOperatorConfirmed(operator1)
     assert not pre_application.stakingProviderInfo(staking_provider_4)[CONFIRMATION_SLOT]
@@ -247,8 +253,8 @@ def test_bond_operator(accounts, threshold_staking, pre_application, chain):
     )
     # threshold_staking.increaseAuthorization(
     #     operator1, min_authorization, pre_application.address, {'from': operator1})
-    assert pre_application.getOperatorFromStakingProvider(operator1) == NULL_ADDRESS
-    assert pre_application.stakingProviderFromOperator(operator1) == NULL_ADDRESS
+    assert pre_application.getOperatorFromStakingProvider(operator1) == ZERO_ADDRESS
+    assert pre_application.stakingProviderFromOperator(operator1) == ZERO_ADDRESS
 
     chain.pending_timestamp += min_operator_seconds
 
