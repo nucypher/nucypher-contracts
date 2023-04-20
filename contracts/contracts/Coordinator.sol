@@ -4,6 +4,13 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+interface ApplicationInterface {
+    function stakingProviderFromOperator(address _operator) external view returns (address);
+
+    function authorizedStake(address _stakingProvider) external view returns (uint96);
+}
+
+
 /**
 * @title Coordinator
 * @notice Coordination layer for DKG-TDec
@@ -34,7 +41,7 @@ contract Coordinator is Ownable {
         FINALIZED
     }
 
-    uint256 public constant PUBLIC_KEY_SIZE = 48;
+    uint256 public constant PUBLIC_KEY_SIZE = 104;
 
     struct Participant {
         address node;
@@ -50,10 +57,11 @@ contract Coordinator is Ownable {
         uint32 initTimestamp;
         uint32 totalTranscripts;
         uint32 totalAggregations;
-        bytes1[PUBLIC_KEY_SIZE] publicKey;
         bytes32 aggregatedTranscriptHash;
         bool aggregationMismatch;
         bytes aggregatedTranscript;
+        bytes publicKey;
+        bytes32 publicKeyHash;
         Participant[] participant;
     }
 
@@ -61,10 +69,12 @@ contract Coordinator is Ownable {
 
     uint32 public timeout;
     uint32 public maxDkgSize;
+    ApplicationInterface public immutable applicationInterface;
 
-    constructor(uint32 _timeout, uint32 _maxDkgSize) {
+    constructor(uint32 _timeout, uint32 _maxDkgSize, ApplicationInterface _application) {
         timeout = _timeout;
         maxDkgSize = _maxDkgSize;
+        applicationInterface = _application;
     }
 
     function getRitualState(uint256 ritualId) external view returns (RitualState){
@@ -75,9 +85,9 @@ contract Coordinator is Ownable {
     function getRitualState(Ritual storage ritual) internal view returns (RitualState){
         uint32 t0 = ritual.initTimestamp;
         uint32 deadline = t0 + timeout;
-        if(t0 == 0){
+        if (t0 == 0){
             return RitualState.NON_INITIATED;
-        } else if (ritual.publicKey[0] != 0x0){ // TODO: Improve check
+        } else if (ritual.totalAggregations == ritual.dkgSize) {
             return RitualState.FINALIZED;
         } else if (ritual.aggregationMismatch){
             return RitualState.INVALID;
@@ -94,7 +104,7 @@ contract Coordinator is Ownable {
             //   - Still within the deadline
         }
     }
-    
+
 
     function setTimeout(uint32 newTimeout) external onlyOwner {
         emit TimeoutChanged(timeout, newTimeout);
@@ -130,6 +140,11 @@ contract Coordinator is Ownable {
         for(uint256 i=0; i < nodes.length; i++){
             Participant storage newParticipant = ritual.participant.push();
             address currentNode = nodes[i];
+            require(
+                applicationInterface.authorizedStake(currentNode) > 0,
+                "Staking provider not authorized for application"
+            );
+
             newParticipant.node = currentNode;
             require(previousNode < currentNode, "Nodes must be sorted");
             previousNode = currentNode;
@@ -142,6 +157,16 @@ contract Coordinator is Ownable {
         return ritual.id;
     }
 
+    function getNodeIndex(uint32 ritualId, address node) external view returns (uint256) {
+        Ritual storage ritual = rituals[ritualId];
+        for (uint256 i = 0; i < ritual.participant.length; i++) {
+            if (ritual.participant[i].node == node) {
+                return i;
+            }
+        }
+        revert("Node not part of ritual");
+    }
+
     function postTranscript(uint32 ritualId, uint256 nodeIndex, bytes calldata transcript) external {
         Ritual storage ritual = rituals[ritualId];
         require(
@@ -149,9 +174,14 @@ contract Coordinator is Ownable {
             "Not waiting for transcripts"
         );
         Participant storage participant = ritual.participant[nodeIndex];
+        address staking_provider = applicationInterface.stakingProviderFromOperator(msg.sender);
         require(
-            participant.node == msg.sender,
-            "Node not part of ritual"
+            staking_provider == participant.node,
+            "Node is not part of ritual"
+        );
+        require(
+            applicationInterface.authorizedStake(participant.node) > 0,
+            "Staking provider not authorized for application"
         );
         require(
             participant.transcript.length == 0,
@@ -172,20 +202,31 @@ contract Coordinator is Ownable {
         }
     }
 
-    function postAggregation(uint32 ritualId, uint256 nodeIndex, bytes calldata aggregatedTranscript) external {
+    function postAggregation(uint32 ritualId, uint256 nodeIndex, bytes calldata aggregatedTranscript, bytes calldata publicKey) external {
         Ritual storage ritual = rituals[ritualId];
         require(
             getRitualState(ritual) == RitualState.AWAITING_AGGREGATIONS,
             "Not waiting for aggregations"
         );
         Participant storage participant = ritual.participant[nodeIndex];
+
+        // Check operator is authorized for staker here instead
+        address staking_provider = applicationInterface.stakingProviderFromOperator(msg.sender);
         require(
-            participant.node == msg.sender,
-            "Node not part of ritual"
+            staking_provider == participant.node,
+            "Node is not part of ritual"
+        );
+        require(
+            applicationInterface.authorizedStake(participant.node) > 0,
+            "Staking provider not authorized for application"
         );
         require(
             !participant.aggregated,
             "Node already posted aggregation"
+        );
+        require(
+            publicKey.length == PUBLIC_KEY_SIZE,
+            "Invalid public key size"
         );
 
         // nodes commit to their aggregation result
@@ -193,24 +234,24 @@ contract Coordinator is Ownable {
         participant.aggregated = true;
         emit AggregationPosted(ritualId, msg.sender, aggregatedTranscriptDigest);
 
-        if (ritual.aggregatedTranscriptHash == bytes32(0)){
-            ritual.aggregatedTranscriptHash = aggregatedTranscriptDigest;
-        } else if (ritual.aggregatedTranscriptHash != aggregatedTranscriptDigest){
+        bytes32 publicKeyDigest = keccak256(publicKey);
+        if (ritual.aggregatedTranscriptHash == bytes32(0) && ritual.publicKey.length == 0) {
+            ritual.aggregatedTranscriptHash = aggregatedTranscriptDigest;  // TODO: probably redundant - needed for bytes comparison with call data?
+            ritual.aggregatedTranscript = aggregatedTranscript;
+            ritual.publicKey = publicKey;
+            ritual.publicKeyHash = publicKeyDigest; // TODO: may be needed for bytes comparison with call data? Better way?
+        } else if (ritual.aggregatedTranscriptHash != aggregatedTranscriptDigest || ritual.publicKeyHash != publicKeyDigest) {
             ritual.aggregationMismatch = true;
             emit EndRitual(ritualId, ritual.initiator, RitualState.INVALID);
             // TODO: Invalid ritual
             // TODO: Consider freeing ritual storage
             return;
         }
-        
+
         ritual.totalAggregations++;
-        
-        // end round - Last node posting aggregation will finalize 
         if (ritual.totalAggregations == ritual.dkgSize){
             emit EndRitual(ritualId, ritual.initiator, RitualState.FINALIZED);
-            // TODO: Last node extracts public key bytes from aggregated transcript
-            // and store in ritual.publicKey
-            ritual.publicKey[0] = bytes1(0x42);
         }
     }
+
 }
