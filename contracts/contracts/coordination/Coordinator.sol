@@ -3,6 +3,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "../lib/BLS12381.sol";
 
 /**
 * @title Coordinator
@@ -50,7 +51,7 @@ contract Coordinator is Ownable {
         uint32 initTimestamp;
         uint32 totalTranscripts;
         uint32 totalAggregations;
-        bytes1[PUBLIC_KEY_SIZE] publicKey;
+        BLS12381.G1Point publicKey;
         bytes32 aggregatedTranscriptHash;
         bool aggregationMismatch;
         bytes aggregatedTranscript;
@@ -77,7 +78,7 @@ contract Coordinator is Ownable {
         uint32 deadline = t0 + timeout;
         if(t0 == 0){
             return RitualState.NON_INITIATED;
-        } else if (ritual.publicKey[0] != 0x0){ // TODO: Improve check
+        } else if (ritual.totalAggregations == ritual.dkgSize){
             return RitualState.FINALIZED;
         } else if (ritual.aggregationMismatch){
             return RitualState.INVALID;
@@ -169,7 +170,12 @@ contract Coordinator is Ownable {
         }
     }
 
-    function commitToAggregation(uint32 ritualId, uint256 nodeIndex, bytes32 aggregatedTranscriptCommittment) external {
+    function commitToAggregation(
+        uint32 ritualId,
+        uint256 nodeIndex,
+        bytes32 aggregatedTranscriptCommittment,
+        BLS12381.G1Point calldata publicKey
+    ) external {
         Ritual storage ritual = rituals[ritualId];
         require(
             getRitualState(ritual) == RitualState.AWAITING_AGGREGATIONS,
@@ -191,7 +197,11 @@ contract Coordinator is Ownable {
 
         if (ritual.aggregatedTranscriptHash == bytes32(0)){
             ritual.aggregatedTranscriptHash = aggregatedTranscriptCommittment;
-        } else if (ritual.aggregatedTranscriptHash != aggregatedTranscriptCommittment){
+            ritual.publicKey = publicKey;
+        } else if (
+            !BLS12381.eqG1Point(ritual.publicKey, publicKey) || 
+            ritual.aggregatedTranscriptHash != aggregatedTranscriptCommittment
+        ){
             ritual.aggregationMismatch = true;
             emit EndRitual(ritualId, ritual.initiator, RitualState.INVALID);
             // TODO: Invalid ritual
@@ -204,9 +214,6 @@ contract Coordinator is Ownable {
         // end round - Last node posting aggregation will finalize 
         if (ritual.totalAggregations == ritual.dkgSize){
             emit EndRitual(ritualId, ritual.initiator, RitualState.FINALIZED);
-            // TODO: Last node extracts public key bytes from aggregated transcript
-            // and store in ritual.publicKey
-            ritual.publicKey[0] = bytes1(0x42);
         }
     }
 }

@@ -29,7 +29,9 @@ def initiator(accounts):
     return accounts[9]
 
 @pytest.fixture(scope="module")
-def coordinator(Coordinator, accounts):
+def coordinator(Coordinator, BLS12381, accounts):
+    # FIXME: UndeployedLibrary error forces me to deploy the BLS12381 library
+    accounts[0].deploy(BLS12381);
     return accounts[8].deploy(Coordinator, TIMEOUT, MAX_DKG_SIZE);
 
 def test_initial_parameters(coordinator):
@@ -106,10 +108,11 @@ def test_post_aggregation(coordinator, nodes, web3, initiator):
         coordinator.commitToTranscript(0, i, digest, {'from': node})
 
     aggregated = os.urandom(TRANSCRIPT_SIZE)
+    publicKey = (os.urandom(32), os.urandom(16))
     for i, node in enumerate(nodes):
         assert coordinator.getRitualState(0) == RitualState.AWAITING_AGGREGATIONS
         digest = web3.keccak(aggregated)
-        tx = coordinator.commitToAggregation(0, i, digest, {'from': node})
+        tx = coordinator.commitToAggregation(0, i, digest, publicKey, {'from': node})
 
         assert "AggregationCommitted" in tx.events
         event = tx.events["AggregationCommitted"]
