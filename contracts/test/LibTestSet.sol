@@ -7,6 +7,7 @@ import "../contracts/lib/SignatureVerifier.sol";
 import "../contracts/lib/Snapshot.sol";
 import "../contracts/lib/UmbralDeserializer.sol";
 import "../contracts/lib/ReEncryptionValidator.sol";
+import "../contracts/lib/BLS12381.sol";
 
 /**
 * @notice Contract for using SignatureVerifier library
@@ -321,5 +322,44 @@ contract SnapshotMock {
         return Snapshot.lastValue(history);
     }
 
+}
 
+/**
+* @notice Contract for using BLS12381 library
+*/
+contract BLSLibraryMock {
+
+    // using BLS12381 for bytes;
+
+    function G1_POINT_SIZE() public pure returns (uint256) {
+        return BLS12381.G1_POINT_SIZE;
+    }
+
+    function G2_POINT_SIZE() public pure returns (uint256) {
+        return BLS12381.G2_POINT_SIZE;
+    }
+
+    function bytesToG1Point(bytes calldata pointBytes) public pure returns(BLS12381.G1Point memory){
+        return BLS12381.bytesToG1Point(pointBytes);
+    }
+
+    function bytesToG2Point(bytes calldata pointBytes) public pure returns(BLS12381.G2Point memory){
+        return BLS12381.bytesToG2Point(pointBytes);
+    }
+
+    function g1PointToBytes(BLS12381.G1Point calldata point) public pure returns(bytes memory){
+        return BLS12381.g1PointToBytes(point);
+    }
+
+    function g2PointToBytes(BLS12381.G2Point calldata point) public pure returns(bytes memory){
+        return BLS12381.g2PointToBytes(point);
+    }
+
+    function eqG1Point(BLS12381.G1Point calldata p0, BLS12381.G1Point calldata p1) public pure returns(bool){
+        return BLS12381.eqG1Point(p0, p1);
+    }
+
+    function eqG2Point(BLS12381.G2Point calldata p0, BLS12381.G2Point calldata p1) public pure returns(bool){
+        return BLS12381.eqG2Point(p0, p1);
+    }
 }
