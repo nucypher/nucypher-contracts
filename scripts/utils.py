@@ -1,27 +1,20 @@
-from brownie import (
-    NuCypherToken,
-    StakingEscrow,
-    ThresholdStakingForStakingEscrowMock,
-    ThresholdStakingForPREApplicationMock,
-    WorkLockForStakingEscrowMock,
-    accounts,
-    network,
-)
+from ape import accounts, config, networks, project
 
-LOCAL_BLOCKCHAIN_ENVIRONMENTS = ["development"]
+LOCAL_BLOCKCHAIN_ENVIRONMENTS = ["local"]
 PRODUCTION_ENVIRONMENTS = ["mainnet", "polygon-main"]
-CURRENT_NETWORK = network.show_active()
+CURRENT_NETWORK = networks.network.name
+DEPLOYMENTS_CONFIG = config.get_config("deployments")["ethereum"][CURRENT_NETWORK][0]
 
 
 def deploy_mocks(deployer):
     """This function should deploy nucypher_token and t_staking and return the
     corresponding contract addresses"""
-    nucypher_token = NuCypherToken.deploy(1_000_000_000, {"from": deployer})
-    t_staking_for_escrow = ThresholdStakingForStakingEscrowMock.deploy({"from": deployer})
-    t_staking_for_pre = ThresholdStakingForPREApplicationMock.deploy({"from": deployer})
-    work_lock = WorkLockForStakingEscrowMock.deploy(nucypher_token, {"from": deployer})
-    staking_escrow = StakingEscrow.deploy(
-        nucypher_token, work_lock, t_staking_for_escrow, {"from": deployer}
+    nucypher_token = project.NuCypherToken.deploy(1_000_000_000, sender=deployer)
+    t_staking_for_escrow = project.ThresholdStakingForStakingEscrowMock.deploy(sender=deployer)
+    t_staking_for_pre = project.ThresholdStakingForPREApplicationMock.deploy(sender=deployer)
+    work_lock = project.WorkLockForStakingEscrowMock.deploy(nucypher_token, sender=deployer)
+    staking_escrow = project.StakingEscrow.deploy(
+        nucypher_token, work_lock, t_staking_for_escrow, sender=deployer
     )
     return nucypher_token, t_staking_for_escrow, t_staking_for_pre, work_lock, staking_escrow
 
@@ -34,6 +27,6 @@ def get_account(id):
             return accounts.load(id)
 
     elif CURRENT_NETWORK in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
-        return accounts[0]
+        return accounts.test_accounts[0]
     else:
         return None

@@ -42,10 +42,13 @@ jobs:
     - run: pip install -r requirements.txt
 
     - name: Run Tests
-      run: brownie test
+      run: ape test
 
-    - name: Deploy Locally
-      run: brownie run scripts/deploy_subscription_manager.py --network development
+    - name: Deploy SubscriptionManager Locally
+      run: ape run scripts/deploy_subscription_manager.py --network ::test
+      
+    - name: Deploy Token Locally
+      run: ape run scripts/deploy_nucypher_token.py --network ::test
 
     - name: Install Solhint
       run: npm install -g solhint

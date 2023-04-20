@@ -11,3 +11,7 @@ bin/
 .vscode/
 .idea/
 node_modules/
+.build
+contracts/.cache
+env
+.cache/

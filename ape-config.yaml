@@ -1,0 +1,54 @@
+name: nucypher-contracts
+contracts_folder: contracts
+
+plugins:
+  - name: solidity
+
+dependencies:
+  - name: openzeppelin
+    github: OpenZeppelin/openzeppelin-contracts
+    version: 4.8.1
+  - name: openzeppelin-upgradeable
+    github: OpenZeppelin/openzeppelin-contracts-upgradeable
+    version: 4.8.1
+
+solidity:
+  version: 0.8.17
+  import_remapping:
+    - "@openzeppelin/contracts=openzeppelin/v4.8.1"
+    - "@openzeppelin-upgradeable/contracts=openzeppelin-upgradeable/v4.8.1"
+
+deployments:
+  ethereum:
+    local:
+      - nu_token_supply: 1_000_000_000
+        pre_min_authorization: 40000000000000000000000
+        pre_min_operator_seconds: 86400  # one day in seconds
+        verify: False
+    rinkeby:
+      - nu_token: '0x78D591D90a4a768B9D2790deA465D472b6Fe0f18'
+        nu_token_supply: 1_000_000_000
+        t_staking: '0x18eFb520dA5D387982C860a64855C14C0AcADF3F'
+        work_lock: '0x0000000000000000000000000000000000000000'
+        staking_escrow: '0x6A6F917a3FF3d33d26BB4743140F205486cD6B4B'
+        pre_min_authorization: 40000000000000000000000
+        pre_min_operator_seconds: 86400  # one day in seconds
+        verify: True
+    goerli:
+      - t_staking: '0x09B5065d2924De33C85F76474A89A27189402064'
+        pre_min_authorization: 40000000000000000000000
+        pre_min_operator_seconds: 86400  # one day in seconds
+        verify: True
+    goerli-lynx:
+      - t_staking: '0x81eEefb7B1b3313C89976910096F8f1487301Bb1'
+        pre_min_authorization: 40000000000000000000000
+        pre_min_operator_seconds: 86400  # one day in seconds
+        verify: True
+    mainnet:
+      - nu_token: '0x4fE83213D56308330EC302a8BD641f1d0113A4Cc'
+        t_staking: '0x01B67b1194C75264d06F808A921228a95C765dd7'
+        work_lock: '0xe9778E69a961e64d3cdBB34CF6778281d34667c2'
+        staking_escrow: '0xbbD3C0C794F40c4f993B03F65343aCC6fcfCb2e2'
+        pre_min_authorization: 40000000000000000000000
+        pre_min_operator_seconds: 86400  # one day in seconds
+        verify: True

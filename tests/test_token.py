@@ -16,19 +16,19 @@ along with nucypher.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 
-import brownie
-from brownie import Wei
+import ape
+from web3 import Web3
 
-TOTAL_SUPPLY = Wei("1_000_000_000 ether")  # TODO NU(1_000_000_000, 'NU').to_units()
+TOTAL_SUPPLY = Web3.to_wei(1_000_000_000, "ether")  # TODO NU(1_000_000_000, 'NU').to_units()
 
 
-def test_create_token(NuCypherToken, accounts):
+def test_create_token(project, accounts):
     creator = accounts[0]
     account1 = accounts[1]
     account2 = accounts[2]
 
     # Create an ERC20 token
-    token = creator.deploy(NuCypherToken, TOTAL_SUPPLY)
+    token = creator.deploy(project.NuCypherToken, TOTAL_SUPPLY)
 
     # Account balances
     assert TOTAL_SUPPLY == token.balanceOf(creator)
@@ -40,30 +40,30 @@ def test_create_token(NuCypherToken, accounts):
     assert "NU" == token.symbol()
 
     # Cannot send ETH to the contract because there is no payable function
-    with brownie.reverts():
+    with ape.reverts():
         creator.transfer(token, "100")
 
     # Can transfer tokens
-    token.transfer(account1, 10000, {"from": creator})
+    token.transfer(account1, 10000, sender=creator)
     assert 10000 == token.balanceOf(account1)
     assert TOTAL_SUPPLY - 10000 == token.balanceOf(creator)
-    token.transfer(account2, 10, {"from": account1})
+    token.transfer(account2, 10, sender=account1)
     assert 10000 - 10 == token.balanceOf(account1)
     assert 10 == token.balanceOf(account2)
-    token.transfer(token.address, 10, {"from": account1})
+    token.transfer(token.address, 10, sender=account1)
     assert 10 == token.balanceOf(token.address)
 
 
-def test_approve_and_call(NuCypherToken, ReceiveApprovalMethodMock, accounts):
+def test_approve_and_call(project, accounts):
     creator = accounts[0]
     account1 = accounts[1]
     account2 = accounts[2]
 
-    token = creator.deploy(NuCypherToken, TOTAL_SUPPLY)
-    mock = creator.deploy(ReceiveApprovalMethodMock)
+    token = creator.deploy(project.NuCypherToken, TOTAL_SUPPLY)
+    mock = creator.deploy(project.ReceiveApprovalMethodMock)
 
     # Approve some value and check allowance
-    token.approve(account1, 100, {"from": creator})
+    token.approve(account1, 100, sender=creator)
     assert 100 == token.allowance(creator, account1)
     assert 0 == token.allowance(creator, account2)
     assert 0 == token.allowance(account1, creator)
@@ -71,32 +71,32 @@ def test_approve_and_call(NuCypherToken, ReceiveApprovalMethodMock, accounts):
     assert 0 == token.allowance(account2, account1)
 
     # Use transferFrom with allowable value
-    token.transferFrom(creator, account2, 50, {"from": account1})
+    token.transferFrom(creator, account2, 50, sender=account1)
     assert 50 == token.balanceOf(account2)
     assert 50 == token.allowance(creator, account1)
 
     # The result of approveAndCall is increased allowance and method execution in the mock contract
-    token.approveAndCall(mock.address, 25, brownie.convert.to_bytes(111), {"from": account1})
+    token.approveAndCall(mock.address, 25, Web3.to_bytes(111), sender=account1)
     assert 50 == token.balanceOf(account2)
     assert 50 == token.allowance(creator, account1)
     assert 25 == token.allowance(account1, mock.address)
     assert account1 == mock.sender()
     assert 25 == mock.value()
     assert token.address == mock.tokenContract()
-    assert 111 == brownie.convert.to_int(mock.extraData())
+    assert 111 == Web3.to_int(mock.extraData())
 
     # Can't approve non zero value
-    with brownie.reverts():
-        token.approve(account1, 100, {"from": creator})
+    with ape.reverts():
+        token.approve(account1, 100, sender=creator)
     assert 50 == token.allowance(creator, account1)
     # Change to zero value and set new one
-    token.approve(account1, 0, {"from": creator})
+    token.approve(account1, 0, sender=creator)
     assert 0 == token.allowance(creator, account1)
-    token.approve(account1, 100, {"from": creator})
+    token.approve(account1, 100, sender=creator)
     assert 100 == token.allowance(creator, account1)
 
     # Decrease value
-    token.decreaseAllowance(account1, 60, {"from": creator})
+    token.decreaseAllowance(account1, 60, sender=creator)
     assert 40 == token.allowance(creator, account1)
-    token.increaseAllowance(account1, 10, {"from": creator})
+    token.increaseAllowance(account1, 10, sender=creator)
     assert 50 == token.allowance(creator, account1)

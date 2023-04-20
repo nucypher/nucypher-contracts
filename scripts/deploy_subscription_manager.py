@@ -1,24 +1,22 @@
 #!/usr/bin/python3
-from brownie import Contract, SubscriptionManager, Wei, project
-
+from ape import project
 from scripts.utils import get_account
+from web3 import Web3
 
-INITIAL_FEE_RATE = Wei("1 gwei")
+INITIAL_FEE_RATE = Web3.to_wei(1, "gwei")
 
 
 def main(id=None):
     deployer = get_account(id)
-    oz = project.load("OpenZeppelin/openzeppelin-contracts@4.5.0/")
+    dependency = project.dependencies["openzeppelin"]["4.8.1"]
 
-    proxy_admin = deployer.deploy(oz.ProxyAdmin)
+    proxy_admin = deployer.deploy(dependency.ProxyAdmin)
 
-    subscription_manager_logic = deployer.deploy(SubscriptionManager)
+    subscription_manager_logic = deployer.deploy(project.SubscriptionManager)
     calldata = subscription_manager_logic.initialize.encode_input(INITIAL_FEE_RATE)
-    transparent_proxy = oz.TransparentUpgradeableProxy.deploy(
-        subscription_manager_logic.address, proxy_admin.address, calldata, {"from": deployer}
+    transparent_proxy = dependency.TransparentUpgradeableProxy.deploy(
+        subscription_manager_logic.address, proxy_admin.address, calldata, sender=deployer
     )
 
-    subscription_manager = Contract.from_abi(
-        "SubscriptionManager", transparent_proxy.address, subscription_manager_logic.abi, owner=None
-    )
+    subscription_manager = project.SubscriptionManager.at(transparent_proxy.address)
     return subscription_manager

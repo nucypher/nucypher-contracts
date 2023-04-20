@@ -1,41 +1,33 @@
-import brownie
+import ape
 import pytest
-from brownie import Contract, chain
-from brownie.convert.datatypes import Wei
+from ape import project
+from web3 import Web3
 
-INITIAL_FEE_RATE = Wei("1 gwei")
-
-
-@pytest.fixture(scope="session")
-def oz(pm):
-    project = pm("OpenZeppelin/openzeppelin-contracts@4.5.0/")
-    return project
+INITIAL_FEE_RATE = Web3.to_wei(1, "gwei")
+dependency = project.dependencies["openzeppelin"]["4.8.1"]
 
 
 @pytest.fixture(scope="session")
-def proxy_admin(oz, accounts):
-    return accounts[0].deploy(oz.ProxyAdmin)
+def proxy_admin(accounts):
+    return accounts[0].deploy(dependency.ProxyAdmin)
 
 
 @pytest.fixture(scope="session")
-def subscription_manager_logic(SubscriptionManager, accounts):
-    return accounts[0].deploy(SubscriptionManager)
+def subscription_manager_logic(project, accounts):
+    return accounts[0].deploy(project.SubscriptionManager)
 
 
 @pytest.fixture(scope="session")
-def transparent_proxy(oz, proxy_admin, subscription_manager_logic, accounts):
-
+def transparent_proxy(proxy_admin, subscription_manager_logic, accounts):
     calldata = subscription_manager_logic.initialize.encode_input(INITIAL_FEE_RATE)
-    return oz.TransparentUpgradeableProxy.deploy(
-        subscription_manager_logic.address, proxy_admin.address, calldata, {"from": accounts[0]}
+    return dependency.TransparentUpgradeableProxy.deploy(
+        subscription_manager_logic.address, proxy_admin.address, calldata, sender=accounts[0]
     )
 
 
 @pytest.fixture(scope="session")
-def subscription_manager(transparent_proxy, subscription_manager_logic):
-    sm = Contract.from_abi(
-        "SubscriptionManager", transparent_proxy.address, subscription_manager_logic.abi, owner=None
-    )
+def subscription_manager(transparent_proxy, project):
+    sm = project.SubscriptionManager.at(transparent_proxy.address)
     return sm
 
 
@@ -44,12 +36,12 @@ def test_initial_parameters(subscription_manager, subscription_manager_logic):
     assert subscription_manager_logic.feeRate() == 0
 
 
-def test_create_policy(subscription_manager, accounts):
+def test_create_policy(subscription_manager, accounts, chain):
     policy_id = b"feed your head!!"
     alice = accounts[1]
     duration = 1000
     size = 3
-    start = chain.time()
+    start = chain.pending_timestamp
     end = start + duration
 
     expectedFee = subscription_manager.feeRate() * duration * size
@@ -57,7 +49,7 @@ def test_create_policy(subscription_manager, accounts):
     assert fee == expectedFee
 
     tx = subscription_manager.createPolicy(
-        policy_id, alice, size, start, end, {"from": alice, "value": fee}
+        policy_id, alice, size, start, end, sender=alice, value=fee
     )
 
     policy = subscription_manager.getPolicy(policy_id)
@@ -69,8 +61,9 @@ def test_create_policy(subscription_manager, accounts):
     assert policy[3] == size
     assert policy[4] == "0x0000000000000000000000000000000000000000"
 
-    assert "PolicyCreated" in tx.events
-    event = tx.events["PolicyCreated"]
+    events = subscription_manager.PolicyCreated.from_receipt(tx)
+    assert len(events) == 1
+    event = events[0]
     assert bytes(event["policyId"]) == policy_id
     assert event["sponsor"] == alice
     assert event["owner"] == alice
@@ -80,19 +73,19 @@ def test_create_policy(subscription_manager, accounts):
     assert event["cost"] == fee
 
 
-def test_create_policy_with_sponsor(subscription_manager, accounts):
+def test_create_policy_with_sponsor(subscription_manager, accounts, chain):
     policy_id = b"from the sponsor"
     alice = accounts[1]
     sponsor = accounts[2]
     duration = 1000
     size = 3
-    start = chain.time()
+    start = chain.pending_timestamp
     end = start + duration
 
     fee = subscription_manager.getPolicyCost(size, start, end)
 
     tx = subscription_manager.createPolicy(
-        policy_id, alice, size, start, end, {"from": sponsor, "value": fee}
+        policy_id, alice, size, start, end, sender=sponsor, value=fee
     )
 
     policy = subscription_manager.getPolicy(policy_id)
@@ -104,8 +97,9 @@ def test_create_policy_with_sponsor(subscription_manager, accounts):
     assert policy[3] == size
     assert policy[4] == alice
 
-    assert "PolicyCreated" in tx.events
-    event = tx.events["PolicyCreated"]
+    events = subscription_manager.PolicyCreated.from_receipt(tx)
+    assert len(events) == 1
+    event = events[0]
     assert bytes(event["policyId"]) == policy_id
     assert event["sponsor"] == sponsor
     assert event["owner"] == alice
@@ -115,132 +109,156 @@ def test_create_policy_with_sponsor(subscription_manager, accounts):
     assert event["cost"] == fee
 
 
-def test_create_policy_with_same_id(subscription_manager, accounts):
+def test_create_policy_with_same_id(subscription_manager, accounts, chain):
     policy_id = b"feed your head!!"
     alice = accounts[1]
     duration = 1000
     size = 3
-    start = chain.time()
+    start = chain.pending_timestamp
     end = start + duration
     fee = subscription_manager.getPolicyCost(size, start, end)
 
-    with brownie.reverts("Policy is currently active"):
+    subscription_manager.createPolicy(
+        policy_id,
+        alice,
+        size,
+        start,
+        end,
+        sender=alice,
+        value=fee,
+    )
+    with ape.reverts("Policy is currently active"):
         subscription_manager.createPolicy(
             policy_id,
             alice,
             size,
             start,
             end,
-            {"from": alice, "value": fee},
+            sender=alice,
+            value=fee,
         )
 
 
-def test_create_policy_again_after_duration_time(subscription_manager, accounts):
+def test_create_policy_again_after_duration_time(subscription_manager, accounts, chain):
     policy_id = b"feed your head!!"
     alice = accounts[1]
     duration = 1000 + 1
     size = 3
-    start = chain.time()
+    start = chain.pending_timestamp
     end = start + duration
     fee = subscription_manager.getPolicyCost(size, start, end)
-    chain.sleep(duration)
+    chain.pending_timestamp += duration
 
     subscription_manager.createPolicy(
-        policy_id, alice, size, chain.time(), chain.time() + duration, {"from": alice, "value": fee}
+        policy_id,
+        alice,
+        size,
+        chain.pending_timestamp,
+        chain.pending_timestamp + duration,
+        sender=alice,
+        value=fee,
     )
 
     assert subscription_manager.isPolicyActive(policy_id)
 
 
-def test_create_policy_transfers_eth(subscription_manager, accounts):
+def test_create_policy_transfers_eth(subscription_manager, accounts, chain):
     policy_id = b"transfers_eth!!!"
     alice = accounts[1]
     duration = 1000
     size = 3
-    start = chain.time()
+    start = chain.pending_timestamp
     end = start + duration
     fee = subscription_manager.getPolicyCost(size, start, end)
 
-    alice_expected_balance = alice.balance() - fee
-    contract_expected_balance = subscription_manager.balance() + fee
+    alice_expected_balance = alice.balance - fee
+    contract_expected_balance = subscription_manager.balance + fee
 
-    subscription_manager.createPolicy(
-        policy_id, alice, size, start, end, {"from": alice, "value": fee}
+    tx = subscription_manager.createPolicy(
+        policy_id,
+        alice,
+        size,
+        start,
+        end,
+        sender=alice,
+        value=fee,
     )
 
-    assert alice.balance() == alice_expected_balance
-    assert subscription_manager.balance() == contract_expected_balance
+    assert alice.balance == alice_expected_balance - tx.total_fees_paid
+    assert subscription_manager.balance == contract_expected_balance
 
 
-def test_create_policy_with_invalid_timestamp(subscription_manager, accounts):
+def test_create_policy_with_invalid_timestamp(subscription_manager, accounts, chain):
     policy_id = b"invalidTimestamp"
     alice = accounts[1]
     duration = 1000
     size = 3
     fee = 0
-    start = chain.time()
-    invalid_end = chain.time() - duration
-    with brownie.reverts("Invalid timestamps"):
+    start = chain.pending_timestamp
+    invalid_end = chain.pending_timestamp - duration
+    with ape.reverts("Invalid timestamps"):
         subscription_manager.createPolicy(
-            policy_id, alice, size, start, invalid_end, {"from": alice, "value": fee}
+            policy_id, alice, size, start, invalid_end, sender=alice, value=fee
         )
 
 
-def test_create_policy_with_invalid_fee(subscription_manager, accounts):
+def test_create_policy_with_invalid_fee(subscription_manager, accounts, chain):
     policy_id = b"invalidTimestamp"
     alice = accounts[1]
     duration = 1000
     size = 3
     fee = (subscription_manager.feeRate() * duration * size) - 1
-    with brownie.reverts():
+    with ape.reverts():
         subscription_manager.createPolicy(
             policy_id,
             alice,
             size,
-            chain.time(),
-            chain.time() + duration,
-            {"from": alice, "value": fee},
+            chain.pending_timestamp,
+            chain.pending_timestamp + duration,
+            sender=alice,
+            value=fee,
         )
 
 
-def test_create_policy_with_invalid_node_size(subscription_manager, accounts):
+def test_create_policy_with_invalid_node_size(subscription_manager, accounts, chain):
     policy_id = b"invalid nodesize"
     alice = accounts[1]
     duration = 1000
     size = 0
     fee = subscription_manager.feeRate() * duration * size
-    with brownie.reverts():
+    with ape.reverts():
         subscription_manager.createPolicy(
             policy_id,
             alice,
             size,
-            chain.time(),
-            chain.time() + duration,
-            {"from": alice, "value": fee},
+            chain.pending_timestamp,
+            chain.pending_timestamp + duration,
+            sender=alice,
+            value=fee,
         )
 
 
 def test_set_fee_rate(subscription_manager, accounts):
-    new_rate = Wei("2 gwei")
-    subscription_manager.setFeeRate(new_rate, {"from": accounts[0]})
+    new_rate = Web3.to_wei(2, "gwei")
+    subscription_manager.setFeeRate(new_rate, sender=accounts[0])
     assert new_rate == subscription_manager.feeRate()
 
 
 def test_set_fee_rate_with_no_set_rate_role(subscription_manager, accounts):
-    new_rate = Wei("10 gwei")
-    with brownie.reverts():
-        subscription_manager.setFeeRate(new_rate, {"from": accounts[1]})
+    new_rate = Web3.to_wei(10, "gwei")
+    with ape.reverts():
+        subscription_manager.setFeeRate(new_rate, sender=accounts[1])
 
 
 def test_sweep_with_no_withdraw_role(subscription_manager, accounts):
     recipient = accounts[2]
-    with brownie.reverts():
-        subscription_manager.sweep(recipient, {"from": accounts[1]})
+    with ape.reverts():
+        subscription_manager.sweep(recipient, sender=accounts[1])
 
 
 def test_sweep(subscription_manager, accounts):
     recipient = accounts[2]
-    initial_balance = recipient.balance()
-    expected_balance = initial_balance + subscription_manager.balance()
-    subscription_manager.sweep(recipient, {"from": accounts[0]})
-    assert recipient.balance() == expected_balance
+    initial_balance = recipient.balance
+    expected_balance = initial_balance + subscription_manager.balance
+    subscription_manager.sweep(recipient, sender=accounts[0])
+    assert recipient.balance == expected_balance
