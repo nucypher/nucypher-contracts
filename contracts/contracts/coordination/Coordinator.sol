@@ -3,6 +3,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "../lib/BLS12381.sol";
 
 interface ApplicationInterface {
     function stakingProviderFromOperator(address _operator) external view returns (address);
@@ -41,8 +42,6 @@ contract Coordinator is Ownable {
         FINALIZED
     }
 
-    uint256 public constant PUBLIC_KEY_SIZE = 104;
-
     struct Participant {
         address node;
         bool aggregated;
@@ -57,11 +56,10 @@ contract Coordinator is Ownable {
         uint32 initTimestamp;
         uint32 totalTranscripts;
         uint32 totalAggregations;
+        BLS12381.G1Point publicKey;
         bytes32 aggregatedTranscriptHash;
         bool aggregationMismatch;
         bytes aggregatedTranscript;
-        bytes publicKey;
-        bytes32 publicKeyHash;
         Participant[] participant;
     }
 
@@ -202,7 +200,12 @@ contract Coordinator is Ownable {
         }
     }
 
-    function postAggregation(uint32 ritualId, uint256 nodeIndex, bytes calldata aggregatedTranscript, bytes calldata publicKey) external {
+    function postAggregation(
+        uint32 ritualId,
+        uint256 nodeIndex,
+        bytes calldata aggregatedTranscript,
+        BLS12381.G1Point calldata publicKey
+    ) external {
         Ritual storage ritual = rituals[ritualId];
         require(
             getRitualState(ritual) == RitualState.AWAITING_AGGREGATIONS,
@@ -224,23 +227,20 @@ contract Coordinator is Ownable {
             !participant.aggregated,
             "Node already posted aggregation"
         );
-        require(
-            publicKey.length == PUBLIC_KEY_SIZE,
-            "Invalid public key size"
-        );
 
         // nodes commit to their aggregation result
         bytes32 aggregatedTranscriptDigest = keccak256(aggregatedTranscript);
         participant.aggregated = true;
         emit AggregationPosted(ritualId, msg.sender, aggregatedTranscriptDigest);
 
-        bytes32 publicKeyDigest = keccak256(publicKey);
-        if (ritual.aggregatedTranscriptHash == bytes32(0) && ritual.publicKey.length == 0) {
+        if (ritual.aggregatedTranscriptHash == bytes32(0)) {
             ritual.aggregatedTranscriptHash = aggregatedTranscriptDigest;  // TODO: probably redundant - needed for bytes comparison with call data?
             ritual.aggregatedTranscript = aggregatedTranscript;
             ritual.publicKey = publicKey;
-            ritual.publicKeyHash = publicKeyDigest; // TODO: may be needed for bytes comparison with call data? Better way?
-        } else if (ritual.aggregatedTranscriptHash != aggregatedTranscriptDigest || ritual.publicKeyHash != publicKeyDigest) {
+        } else if (
+            !BLS12381.eqG1Point(ritual.publicKey, publicKey) || 
+            ritual.aggregatedTranscriptHash != aggregatedTranscriptDigest
+        ){
             ritual.aggregationMismatch = true;
             emit EndRitual(ritualId, ritual.initiator, RitualState.INVALID);
             // TODO: Invalid ritual
