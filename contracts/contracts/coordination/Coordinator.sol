@@ -148,8 +148,8 @@ contract Coordinator is Ownable {
             previousNode = currentNode;
             // TODO: Check nodes are eligible (staking, etc)
         }
-        // TODO: Compute cohort fingerprint as hash(nodes)
-
+        
+        // TODO: Include cohort fingerprint in StartRitual event?
         emit StartRitual(id, msg.sender, providers);
         emit StartTranscriptRound(id);
         return ritual.id;
@@ -163,6 +163,10 @@ contract Coordinator is Ownable {
             }
         }
         revert("Node not part of ritual");
+    }
+
+    function cohortFingerprint(address[] calldata nodes) public pure returns(bytes32) {
+        return keccak256(abi.encode(nodes));
     }
 
     function postTranscript(uint32 ritualId, uint256 nodeIndex, bytes calldata transcript) external {
