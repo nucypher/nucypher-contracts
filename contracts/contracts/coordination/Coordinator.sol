@@ -143,6 +143,10 @@ contract Coordinator is Ownable {
         return ritual.id;
     }
 
+    function cohortFingerprint(address[] calldata nodes) public pure returns(bytes32) {
+        return keccak256(abi.encode(nodes));
+    }
+
     function commitToTranscript(uint32 ritualId, uint256 nodeIndex, bytes32 transcriptCommitment) external {
         Ritual storage ritual = rituals[ritualId];
         require(
