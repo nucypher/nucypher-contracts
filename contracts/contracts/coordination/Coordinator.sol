@@ -4,13 +4,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../lib/BLS12381.sol";
-
-interface ApplicationInterface {
-    function stakingProviderFromOperator(address _operator) external view returns (address);
-
-    function authorizedStake(address _stakingProvider) external view returns (uint96);
-}
-
+import "../../threshold/IAccessControlApplication.sol";
 
 /**
 * @title Coordinator
@@ -19,7 +13,7 @@ interface ApplicationInterface {
 contract Coordinator is Ownable {
 
     // Ritual
-    event StartRitual(uint32 indexed ritualId, address indexed initiator, address[] nodes);
+    event StartRitual(uint32 indexed ritualId, address indexed initiator, address[] participants);
     event StartTranscriptRound(uint32 indexed ritualId);
     event StartAggregationRound(uint32 indexed ritualId);
     // TODO: Do we want the public key here? If so, we want 2 events or do we reuse this event?
@@ -43,7 +37,7 @@ contract Coordinator is Ownable {
     }
 
     struct Participant {
-        address node;
+        address provider;
         bool aggregated;
         bytes transcript;  // TODO: Consider event processing complexity vs storage cost
     }
@@ -65,14 +59,14 @@ contract Coordinator is Ownable {
 
     Ritual[] public rituals;
 
+    IAccessControlApplication public immutable application;
     uint32 public timeout;
     uint32 public maxDkgSize;
-    ApplicationInterface public immutable applicationInterface;
 
-    constructor(uint32 _timeout, uint32 _maxDkgSize, ApplicationInterface _application) {
+    constructor(IAccessControlApplication app, uint32 _timeout, uint32 _maxDkgSize) {
+        application = app;
         timeout = _timeout;
         maxDkgSize = _maxDkgSize;
-        applicationInterface = _application;
     }
 
     function getRitualState(uint256 ritualId) external view returns (RitualState){
@@ -134,19 +128,19 @@ contract Coordinator is Ownable {
         ritual.dkgSize = uint32(providers.length);
         ritual.initTimestamp = uint32(block.timestamp);
 
-        address previousNode = address(0);
+        address previous = address(0);
         for(uint256 i=0; i < providers.length; i++){
             Participant storage newParticipant = ritual.participant.push();
-            address currentNode = providers[i];
+            address current = providers[i];
+            require(previous < current, "Providers must be sorted");
+            // TODO: Improve check for eligible nodes (staking, etc)
+            // TODO: Change check to isAuthorized(), without amount
             require(
-                applicationInterface.authorizedStake(currentNode) > 0,
-                "Staking provider not authorized for application"
+                application.authorizedStake(current) > 0, 
+                "Not enough authorization"
             );
-
-            newParticipant.node = currentNode;
-            require(previousNode < currentNode, "Nodes must be sorted");
-            previousNode = currentNode;
-            // TODO: Check nodes are eligible (staking, etc)
+            newParticipant.provider = current;
+            previous = current;
         }
         
         // TODO: Include cohort fingerprint in StartRitual event?
@@ -155,34 +149,22 @@ contract Coordinator is Ownable {
         return ritual.id;
     }
 
-    function getNodeIndex(uint32 ritualId, address node) external view returns (uint256) {
-        Ritual storage ritual = rituals[ritualId];
-        for (uint256 i = 0; i < ritual.participant.length; i++) {
-            if (ritual.participant[i].node == node) {
-                return i;
-            }
-        }
-        revert("Node not part of ritual");
-    }
-
     function cohortFingerprint(address[] calldata nodes) public pure returns(bytes32) {
         return keccak256(abi.encode(nodes));
     }
 
-    function postTranscript(uint32 ritualId, uint256 nodeIndex, bytes calldata transcript) external {
+    function postTranscript(uint32 ritualId, bytes calldata transcript) external {
         Ritual storage ritual = rituals[ritualId];
         require(
             getRitualState(ritual) == RitualState.AWAITING_TRANSCRIPTS,
             "Not waiting for transcripts"
         );
-        Participant storage participant = ritual.participant[nodeIndex];
-        address staking_provider = applicationInterface.stakingProviderFromOperator(msg.sender);
+
+        address provider = application.stakingProviderFromOperator(msg.sender);
+        Participant storage participant = getParticipantFromProvider(ritual, provider);
+
         require(
-            staking_provider == participant.node,
-            "Node is not part of ritual"
-        );
-        require(
-            applicationInterface.authorizedStake(participant.node) > 0,
+            application.authorizedStake(provider) > 0,
             "Staking provider not authorized for application"
         );
         require(
@@ -195,7 +177,7 @@ contract Coordinator is Ownable {
         // Nodes commit to their transcript
         bytes32 transcriptDigest = keccak256(transcript);
         participant.transcript = transcript;  // TODO: ???
-        emit TranscriptPosted(ritualId, msg.sender, transcriptDigest);
+        emit TranscriptPosted(ritualId, provider, transcriptDigest);
         ritual.totalTranscripts++;
 
         // end round
@@ -206,7 +188,6 @@ contract Coordinator is Ownable {
 
     function postAggregation(
         uint32 ritualId,
-        uint256 nodeIndex,
         bytes calldata aggregatedTranscript,
         BLS12381.G1Point calldata publicKey
     ) external {
@@ -215,18 +196,14 @@ contract Coordinator is Ownable {
             getRitualState(ritual) == RitualState.AWAITING_AGGREGATIONS,
             "Not waiting for aggregations"
         );
-        Participant storage participant = ritual.participant[nodeIndex];
 
-        // Check operator is authorized for staker here instead
-        address staking_provider = applicationInterface.stakingProviderFromOperator(msg.sender);
+        address provider = application.stakingProviderFromOperator(msg.sender);
+        Participant storage participant = getParticipantFromProvider(ritual, provider);
         require(
-            staking_provider == participant.node,
-            "Node is not part of ritual"
-        );
-        require(
-            applicationInterface.authorizedStake(participant.node) > 0,
+            application.authorizedStake(provider) > 0,
             "Staking provider not authorized for application"
         );
+
         require(
             !participant.aggregated,
             "Node already posted aggregation"
@@ -235,7 +212,7 @@ contract Coordinator is Ownable {
         // nodes commit to their aggregation result
         bytes32 aggregatedTranscriptDigest = keccak256(aggregatedTranscript);
         participant.aggregated = true;
-        emit AggregationPosted(ritualId, msg.sender, aggregatedTranscriptDigest);
+        emit AggregationPosted(ritualId, provider, aggregatedTranscriptDigest);
 
         if (ritual.aggregatedTranscriptHash == bytes32(0)) {
             ritual.aggregatedTranscriptHash = aggregatedTranscriptDigest;  // TODO: probably redundant - needed for bytes comparison with call data?
@@ -258,4 +235,25 @@ contract Coordinator is Ownable {
         }
     }
 
+    function getParticipantFromProvider(
+        Ritual storage ritual,
+        address provider
+    ) internal view returns (Participant storage) {
+        uint length = ritual.participant.length;
+        // TODO: Improve with binary search
+        for(uint i = 0; i < length; i++){
+            Participant storage participant = ritual.participant[i];
+            if(participant.provider == provider){
+                return participant;
+            }
+        }
+        revert("Participant not part of ritual");
+    }
+
+    function getParticipantFromProvider(
+        uint256 ritualID,
+        address provider
+    ) external view returns (Participant memory) {
+        return getParticipantFromProvider(rituals[ritualID], provider);
+    }
 }
