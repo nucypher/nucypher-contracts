@@ -116,21 +116,21 @@ contract Coordinator is Ownable {
         return ritual.participant;
     }
 
-    function initiateRitual(address[] calldata nodes) external returns (uint32) {
+    function initiateRitual(address[] calldata providers) external returns (uint32) {
         // TODO: Validate service fees, expiration dates, threshold
-        require(nodes.length <= maxDkgSize, "Invalid number of nodes");
+        require(providers.length <= maxDkgSize, "Invalid number of nodes");
 
         uint32 id = uint32(rituals.length);
         Ritual storage ritual = rituals.push();
         ritual.id = id;  // TODO: Possibly redundant
         ritual.initiator = msg.sender;  // TODO: Consider sponsor model
-        ritual.dkgSize = uint32(nodes.length);
+        ritual.dkgSize = uint32(providers.length);
         ritual.initTimestamp = uint32(block.timestamp);
 
         address previousNode = address(0);
-        for(uint256 i=0; i < nodes.length; i++){
+        for(uint256 i=0; i < providers.length; i++){
             Participant storage newParticipant = ritual.participant.push();
-            address currentNode = nodes[i];
+            address currentNode = providers[i];
             newParticipant.node = currentNode;
             require(previousNode < currentNode, "Nodes must be sorted");
             previousNode = currentNode;
@@ -138,7 +138,7 @@ contract Coordinator is Ownable {
         }
         // TODO: Compute cohort fingerprint as hash(nodes)
 
-        emit StartRitual(id, msg.sender, nodes);
+        emit StartRitual(id, msg.sender, providers);
         emit StartTranscriptRound(id);
         return ritual.id;
     }
