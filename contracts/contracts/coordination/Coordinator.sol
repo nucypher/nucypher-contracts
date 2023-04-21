@@ -4,13 +4,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../lib/BLS12381.sol";
-
-interface ApplicationInterface {
-    function stakingProviderFromOperator(address _operator) external view returns (address);
-
-    function authorizedStake(address _stakingProvider) external view returns (uint96);
-}
-
+import "../../threshold/IAccessControlApplication.sol";
 
 /**
 * @title Coordinator
@@ -66,14 +60,14 @@ contract Coordinator is Ownable {
 
     Ritual[] public rituals;
 
+    IAccessControlApplication public immutable application;
     uint32 public timeout;
     uint32 public maxDkgSize;
-    ApplicationInterface public immutable applicationInterface;
 
-    constructor(uint32 _timeout, uint32 _maxDkgSize, ApplicationInterface _application) {
+    constructor(IAccessControlApplication app, uint32 _timeout, uint32 _maxDkgSize) {
+        application = app;
         timeout = _timeout;
         maxDkgSize = _maxDkgSize;
-        applicationInterface = _application;
     }
 
     function getRitualState(uint256 ritualId) external view returns (RitualState){
@@ -135,19 +129,18 @@ contract Coordinator is Ownable {
         ritual.dkgSize = uint32(providers.length);
         ritual.initTimestamp = uint32(block.timestamp);
 
-        address previousNode = address(0);
+        address previous = address(0);
         for(uint256 i=0; i < providers.length; i++){
             Participant storage newParticipant = ritual.participant.push();
-            address currentNode = providers[i];
+            address current = providers[i];
+            require(previous < current, "Providers must be sorted");
+            // TODO: Improve check for eligible nodes (staking, etc)
             require(
-                applicationInterface.authorizedStake(currentNode) > 0,
-                "Staking provider not authorized for application"
+                application.authorizedStake(current) > 0, 
+                "Providers must have enough authorization"
             );
-
-            newParticipant.node = currentNode;
-            require(previousNode < currentNode, "Nodes must be sorted");
-            previousNode = currentNode;
-            // TODO: Check nodes are eligible (staking, etc)
+            newParticipant.node = current;
+            previous = current;
         }
         
         // TODO: Include cohort fingerprint in StartRitual event?
