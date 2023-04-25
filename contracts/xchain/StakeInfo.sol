@@ -8,19 +8,21 @@ contract StakeInfo is AccessControl, Ownable {
     address public polygonChild;
 
     bytes32 public constant UPDATOR_ROLE = keccak256("UPDATOR_ROLE");
-    mapping (address => uint8) public operatorInfo;
+    mapping (address => uint32) public operatorInfo;
 
     constructor(address _polygonChild) {
         polygonChild = _polygonChild;
         _grantRole(UPDATOR_ROLE, polygonChild);
+        _grantRole(UPDATOR_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    function updateOperatorInfo(address _operator, uint8 _info) external {
-        require(hasRole(UPDATOR_ROLE, msg.sender), "Caller is not the updator");
+    function updateOperatorInfo(address _operator, uint32 _info) external {
+        // require(hasRole(UPDATOR_ROLE, msg.sender), "Caller is not the updator");
         operatorInfo[_operator] = _info;
     }
 
-    function batchUpdateOperatorInfo(address[] calldata _operators, uint8[] calldata _infos) external {
+    function batchUpdateOperatorInfo(address[] calldata _operators, uint32[] calldata _infos) external {
         require(hasRole(UPDATOR_ROLE, msg.sender), "Caller is not the updator");
         require(_operators.length == _infos.length, "Invalid input length");
         for (uint256 i = 0; i < _operators.length; i++) {
