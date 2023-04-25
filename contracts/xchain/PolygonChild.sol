@@ -3,9 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@fx-portal/contracts/tunnel/FxBaseChildTunnel.sol";
 
-/**
- * @title FxStateChildTunnel
- */
+
 contract PolygonChild is FxBaseChildTunnel {
     uint256 public latestStateId;
     address public latestRootMessageSender;

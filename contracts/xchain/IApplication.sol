@@ -1,1 +1,0 @@
-// Interface for the application contract
