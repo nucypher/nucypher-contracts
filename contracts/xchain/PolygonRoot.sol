@@ -13,13 +13,13 @@ contract PolygonRoot is FxBaseRootTunnel {
         latestData = data;
     }
 
-    function updateOperator(address operator, uint8 info) public {
-        bytes memory message = abi.encodeWithSignature("updateOperatorInfo(address,uint8)", operator, info);
+    function updateOperator(address operator, uint32 info) public {
+        bytes memory message = abi.encodeWithSignature("updateOperatorInfo(address,uint32)", operator, info);
         _sendMessageToChild(message);
     }
 
-    function batchUpdateOperators(address[] calldata operators, uint8[] calldata infos) public {
-        bytes memory message = abi.encodeWithSignature("batchUpdateOperatorInfo(address[],uint8[])", operators, infos);
+    function batchUpdateOperators(address[] calldata operators, uint32[] calldata infos) public {
+        bytes memory message = abi.encodeWithSignature("batchUpdateOperatorInfo(address[],uint32[])", operators, infos);
         _sendMessageToChild(message);
     }
 }
