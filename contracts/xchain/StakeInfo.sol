@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract StakeInfo is AccessControl, Ownable {
     address public polygonChild;
-
     bytes32 public constant UPDATOR_ROLE = keccak256("UPDATOR_ROLE");
     mapping (address => uint32) public operatorInfo;
 
@@ -18,7 +17,7 @@ contract StakeInfo is AccessControl, Ownable {
     }
 
     function updateOperatorInfo(address _operator, uint32 _info) external {
-        // require(hasRole(UPDATOR_ROLE, msg.sender), "Caller is not the updator");
+        require(hasRole(UPDATOR_ROLE, msg.sender), "Caller is not the updator");
         operatorInfo[_operator] = _info;
     }
 

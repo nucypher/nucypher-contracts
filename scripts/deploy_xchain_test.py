@@ -45,22 +45,22 @@ def deploy_polygon_contracts(deployer):
 
 def main(account_id=None):
     deployer = get_account(account_id)
-    _ = deploy_eth_contracts(deployer)
-    _, _ = deploy_polygon_contracts(deployer)
+    root_address = deploy_eth_contracts(deployer)
+    child_address, stake_info_address = deploy_polygon_contracts(deployer)
 
-    # # Set the root contract address in the child contract
-    # # switch_network("polygon-test")
-    # tx = PolygonChild.at(child_address).setFxRootTunnel(root_address)
-    # tx.wait(1)
-    # tx = PolygonChild.at(child_address).setStakeInfoAddress(stake_info_address)
-    # tx.wait(1)
+    # Set the root contract address in the child contract
+    # switch_network("polygon-test")
+    tx = PolygonChild.at(child_address).setFxRootTunnel(root_address)
+    tx.wait(1)
+    tx = PolygonChild.at(child_address).setStakeInfoAddress(stake_info_address)
+    tx.wait(1)
 
-    # # Set the child contract address in the root contract
-    # switch_network("goerli")
-    # tx = PolygonRoot.at(root_address).setFxChildTunnel(child_address, {"from": deployer})
-    # tx.wait(1)
+    # Set the child contract address in the root contract
+    switch_network("goerli")
+    tx = PolygonRoot.at(root_address).setFxChildTunnel(child_address, {"from": deployer})
+    tx.wait(1)
 
-    # tx = PolygonRoot.at(root_address).updateOperator(
-    #     "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600", 42069, {"from": deployer}
-    # )
-    # tx.wait(1)
+    tx = PolygonRoot.at(root_address).updateOperator(
+        "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600", 42069, {"from": deployer}
+    )
+    tx.wait(1)
