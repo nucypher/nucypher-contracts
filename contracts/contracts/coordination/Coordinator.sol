@@ -17,7 +17,7 @@ contract Coordinator is Ownable {
     event StartTranscriptRound(uint32 indexed ritualId);
     event StartAggregationRound(uint32 indexed ritualId);
     // TODO: Do we want the public key here? If so, we want 2 events or do we reuse this event?
-    event EndRitual(uint32 indexed ritualId, address indexed initiator, RitualState status);
+    event EndRitual(uint32 indexed ritualId, address indexed initiator, bool ritualIsSuccessful);
 
     // Node
     event TranscriptPosted(uint32 indexed ritualId, address indexed node, bytes32 transcriptDigest);
@@ -44,14 +44,12 @@ contract Coordinator is Ownable {
 
     // TODO: Optimize layout
     struct Ritual {
-        uint32 id;  // TODO: Redundant? ID is index of rituals array
         address initiator;
         uint32 dkgSize;
         uint32 initTimestamp;
         uint32 totalTranscripts;
         uint32 totalAggregations;
         BLS12381.G1Point publicKey;
-        bytes32 aggregatedTranscriptHash;
         bool aggregationMismatch;
         bytes aggregatedTranscript;
         Participant[] participant;
@@ -119,21 +117,21 @@ contract Coordinator is Ownable {
 
     function initiateRitual(address[] calldata providers) external returns (uint32) {
         // TODO: Validate service fees, expiration dates, threshold
-        require(providers.length <= maxDkgSize, "Invalid number of nodes");
+        uint256 length = providers.length;
+        require(2 <= length && length <= maxDkgSize, "Invalid number of nodes");
 
         uint32 id = uint32(rituals.length);
         Ritual storage ritual = rituals.push();
-        ritual.id = id;  // TODO: Possibly redundant
         ritual.initiator = msg.sender;  // TODO: Consider sponsor model
-        ritual.dkgSize = uint32(providers.length);
+        ritual.dkgSize = uint32(length);
         ritual.initTimestamp = uint32(block.timestamp);
 
         address previous = address(0);
-        for(uint256 i=0; i < providers.length; i++){
+        for(uint256 i=0; i < length; i++){
             Participant storage newParticipant = ritual.participant.push();
             address current = providers[i];
             require(previous < current, "Providers must be sorted");
-            // TODO: Improve check for eligible nodes (staking, etc)
+            // TODO: Improve check for eligible nodes (staking, etc) - nucypher#3109
             // TODO: Change check to isAuthorized(), without amount
             require(
                 application.authorizedStake(current) > 0, 
@@ -146,7 +144,7 @@ contract Coordinator is Ownable {
         // TODO: Include cohort fingerprint in StartRitual event?
         emit StartRitual(id, msg.sender, providers);
         emit StartTranscriptRound(id);
-        return ritual.id;
+        return id;
     }
 
     function cohortFingerprint(address[] calldata nodes) public pure returns(bytes32) {
@@ -165,7 +163,7 @@ contract Coordinator is Ownable {
 
         require(
             application.authorizedStake(provider) > 0,
-            "Staking provider not authorized for application"
+            "Not enough authorization"
         );
         require(
             participant.transcript.length == 0,
@@ -201,7 +199,7 @@ contract Coordinator is Ownable {
         Participant storage participant = getParticipantFromProvider(ritual, provider);
         require(
             application.authorizedStake(provider) > 0,
-            "Staking provider not authorized for application"
+            "Not enough authorization"
         );
 
         require(
@@ -214,24 +212,31 @@ contract Coordinator is Ownable {
         participant.aggregated = true;
         emit AggregationPosted(ritualId, provider, aggregatedTranscriptDigest);
 
-        if (ritual.aggregatedTranscriptHash == bytes32(0)) {
-            ritual.aggregatedTranscriptHash = aggregatedTranscriptDigest;  // TODO: probably redundant - needed for bytes comparison with call data?
+        if (ritual.aggregatedTranscript.length == 0) {
             ritual.aggregatedTranscript = aggregatedTranscript;
             ritual.publicKey = publicKey;
         } else if (
             !BLS12381.eqG1Point(ritual.publicKey, publicKey) || 
-            ritual.aggregatedTranscriptHash != aggregatedTranscriptDigest
+            keccak256(ritual.aggregatedTranscript) != aggregatedTranscriptDigest
         ){
             ritual.aggregationMismatch = true;
-            emit EndRitual(ritualId, ritual.initiator, RitualState.INVALID);
-            // TODO: Invalid ritual
+            emit EndRitual({
+                ritualId: ritualId,
+                initiator: ritual.initiator,
+                ritualIsSuccessful: false
+            });
             // TODO: Consider freeing ritual storage
             return;
         }
 
         ritual.totalAggregations++;
         if (ritual.totalAggregations == ritual.dkgSize){
-            emit EndRitual(ritualId, ritual.initiator, RitualState.FINALIZED);
+            emit EndRitual({
+                ritualId: ritualId,
+                initiator: ritual.initiator,
+                ritualIsSuccessful: true
+            });
+            // TODO: Consider including public key in event
         }
     }
 
