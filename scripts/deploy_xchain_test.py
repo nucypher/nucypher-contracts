@@ -1,66 +1,58 @@
-from brownie import PolygonChild, PolygonRoot, StakeInfo, config, network
-from scripts.utils import get_account
-
-
-def switch_network(network_name):
-    network.disconnect()
-    network.connect(network_name)
+from ape import accounts, config, networks, project
 
 
 def deploy_eth_contracts(deployer):
     # Connect to the Ethereum network
-    switch_network("goerli")
-    network_config = config["networks"]["goerli"]
+    with networks.ethereum.goerli.use_provider("infura"):
+        DEPLOYMENTS_CONFIG = config.get_config("deployments")["ethereum"]["goerli"][0]
 
-    # Deploy the FxStateRootTunnel contract
-    polygon_root = PolygonRoot.deploy(
-        network_config.get("check_point_manager"),
-        network_config.get("fx_root"),
-        {"from": deployer},
-        publish_source=network_config.get("verify"),
-    )
+        # Deploy the FxStateRootTunnel contract
+        polygon_root = project.PolygonRoot.deploy(
+            DEPLOYMENTS_CONFIG.get("checkpoint_manager"),
+            DEPLOYMENTS_CONFIG.get("fx_root"),
+            sender=deployer,
+            publish=DEPLOYMENTS_CONFIG.get("verify"),
+        )
 
-    return polygon_root.address
+        return polygon_root
 
 
 def deploy_polygon_contracts(deployer):
     # Connect to the Polygon network
-    switch_network("polygon-test")
-    network_config = config["networks"]["polygon-test"]
+    with networks.polygon.mumbai.use_provider("infura"):
+        DEPLOYMENTS_CONFIG = config.get_config("deployments")["polygon"]["mumbai"][0]
 
-    # Deploy the FxStateChildTunnel contract
-    polygon_child = PolygonChild.deploy(
-        network_config.get("fx_child"),
-        {"from": deployer},
-        publish_source=network_config.get("verify"),
-    )
-    stake_info = StakeInfo.deploy(
-        polygon_child.address,
-        {"from": deployer},
-        publish_source=network_config.get("verify"),
-    )
+        # Deploy the FxStateChildTunnel contract
+        polygon_child = project.PolygonChild.deploy(
+            DEPLOYMENTS_CONFIG.get("fx_child"),
+            sender=deployer,
+            publish=True,
+        )
+        stake_info = project.StakeInfo.deploy(
+            polygon_child.address,
+            sender=deployer,
+            publish=True,
+        )
 
-    return polygon_child.address, stake_info.address
+        return polygon_child, stake_info
 
 
 def main(account_id=None):
-    deployer = get_account(account_id)
-    root_address = deploy_eth_contracts(deployer)
-    child_address, stake_info_address = deploy_polygon_contracts(deployer)
+    deployer = accounts.load("TGoerli")
+    with accounts.use_sender(deployer):
+        root = deploy_eth_contracts(deployer)
+        child, stake_info = deploy_polygon_contracts(deployer)
 
-    # Set the root contract address in the child contract
-    # switch_network("polygon-test")
-    tx = PolygonChild.at(child_address).setFxRootTunnel(root_address)
-    tx.wait(1)
-    tx = PolygonChild.at(child_address).setStakeInfoAddress(stake_info_address)
-    tx.wait(1)
+        # Set the root contract address in the child contract
+        # switch_network("polygon-test")
+        with networks.polygon.mumbai.use_provider("infura"):
+            child.setFxRootTunnel(root.address)
+            child.setStakeInfoAddress(stake_info.address)
 
-    # Set the child contract address in the root contract
-    switch_network("goerli")
-    tx = PolygonRoot.at(root_address).setFxChildTunnel(child_address, {"from": deployer})
-    tx.wait(1)
-
-    tx = PolygonRoot.at(root_address).updateOperator(
-        "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600", 42069, {"from": deployer}
-    )
-    tx.wait(1)
+        # Set the child contract address in the root contract
+        with networks.ethereum.goerli.use_provider("infura"):
+            root.setFxChildTunnel(child.address)
+            root.updateOperator(
+                "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600",
+                42069,
+            )

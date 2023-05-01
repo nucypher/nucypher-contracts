@@ -15,6 +15,9 @@ dependencies:
   - name: openzeppelin-upgradeable
     github: OpenZeppelin/openzeppelin-contracts-upgradeable
     version: 4.8.1
+  - name: fx-portal
+    github: 0xPolygon/fx-portal
+    version: 1.0.5
 
 solidity:
   version: 0.8.20
@@ -22,8 +25,13 @@ solidity:
   import_remapping:
     - "@openzeppelin/contracts=openzeppelin/v4.8.1"
     - "@openzeppelin-upgradeable/contracts=openzeppelin-upgradeable/v4.8.1"
+    - "@fx-portal/contracts=fx-portal/v1.0.5"
 
 deployments:
+  polygon:
+    mumbai:
+      - fx_child: '0xCf73231F28B7331BBe3124B907840A94851f9f11'
+      - verify: True
   ethereum:
     local:
       - nu_token_supply: 1_000_000_000
@@ -63,6 +71,8 @@ deployments:
         max_dkg_size: 16
         ritual_timeout: 86400  # one day in seconds
         verify: True
+        checkpoint_manager: '0x2890bA17EfE978480615e330ecB65333b880928e'
+        fx_root: '0x3d1d3E34f7fB6D26245E6640E1c50710eFFf15bA'
     mainnet:
       - nu_token: '0x4fE83213D56308330EC302a8BD641f1d0113A4Cc'
         t_staking: '0x01B67b1194C75264d06F808A921228a95C765dd7'
