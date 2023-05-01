@@ -122,4 +122,4 @@ def test_post_aggregation(coordinator, nodes, initiator):
     event = events[0]
     assert event["ritualId"] == 0
     assert event["initiator"] == initiator.address
-    assert event["ritualIsSuccessful"]
+    assert event["successful"]

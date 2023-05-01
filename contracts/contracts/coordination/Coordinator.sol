@@ -14,10 +14,9 @@ contract Coordinator is Ownable {
 
     // Ritual
     event StartRitual(uint32 indexed ritualId, address indexed initiator, address[] participants);
-    event StartTranscriptRound(uint32 indexed ritualId);
     event StartAggregationRound(uint32 indexed ritualId);
     // TODO: Do we want the public key here? If so, we want 2 events or do we reuse this event?
-    event EndRitual(uint32 indexed ritualId, address indexed initiator, bool ritualIsSuccessful);
+    event EndRitual(uint32 indexed ritualId, address indexed initiator, bool successful);
 
     // Node
     event TranscriptPosted(uint32 indexed ritualId, address indexed node, bytes32 transcriptDigest);
@@ -143,7 +142,6 @@ contract Coordinator is Ownable {
         
         // TODO: Include cohort fingerprint in StartRitual event?
         emit StartRitual(id, msg.sender, providers);
-        emit StartTranscriptRound(id);
         return id;
     }
 
@@ -223,7 +221,7 @@ contract Coordinator is Ownable {
             emit EndRitual({
                 ritualId: ritualId,
                 initiator: ritual.initiator,
-                ritualIsSuccessful: false
+                successful: false
             });
             // TODO: Consider freeing ritual storage
             return;
@@ -234,7 +232,7 @@ contract Coordinator is Ownable {
             emit EndRitual({
                 ritualId: ritualId,
                 initiator: ritual.initiator,
-                ritualIsSuccessful: true
+                successful: true
             });
             // TODO: Consider including public key in event
         }
