@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.0;
 
@@ -13,6 +13,7 @@ import "../../threshold/IAccessControlApplication.sol";
 contract StakeInfo is AccessControl, IUpdatableStakes, IAccessControlApplication {
 
     bytes32 public constant UPDATE_ROLE = keccak256("UPDATE_ROLE");
+    address public polygonChild;
 
     struct Stake {
         address operator;
@@ -20,10 +21,11 @@ contract StakeInfo is AccessControl, IUpdatableStakes, IAccessControlApplication
         // TODO: what about undelegations etc?
     }
 
-    constructor(address[] memory updaters){
+    constructor(address _polygonChild, address[] memory updaters){
         for(uint i = 0; i < updaters.length; i++){
             _grantRole(UPDATE_ROLE, updaters[i]);
         }
+        polygonChild = _polygonChild;
     }
 
     mapping(address => Stake) public stakes;

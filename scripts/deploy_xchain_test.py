@@ -26,12 +26,11 @@ def deploy_polygon_contracts(deployer):
         polygon_child = project.PolygonChild.deploy(
             DEPLOYMENTS_CONFIG.get("fx_child"),
             sender=deployer,
-            publish=True,
         )
         stake_info = project.StakeInfo.deploy(
             polygon_child.address,
+            [deployer.address, polygon_child.address],
             sender=deployer,
-            publish=True,
         )
 
         return polygon_child, stake_info
@@ -54,5 +53,5 @@ def main(account_id=None):
             root.setFxChildTunnel(child.address)
             root.updateOperator(
                 "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600",
-                42069,
+                "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600",
             )
