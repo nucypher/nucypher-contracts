@@ -26,11 +26,12 @@ def deploy_polygon_contracts(deployer):
         polygon_child = project.PolygonChild.deploy(
             DEPLOYMENTS_CONFIG.get("fx_child"),
             sender=deployer,
+            publish=DEPLOYMENTS_CONFIG.get("verify"),
         )
         stake_info = project.StakeInfo.deploy(
-            polygon_child.address,
             [deployer.address, polygon_child.address],
             sender=deployer,
+            publish=DEPLOYMENTS_CONFIG.get("verify"),
         )
 
         return polygon_child, stake_info
@@ -43,7 +44,6 @@ def main(account_id=None):
         child, stake_info = deploy_polygon_contracts(deployer)
 
         # Set the root contract address in the child contract
-        # switch_network("polygon-test")
         with networks.polygon.mumbai.use_provider("infura"):
             child.setFxRootTunnel(root.address)
             child.setStakeInfoAddress(stake_info.address)
@@ -51,7 +51,3 @@ def main(account_id=None):
         # Set the child contract address in the root contract
         with networks.ethereum.goerli.use_provider("infura"):
             root.setFxChildTunnel(child.address)
-            root.updateOperator(
-                "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600",
-                "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600",
-            )

@@ -31,7 +31,7 @@ deployments:
   polygon:
     mumbai:
       - fx_child: '0xCf73231F28B7331BBe3124B907840A94851f9f11'
-      - verify: True
+      - verify: False
   ethereum:
     local:
       - nu_token_supply: 1_000_000_000
