@@ -8,6 +8,6 @@ def main(account_id=None):
     deployments_config = DEPLOYMENTS_CONFIG
     testnet_staking = project.TestnetThresholdStaking.deploy(
         sender=deployer,
-        publish_source=deployments_config.get("verify"),
+        publish=deployments_config.get("verify"),
     )
     return testnet_staking

@@ -24,6 +24,6 @@ def main(account_id=None):
         work_lock,
         t_staking,
         sender=deployer,
-        publish_source=deployments_config.get("verify"),
+        publish=deployments_config.get("verify"),
     )
     return staking_escrow
