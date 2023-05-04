@@ -45,16 +45,16 @@ jobs:
       run: ape test
 
     - name: Deploy NuCypher Token
-      run: brownie run scripts/deploy_nucypher_token.py --network development
+      run: ape run scripts/deploy_nucypher_token.py --network ethereum:local
 
     - name: Deploy Simple PRE
-      run: brownie run scripts/deploy_simple_pre.py --network development
+      run: ape run scripts/deploy_simple_pre.py --network ethereum:local
 
     - name: Deploy Staking Escrow
-      run: brownie run scripts/deploy_staking_escrow.py --network development
+      run: ape run scripts/deploy_staking_escrow.py --network ethereum:local
 
     - name: Deploy Subscription Manager
-      run: brownie run scripts/deploy_subscription_manager.py --network development
+      run: ape run scripts/deploy_subscription_manager.py --network ethereum:local
 
   linting:
     runs-on: ubuntu-latest
