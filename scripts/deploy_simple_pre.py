@@ -23,6 +23,6 @@ def main(account_id=None):
         deployments_config.get("pre_min_authorization"),
         deployments_config.get("pre_min_operator_seconds"),
         sender=deployer,
-        publish_source=deployments_config.get("verify"),
+        publish=deployments_config.get("verify"),
     )
     return simple_pre

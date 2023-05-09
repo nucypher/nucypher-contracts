@@ -44,11 +44,23 @@ jobs:
     - name: Run Tests
       run: ape test
 
-    - name: Deploy SubscriptionManager Locally
-      run: ape run scripts/deploy_subscription_manager.py --network ::test
-      
-    - name: Deploy Token Locally
-      run: ape run scripts/deploy_nucypher_token.py --network ::test
+    - name: Deploy NuCypher Token
+      run: ape run scripts/deploy_nucypher_token.py --network ethereum:local
+
+    - name: Deploy Simple PRE
+      run: ape run scripts/deploy_simple_pre.py --network ethereum:local
+
+    - name: Deploy Staking Escrow
+      run: ape run scripts/deploy_staking_escrow.py --network ethereum:local
+
+    - name: Deploy Subscription Manager
+      run: ape run scripts/deploy_subscription_manager.py --network ethereum:local
+
+  linting:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
 
     - name: Install Solhint
       run: npm install -g solhint

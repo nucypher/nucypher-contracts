@@ -11,6 +11,6 @@ def main(account_id=None):
     nucypher_token = project.NuCypherToken.deploy(
         nucypher_token_supply,
         sender=deployer,
-        publish_source=deployments_config.get("verify"),
+        publish=deployments_config.get("verify"),
     )
     return nucypher_token
