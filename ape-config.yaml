@@ -65,4 +65,4 @@ deployments:
 
 test:
   mnemonic: test test test test test test test test test test test junk
-  number_of_accounts: 30
+  number_of_accounts: 15

@@ -5,30 +5,34 @@ from web3 import Web3
 INITIAL_FEE_RATE = Web3.to_wei(1, "gwei")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def oz_dependency(project):
     return project.dependencies["openzeppelin"]["4.8.1"]
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def proxy_admin(accounts, oz_dependency):
-    return accounts[0].deploy(oz_dependency.ProxyAdmin)
+    deployed_contract = accounts[0].deploy(oz_dependency.ProxyAdmin)
+    return deployed_contract
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def subscription_manager_logic(project, accounts):
     return project.SubscriptionManager.deploy(sender=accounts[0])
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def transparent_proxy(proxy_admin, subscription_manager_logic, accounts, oz_dependency):
     calldata = subscription_manager_logic.initialize.encode_input(INITIAL_FEE_RATE)
-    return oz_dependency.TransparentUpgradeableProxy.deploy(
-        subscription_manager_logic.address, proxy_admin.address, calldata, sender=accounts[0]
+    return accounts[0].deploy(
+        oz_dependency.TransparentUpgradeableProxy,
+        subscription_manager_logic.address,
+        proxy_admin.address,
+        calldata,
     )
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def subscription_manager(transparent_proxy, project):
     sm = project.SubscriptionManager.at(transparent_proxy.address)
     return sm
