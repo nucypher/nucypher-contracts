@@ -36,7 +36,7 @@ def test_bond_operator(accounts, threshold_staking, pre_application, chain):
         operator3,
         owner3,
         beneficiary,
-    ) = accounts[0:]
+    ) = accounts[:10]
     authorizer = creator
     min_authorization = MIN_AUTHORIZATION
     min_operator_seconds = MIN_OPERATOR_SECONDS

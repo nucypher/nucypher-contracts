@@ -61,3 +61,8 @@ deployments:
         pre_min_authorization: 40000000000000000000000
         pre_min_operator_seconds: 86400  # one day in seconds
         verify: True
+
+
+test:
+  mnemonic: test test test test test test test test test test test junk
+  number_of_accounts: 30
