@@ -67,7 +67,7 @@ def test_capsule(deserializer, fragments):
 
     # Check real capsule
     capsule, _cfrag = fragments
-    capsule_bytes = bytes(capsule)
+    capsule_bytes = capsule.to_bytes_simple()
     result = deserializer.toCapsule(capsule_bytes)
     assert b"".join(result) == capsule_bytes
 

@@ -1,0 +1,21 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+black = "*"
+coincurve = "*"
+cryptography = "*"
+eth-ape = "*"
+ape-solidity = "*"
+flake8 = "*"
+isort = "*"
+nucypher-core = "*"
+pre-commit = "*"
+tox = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3"

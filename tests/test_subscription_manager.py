@@ -12,8 +12,7 @@ def oz_dependency(project):
 
 @pytest.fixture(scope="module")
 def proxy_admin(accounts, oz_dependency):
-    deployed_contract = accounts[0].deploy(oz_dependency.ProxyAdmin)
-    return deployed_contract
+    return accounts[0].deploy(oz_dependency.ProxyAdmin)
 
 
 @pytest.fixture(scope="module")
@@ -38,13 +37,11 @@ def subscription_manager(transparent_proxy, project):
     return sm
 
 
-@pytest.mark.skip()
 def test_initial_parameters(subscription_manager, subscription_manager_logic):
     assert subscription_manager.feeRate() == INITIAL_FEE_RATE
     assert subscription_manager_logic.feeRate() == 0
 
 
-@pytest.mark.skip()
 def test_create_policy(subscription_manager, accounts, chain):
     policy_id = b"feed your head!!"
     alice = accounts[1]
@@ -82,7 +79,6 @@ def test_create_policy(subscription_manager, accounts, chain):
     assert event["cost"] == fee
 
 
-@pytest.mark.skip()
 def test_create_policy_with_sponsor(subscription_manager, accounts, chain):
     policy_id = b"from the sponsor"
     alice = accounts[1]
@@ -119,7 +115,6 @@ def test_create_policy_with_sponsor(subscription_manager, accounts, chain):
     assert event["cost"] == fee
 
 
-@pytest.mark.skip()
 def test_create_policy_with_same_id(subscription_manager, accounts, chain):
     policy_id = b"feed your head!!"
     alice = accounts[1]
@@ -150,7 +145,6 @@ def test_create_policy_with_same_id(subscription_manager, accounts, chain):
         )
 
 
-@pytest.mark.skip()
 def test_create_policy_again_after_duration_time(subscription_manager, accounts, chain):
     policy_id = b"feed your head!!"
     alice = accounts[1]
@@ -174,7 +168,6 @@ def test_create_policy_again_after_duration_time(subscription_manager, accounts,
     assert subscription_manager.isPolicyActive(policy_id)
 
 
-@pytest.mark.skip()
 def test_create_policy_transfers_eth(subscription_manager, accounts, chain):
     policy_id = b"transfers_eth!!!"
     alice = accounts[1]
@@ -201,7 +194,6 @@ def test_create_policy_transfers_eth(subscription_manager, accounts, chain):
     assert subscription_manager.balance == contract_expected_balance
 
 
-@pytest.mark.skip()
 def test_create_policy_with_invalid_timestamp(subscription_manager, accounts, chain):
     policy_id = b"invalidTimestamp"
     alice = accounts[1]
@@ -216,7 +208,6 @@ def test_create_policy_with_invalid_timestamp(subscription_manager, accounts, ch
         )
 
 
-@pytest.mark.skip()
 def test_create_policy_with_invalid_fee(subscription_manager, accounts, chain):
     policy_id = b"invalidTimestamp"
     alice = accounts[1]
@@ -235,7 +226,6 @@ def test_create_policy_with_invalid_fee(subscription_manager, accounts, chain):
         )
 
 
-@pytest.mark.skip()
 def test_create_policy_with_invalid_node_size(subscription_manager, accounts, chain):
     policy_id = b"invalid nodesize"
     alice = accounts[1]
@@ -254,28 +244,24 @@ def test_create_policy_with_invalid_node_size(subscription_manager, accounts, ch
         )
 
 
-@pytest.mark.skip()
 def test_set_fee_rate(subscription_manager, accounts):
     new_rate = Web3.to_wei(2, "gwei")
     subscription_manager.setFeeRate(new_rate, sender=accounts[0])
     assert new_rate == subscription_manager.feeRate()
 
 
-@pytest.mark.skip()
 def test_set_fee_rate_with_no_set_rate_role(subscription_manager, accounts):
     new_rate = Web3.to_wei(10, "gwei")
     with ape.reverts():
         subscription_manager.setFeeRate(new_rate, sender=accounts[1])
 
 
-@pytest.mark.skip()
 def test_sweep_with_no_withdraw_role(subscription_manager, accounts):
     recipient = accounts[2]
     with ape.reverts():
         subscription_manager.sweep(recipient, sender=accounts[1])
 
 
-@pytest.mark.skip()
 def test_sweep(subscription_manager, accounts):
     recipient = accounts[2]
     initial_balance = recipient.balance
