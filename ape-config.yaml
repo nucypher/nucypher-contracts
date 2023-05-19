@@ -13,8 +13,8 @@ dependencies:
     version: 4.8.1
 
 solidity:
-  version: 0.8.17
-  evm_version: london
+  version: 0.8.20
+  evm_version: paris
   import_remapping:
     - "@openzeppelin/contracts=openzeppelin/v4.8.1"
     - "@openzeppelin-upgradeable/contracts=openzeppelin-upgradeable/v4.8.1"
