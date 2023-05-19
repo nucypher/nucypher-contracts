@@ -8,7 +8,8 @@ black = "*"
 coincurve = "*"
 cryptography = "*"
 eth-ape = "*"
-ape-solidity = "*"
+# TODO eventually change to official release, issue #82, once fix is available
+ape-solidity = {git="https://github.com/derekpierre/ape-solidity.git", ref="main"}
 flake8 = "*"
 isort = "*"
 nucypher-core = "*"

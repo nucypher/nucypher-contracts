@@ -1,7 +1,7 @@
 -i https://pypi.org/simple
 aiohttp==3.8.4 ; python_version >= '3.6'
 aiosignal==1.3.1 ; python_version >= '3.7'
-ape-solidity==0.6.4
+ape-solidity @ git+https://github.com/derekpierre/ape-solidity.git@a98042d371bc8e181b52aaa821a738e94a637ab9
 appnope==0.1.3 ; sys_platform == 'darwin'
 asn1crypto==1.5.1
 asttokens==2.2.1
