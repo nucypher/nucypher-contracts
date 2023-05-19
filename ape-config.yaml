@@ -13,7 +13,8 @@ dependencies:
     version: 4.8.1
 
 solidity:
-  version: 0.8.17
+  version: 0.8.20
+  evm_version: paris
   import_remapping:
     - "@openzeppelin/contracts=openzeppelin/v4.8.1"
     - "@openzeppelin-upgradeable/contracts=openzeppelin-upgradeable/v4.8.1"
@@ -61,3 +62,8 @@ deployments:
         pre_min_authorization: 40000000000000000000000
         pre_min_operator_seconds: 86400  # one day in seconds
         verify: True
+
+
+test:
+  mnemonic: test test test test test test test test test test test junk
+  number_of_accounts: 15

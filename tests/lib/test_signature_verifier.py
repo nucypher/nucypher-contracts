@@ -32,7 +32,7 @@ from nucypher_core.umbral import PublicKey, SecretKey, Signature, Signer
 
 
 def canonical_address_from_umbral_key(public_key: PublicKey) -> bytes:
-    pubkey_compressed_bytes = bytes(public_key)
+    pubkey_compressed_bytes = public_key.to_compressed_bytes()
     eth_pubkey = EthKeyAPI.PublicKey.from_compressed_bytes(pubkey_compressed_bytes)
     canonical_address = eth_pubkey.to_canonical_address()
     return canonical_address
@@ -96,7 +96,7 @@ def get_signature_recovery_value(
     :return: The compressed byte-serialized representation of the recovered public key
     """
 
-    signature = bytes(signature)
+    signature = signature.to_be_bytes()
     ecdsa_signature_size = 64  # two curve scalars
     if len(signature) != ecdsa_signature_size:
         raise ValueError(f"The signature size should be {ecdsa_signature_size} B.")
@@ -106,7 +106,7 @@ def get_signature_recovery_value(
         recovered_pubkey = coincurve.PublicKey.from_signature_and_message(
             signature=signature + v_byte, message=message
         )
-        if bytes(public_key) == recovered_pubkey.format(compressed=True):
+        if public_key.to_compressed_bytes() == recovered_pubkey.format(compressed=True):
             return v_byte
     else:
         raise ValueError(
@@ -126,7 +126,7 @@ def pubkey_as_uncompressed_bytes(umbral_pubkey):
     """
     Returns the public key as uncompressed bytes (without the prefix, so 64 bytes long)
     """
-    return EthKeyAPI.PublicKey.from_compressed_bytes(bytes(umbral_pubkey)).to_bytes()
+    return EthKeyAPI.PublicKey.from_compressed_bytes(umbral_pubkey.to_compressed_bytes()).to_bytes()
 
 
 @pytest.fixture()
@@ -157,7 +157,7 @@ def test_recover(signature_verifier):
     # then we should try to recover public key with different v
     # Only the correct v will match the correct public key
     v = get_signature_recovery_value(message, signature, umbral_pubkey)
-    recoverable_signature = bytes(signature) + v
+    recoverable_signature = signature.to_be_bytes() + v
 
     # Check recovery method in the contract
     assert signer_address == to_normalized_address(
@@ -171,12 +171,12 @@ def test_recover(signature_verifier):
     )
 
     # Only number 0,1,27,28 are supported for v
-    recoverable_signature = bytes(signature) + bytes([2])
+    recoverable_signature = signature.to_be_bytes() + bytes([2])
     with ape.reverts():
         signature_verifier.recover(message_hash, recoverable_signature)
 
     # Signature must include r, s and v
-    recoverable_signature = bytes(signature)
+    recoverable_signature = signature.to_be_bytes()
     with ape.reverts():
         signature_verifier.recover(message_hash, recoverable_signature)
 
@@ -219,7 +219,7 @@ def test_verify(signature_verifier):
 
     # Get recovery id (v) before using contract
     v = get_signature_recovery_value(message, signature, umbral_pubkey)
-    recoverable_signature = bytes(signature) + v
+    recoverable_signature = signature.to_be_bytes() + v
 
     # Verify signature
     assert signature_verifier.verify(
@@ -249,7 +249,7 @@ def test_verify_eip191(signature_verifier):
     # Produce EIP191 signature (version E)
     signable_message = encode_defunct(primitive=message)
     signature = Account.sign_message(
-        signable_message=signable_message, private_key=umbral_privkey.to_secret_bytes()
+        signable_message=signable_message, private_key=umbral_privkey.to_be_bytes()
     )
     signature = bytes(signature.signature)
 
@@ -283,7 +283,7 @@ def test_verify_eip191(signature_verifier):
         version=HexBytes(version_0), header=HexBytes(validator), body=HexBytes(message)
     )
     signature = Account.sign_message(
-        signable_message=signable_message, private_key=umbral_privkey.to_secret_bytes()
+        signable_message=signable_message, private_key=umbral_privkey.to_be_bytes()
     )
     signature = bytes(signature.signature)
 

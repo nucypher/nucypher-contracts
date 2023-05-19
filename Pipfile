@@ -1,0 +1,22 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+black = "*"
+coincurve = "*"
+cryptography = "*"
+eth-ape = "*"
+# TODO eventually change to official release, issue #82, once fix is available
+ape-solidity = {git="https://github.com/derekpierre/ape-solidity.git", ref="main"}
+flake8 = "*"
+isort = "*"
+nucypher-core = "*"
+pre-commit = "*"
+tox = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3"
