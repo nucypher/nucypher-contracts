@@ -9,7 +9,7 @@ coincurve = "*"
 cryptography = "*"
 eth-ape = "*"
 # TODO eventually change to official release, issue #82, once fix is available
-ape-solidity = {git="https://github.com/derekpierre/ape-solidity.git", ref="main"}
+ape-solidity = ">=0.6.5"
 flake8 = "*"
 isort = "*"
 nucypher-core = "*"
