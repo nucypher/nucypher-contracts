@@ -91,7 +91,7 @@ def test_post_transcript(coordinator, nodes, initiator):
     participants = coordinator.getParticipants(0)
     for participant in participants:
         assert not participant.aggregated
-        assert not participant.requestEncryptingKey
+        assert not participant.decryptionRequestStaticKey
 
     assert coordinator.getRitualState(0) == RitualState.AWAITING_AGGREGATIONS
 
@@ -126,12 +126,12 @@ def test_post_aggregation(coordinator, nodes, initiator):
         coordinator.postTranscript(0, transcript, sender=node)
 
     aggregated = os.urandom(10)
-    requestEncryptingKeys = [os.urandom(32) for node in nodes]
+    decryptionRequestStaticKeys = [os.urandom(58) for node in nodes]
     publicKey = (os.urandom(32), os.urandom(16))
     for i, node in enumerate(nodes):
         assert coordinator.getRitualState(0) == RitualState.AWAITING_AGGREGATIONS
         tx = coordinator.postAggregation(
-            0, aggregated, publicKey, requestEncryptingKeys[i], sender=node
+            0, aggregated, publicKey, decryptionRequestStaticKeys[i], sender=node
         )
 
         events = list(coordinator.AggregationPosted.from_receipt(tx))
@@ -144,7 +144,7 @@ def test_post_aggregation(coordinator, nodes, initiator):
     participants = coordinator.getParticipants(0)
     for i, participant in enumerate(participants):
         assert participant.aggregated
-        assert participant.requestEncryptingKey == requestEncryptingKeys[i]
+        assert participant.decryptionRequestStaticKey == decryptionRequestStaticKeys[i]
 
     assert coordinator.getRitualState(0) == RitualState.FINALIZED
     events = list(coordinator.EndRitual.from_receipt(tx))

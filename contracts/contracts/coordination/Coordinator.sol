@@ -39,7 +39,7 @@ contract Coordinator is Ownable {
         address provider;
         bool aggregated;
         bytes transcript;  // TODO: Consider event processing complexity vs storage cost
-        bytes requestEncryptingKey;
+        bytes decryptionRequestStaticKey;
     }
 
     // TODO: Optimize layout
@@ -187,7 +187,7 @@ contract Coordinator is Ownable {
         uint32 ritualId,
         bytes calldata aggregatedTranscript,
         BLS12381.G1Point calldata publicKey,
-        bytes calldata requestEncryptingKey
+        bytes calldata decryptionRequestStaticKey
     ) external {
         Ritual storage ritual = rituals[ritualId];
         require(
@@ -208,14 +208,14 @@ contract Coordinator is Ownable {
         );
 
         require(
-            participant.requestEncryptingKey.length == 0,
+            participant.decryptionRequestStaticKey.length == 0,
             "Node already provided request encrypting key"
         );
 
         // nodes commit to their aggregation result
         bytes32 aggregatedTranscriptDigest = keccak256(aggregatedTranscript);
         participant.aggregated = true;
-        participant.requestEncryptingKey = requestEncryptingKey;  // TODO validation?
+        participant.decryptionRequestStaticKey = decryptionRequestStaticKey;  // TODO validation?
         emit AggregationPosted(ritualId, provider, aggregatedTranscriptDigest);
 
         if (ritual.aggregatedTranscript.length == 0) {
