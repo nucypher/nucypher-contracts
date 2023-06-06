@@ -3,6 +3,10 @@ contracts_folder: contracts
 
 plugins:
   - name: solidity
+  - name: polygon
+  - name: ape-etherscan
+    config:
+      api_key: ${ETHERSCAN_API_KEY}
 
 dependencies:
   - name: openzeppelin
@@ -53,6 +57,11 @@ deployments:
         ritual_timeout: 3600
         max_dkg_size: 8
         pre_application: '0x685b8Fd02aB87d8FfFff7346cB101A5cE4185bf3'
+        verify: True
+    mumbai:
+      - stake_info_contract: '0xC1379866Fb0c100DCBFAb7b470009C4827D47DD8'
+        max_dkg_size: 16
+        ritual_timeout: 86400  # one day in seconds
         verify: True
     mainnet:
       - nu_token: '0x4fE83213D56308330EC302a8BD641f1d0113A4Cc'
