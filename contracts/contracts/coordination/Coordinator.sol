@@ -49,6 +49,7 @@ contract Coordinator is AccessControl {
         uint32 endTimestamp;
         uint16 totalTranscripts;
         uint16 totalAggregations;
+        address authority;
         uint16 dkgSize;
         bool aggregationMismatch;
         BLS12381.G1Point publicKey;
@@ -134,6 +135,7 @@ contract Coordinator is AccessControl {
 
     function initiateRitual(
         address[] calldata providers,
+        address authority,
         uint32 duration
     ) external returns (uint32) {
         require(
@@ -147,7 +149,8 @@ contract Coordinator is AccessControl {
 
         uint32 id = uint32(rituals.length);
         Ritual storage ritual = rituals.push();
-        ritual.initiator = msg.sender;  // TODO: Consider sponsor model
+        ritual.initiator = msg.sender;
+        ritual.authority = authority;
         ritual.dkgSize = uint32(length);
         ritual.initTimestamp = uint32(block.timestamp);
         ritual.endTimestamp = ritual.initTimestamp + duration;
@@ -168,7 +171,7 @@ contract Coordinator is AccessControl {
         }
         
         // TODO: Include cohort fingerprint in StartRitual event?
-        emit StartRitual(id, msg.sender, providers);
+        emit StartRitual(id, ritual.authority, providers);
         return id;
     }
 
@@ -254,7 +257,7 @@ contract Coordinator is AccessControl {
             ritual.aggregationMismatch = true;
             emit EndRitual({
                 ritualId: ritualId,
-                initiator: ritual.initiator,
+                initiator: ritual.authority,
                 successful: false
             });
             // TODO: Consider freeing ritual storage
@@ -265,7 +268,7 @@ contract Coordinator is AccessControl {
         if (ritual.totalAggregations == ritual.dkgSize){
             emit EndRitual({
                 ritualId: ritualId,
-                initiator: ritual.initiator,
+                initiator: ritual.authority,
                 successful: true
             });
             // TODO: Consider including public key in event
