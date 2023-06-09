@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "../lib/BLS12381.sol";
 import "../../threshold/IAccessControlApplication.sol";
 
@@ -10,7 +10,7 @@ import "../../threshold/IAccessControlApplication.sol";
 * @title Coordinator
 * @notice Coordination layer for DKG-TDec
 */
-contract Coordinator is Ownable {
+contract Coordinator is AccessControl {
 
     // Ritual
     event StartRitual(uint32 indexed ritualId, address indexed initiator, address[] participants);
@@ -56,16 +56,32 @@ contract Coordinator is Ownable {
         Participant[] participant;
     }
 
-    Ritual[] public rituals;
+    bytes32 public constant PARAMETER_ADMIN_ROLE = keccak256("PARAMETER_ADMIN_ROLE");
+    bytes32 public constant INITIATOR_ROLE = keccak256("INITIATOR_ROLE");
 
     IAccessControlApplication public immutable application;
+
+    Ritual[] public rituals;
     uint32 public timeout;
     uint16 public maxDkgSize;
+    bool public isInitiationRegulated;
 
-    constructor(IAccessControlApplication app, uint32 _timeout, uint32 _maxDkgSize) {
+    constructor(
+        IAccessControlApplication app,
+        uint32 _timeout,
+        uint16 _maxDkgSize,
+        address parameterAdmin,
+        address[] initiators // change to a setter function instead?
+    ) {
         application = app;
         timeout = _timeout;
         maxDkgSize = _maxDkgSize;
+
+        _grantRole(PARAMETER_ADMIN_ROLE, parameterAdmin);
+        for(uint i = 0; i < initiators.length; i++){
+            _grantRole(INITIATOR_ROLE, initiators[i]);
+        }
+        isInitiationRegulated = initiators.length == 0;
     }
 
     function getRitualState(uint256 ritualId) external view returns (RitualState){
@@ -97,12 +113,12 @@ contract Coordinator is Ownable {
     }
 
 
-    function setTimeout(uint32 newTimeout) external onlyOwner {
+    function setTimeout(uint32 newTimeout) external onlyRole(PARAMETER_ADMIN_ROLE) {
         emit TimeoutChanged(timeout, newTimeout);
         timeout = newTimeout;
     }
 
-    function setMaxDkgSize(uint16 newSize) external onlyOwner {
+    function setMaxDkgSize(uint16 newSize) external onlyRole(PARAMETER_ADMIN_ROLE) {
         emit MaxDkgSizeChanged(maxDkgSize, newSize);
         maxDkgSize = newSize;
     }
@@ -120,6 +136,10 @@ contract Coordinator is Ownable {
         address[] calldata providers,
         uint32 duration
     ) external returns (uint32) {
+        require(
+            !isInitiatiorRegulated || hasRole(INITIATOR_ROLE, msg.sender),
+            "Sender can't initiate ritual"
+        );
         // TODO: Validate service fees, expiration dates, threshold
         uint256 length = providers.length;
         require(2 <= length && length <= maxDkgSize, "Invalid number of nodes");
