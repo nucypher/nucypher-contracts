@@ -24,7 +24,7 @@ contract Coordinator is Ownable {
 
     // Admin
     event TimeoutChanged(uint32 oldTimeout, uint32 newTimeout);
-    event MaxDkgSizeChanged(uint32 oldSize, uint32 newSize);
+    event MaxDkgSizeChanged(uint16 oldSize, uint16 newSize);
 
     enum RitualState {
         NON_INITIATED,
@@ -45,12 +45,13 @@ contract Coordinator is Ownable {
     // TODO: Optimize layout
     struct Ritual {
         address initiator;
-        uint32 dkgSize;
         uint32 initTimestamp;
-        uint32 totalTranscripts;
-        uint32 totalAggregations;
-        BLS12381.G1Point publicKey;
+        uint32 endTimestamp;
+        uint16 totalTranscripts;
+        uint16 totalAggregations;
+        uint16 dkgSize;
         bool aggregationMismatch;
+        BLS12381.G1Point publicKey;
         bytes aggregatedTranscript;
         Participant[] participant;
     }
@@ -59,7 +60,7 @@ contract Coordinator is Ownable {
 
     IAccessControlApplication public immutable application;
     uint32 public timeout;
-    uint32 public maxDkgSize;
+    uint16 public maxDkgSize;
 
     constructor(IAccessControlApplication app, uint32 _timeout, uint32 _maxDkgSize) {
         application = app;
@@ -101,7 +102,7 @@ contract Coordinator is Ownable {
         timeout = newTimeout;
     }
 
-    function setMaxDkgSize(uint32 newSize) external onlyOwner {
+    function setMaxDkgSize(uint16 newSize) external onlyOwner {
         emit MaxDkgSizeChanged(maxDkgSize, newSize);
         maxDkgSize = newSize;
     }
@@ -115,16 +116,21 @@ contract Coordinator is Ownable {
         return ritual.participant;
     }
 
-    function initiateRitual(address[] calldata providers) external returns (uint32) {
+    function initiateRitual(
+        address[] calldata providers,
+        uint32 duration
+    ) external returns (uint32) {
         // TODO: Validate service fees, expiration dates, threshold
         uint256 length = providers.length;
         require(2 <= length && length <= maxDkgSize, "Invalid number of nodes");
+        require(duration > 0, "Invalid ritual duration");  // TODO: We probably want to restrict it more
 
         uint32 id = uint32(rituals.length);
         Ritual storage ritual = rituals.push();
         ritual.initiator = msg.sender;  // TODO: Consider sponsor model
         ritual.dkgSize = uint32(length);
         ritual.initTimestamp = uint32(block.timestamp);
+        ritual.endTimestamp = ritual.initTimestamp + duration;
 
         address previous = address(0);
         for(uint256 i=0; i < length; i++){
