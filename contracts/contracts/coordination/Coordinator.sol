@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/AccessControlDefaultAdminRules.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IFeeModel.sol";
+import "./IReimbursementPool.sol";
 import "../lib/BLS12381.sol";
 import "../../threshold/IAccessControlApplication.sol";
 
@@ -68,6 +69,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
     uint16 public maxDkgSize;
     bool public isInitiationPublic;
     IFeeModel feeModel;  // TODO: Consider making feeModel specific to each ritual
+    IReimbursementPool reimbursementPool;
 
     constructor(
         IAccessControlApplication app,
@@ -131,6 +133,16 @@ contract Coordinator is AccessControlDefaultAdminRules {
         maxDkgSize = newSize;
     }
 
+    function setReimbursementPool(IReimbursementPool pool) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (address(pool) == address(0)){
+            delete reimbursementPool;
+        } else {
+            require(pool.isAuthorized(address(this)), "Coordinator not authorized");
+            reimbursementPool = pool;
+            // TODO: Events
+        }
+    }
+
     function numberOfRituals() external view returns(uint256) {
         return rituals.length;
     }
@@ -189,6 +201,8 @@ contract Coordinator is AccessControlDefaultAdminRules {
     }
 
     function postTranscript(uint32 ritualId, bytes calldata transcript) external {
+        uint256 initialGasLeft = gasleft();
+
         Ritual storage ritual = rituals[ritualId];
         require(
             getRitualState(ritual) == RitualState.AWAITING_TRANSCRIPTS,
@@ -219,6 +233,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
         if (ritual.totalTranscripts == ritual.dkgSize){
             emit StartAggregationRound(ritualId);
         }
+        processReimbursement(initialGasLeft);
     }
 
     function postAggregation(
@@ -227,6 +242,8 @@ contract Coordinator is AccessControlDefaultAdminRules {
         BLS12381.G1Point calldata publicKey,
         bytes calldata decryptionRequestStaticKey
     ) external {
+        uint256 initialGasLeft = gasleft();
+
         Ritual storage ritual = rituals[ritualId];
         require(
             getRitualState(ritual) == RitualState.AWAITING_AGGREGATIONS,
@@ -269,6 +286,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
                 successful: false
             });
             // TODO: Consider freeing ritual storage
+            processReimbursement(initialGasLeft);
             return;
         }
 
@@ -280,6 +298,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
             });
             // TODO: Consider including public key in event
         }
+        processReimbursement(initialGasLeft);
     }
 
     function getParticipantFromProvider(
@@ -310,6 +329,17 @@ contract Coordinator is AccessControlDefaultAdminRules {
             IERC20 currency = IERC20(feeModel.currency());
             currency.transferFrom(msg.sender, address(this), ritualCost);
             // TODO: Define methods to manage these funds
+        }
+    }
+    
+    function processReimbursement(uint256 initialGasLeft) internal {
+        if(reimbursementPool != address(0)){ // TODO: Consider defining a method
+            uint256 gasUsed = initialGasLeft - gasleft();
+            try reimbursementPool.refund(gasUsed, msg.sender) {
+                return;
+            } catch {
+                return;
+            }
         }
     }
 }
