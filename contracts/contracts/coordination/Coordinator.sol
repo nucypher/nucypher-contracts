@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/access/AccessControlDefaultAdminRules.sol";
 import "../lib/BLS12381.sol";
 import "../../threshold/IAccessControlApplication.sol";
 
@@ -10,7 +10,7 @@ import "../../threshold/IAccessControlApplication.sol";
 * @title Coordinator
 * @notice Coordination layer for DKG-TDec
 */
-contract Coordinator is AccessControl {
+contract Coordinator is AccessControlDefaultAdminRules {
 
     // Ritual
     event StartRitual(uint32 indexed ritualId, address indexed initiator, address[] participants);
@@ -57,7 +57,6 @@ contract Coordinator is AccessControl {
         Participant[] participant;
     }
 
-    bytes32 public constant PARAMETER_ADMIN_ROLE = keccak256("PARAMETER_ADMIN_ROLE");
     bytes32 public constant INITIATOR_ROLE = keccak256("INITIATOR_ROLE");
 
     IAccessControlApplication public immutable application;
@@ -71,14 +70,14 @@ contract Coordinator is AccessControl {
         IAccessControlApplication app,
         uint32 _timeout,
         uint16 _maxDkgSize,
-        address parameterAdmin,
+        address _admin,
         address[] initiators // change to a setter function instead?
-    ) {
+    ) AccessControlDefaultAdminRules(0, _admin)
+    {
         application = app;
         timeout = _timeout;
         maxDkgSize = _maxDkgSize;
 
-        _grantRole(PARAMETER_ADMIN_ROLE, parameterAdmin);
         for(uint i = 0; i < initiators.length; i++){
             _grantRole(INITIATOR_ROLE, initiators[i]);
         }
@@ -114,12 +113,12 @@ contract Coordinator is AccessControl {
     }
 
 
-    function setTimeout(uint32 newTimeout) external onlyRole(PARAMETER_ADMIN_ROLE) {
+    function setTimeout(uint32 newTimeout) external onlyRole(DEFAULT_ADMIN_ROLE) {
         emit TimeoutChanged(timeout, newTimeout);
         timeout = newTimeout;
     }
 
-    function setMaxDkgSize(uint16 newSize) external onlyRole(PARAMETER_ADMIN_ROLE) {
+    function setMaxDkgSize(uint16 newSize) external onlyRole(DEFAULT_ADMIN_ROLE) {
         emit MaxDkgSizeChanged(maxDkgSize, newSize);
         maxDkgSize = newSize;
     }
