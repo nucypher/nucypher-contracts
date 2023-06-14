@@ -3,6 +3,8 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/AccessControlDefaultAdminRules.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./IFeeModel.sol";
 import "../lib/BLS12381.sol";
 import "../../threshold/IAccessControlApplication.sol";
 
@@ -65,18 +67,20 @@ contract Coordinator is AccessControlDefaultAdminRules {
     uint32 public timeout;
     uint16 public maxDkgSize;
     bool public isInitiationPublic;
+    IFeeModel feeModel;  // TODO: Consider making feeModel specific to each ritual
 
     constructor(
         IAccessControlApplication app,
         uint32 _timeout,
         uint16 _maxDkgSize,
-        address _admin
+        address _admin,
+        IFeeModel _feeModel
     ) AccessControlDefaultAdminRules(0, _admin)
     {
         application = app;
         timeout = _timeout;
         maxDkgSize = _maxDkgSize;
-
+        feeModel = IFeeModel(_feeModel);
     }
 
     function getRitualState(uint256 ritualId) external view returns (RitualState){
@@ -149,6 +153,8 @@ contract Coordinator is AccessControlDefaultAdminRules {
         uint256 length = providers.length;
         require(2 <= length && length <= maxDkgSize, "Invalid number of nodes");
         require(duration > 0, "Invalid ritual duration");  // TODO: We probably want to restrict it more
+
+        processRitualPayment(providers, duration);
 
         uint32 id = uint32(rituals.length);
         Ritual storage ritual = rituals.push();
@@ -296,5 +302,14 @@ contract Coordinator is AccessControlDefaultAdminRules {
         address provider
     ) external view returns (Participant memory) {
         return getParticipantFromProvider(rituals[ritualID], provider);
+    }
+
+    function processRitualPayment(address[] calldata providers, uint32 duration) internal {
+        uint256 ritualCost = feeModel.getRitualInitiationCost(providers, duration);
+        if (ritualCost > 0){
+            IERC20 currency = IERC20(feeModel.currency());
+            currency.transferFrom(msg.sender, address(this), ritualCost);
+            // TODO: Define methods to manage these funds
+        }
     }
 }
