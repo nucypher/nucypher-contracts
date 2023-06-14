@@ -64,24 +64,19 @@ contract Coordinator is AccessControlDefaultAdminRules {
     Ritual[] public rituals;
     uint32 public timeout;
     uint16 public maxDkgSize;
-    bool public isInitiationRegulated;
+    bool public isInitiationPublic;
 
     constructor(
         IAccessControlApplication app,
         uint32 _timeout,
         uint16 _maxDkgSize,
-        address _admin,
-        address[] initiators // change to a setter function instead?
+        address _admin
     ) AccessControlDefaultAdminRules(0, _admin)
     {
         application = app;
         timeout = _timeout;
         maxDkgSize = _maxDkgSize;
 
-        for(uint i = 0; i < initiators.length; i++){
-            _grantRole(INITIATOR_ROLE, initiators[i]);
-        }
-        isInitiationRegulated = initiators.length == 0;
     }
 
     function getRitualState(uint256 ritualId) external view returns (RitualState){
@@ -112,6 +107,15 @@ contract Coordinator is AccessControlDefaultAdminRules {
         }
     }
 
+    function makeInitiationPublic() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        // Revoke all addresses with INITIATOR_ROLE
+        uint256 length = getRoleMemberCount(INITIATOR_ROLE);
+        for(uint i = 0; i < length; i++){
+            _revokeRole(INITIATOR_ROLE, getRoleMember(INITIATOR_ROLE, i));
+        }
+        isInitiationPublic = true;
+        _setRoleAdmin(INITIATOR_ROLE, bytes32(0));
+    }
 
     function setTimeout(uint32 newTimeout) external onlyRole(DEFAULT_ADMIN_ROLE) {
         emit TimeoutChanged(timeout, newTimeout);
@@ -138,7 +142,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
         uint32 duration
     ) external returns (uint32) {
         require(
-            !isInitiatiorRegulated || hasRole(INITIATOR_ROLE, msg.sender),
+            isInitiationPublic || hasRole(INITIATOR_ROLE, msg.sender),
             "Sender can't initiate ritual"
         );
         // TODO: Validate service fees, expiration dates, threshold
