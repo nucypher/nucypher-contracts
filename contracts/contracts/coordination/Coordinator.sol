@@ -16,7 +16,7 @@ contract Coordinator is AccessControl {
     event StartRitual(uint32 indexed ritualId, address indexed initiator, address[] participants);
     event StartAggregationRound(uint32 indexed ritualId);
     // TODO: Do we want the public key here? If so, we want 2 events or do we reuse this event?
-    event EndRitual(uint32 indexed ritualId, address indexed initiator, bool successful);
+    event EndRitual(uint32 indexed ritualId, bool successful);
 
     // Node
     event TranscriptPosted(uint32 indexed ritualId, address indexed node, bytes32 transcriptDigest);
@@ -257,7 +257,6 @@ contract Coordinator is AccessControl {
             ritual.aggregationMismatch = true;
             emit EndRitual({
                 ritualId: ritualId,
-                initiator: ritual.authority,
                 successful: false
             });
             // TODO: Consider freeing ritual storage
@@ -268,7 +267,6 @@ contract Coordinator is AccessControl {
         if (ritual.totalAggregations == ritual.dkgSize){
             emit EndRitual({
                 ritualId: ritualId,
-                initiator: ritual.authority,
                 successful: true
             });
             // TODO: Consider including public key in event
