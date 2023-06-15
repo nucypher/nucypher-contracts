@@ -114,11 +114,6 @@ contract Coordinator is AccessControlDefaultAdminRules {
     }
 
     function makeInitiationPublic() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        // Revoke all addresses with INITIATOR_ROLE
-        uint256 length = getRoleMemberCount(INITIATOR_ROLE);
-        for(uint i = 0; i < length; i++){
-            _revokeRole(INITIATOR_ROLE, getRoleMember(INITIATOR_ROLE, i));
-        }
         isInitiationPublic = true;
         _setRoleAdmin(INITIATOR_ROLE, bytes32(0));
     }
@@ -172,7 +167,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
         Ritual storage ritual = rituals.push();
         ritual.initiator = msg.sender;
         ritual.authority = authority;
-        ritual.dkgSize = uint32(length);
+        ritual.dkgSize = uint16(length);
         ritual.initTimestamp = uint32(block.timestamp);
         ritual.endTimestamp = ritual.initTimestamp + duration;
 
@@ -333,7 +328,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
     }
     
     function processReimbursement(uint256 initialGasLeft) internal {
-        if(reimbursementPool != address(0)){ // TODO: Consider defining a method
+        if(address(reimbursementPool) != address(0)){ // TODO: Consider defining a method
             uint256 gasUsed = initialGasLeft - gasleft();
             try reimbursementPool.refund(gasUsed, msg.sender) {
                 return;
