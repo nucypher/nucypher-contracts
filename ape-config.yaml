@@ -11,10 +11,10 @@ plugins:
 dependencies:
   - name: openzeppelin
     github: OpenZeppelin/openzeppelin-contracts
-    version: 4.8.1
+    version: 4.9.1
   - name: openzeppelin-upgradeable
     github: OpenZeppelin/openzeppelin-contracts-upgradeable
-    version: 4.8.1
+    version: 4.9.1
   - name: fx-portal
     github: 0xPolygon/fx-portal
     version: 1.0.5
@@ -23,8 +23,8 @@ solidity:
   version: 0.8.20
   evm_version: paris
   import_remapping:
-    - "@openzeppelin/contracts=openzeppelin/v4.8.1"
-    - "@openzeppelin-upgradeable/contracts=openzeppelin-upgradeable/v4.8.1"
+    - "@openzeppelin/contracts=openzeppelin/v4.9.1"
+    - "@openzeppelin-upgradeable/contracts=openzeppelin-upgradeable/v4.9.1"
     - "@fx-portal/contracts=fx-portal/v1.0.5"
 
 deployments:

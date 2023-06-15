@@ -7,7 +7,7 @@ INITIAL_FEE_RATE = Web3.to_wei(1, "gwei")
 
 @pytest.fixture(scope="module")
 def oz_dependency(project):
-    return project.dependencies["openzeppelin"]["4.8.1"]
+    return project.dependencies["openzeppelin"]["4.9.1"]
 
 
 @pytest.fixture(scope="module")
