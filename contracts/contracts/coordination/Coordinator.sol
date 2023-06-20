@@ -281,18 +281,17 @@ contract Coordinator is AccessControlDefaultAdminRules {
                 ritualId: ritualId,
                 successful: false
             });
-            // TODO: Consider freeing ritual storage
-            processReimbursement(initialGasLeft);
-            return;
         }
 
-        ritual.totalAggregations++;
-        if (ritual.totalAggregations == ritual.dkgSize){
-            emit EndRitual({
-                ritualId: ritualId,
-                successful: true
-            });
-            // TODO: Consider including public key in event
+        if(!ritual.aggregationMismatch){
+            ritual.totalAggregations++;
+            if (ritual.totalAggregations == ritual.dkgSize){
+                emit EndRitual({
+                    ritualId: ritualId,
+                    successful: true
+                });
+                // TODO: Consider including public key in event
+            }
         }
         processReimbursement(initialGasLeft);
     }
