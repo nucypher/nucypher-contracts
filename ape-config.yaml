@@ -29,7 +29,14 @@ solidity:
 
 deployments:
   polygon:
+    mainnet:
+      - contract_type: DAI
+        address: '0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063'
     mumbai:
+      - contract_type: DAI
+        address: '0x001B3B4d0F3714Ca98ba10F6042DaEbF0B1B7b6F'
+      - contract_type: StakeInfo
+        address: '0xC1379866Fb0c100DCBFAb7b470009C4827D47DD8'
       - fx_child: '0xCf73231F28B7331BBe3124B907840A94851f9f11'
       - verify: False
   ethereum:
