@@ -21,8 +21,6 @@ def cli(network, account, currency, rate, verify):
     deployer = account #get_account(account_id)
     click.echo(f"Deployer: {deployer}")
 
-
-
     if rate and currency == ZERO_ADDRESS:
         raise ValueError("ERC20 contract address needed for currency")
     
@@ -51,11 +49,20 @@ def cli(network, account, currency, rate, verify):
     except KeyError:
         pass  # TODO: Further validate currency address?
     else:
-        currency = next(d for d in deployments if d["contract_type"] == currency)['address']
+        try:
+            currency = next(d for d in deployments if d["contract_type"] == currency)["address"]
+        except StopIteration:
+            pass
+        
+        try:
+            stakes = next(d for d in deployments if d["contract_type"] == "StakeInfo")["address"]
+        except StopIteration:
+            raise ValueError("StakeInfo deployment needed")
 
     flat_rate_fee_model = project.FlatRateFeeModel.deploy(
         currency,
         rate,
+        stakes,
         sender=deployer,
         publish=verify,
     )

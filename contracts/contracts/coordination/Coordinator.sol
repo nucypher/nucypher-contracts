@@ -72,14 +72,15 @@ contract Coordinator is AccessControlDefaultAdminRules {
     IReimbursementPool reimbursementPool;
 
     constructor(
-        IAccessControlApplication app,
+        IAccessControlApplication _stakes,
         uint32 _timeout,
         uint16 _maxDkgSize,
         address _admin,
         IFeeModel _feeModel
     ) AccessControlDefaultAdminRules(0, _admin)
     {
-        application = app;
+        require(address(_feeModel.stakes()) == address(_stakes), "Invalid stakes for fee model");
+        application = _stakes;
         timeout = _timeout;
         maxDkgSize = _maxDkgSize;
         feeModel = IFeeModel(_feeModel);
