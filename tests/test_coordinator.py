@@ -5,6 +5,7 @@ import ape
 import pytest
 from web3 import Web3
 
+TRANSCRIPT_SIZE = 500
 TIMEOUT = 1000
 MAX_DKG_SIZE = 64
 
@@ -78,7 +79,7 @@ def test_post_transcript(coordinator, nodes, initiator):
     for node in nodes:
         assert coordinator.getRitualState(0) == RitualState.AWAITING_TRANSCRIPTS
 
-        transcript = os.urandom(10)
+        transcript = os.urandom(TRANSCRIPT_SIZE)
         tx = coordinator.postTranscript(0, transcript, sender=node)
 
         events = list(coordinator.TranscriptPosted.from_receipt(tx))
@@ -99,33 +100,33 @@ def test_post_transcript(coordinator, nodes, initiator):
 def test_post_transcript_but_not_part_of_ritual(coordinator, nodes, initiator):
     coordinator.initiateRitual(nodes, sender=initiator)
     with ape.reverts("Participant not part of ritual"):
-        coordinator.postTranscript(0, os.urandom(10), sender=initiator)
+        coordinator.postTranscript(0, os.urandom(TRANSCRIPT_SIZE), sender=initiator)
 
 
 def test_post_transcript_but_already_posted_transcript(coordinator, nodes, initiator):
     coordinator.initiateRitual(nodes, sender=initiator)
-    coordinator.postTranscript(0, os.urandom(10), sender=nodes[0])
+    coordinator.postTranscript(0, os.urandom(TRANSCRIPT_SIZE), sender=nodes[0])
     with ape.reverts("Node already posted transcript"):
-        coordinator.postTranscript(0, os.urandom(10), sender=nodes[0])
+        coordinator.postTranscript(0, os.urandom(TRANSCRIPT_SIZE), sender=nodes[0])
 
 
 def test_post_transcript_but_not_waiting_for_transcripts(coordinator, nodes, initiator):
     coordinator.initiateRitual(nodes, sender=initiator)
     for node in nodes:
-        transcript = os.urandom(10)
+        transcript = os.urandom(TRANSCRIPT_SIZE)
         coordinator.postTranscript(0, transcript, sender=node)
 
     with ape.reverts("Not waiting for transcripts"):
-        coordinator.postTranscript(0, os.urandom(10), sender=nodes[1])
+        coordinator.postTranscript(0, os.urandom(TRANSCRIPT_SIZE), sender=nodes[1])
 
 
 def test_post_aggregation(coordinator, nodes, initiator):
     coordinator.initiateRitual(nodes, sender=initiator)
-    transcript = os.urandom(10)
+    transcript = os.urandom(TRANSCRIPT_SIZE)
     for node in nodes:
         coordinator.postTranscript(0, transcript, sender=node)
 
-    aggregated = os.urandom(10)
+    aggregated = os.urandom(TRANSCRIPT_SIZE)
     decryptionRequestStaticKeys = [os.urandom(58) for node in nodes]
     publicKey = (os.urandom(32), os.urandom(16))
     for i, node in enumerate(nodes):
