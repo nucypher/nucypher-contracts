@@ -58,6 +58,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
         address authority;
         uint16 dkgSize;
         bool aggregationMismatch;
+        address accessController;
         BLS12381.G1Point publicKey;
         bytes aggregatedTranscript;
         Participant[] participant;
@@ -90,7 +91,8 @@ contract Coordinator is AccessControlDefaultAdminRules {
         uint32 _timeout,
         uint16 _maxDkgSize,
         address _admin,
-        IFeeModel _feeModel
+        IFeeModel _feeModel,
+        address _defaultAccessController
     ) AccessControlDefaultAdminRules(0, _admin)
     {
         require(address(_feeModel.stakes()) == address(_stakes), "Invalid stakes for fee model");
@@ -98,6 +100,8 @@ contract Coordinator is AccessControlDefaultAdminRules {
         timeout = _timeout;
         maxDkgSize = _maxDkgSize;
         feeModel = IFeeModel(_feeModel);
+
+        defaultAccessController = _defaultAccessController;
     }
 
     function getRitualState(uint256 ritualId) external view returns (RitualState){
@@ -175,6 +179,13 @@ contract Coordinator is AccessControlDefaultAdminRules {
         // TODO: Events
     }
 
+    function setRitualAuthority(uint32 ritualId, address authority) external {
+        Ritual storage ritual = rituals[ritualId];
+        require(getRitualState(ritualId) == RitualState.FINALIZED, "Ritual not finalized");
+        require(msg.sender == ritual.authority, "Sender not ritual authority");
+        ritual.authority = authority;
+    }
+
     function numberOfRituals() external view returns (uint256) {
         return rituals.length;
     }
@@ -184,11 +195,15 @@ contract Coordinator is AccessControlDefaultAdminRules {
         return ritual.participant;
     }
 
-    function initiateRitual(
+    function _initiateRitual(
         address[] calldata providers,
         address authority,
-        uint32 duration
-    ) external returns (uint32) {
+        uint32 duration,
+        address accessController
+    ) internal returns (uint32) {
+
+        require(authority =! address(0), "Invalid authority");
+
         require(
             isInitiationPublic || hasRole(INITIATOR_ROLE, msg.sender),
             "Sender can't initiate ritual"
@@ -205,6 +220,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
         ritual.dkgSize = uint16(length);
         ritual.initTimestamp = uint32(block.timestamp);
         ritual.endTimestamp = ritual.initTimestamp + duration;
+        ritual.accessController = accessController;
 
         address previous = address(0);
         for (uint256 i = 0; i < length; i++) {
@@ -230,6 +246,23 @@ contract Coordinator is AccessControlDefaultAdminRules {
         // TODO: Include cohort fingerprint in StartRitual event?
         emit StartRitual(id, ritual.authority, providers);
         return id;
+    }
+
+    function initiateRitual(
+        address[] calldata providers,
+        address authority,
+        uint32 duration,
+        address accessController
+    ) external returns (uint32) {
+        return _initiateRitual(providers, authority, duration, accessController);
+    }
+
+    function initiateRitual(
+        address[] calldata providers,
+        address authority,
+        uint32 duration
+    ) external returns (uint32) {
+        return _initiateRitual(providers, authority, duration, defaultAccessController);
     }
 
     function cohortFingerprint(address[] calldata nodes) public pure returns (bytes32) {
