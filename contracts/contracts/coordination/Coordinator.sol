@@ -9,6 +9,8 @@ import "./IFeeModel.sol";
 import "./IReimbursementPool.sol";
 import "../lib/BLS12381.sol";
 import "../../threshold/IAccessControlApplication.sol";
+import "../../../../nucypher/tests/acceptance/contracts/.cache/openzeppelin/v4.8.1/access/IAccessControl.sol";
+import "./IRitualAuthorizer.sol";
 
 /**
 * @title Coordinator
@@ -58,7 +60,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
         address authority;
         uint16 dkgSize;
         bool aggregationMismatch;
-        address accessController;
+        IRitualAuthorizer accessController;
         BLS12381.G1Point publicKey;
         bytes aggregatedTranscript;
         Participant[] participant;
@@ -92,7 +94,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
         uint16 _maxDkgSize,
         address _admin,
         IFeeModel _feeModel,
-        address _defaultAccessController
+        IRitualAuthorizer _defaultAccessController
     ) AccessControlDefaultAdminRules(0, _admin)
     {
         require(address(_feeModel.stakes()) == address(_stakes), "Invalid stakes for fee model");

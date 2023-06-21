@@ -1,14 +1,13 @@
 pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/AccessControlDefaultAdminRules.sol";
-import "./IAccessController.sol";
+import "./IRitualAuthorizer.sol";
 import "./Coordinator.sol";
 
 
-contract AllowList is AccessControlDefaultAdminRules, IAccessController {
+contract AllowList is AccessControlDefaultAdminRules, IRitualAuthorizer {
     Coordinator public coordinator;
 
-    // mapp
-    mapping(uint256 => mapping(address => bool)) public rituals;
+    mapping(uint256 => mapping(address => bool)) public authorizations;
 
     constructor(
         Coordinator _coordinator,

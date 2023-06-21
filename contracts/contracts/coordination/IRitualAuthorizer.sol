@@ -1,7 +1,7 @@
 pragma solidity ^0.8.0;
 
-interface IAccessController {
-    function isEnricoAuthorized(
+interface IRitualAuthorizer {
+    function isAuthorized(
         uint256 ritualID,
         bytes memory evidence,
         bytes memory ciphertextHash
