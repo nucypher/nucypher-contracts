@@ -262,13 +262,18 @@ contract Coordinator is AccessControlDefaultAdminRules {
 
         require(
             participant.decryptionRequestStaticKey.length == 0,
-            "Node already provided request encrypting key"
+            "Node already provided decryption request static key"
+        );
+
+        require(
+            decryptionRequestStaticKey.length == 42,
+            "Invalid length for decryption request static key"
         );
 
         // nodes commit to their aggregation result
         bytes32 aggregatedTranscriptDigest = keccak256(aggregatedTranscript);
         participant.aggregated = true;
-        participant.decryptionRequestStaticKey = decryptionRequestStaticKey;  // TODO validation?
+        participant.decryptionRequestStaticKey = decryptionRequestStaticKey;
         emit AggregationPosted(ritualId, provider, aggregatedTranscriptDigest);
 
         if (ritual.aggregatedTranscript.length == 0) {

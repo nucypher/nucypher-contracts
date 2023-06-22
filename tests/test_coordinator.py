@@ -127,7 +127,7 @@ def test_post_aggregation(coordinator, nodes, initiator):
         coordinator.postTranscript(0, transcript, sender=node)
 
     aggregated = os.urandom(TRANSCRIPT_SIZE)
-    decryptionRequestStaticKeys = [os.urandom(58) for node in nodes]
+    decryptionRequestStaticKeys = [os.urandom(42) for node in nodes]
     publicKey = (os.urandom(32), os.urandom(16))
     for i, node in enumerate(nodes):
         assert coordinator.getRitualState(0) == RitualState.AWAITING_AGGREGATIONS
