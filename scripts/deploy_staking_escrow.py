@@ -13,7 +13,7 @@ def main(account_id=None):
     deployer = get_account(account_id)
     deployments_config = DEPLOYMENTS_CONFIG
     if CURRENT_NETWORK in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
-        nucypher_token, t_staking, _, work_lock, _ = deploy_mocks(deployer)
+        nucypher_token, t_staking, _, work_lock, _, _ = deploy_mocks(deployer)
     else:
         nucypher_token = deployments_config.get("nu_token")
         t_staking = deployments_config.get("t_staking")
