@@ -28,17 +28,21 @@ RitualState = IntEnum(
 
 @pytest.fixture(scope="module")
 def nodes(accounts):
-    return sorted(accounts[:8], key=lambda x: x.address)
+    return sorted(accounts[:MAX_DKG_SIZE], key=lambda x: x.address.lower())
 
 
 @pytest.fixture(scope="module")
 def initiator(accounts):
-    return accounts[9]
+    initiator_index = MAX_DKG_SIZE + 1
+    assert len(accounts) >= initiator_index
+    return accounts[initiator_index]
 
 
 @pytest.fixture(scope="module")
 def deployer(accounts):
-    return accounts[8]
+    deployer_index = MAX_DKG_SIZE + 2
+    assert len(accounts) >= deployer_index
+    return accounts[deployer_index]
 
 
 @pytest.fixture()
@@ -60,10 +64,7 @@ def erc20(project, initiator):
 @pytest.fixture()
 def flat_rate_fee_model(project, deployer, stake_info, erc20):
     contract = project.FlatRateFeeModel.deploy(
-        erc20.address,
-        FEE_RATE,
-        stake_info.address,
-        sender=deployer
+        erc20.address, FEE_RATE, stake_info.address, sender=deployer
     )
     return contract
 
@@ -77,7 +78,7 @@ def coordinator(project, deployer, stake_info, flat_rate_fee_model, initiator):
         MAX_DKG_SIZE,
         admin,
         flat_rate_fee_model.address,
-        sender=deployer
+        sender=deployer,
     )
     contract.grantRole(contract.INITIATOR_ROLE(), initiator, sender=admin)
     return contract
@@ -149,7 +150,9 @@ def test_post_transcript(coordinator, nodes, initiator, erc20, flat_rate_fee_mod
     assert coordinator.getRitualState(0) == RitualState.AWAITING_AGGREGATIONS
 
 
-def test_post_transcript_but_not_part_of_ritual(coordinator, nodes, initiator, erc20, flat_rate_fee_model):
+def test_post_transcript_but_not_part_of_ritual(
+    coordinator, nodes, initiator, erc20, flat_rate_fee_model
+):
     cost = flat_rate_fee_model.getRitualInitiationCost(nodes, DURATION)
     erc20.approve(coordinator.address, cost, sender=initiator)
     coordinator.initiateRitual(nodes, initiator, DURATION, sender=initiator)
@@ -157,7 +160,9 @@ def test_post_transcript_but_not_part_of_ritual(coordinator, nodes, initiator, e
         coordinator.postTranscript(0, os.urandom(TRANSCRIPT_SIZE), sender=initiator)
 
 
-def test_post_transcript_but_already_posted_transcript(coordinator, nodes, initiator, erc20, flat_rate_fee_model):
+def test_post_transcript_but_already_posted_transcript(
+    coordinator, nodes, initiator, erc20, flat_rate_fee_model
+):
     cost = flat_rate_fee_model.getRitualInitiationCost(nodes, DURATION)
     erc20.approve(coordinator.address, cost, sender=initiator)
     coordinator.initiateRitual(nodes, initiator, DURATION, sender=initiator)
@@ -166,7 +171,9 @@ def test_post_transcript_but_already_posted_transcript(coordinator, nodes, initi
         coordinator.postTranscript(0, os.urandom(TRANSCRIPT_SIZE), sender=nodes[0])
 
 
-def test_post_transcript_but_not_waiting_for_transcripts(coordinator, nodes, initiator, erc20, flat_rate_fee_model):
+def test_post_transcript_but_not_waiting_for_transcripts(
+    coordinator, nodes, initiator, erc20, flat_rate_fee_model
+):
     cost = flat_rate_fee_model.getRitualInitiationCost(nodes, DURATION)
     erc20.approve(coordinator.address, cost, sender=initiator)
     coordinator.initiateRitual(nodes, initiator, DURATION, sender=initiator)
