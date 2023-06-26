@@ -9,5 +9,8 @@
     "/build/contracts/*.json",
     "/artifacts/*.json",
     "!/contracts/test/**/*"
-  ]
+  ],
+  "devDependencies": {
+    "hardhat": "^2.16.0"
+  }
 }
