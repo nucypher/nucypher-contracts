@@ -111,13 +111,14 @@ def test_invalid_initiate_ritual(coordinator, nodes, accounts, initiator):
 def test_initiate_ritual(coordinator, nodes, initiator, erc20, flat_rate_fee_model):
     cost = flat_rate_fee_model.getRitualInitiationCost(nodes, DURATION)
     erc20.approve(coordinator.address, cost, sender=initiator)
-    tx = coordinator.initiateRitual(nodes, initiator, DURATION, sender=initiator)
+    authority = initiator
+    tx = coordinator.initiateRitual(nodes, authority, DURATION, sender=initiator)
 
     events = list(coordinator.StartRitual.from_receipt(tx))
     assert len(events) == 1
     event = events[0]
     assert event["ritualId"] == 0
-    assert event["initiator"] == initiator
+    assert event["authority"] == authority
     assert event["participants"] == tuple(n.address.lower() for n in nodes)
 
     assert coordinator.getRitualState(0) == RitualState.AWAITING_TRANSCRIPTS
