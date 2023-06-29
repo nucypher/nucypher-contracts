@@ -23,12 +23,24 @@ MIN_AUTHORIZATION = Web3.to_wei(40_000, "ether")
 
 MIN_OPERATOR_SECONDS = 24 * 60 * 60
 
-# @pytest.fixture()
-# def token(deploy_contract, token_economics):
-#     # Create an ERC20 token
-#     token, _ = deploy_contract('TToken', _totalSupplyOfTokens=token_economics.erc20_total_supply)
-#     return token
+HASH_ALGORITHM_KECCAK256 = 0
+HASH_ALGORITHM_SHA256 = 1
+HASH_ALGORITHM_RIPEMD160 = 2
+HASH_ALGORITHM = HASH_ALGORITHM_SHA256
+BASE_PENALTY = 2
+PENALTY_HISTORY_COEFFICIENT = 0
+PERCENTAGE_PENALTY_COEFFICIENT = 100000
+REWARD_DURATION = 60 * 60 * 24 * 7  # one week in seconds
+DEAUTHORIZATION_DURATION = 60 * 60 * 24 * 60  # 60 days in seconds
 
+DEPENDENCY = project.dependencies["openzeppelin"]["4.9.1"]
+
+
+@pytest.fixture()
+def token(project, accounts):
+    # Create an ERC20 token
+    token = accounts[0].deploy(project.TToken, TOTAL_SUPPLY)
+    return token
 
 @pytest.fixture()
 def threshold_staking(project, accounts):

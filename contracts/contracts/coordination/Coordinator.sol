@@ -17,7 +17,7 @@ import "../../threshold/IAccessControlApplication.sol";
 contract Coordinator is AccessControlDefaultAdminRules {
 
     // Ritual
-    event StartRitual(uint32 indexed ritualId, address indexed initiator, address[] participants);
+    event StartRitual(uint32 indexed ritualId, address indexed authority, address[] participants);
     event StartAggregationRound(uint32 indexed ritualId);
     // TODO: Do we want the public key here? If so, we want 2 events or do we reuse this event?
     event EndRitual(uint32 indexed ritualId, bool successful);
@@ -135,13 +135,13 @@ contract Coordinator is AccessControlDefaultAdminRules {
     }
 
     function setReimbursementPool(IReimbursementPool pool) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (address(pool) == address(0)){
-            delete reimbursementPool;
-        } else {
-            require(pool.isAuthorized(address(this)), "Coordinator not authorized");
-            reimbursementPool = pool;
-            // TODO: Events
-        }
+        require(
+            address(pool) == address(0) || 
+            pool.isAuthorized(address(this)),
+            "Invalid ReimbursementPool"
+        );
+        reimbursementPool = pool;
+        // TODO: Events
     }
 
     function numberOfRituals() external view returns(uint256) {
