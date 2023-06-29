@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/AccessControlDefaultAdminRules.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./IFeeModel.sol";
 import "./IReimbursementPool.sol";
 import "../lib/BLS12381.sol";
@@ -59,6 +60,8 @@ contract Coordinator is AccessControlDefaultAdminRules {
         bytes aggregatedTranscript;
         Participant[] participant;
     }
+
+    using SafeERC20 for IERC20;
 
     bytes32 public constant INITIATOR_ROLE = keccak256("INITIATOR_ROLE");
 
@@ -334,7 +337,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
             assert(pendingFees[ritualID] == 0);  // TODO: This is an invariant, not sure if actually needed
             pendingFees[ritualID] += ritualCost;
             IERC20 currency = IERC20(feeModel.currency());
-            currency.transferFrom(msg.sender, address(this), ritualCost);
+            currency.safeTransferFrom(msg.sender, address(this), ritualCost);
             // TODO: Define methods to manage these funds
         }
     }
