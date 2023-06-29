@@ -11,10 +11,10 @@ plugins:
 dependencies:
   - name: openzeppelin
     github: OpenZeppelin/openzeppelin-contracts
-    version: 4.8.1
+    version: 4.9.1
   - name: openzeppelin-upgradeable
     github: OpenZeppelin/openzeppelin-contracts-upgradeable
-    version: 4.8.1
+    version: 4.9.1
   - name: fx-portal
     github: 0xPolygon/fx-portal
     version: 1.0.5
@@ -23,13 +23,20 @@ solidity:
   version: 0.8.20
   evm_version: paris
   import_remapping:
-    - "@openzeppelin/contracts=openzeppelin/v4.8.1"
-    - "@openzeppelin-upgradeable/contracts=openzeppelin-upgradeable/v4.8.1"
+    - "@openzeppelin/contracts=openzeppelin/v4.9.1"
+    - "@openzeppelin-upgradeable/contracts=openzeppelin-upgradeable/v4.9.1"
     - "@fx-portal/contracts=fx-portal/v1.0.5"
 
 deployments:
   polygon:
+    mainnet:
+      - contract_type: DAI
+        address: '0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063'
     mumbai:
+      - contract_type: DAI
+        address: '0x001B3B4d0F3714Ca98ba10F6042DaEbF0B1B7b6F'
+      - contract_type: StakeInfo
+        address: '0xC1379866Fb0c100DCBFAb7b470009C4827D47DD8'
       - fx_child: '0xCf73231F28B7331BBe3124B907840A94851f9f11'
       - verify: False
   ethereum:

@@ -8,7 +8,7 @@ INITIAL_FEE_RATE = Web3.to_wei(1, "gwei")
 
 def main(id=None):
     deployer = get_account(id)
-    dependency = project.dependencies["openzeppelin"]["4.8.1"]
+    dependency = project.dependencies["openzeppelin"]["4.9.1"]
 
     proxy_admin = deployer.deploy(dependency.ProxyAdmin)
 
