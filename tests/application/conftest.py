@@ -35,7 +35,7 @@ PERCENTAGE_PENALTY_COEFFICIENT = 100000
 REWARD_DURATION = 60 * 60 * 24 * 7  # one week in seconds
 DEAUTHORIZATION_DURATION = 60 * 60 * 24 * 60  # 60 days in seconds
 
-DEPENDENCY = project.dependencies["openzeppelin"]["4.8.1"]
+DEPENDENCY = project.dependencies["openzeppelin"]["4.9.1"]
 
 
 @pytest.fixture()
