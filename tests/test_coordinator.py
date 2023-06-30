@@ -106,6 +106,11 @@ def test_invalid_initiate_ritual(coordinator, nodes, accounts, initiator):
     with ape.reverts("Invalid ritual duration"):
         coordinator.initiateRitual(nodes, initiator, 0, sender=initiator)
 
+    with ape.reverts("Provider has not set their public key"):
+        coordinator.initiateRitual(nodes, initiator, DURATION, sender=initiator)
+
+    for node in nodes:
+        coordinator.setProviderPublicKey(os.urandom(48), sender=node)
     with ape.reverts("Providers must be sorted"):
         coordinator.initiateRitual(nodes[1:] + [nodes[0]], initiator, DURATION, sender=initiator)
 
@@ -114,11 +119,17 @@ def test_invalid_initiate_ritual(coordinator, nodes, accounts, initiator):
         coordinator.initiateRitual(nodes, initiator, DURATION, sender=initiator)
 
 
-def test_initiate_ritual(coordinator, nodes, initiator, erc20, flat_rate_fee_model):
+def initiate_ritual(coordinator, erc20, flat_rate_fee_model, initiator, nodes):
+    for node in nodes:
+        coordinator.setProviderPublicKey(os.urandom(48), sender=node)
     cost = flat_rate_fee_model.getRitualInitiationCost(nodes, DURATION)
     erc20.approve(coordinator.address, cost, sender=initiator)
-    authority = initiator
-    tx = coordinator.initiateRitual(nodes, authority, DURATION, sender=initiator)
+    tx = coordinator.initiateRitual(nodes, initiator, DURATION, sender=initiator)
+    return initiator, tx
+
+
+def test_initiate_ritual(coordinator, nodes, initiator, erc20, flat_rate_fee_model):
+    authority, tx = initiate_ritual(coordinator, erc20, flat_rate_fee_model, initiator, nodes)
 
     events = list(coordinator.StartRitual.from_receipt(tx))
     assert len(events) == 1
@@ -131,9 +142,7 @@ def test_initiate_ritual(coordinator, nodes, initiator, erc20, flat_rate_fee_mod
 
 
 def test_post_transcript(coordinator, nodes, initiator, erc20, flat_rate_fee_model):
-    cost = flat_rate_fee_model.getRitualInitiationCost(nodes, DURATION)
-    erc20.approve(coordinator.address, cost, sender=initiator)
-    coordinator.initiateRitual(nodes, initiator, DURATION, sender=initiator)
+    initiate_ritual(coordinator, erc20, flat_rate_fee_model, initiator, nodes)
     transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
 
     for node in nodes:
@@ -159,9 +168,7 @@ def test_post_transcript(coordinator, nodes, initiator, erc20, flat_rate_fee_mod
 def test_post_transcript_but_not_part_of_ritual(
     coordinator, nodes, initiator, erc20, flat_rate_fee_model
 ):
-    cost = flat_rate_fee_model.getRitualInitiationCost(nodes, DURATION)
-    erc20.approve(coordinator.address, cost, sender=initiator)
-    coordinator.initiateRitual(nodes, initiator, DURATION, sender=initiator)
+    initiate_ritual(coordinator, erc20, flat_rate_fee_model, initiator, nodes)
     transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
     with ape.reverts("Participant not part of ritual"):
         coordinator.postTranscript(0, transcript, sender=initiator)
@@ -170,9 +177,7 @@ def test_post_transcript_but_not_part_of_ritual(
 def test_post_transcript_but_already_posted_transcript(
     coordinator, nodes, initiator, erc20, flat_rate_fee_model
 ):
-    cost = flat_rate_fee_model.getRitualInitiationCost(nodes, DURATION)
-    erc20.approve(coordinator.address, cost, sender=initiator)
-    coordinator.initiateRitual(nodes, initiator, DURATION, sender=initiator)
+    initiate_ritual(coordinator, erc20, flat_rate_fee_model, initiator, nodes)
     transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
     coordinator.postTranscript(0, transcript, sender=nodes[0])
     with ape.reverts("Node already posted transcript"):
@@ -182,9 +187,7 @@ def test_post_transcript_but_already_posted_transcript(
 def test_post_transcript_but_not_waiting_for_transcripts(
     coordinator, nodes, initiator, erc20, flat_rate_fee_model
 ):
-    cost = flat_rate_fee_model.getRitualInitiationCost(nodes, DURATION)
-    erc20.approve(coordinator.address, cost, sender=initiator)
-    coordinator.initiateRitual(nodes, initiator, DURATION, sender=initiator)
+    initiate_ritual(coordinator, erc20, flat_rate_fee_model, initiator, nodes)
     transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
     for node in nodes:
         coordinator.postTranscript(0, transcript, sender=node)
@@ -194,11 +197,8 @@ def test_post_transcript_but_not_waiting_for_transcripts(
 
 
 def test_post_aggregation(coordinator, nodes, initiator, erc20, flat_rate_fee_model):
-    cost = flat_rate_fee_model.getRitualInitiationCost(nodes, DURATION)
-    erc20.approve(coordinator.address, cost, sender=initiator)
-    coordinator.initiateRitual(nodes, initiator, DURATION, sender=initiator)
+    initiate_ritual(coordinator, erc20, flat_rate_fee_model, initiator, nodes)
     transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
-
     for node in nodes:
         coordinator.postTranscript(0, transcript, sender=node)
 
