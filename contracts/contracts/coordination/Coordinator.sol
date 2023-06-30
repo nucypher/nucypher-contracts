@@ -65,6 +65,8 @@ contract Coordinator is AccessControlDefaultAdminRules {
 
     bytes32 public constant INITIATOR_ROLE = keccak256("INITIATOR_ROLE");
 
+    mapping(address => bytes) public providerPublicKey;
+
     IAccessControlApplication public immutable application;
 
     Ritual[] public rituals;
@@ -124,6 +126,12 @@ contract Coordinator is AccessControlDefaultAdminRules {
         _setRoleAdmin(INITIATOR_ROLE, bytes32(0));
     }
 
+    function setProviderPublicKey(bytes calldata publicKey) external {
+        // TODO: Verify public key length
+        require(publicKey.length == 48, "Invalid public key length");
+        providerPublicKey[msg.sender] = publicKey;
+    }
+
     function setTimeout(uint32 newTimeout) external onlyRole(DEFAULT_ADMIN_ROLE) {
         emit TimeoutChanged(timeout, newTimeout);
         timeout = newTimeout;
@@ -136,7 +144,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
 
     function setReimbursementPool(IReimbursementPool pool) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(
-            address(pool) == address(0) || 
+            address(pool) == address(0) ||
             pool.isAuthorized(address(this)),
             "Invalid ReimbursementPool"
         );
@@ -179,6 +187,11 @@ contract Coordinator is AccessControlDefaultAdminRules {
         for(uint256 i=0; i < length; i++){
             Participant storage newParticipant = ritual.participant.push();
             address current = providers[i];
+            // Make sure that current provider has already set their public key
+            require(
+                providerPublicKey[current].length > 0,
+                "Provider has not set their public key"
+            );
             require(previous < current, "Providers must be sorted");
             // TODO: Improve check for eligible nodes (staking, etc) - nucypher#3109
             // TODO: Change check to isAuthorized(), without amount
@@ -191,7 +204,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
         }
 
         processRitualPayment(id, providers, duration);
-        
+
         // TODO: Include cohort fingerprint in StartRitual event?
         emit StartRitual(id, ritual.authority, providers);
         return id;
@@ -369,7 +382,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
             currency.transferFrom(address(this), ritual.initiator, refundableFee);
         }
     }
-    
+
     function processReimbursement(uint256 initialGasLeft) internal {
         if(address(reimbursementPool) != address(0)){ // TODO: Consider defining a method
             uint256 gasUsed = initialGasLeft - gasleft();
