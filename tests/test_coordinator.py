@@ -5,9 +5,8 @@ import ape
 import pytest
 from web3 import Web3
 
-TRANSCRIPT_SIZE = 500
 TIMEOUT = 1000
-MAX_DKG_SIZE = 64
+MAX_DKG_SIZE = 4
 FEE_RATE = 42
 ERC20_SUPPLY = 10**24
 DURATION = 1234
@@ -24,6 +23,12 @@ RitualState = IntEnum(
     ],
     start=0,
 )
+
+
+# This formula returns an approximated size
+# To have a representative size, create transcripts with `nucypher-core`
+def transcript_size(shares, threshold):
+    return int(424 + 240 * (shares / 2) + 50 * (threshold))
 
 
 @pytest.fixture(scope="module")
@@ -128,11 +133,11 @@ def test_post_transcript(coordinator, nodes, initiator, erc20, flat_rate_fee_mod
     cost = flat_rate_fee_model.getRitualInitiationCost(nodes, DURATION)
     erc20.approve(coordinator.address, cost, sender=initiator)
     coordinator.initiateRitual(nodes, initiator, DURATION, sender=initiator)
+    transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
 
     for node in nodes:
         assert coordinator.getRitualState(0) == RitualState.AWAITING_TRANSCRIPTS
 
-        transcript = os.urandom(TRANSCRIPT_SIZE)
         tx = coordinator.postTranscript(0, transcript, sender=node)
 
         events = list(coordinator.TranscriptPosted.from_receipt(tx))
@@ -156,8 +161,9 @@ def test_post_transcript_but_not_part_of_ritual(
     cost = flat_rate_fee_model.getRitualInitiationCost(nodes, DURATION)
     erc20.approve(coordinator.address, cost, sender=initiator)
     coordinator.initiateRitual(nodes, initiator, DURATION, sender=initiator)
+    transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
     with ape.reverts("Participant not part of ritual"):
-        coordinator.postTranscript(0, os.urandom(TRANSCRIPT_SIZE), sender=initiator)
+        coordinator.postTranscript(0, transcript, sender=initiator)
 
 
 def test_post_transcript_but_already_posted_transcript(
@@ -166,9 +172,10 @@ def test_post_transcript_but_already_posted_transcript(
     cost = flat_rate_fee_model.getRitualInitiationCost(nodes, DURATION)
     erc20.approve(coordinator.address, cost, sender=initiator)
     coordinator.initiateRitual(nodes, initiator, DURATION, sender=initiator)
-    coordinator.postTranscript(0, os.urandom(TRANSCRIPT_SIZE), sender=nodes[0])
+    transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
+    coordinator.postTranscript(0, transcript, sender=nodes[0])
     with ape.reverts("Node already posted transcript"):
-        coordinator.postTranscript(0, os.urandom(TRANSCRIPT_SIZE), sender=nodes[0])
+        coordinator.postTranscript(0, transcript, sender=nodes[0])
 
 
 def test_post_transcript_but_not_waiting_for_transcripts(
@@ -177,23 +184,24 @@ def test_post_transcript_but_not_waiting_for_transcripts(
     cost = flat_rate_fee_model.getRitualInitiationCost(nodes, DURATION)
     erc20.approve(coordinator.address, cost, sender=initiator)
     coordinator.initiateRitual(nodes, initiator, DURATION, sender=initiator)
+    transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
     for node in nodes:
-        transcript = os.urandom(TRANSCRIPT_SIZE)
         coordinator.postTranscript(0, transcript, sender=node)
 
     with ape.reverts("Not waiting for transcripts"):
-        coordinator.postTranscript(0, os.urandom(TRANSCRIPT_SIZE), sender=nodes[1])
+        coordinator.postTranscript(0, transcript, sender=nodes[1])
 
 
 def test_post_aggregation(coordinator, nodes, initiator, erc20, flat_rate_fee_model):
     cost = flat_rate_fee_model.getRitualInitiationCost(nodes, DURATION)
     erc20.approve(coordinator.address, cost, sender=initiator)
     coordinator.initiateRitual(nodes, initiator, DURATION, sender=initiator)
-    transcript = os.urandom(TRANSCRIPT_SIZE)
+    transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
+
     for node in nodes:
         coordinator.postTranscript(0, transcript, sender=node)
 
-    aggregated = os.urandom(TRANSCRIPT_SIZE)
+    aggregated = transcript  # has the same size as transcript
     decryptionRequestStaticKeys = [os.urandom(42) for node in nodes]
     publicKey = (os.urandom(32), os.urandom(16))
     for i, node in enumerate(nodes):
