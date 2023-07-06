@@ -110,7 +110,8 @@ def test_invalid_initiate_ritual(coordinator, nodes, accounts, initiator):
         coordinator.initiateRitual(nodes, initiator, DURATION, sender=initiator)
 
     for node in nodes:
-        coordinator.setProviderPublicKey(os.urandom(48), sender=node)
+        public_key = (os.urandom(32), os.urandom(16))
+        coordinator.setProviderPublicKey(public_key, sender=node)
     with ape.reverts("Providers must be sorted"):
         coordinator.initiateRitual(nodes[1:] + [nodes[0]], initiator, DURATION, sender=initiator)
 
@@ -121,7 +122,8 @@ def test_invalid_initiate_ritual(coordinator, nodes, accounts, initiator):
 
 def initiate_ritual(coordinator, erc20, flat_rate_fee_model, initiator, nodes):
     for node in nodes:
-        coordinator.setProviderPublicKey(os.urandom(48), sender=node)
+        public_key = (os.urandom(32), os.urandom(16))
+        coordinator.setProviderPublicKey(public_key, sender=node)
     cost = flat_rate_fee_model.getRitualInitiationCost(nodes, DURATION)
     erc20.approve(coordinator.address, cost, sender=initiator)
     tx = coordinator.initiateRitual(nodes, initiator, DURATION, sender=initiator)
@@ -139,6 +141,20 @@ def test_initiate_ritual(coordinator, nodes, initiator, erc20, flat_rate_fee_mod
     assert event["participants"] == tuple(n.address.lower() for n in nodes)
 
     assert coordinator.getRitualState(0) == RitualState.AWAITING_TRANSCRIPTS
+
+
+def test_test_provider_public_key(coordinator, nodes):
+    selected_provider = nodes[0]
+    public_key = (os.urandom(32), os.urandom(16))
+    tx = coordinator.setProviderPublicKey(public_key, sender=selected_provider)
+    ritual_id = coordinator.numberOfRituals()
+
+    events = list(coordinator.ParticipantPublicKeySet.from_receipt(tx))
+    assert len(events) == 1
+    event = events[0]
+    assert event["participant"] == selected_provider
+    assert event["publicKey"] == public_key
+    assert coordinator.getProviderPublicKey(selected_provider, ritual_id) == public_key
 
 
 def test_post_transcript(coordinator, nodes, initiator, erc20, flat_rate_fee_model):
@@ -203,12 +219,12 @@ def test_post_aggregation(coordinator, nodes, initiator, erc20, flat_rate_fee_mo
         coordinator.postTranscript(0, transcript, sender=node)
 
     aggregated = transcript  # has the same size as transcript
-    decryptionRequestStaticKeys = [os.urandom(42) for node in nodes]
-    publicKey = (os.urandom(32), os.urandom(16))
+    decryption_request_static_keys = [os.urandom(42) for _ in nodes]
+    public_key = (os.urandom(32), os.urandom(16))
     for i, node in enumerate(nodes):
         assert coordinator.getRitualState(0) == RitualState.AWAITING_AGGREGATIONS
         tx = coordinator.postAggregation(
-            0, aggregated, publicKey, decryptionRequestStaticKeys[i], sender=node
+            0, aggregated, public_key, decryption_request_static_keys[i], sender=node
         )
 
         events = list(coordinator.AggregationPosted.from_receipt(tx))
@@ -221,7 +237,7 @@ def test_post_aggregation(coordinator, nodes, initiator, erc20, flat_rate_fee_mo
     participants = coordinator.getParticipants(0)
     for i, participant in enumerate(participants):
         assert participant.aggregated
-        assert participant.decryptionRequestStaticKey == decryptionRequestStaticKeys[i]
+        assert participant.decryptionRequestStaticKey == decryption_request_static_keys[i]
 
     assert coordinator.getRitualState(0) == RitualState.FINALIZED
     events = list(coordinator.EndRitual.from_receipt(tx))
