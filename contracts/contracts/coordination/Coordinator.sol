@@ -30,7 +30,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
     event TimeoutChanged(uint32 oldTimeout, uint32 newTimeout);
     event MaxDkgSizeChanged(uint16 oldSize, uint16 newSize);
 
-    event ParticipantPublicKeySet(address indexed participant, BLS12381.G1Point publicKey);
+    event ParticipantPublicKeySet(uint32 indexed ritualId, address indexed participant, BLS12381.G2Point publicKey);
 
     enum RitualState {
         NON_INITIATED,
@@ -64,8 +64,8 @@ contract Coordinator is AccessControlDefaultAdminRules {
     }
 
     struct ParticipantKey {
-        uint32 ritualId;
-        BLS12381.G1Point publicKey;
+        uint32 lastRitualId;
+        BLS12381.G2Point publicKey;
     }
 
     using SafeERC20 for IERC20;
@@ -133,21 +133,21 @@ contract Coordinator is AccessControlDefaultAdminRules {
         _setRoleAdmin(INITIATOR_ROLE, bytes32(0));
     }
 
-    function setProviderPublicKey(BLS12381.G1Point calldata _publicKey) public {
+    function setProviderPublicKey(BLS12381.G2Point calldata _publicKey) public {
         uint32 lastRitualId = uint32(rituals.length);
         address provider = application.stakingProviderFromOperator(msg.sender);
 
         ParticipantKey memory newRecord = ParticipantKey(lastRitualId, _publicKey);
         keysHistory[provider].push(newRecord);
 
-        emit ParticipantPublicKeySet(provider, _publicKey);
+        emit ParticipantPublicKeySet(lastRitualId, provider, _publicKey);
     }
 
-    function getProviderPublicKey(address _address, uint _ritualId) public view returns (BLS12381.G1Point memory) {
-        ParticipantKey[] storage participantHistory = keysHistory[_address];
+    function getProviderPublicKey(address _provider, uint _ritualId) external view returns (BLS12381.G2Point memory) {
+        ParticipantKey[] storage participantHistory = keysHistory[_provider];
 
         for (uint i = participantHistory.length - 1; i >= 0; i--) {
-            if (participantHistory[i].ritualId <= _ritualId) {
+            if (participantHistory[i].lastRitualId <= _ritualId) {
                 return participantHistory[i].publicKey;
             }
         }
@@ -275,7 +275,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
     function postAggregation(
         uint32 ritualId,
         bytes calldata aggregatedTranscript,
-        BLS12381.G1Point calldata publicKey,
+        BLS12381.G1Point calldata dkgPublicKey,
         bytes calldata decryptionRequestStaticKey
     ) external {
         uint256 initialGasLeft = gasleft();
@@ -316,9 +316,9 @@ contract Coordinator is AccessControlDefaultAdminRules {
 
         if (ritual.aggregatedTranscript.length == 0) {
             ritual.aggregatedTranscript = aggregatedTranscript;
-            ritual.publicKey = publicKey;
+            ritual.publicKey = dkgPublicKey;
         } else if (
-            !BLS12381.eqG1Point(ritual.publicKey, publicKey) ||
+            !BLS12381.eqG1Point(ritual.publicKey, dkgPublicKey) ||
         keccak256(ritual.aggregatedTranscript) != aggregatedTranscriptDigest
         ) {
             ritual.aggregationMismatch = true;

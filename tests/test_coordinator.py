@@ -31,6 +31,10 @@ def transcript_size(shares, threshold):
     return int(424 + 240 * (shares / 2) + 50 * (threshold))
 
 
+def gen_public_key():
+    return (os.urandom(32), os.urandom(32), os.urandom(32))
+
+
 @pytest.fixture(scope="module")
 def nodes(accounts):
     return sorted(accounts[:MAX_DKG_SIZE], key=lambda x: x.address.lower())
@@ -110,7 +114,7 @@ def test_invalid_initiate_ritual(coordinator, nodes, accounts, initiator):
         coordinator.initiateRitual(nodes, initiator, DURATION, sender=initiator)
 
     for node in nodes:
-        public_key = (os.urandom(32), os.urandom(16))
+        public_key = gen_public_key()
         coordinator.setProviderPublicKey(public_key, sender=node)
     with ape.reverts("Providers must be sorted"):
         coordinator.initiateRitual(nodes[1:] + [nodes[0]], initiator, DURATION, sender=initiator)
@@ -122,7 +126,7 @@ def test_invalid_initiate_ritual(coordinator, nodes, accounts, initiator):
 
 def initiate_ritual(coordinator, erc20, flat_rate_fee_model, initiator, nodes):
     for node in nodes:
-        public_key = (os.urandom(32), os.urandom(16))
+        public_key = gen_public_key()
         coordinator.setProviderPublicKey(public_key, sender=node)
     cost = flat_rate_fee_model.getRitualInitiationCost(nodes, DURATION)
     erc20.approve(coordinator.address, cost, sender=initiator)
@@ -143,9 +147,9 @@ def test_initiate_ritual(coordinator, nodes, initiator, erc20, flat_rate_fee_mod
     assert coordinator.getRitualState(0) == RitualState.AWAITING_TRANSCRIPTS
 
 
-def test_test_provider_public_key(coordinator, nodes):
+def test_provider_public_key(coordinator, nodes):
     selected_provider = nodes[0]
-    public_key = (os.urandom(32), os.urandom(16))
+    public_key = gen_public_key()
     tx = coordinator.setProviderPublicKey(public_key, sender=selected_provider)
     ritual_id = coordinator.numberOfRituals()
 
@@ -220,11 +224,11 @@ def test_post_aggregation(coordinator, nodes, initiator, erc20, flat_rate_fee_mo
 
     aggregated = transcript  # has the same size as transcript
     decryption_request_static_keys = [os.urandom(42) for _ in nodes]
-    public_key = (os.urandom(32), os.urandom(16))
+    dkg_public_key = (os.urandom(32), os.urandom(16))
     for i, node in enumerate(nodes):
         assert coordinator.getRitualState(0) == RitualState.AWAITING_AGGREGATIONS
         tx = coordinator.postAggregation(
-            0, aggregated, public_key, decryption_request_static_keys[i], sender=node
+            0, aggregated, dkg_public_key, decryption_request_static_keys[i], sender=node
         )
 
         events = list(coordinator.AggregationPosted.from_receipt(tx))
