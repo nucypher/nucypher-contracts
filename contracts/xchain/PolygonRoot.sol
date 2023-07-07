@@ -2,9 +2,10 @@
 pragma solidity ^0.8.0;
 
 import "@fx-portal/contracts/tunnel/FxBaseRootTunnel.sol";
+import "../contracts/coordination/IUpdatableStakeInfo.sol";
 
 
-contract PolygonRoot is FxBaseRootTunnel {
+contract PolygonRoot is FxBaseRootTunnel, IUpdatableStakeInfo {
     bytes public latestData;
 
     constructor(address _checkpointManager, address _fxRoot) FxBaseRootTunnel(_checkpointManager, _fxRoot) {}
@@ -13,18 +14,18 @@ contract PolygonRoot is FxBaseRootTunnel {
         latestData = data;
     }
 
-    function updateOperator(address stakingProvider, address operator) public {
-        bytes memory message = abi.encodeWithSignature("updateOperator(address,address)", stakingProvider, operator);
+    function updateOperator(address stakingProvider, address operator) external override {
+        bytes memory message = abi.encodeWithSelector(IUpdatableStakeInfo.updateOperator.selector, stakingProvider, operator);
         _sendMessageToChild(message);
     }
 
-    function updateAmount(address stakingProvider, uint96 amount) public {
-        bytes memory message = abi.encodeWithSignature("updateAmount(address,uint96)", stakingProvider, amount);
+    function updateAmount(address stakingProvider, uint96 amount) external override {
+        bytes memory message = abi.encodeWithSelector(IUpdatableStakeInfo.updateAmount.selector, stakingProvider, amount);
         _sendMessageToChild(message);
     }
 
-    function batchUpdate(bytes32[] calldata updateInfo) public {
-        bytes memory message = abi.encodeWithSignature("batchUpdate(bytes32[])", updateInfo);
+    function batchUpdate(bytes32[] calldata updateInfo) external override {
+        bytes memory message = abi.encodeWithSelector(IUpdatableStakeInfo.batchUpdate.selector, updateInfo);
         _sendMessageToChild(message);
     }
 }

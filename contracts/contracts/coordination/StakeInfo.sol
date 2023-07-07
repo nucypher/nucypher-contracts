@@ -10,7 +10,7 @@ import "../../threshold/IAccessControlApplication.sol";
 * @title StakeInfo
 * @notice StakeInfo
 */
-contract StakeInfo is AccessControl, IUpdatableStakes, IAccessControlApplication {
+contract StakeInfo is AccessControl, IUpdatableStakeInfo, IAccessControlApplication {
 
     bytes32 public constant UPDATE_ROLE = keccak256("UPDATE_ROLE");
 
@@ -37,11 +37,11 @@ contract StakeInfo is AccessControl, IUpdatableStakes, IAccessControlApplication
         return stakes[_stakingProvider].amount;
     }
 
-    function updateOperator(address stakingProvider, address operator) external onlyRole(UPDATE_ROLE) {
+    function updateOperator(address stakingProvider, address operator) external override onlyRole(UPDATE_ROLE) {
         _updateOperator(stakingProvider, operator);
     }
 
-    function updateAmount(address stakingProvider, uint96 amount) external onlyRole(UPDATE_ROLE) {
+    function updateAmount(address stakingProvider, uint96 amount) external override onlyRole(UPDATE_ROLE) {
         _updateAmount(stakingProvider, amount);
     }
 
@@ -69,7 +69,7 @@ contract StakeInfo is AccessControl, IUpdatableStakes, IAccessControlApplication
         }
     }
 
-    function batchUpdate(bytes32[] calldata updateInfo) external onlyRole(UPDATE_ROLE) {
+    function batchUpdate(bytes32[] calldata updateInfo) external override onlyRole(UPDATE_ROLE) {
         require(updateInfo.length % 2 == 0, "bad length");
         for(uint i = 0; i < updateInfo.length; i += 2){
             bytes32 word0 = updateInfo[i];

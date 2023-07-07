@@ -6,7 +6,7 @@ pragma solidity ^0.8.0;
 * @title StakeInfo
 * @notice StakeInfo
 */
-interface IUpdatableStakes {
+interface IUpdatableStakeInfo {
 
     event UpdatedStakeOperator(address indexed stakingProvider, address indexed operator);
     event UpdatedStakeAmount(address indexed stakingProvider, uint96 amount);
