@@ -184,7 +184,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
 
     function setRitualAuthority(uint32 ritualId, address authority) external {
         Ritual storage ritual = rituals[ritualId];
-        require(getRitualState(ritualId) == RitualState.FINALIZED, "Ritual not finalized");
+        require(getRitualState(ritual) == RitualState.FINALIZED, "Ritual not finalized");
         require(msg.sender == ritual.authority, "Sender not ritual authority");
         ritual.authority = authority;
     }
