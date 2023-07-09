@@ -22,8 +22,8 @@ contract AllowList is AccessControlDefaultAdminRules, IRitualAuthorizer {
         coordinator = _coordinator;
     }
 
-    function isEnricoAuthorized(
-        uint256 ritualID,
+    function isAuthorized(
+        uint32 ritualID,
         bytes memory evidence,
         bytes memory ciphertextHash
     ) public view override returns(bool) {
@@ -31,8 +31,8 @@ contract AllowList is AccessControlDefaultAdminRules, IRitualAuthorizer {
         return rituals[ritualID][enricoAddress];
     }
 
-    function authorize(uint256 ritualID, address[] calldata addresses) public {
-        require(coordinator.rituals(ritualId).authority == msg.sender,
+    function authorize(uint32 ritualID, address[] calldata addresses) public {
+        require(coordinator.getAuthority(ritualID) == msg.sender,
             "Only ritual authority is permitted");
         require(coordinator.getRitualStatus(ritualId) == RitualStatus.FINALIZED,
             "Only active rituals can add authorizations");
@@ -41,8 +41,8 @@ contract AllowList is AccessControlDefaultAdminRules, IRitualAuthorizer {
         }
     }
 
-    function deauthorize(uint256 ritualID, address[] calldata addresses) public {
-        require(coordinator.rituals(ritualId).authority == msg.sender,
+    function deauthorize(uint32 ritualID, address[] calldata addresses) public {
+        require(coordinator.getAuthority(ritualID) == msg.sender,
             "Only ritual authority is permitted");
         require(coordinator.getRitualStatus(ritualId) == RitualStatus.FINALIZED,
             "Only active rituals can add authorizations");

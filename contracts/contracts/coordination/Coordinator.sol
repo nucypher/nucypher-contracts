@@ -102,7 +102,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
         feeModel = IFeeModel(_feeModel);
     }
 
-    function getRitualState(uint256 ritualId) external view returns (RitualState){
+    function getRitualState(uint32 ritualId) external view returns (RitualState){
         // TODO: restrict to ritualID < rituals.length?
         return getRitualState(rituals[ritualId]);
     }
@@ -382,13 +382,13 @@ contract Coordinator is AccessControlDefaultAdminRules {
     }
 
     function getParticipantFromProvider(
-        uint256 ritualID,
+        uint32 ritualID,
         address provider
     ) external view returns (Participant memory) {
         return getParticipantFromProvider(rituals[ritualID], provider);
     }
 
-    function processRitualPayment(uint256 ritualID, address[] calldata providers, uint32 duration) internal {
+    function processRitualPayment(uint32 ritualID, address[] calldata providers, uint32 duration) internal {
         uint256 ritualCost = feeModel.getRitualInitiationCost(providers, duration);
         if (ritualCost > 0) {
             totalPendingFees += ritualCost;
@@ -400,7 +400,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
         }
     }
 
-    function processPendingFee(uint256 ritualID) public {
+    function processPendingFee(uint32 ritualID) public {
         Ritual storage ritual = rituals[ritualID];
         RitualState state = getRitualState(ritual);
         require(
