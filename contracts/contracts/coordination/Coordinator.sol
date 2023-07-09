@@ -9,7 +9,6 @@ import "./IFeeModel.sol";
 import "./IReimbursementPool.sol";
 import "../lib/BLS12381.sol";
 import "../../threshold/IAccessControlApplication.sol";
-import "../../../../nucypher/tests/acceptance/contracts/.cache/openzeppelin/v4.8.1/access/IAccessControl.sol";
 import "./IRitualAuthorizer.sol";
 
 /**
