@@ -39,7 +39,7 @@ contract GlobalAllowList is AccessControlDefaultAdminRules, IRitualAuthorizer {
         require(coordinator.isRitualFinalized(ritualID),
             "Only active rituals can add authorizations");
         for (uint i=0; i<addresses.length; i++) {
-            rituals[ritualID][addresses[i]] = true;
+            authorizations[ritualID][addresses[i]] = true;
         }
     }
 
@@ -49,7 +49,7 @@ contract GlobalAllowList is AccessControlDefaultAdminRules, IRitualAuthorizer {
         require(coordinator.isRitualFinalized(ritualID),
             "Only active rituals can add authorizations");
         for (uint i=0; i<addresses.length; i++) {
-            rituals[ritualID][addresses[i]] = false;
+            authorizations[ritualID][addresses[i]] = false;
         }
     }
 }
