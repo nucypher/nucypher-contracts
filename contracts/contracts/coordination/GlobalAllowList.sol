@@ -1,13 +1,13 @@
 pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/AccessControlDefaultAdminRules.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "./IRitualAuthorizer.sol";
 import "./Coordinator.sol";
 
 contract GlobalAllowList is AccessControlDefaultAdminRules, IRitualAuthorizer {
+    using ECDSA for bytes32;
 
-contract AllowList is AccessControlDefaultAdminRules, IRitualAuthorizer {
     Coordinator public coordinator;
-
     mapping(uint256 => mapping(address => bool)) public authorizations;
 
     constructor(
@@ -25,10 +25,12 @@ contract AllowList is AccessControlDefaultAdminRules, IRitualAuthorizer {
     function isAuthorized(
         uint32 ritualID,
         bytes memory evidence,
-        bytes memory ciphertextHash
+        bytes memory digest
     ) public view override returns(bool) {
-        address enricoAddress = address(uint160(bytes20(evidence)));
-        return rituals[ritualID][enricoAddress];
+        address recovered_address = keccak256(digest)
+          .toEthSignedMessageHash()
+          .recover(evidence);
+        return authorizations[ritualID][recovered_address];
     }
 
     function authorize(uint32 ritualID, address[] calldata addresses) public {
