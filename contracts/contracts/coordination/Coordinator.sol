@@ -205,7 +205,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
         IRitualAuthorizer accessController
     ) internal returns (uint32) {
 
-        require(authority =! address(0), "Invalid authority");
+        require(authority != address(0), "Invalid authority");
 
         require(
             isInitiationPublic || hasRole(INITIATOR_ROLE, msg.sender),
