@@ -3,6 +3,7 @@ import "@openzeppelin/contracts/access/AccessControlDefaultAdminRules.sol";
 import "./IRitualAuthorizer.sol";
 import "./Coordinator.sol";
 
+contract GlobalAllowList is AccessControlDefaultAdminRules, IRitualAuthorizer {
 
 contract AllowList is AccessControlDefaultAdminRules, IRitualAuthorizer {
     Coordinator public coordinator;
