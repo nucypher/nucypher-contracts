@@ -131,6 +131,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
             //   - No public key
             //   - All transcripts and all aggregations
             //   - Still within the deadline
+            revert("Invalid ritual state");
         }
     }
 
