@@ -107,6 +107,10 @@ contract Coordinator is AccessControlDefaultAdminRules {
         return getRitualState(rituals[ritualId]);
     }
 
+    function isRitualFinalized(uint32 ritualId) external view returns (bool){
+        return getRitualState(rituals[ritualId]) == RitualState.FINALIZED;
+    }
+
     function getRitualState(Ritual storage ritual) internal view returns (RitualState){
         uint32 t0 = ritual.initTimestamp;
         uint32 deadline = t0 + timeout;
@@ -293,6 +297,10 @@ contract Coordinator is AccessControlDefaultAdminRules {
             emit StartAggregationRound(ritualId);
         }
         processReimbursement(initialGasLeft);
+    }
+
+    function getAuthority(uint32 ritualId) external view returns (address) {
+        return rituals[ritualId].authority;
     }
 
     function postAggregation(

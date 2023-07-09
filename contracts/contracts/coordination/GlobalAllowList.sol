@@ -34,7 +34,7 @@ contract AllowList is AccessControlDefaultAdminRules, IRitualAuthorizer {
     function authorize(uint32 ritualID, address[] calldata addresses) public {
         require(coordinator.getAuthority(ritualID) == msg.sender,
             "Only ritual authority is permitted");
-        require(coordinator.getRitualStatus(ritualId) == RitualStatus.FINALIZED,
+        require(coordinator.isRitualFinalized(ritualID),
             "Only active rituals can add authorizations");
         for (uint i=0; i<addresses.length; i++) {
             rituals[ritualID][addresses[i]] = true;
@@ -44,7 +44,7 @@ contract AllowList is AccessControlDefaultAdminRules, IRitualAuthorizer {
     function deauthorize(uint32 ritualID, address[] calldata addresses) public {
         require(coordinator.getAuthority(ritualID) == msg.sender,
             "Only ritual authority is permitted");
-        require(coordinator.getRitualStatus(ritualId) == RitualStatus.FINALIZED,
+        require(coordinator.isRitualFinalized(ritualID),
             "Only active rituals can add authorizations");
         for (uint i=0; i<addresses.length; i++) {
             rituals[ritualID][addresses[i]] = false;
