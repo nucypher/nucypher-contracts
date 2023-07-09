@@ -92,8 +92,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
         uint32 _timeout,
         uint16 _maxDkgSize,
         address _admin,
-        IFeeModel _feeModel,
-        IRitualAuthorizer _defaultAccessController
+        IFeeModel _feeModel
     ) AccessControlDefaultAdminRules(0, _admin)
     {
         require(address(_feeModel.stakes()) == address(_stakes), "Invalid stakes for fee model");
@@ -101,8 +100,6 @@ contract Coordinator is AccessControlDefaultAdminRules {
         timeout = _timeout;
         maxDkgSize = _maxDkgSize;
         feeModel = IFeeModel(_feeModel);
-
-        defaultAccessController = _defaultAccessController;
     }
 
     function getRitualState(uint256 ritualId) external view returns (RitualState){
@@ -200,7 +197,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
         address[] calldata providers,
         address authority,
         uint32 duration,
-        address accessController
+        IRitualAuthorizer accessController
     ) internal returns (uint32) {
 
         require(authority =! address(0), "Invalid authority");
@@ -253,17 +250,9 @@ contract Coordinator is AccessControlDefaultAdminRules {
         address[] calldata providers,
         address authority,
         uint32 duration,
-        address accessController
+        IRitualAuthorizer accessController
     ) external returns (uint32) {
         return _initiateRitual(providers, authority, duration, accessController);
-    }
-
-    function initiateRitual(
-        address[] calldata providers,
-        address authority,
-        uint32 duration
-    ) external returns (uint32) {
-        return _initiateRitual(providers, authority, duration, defaultAccessController);
     }
 
     function cohortFingerprint(address[] calldata nodes) public pure returns (bytes32) {
