@@ -23,10 +23,6 @@ def main(account_id=None):
     pre_app = project.PRECBDApplication.deploy(
         t_token,
         t_staking,
-        deployments_config.get("pre_hash_algorithm"),
-        deployments_config.get("pre_base_penalty"),
-        deployments_config.get("pre_penalty_history_coefficient"),
-        deployments_config.get("pre_percentage_penalty_coefficient"),
         deployments_config.get("pre_min_authorization"),
         deployments_config.get("pre_min_operator_seconds"),
         deployments_config.get("reward_duration"),

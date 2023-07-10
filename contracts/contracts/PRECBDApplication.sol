@@ -10,7 +10,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import "@threshold/contracts/staking/IApplication.sol";
 import "@threshold/contracts/staking/IStaking.sol";
-import "./Adjudicator.sol";
 import "./coordination/IUpdatableStakeInfo.sol";
 
 
@@ -18,7 +17,7 @@ import "./coordination/IUpdatableStakeInfo.sol";
 * @title PRE+CBD Application
 * @notice Contract distributes rewards for participating in app and slashes for violating rules
 */
-contract PRECBDApplication is IApplication, Adjudicator, OwnableUpgradeable {
+contract PRECBDApplication is IApplication, OwnableUpgradeable {
 
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
@@ -133,7 +132,9 @@ contract PRECBDApplication is IApplication, Adjudicator, OwnableUpgradeable {
 
     IStaking public immutable tStaking;
     IERC20 public immutable token;
+    
     IUpdatableStakeInfo public updatableStakeInfo;
+    address public adjudicator;
 
     mapping (address => StakingProviderInfo) public stakingProviderInfo;
     address[] public stakingProviders;
@@ -150,10 +151,6 @@ contract PRECBDApplication is IApplication, Adjudicator, OwnableUpgradeable {
     * @notice Constructor sets address of token contract and parameters for staking
     * @param _token T token contract
     * @param _tStaking T token staking contract
-    * @param _hashAlgorithm Hashing algorithm
-    * @param _basePenalty Base for the penalty calculation
-    * @param _penaltyHistoryCoefficient Coefficient for calculating the penalty depending on the history
-    * @param _percentagePenaltyCoefficient Coefficient for calculating the percentage penalty
     * @param _minimumAuthorization Amount of minimum allowable authorization
     * @param _minOperatorSeconds Min amount of seconds while an operator can't be changed
     * @param _rewardDuration Duration of one reward cycle
@@ -162,22 +159,11 @@ contract PRECBDApplication is IApplication, Adjudicator, OwnableUpgradeable {
     constructor(
         IERC20 _token,
         IStaking _tStaking,
-        SignatureVerifier.HashAlgorithm _hashAlgorithm,
-        uint256 _basePenalty,
-        uint256 _penaltyHistoryCoefficient,
-        uint256 _percentagePenaltyCoefficient,
         uint96 _minimumAuthorization,
         uint256 _minOperatorSeconds,
         uint256 _rewardDuration,
         uint256 _deauthorizationDuration
-    )
-        Adjudicator(
-            _hashAlgorithm,
-            _basePenalty,
-            _penaltyHistoryCoefficient,
-            _percentagePenaltyCoefficient
-        )
-    {
+    ) {
         require(
             _rewardDuration != 0 &&
             _tStaking.authorizedStake(address(this), address(this)) == 0 &&
@@ -240,6 +226,14 @@ contract PRECBDApplication is IApplication, Adjudicator, OwnableUpgradeable {
             _updatableStakeInfo.updateOperator(address(0), address(0));
         }
         updatableStakeInfo = _updatableStakeInfo;
+    }
+
+    /**
+     * @notice Set Set adjudicator contract. If zero then slashing is disabled
+     */
+    function setAdjudicator(address _adjudicator) external onlyOwner {
+        require(address(_adjudicator) != address(adjudicator), "New address must not be equal to the current one");
+        adjudicator = _adjudicator;
     }
 
     //------------------------Reward------------------------------
@@ -412,7 +406,8 @@ contract PRECBDApplication is IApplication, Adjudicator, OwnableUpgradeable {
         if (info.authorized == 0) {
             _stakingProviderFromOperator[info.operator] = address(0);
             info.operator = address(0);
-            info.operatorConfirmed == false;
+            info.operatorConfirmed = false;
+            _releaseOperator(_stakingProvider);
         }
     }
 
@@ -468,7 +463,8 @@ contract PRECBDApplication is IApplication, Adjudicator, OwnableUpgradeable {
         if (info.authorized == 0) {
             _stakingProviderFromOperator[info.operator] = address(0);
             info.operator = address(0);
-            info.operatorConfirmed == false;
+            info.operatorConfirmed = false;
+            _releaseOperator(_stakingProvider);
         }
     }
 
@@ -494,7 +490,8 @@ contract PRECBDApplication is IApplication, Adjudicator, OwnableUpgradeable {
         if (info.authorized == 0) {
             _stakingProviderFromOperator[info.operator] = address(0);
             info.operator = address(0);
-            info.operatorConfirmed == false;
+            info.operatorConfirmed = false;
+            _releaseOperator(_stakingProvider);
         }
     }
 
@@ -502,7 +499,7 @@ contract PRECBDApplication is IApplication, Adjudicator, OwnableUpgradeable {
     /**
     * @notice Returns staking provider for specified operator
     */
-    function stakingProviderFromOperator(address _operator) public view override returns (address) {
+    function stakingProviderFromOperator(address _operator) public view returns (address) {
         return _stakingProviderFromOperator[_operator];
     }
 
@@ -516,7 +513,7 @@ contract PRECBDApplication is IApplication, Adjudicator, OwnableUpgradeable {
     /**
     * @notice Get all tokens delegated to the staking provider
     */
-    function authorizedStake(address _stakingProvider) public view override returns (uint96) {
+    function authorizedStake(address _stakingProvider) public view returns (uint96) {
         return stakingProviderInfo[_stakingProvider].authorized;
     }
 
@@ -634,6 +631,7 @@ contract PRECBDApplication is IApplication, Adjudicator, OwnableUpgradeable {
         info.operatorStartTimestamp = uint64(block.timestamp);
         info.operatorConfirmed = false;
         emit OperatorBonded(_stakingProvider, _operator, previousOperator, block.timestamp);
+        _releaseOperator(_stakingProvider);
     }
 
     /**
@@ -650,6 +648,16 @@ contract PRECBDApplication is IApplication, Adjudicator, OwnableUpgradeable {
         info.operatorConfirmed = true;
         authorizedOverall += info.authorized;
         emit OperatorConfirmed(stakingProvider, msg.sender);
+
+        if (address(updatableStakeInfo) != address(0)) {
+            updatableStakeInfo.updateOperator(stakingProvider, msg.sender);
+        }
+    }
+
+    function _releaseOperator(address _stakingProvider) internal {
+        if (address(updatableStakeInfo) != address(0)) {
+            updatableStakeInfo.updateOperator(_stakingProvider, address(0));
+        }
     }
 
     //-------------------------Slashing-------------------------
@@ -664,8 +672,9 @@ contract PRECBDApplication is IApplication, Adjudicator, OwnableUpgradeable {
         uint96 _penalty,
         address _investigator
     )
-        internal override
+        external
     {
+        require(msg.sender == adjudicator, "Only adjudicator allowed to slash");
         address[] memory stakingProviderWrapper = new address[](1);
         stakingProviderWrapper[0] = _stakingProvider;
         tStaking.seize(_penalty, 100, _investigator, stakingProviderWrapper);

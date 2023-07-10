@@ -48,7 +48,7 @@ jobs:
       run: ape run scripts/deploy_nucypher_token.py --network ethereum:local
 
     - name: Deploy PRE Application
-      run: ape run scripts/deploy_pre_application.py --network ethereum:local
+      run: ape run scripts/deploy_pre_cbd_application.py --network ethereum:local
 
     - name: Deploy Staking Escrow
       run: ape run scripts/deploy_staking_escrow.py --network ethereum:local

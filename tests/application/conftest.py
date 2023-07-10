@@ -25,13 +25,6 @@ MIN_AUTHORIZATION = Web3.to_wei(40_000, "ether")
 MIN_OPERATOR_SECONDS = 24 * 60 * 60
 TOTAL_SUPPLY = Web3.to_wei(10_000_000_000, "ether")
 
-HASH_ALGORITHM_KECCAK256 = 0
-HASH_ALGORITHM_SHA256 = 1
-HASH_ALGORITHM_RIPEMD160 = 2
-HASH_ALGORITHM = HASH_ALGORITHM_SHA256
-BASE_PENALTY = 2
-PENALTY_HISTORY_COEFFICIENT = 0
-PERCENTAGE_PENALTY_COEFFICIENT = 100000
 REWARD_DURATION = 60 * 60 * 24 * 7  # one week in seconds
 DEAUTHORIZATION_DURATION = 60 * 60 * 24 * 60  # 60 days in seconds
 TOTAL_SUPPLY = Web3.to_wei(1_000_000_000, "ether")  # TODO NU(1_000_000_000, 'NU').to_units()
@@ -73,16 +66,11 @@ def encode_function_data(initializer=None, *args):
 
 
 @pytest.fixture()
-def pre_cbd_application(project, accounts, token, threshold_staking):
-    creator = accounts[0]
+def pre_cbd_application(project, creator, token, threshold_staking):
     contract = creator.deploy(
-        project.ExtendedPRECBDApplication,
+        project.PRECBDApplication,
         token.address,
         threshold_staking.address,
-        HASH_ALGORITHM,
-        BASE_PENALTY,
-        PENALTY_HISTORY_COEFFICIENT,
-        PERCENTAGE_PENALTY_COEFFICIENT,
         MIN_AUTHORIZATION,
         MIN_OPERATOR_SECONDS,
         REWARD_DURATION,
@@ -97,7 +85,7 @@ def pre_cbd_application(project, accounts, token, threshold_staking):
         encoded_initializer_function,
         sender=creator,
     )
-    proxy_contract = project.ExtendedPRECBDApplication.at(proxy.address)
+    proxy_contract = project.PRECBDApplication.at(proxy.address)
 
     threshold_staking.setApplication(proxy_contract.address, sender=creator)
     proxy_contract.initialize(sender=creator)
@@ -106,7 +94,7 @@ def pre_cbd_application(project, accounts, token, threshold_staking):
 
 
 @pytest.fixture()
-def stake_info(project, deployer, pre_cbd_application):
-    contract = project.StakeInfo.deploy([pre_cbd_application.address], sender=deployer)
-    pre_cbd_application.setUpdatableStakeInfo(contract.address, sender=deployer)
+def stake_info(project, creator, pre_cbd_application):
+    contract = project.StakeInfo.deploy([pre_cbd_application.address], sender=creator)
+    pre_cbd_application.setUpdatableStakeInfo(contract.address, sender=creator)
     return contract

@@ -19,6 +19,7 @@ import ape
 from ape.utils import ZERO_ADDRESS
 from web3 import Web3
 
+OPERATOR_CONFIRMED_SLOT = 1
 AUTHORIZATION_SLOT = 3
 DEAUTHORIZING_SLOT = 4
 END_DEAUTHORIZATION_SLOT = 5
@@ -26,7 +27,7 @@ MIN_AUTHORIZATION = Web3.to_wei(40_000, "ether")
 DEAUTHORIZATION_DURATION = 60 * 60 * 24 * 60  # 60 days in seconds
 
 
-def test_authorization_increase(accounts, threshold_staking, pre_cbd_application):
+def test_authorization_increase(accounts, threshold_staking, pre_cbd_application, stake_info):
     """
     Tests for authorization method: authorizationIncreased
     """
@@ -131,7 +132,9 @@ def test_authorization_increase(accounts, threshold_staking, pre_cbd_application
     assert event["toAmount"] == value
 
 
-def test_involuntary_authorization_decrease(accounts, threshold_staking, pre_cbd_application):
+def test_involuntary_authorization_decrease(
+    accounts, threshold_staking, pre_cbd_application, stake_info
+):
     """
     Tests for authorization method: involuntaryAuthorizationDecrease
     """
@@ -161,6 +164,7 @@ def test_involuntary_authorization_decrease(accounts, threshold_staking, pre_cbd
     assert pre_cbd_application.authorizedStake(staking_provider) == authorization
     assert pre_cbd_application.isAuthorized(staking_provider)
     assert not pre_cbd_application.isOperatorConfirmed(staking_provider)
+    assert not pre_cbd_application.stakingProviderInfo(staking_provider)[OPERATOR_CONFIRMED_SLOT]
 
     events = pre_cbd_application.AuthorizationInvoluntaryDecreased.from_receipt(tx)
     assert len(events) == 1
@@ -189,6 +193,7 @@ def test_involuntary_authorization_decrease(accounts, threshold_staking, pre_cbd
     assert pre_cbd_application.authorizedStake(staking_provider) == authorization
     assert pre_cbd_application.isAuthorized(staking_provider)
     assert not pre_cbd_application.isOperatorConfirmed(staking_provider)
+    assert not pre_cbd_application.stakingProviderInfo(staking_provider)[OPERATOR_CONFIRMED_SLOT]
 
     events = pre_cbd_application.AuthorizationInvoluntaryDecreased.from_receipt(tx)
     assert len(events) == 1
@@ -237,6 +242,7 @@ def test_involuntary_authorization_decrease(accounts, threshold_staking, pre_cbd
     assert pre_cbd_application.authorizedStake(staking_provider) == 0
     assert not pre_cbd_application.isAuthorized(staking_provider)
     assert not pre_cbd_application.isOperatorConfirmed(staking_provider)
+    assert not pre_cbd_application.stakingProviderInfo(staking_provider)[OPERATOR_CONFIRMED_SLOT]
     assert pre_cbd_application.getOperatorFromStakingProvider(staking_provider) == ZERO_ADDRESS
     assert pre_cbd_application.stakingProviderFromOperator(staking_provider) == ZERO_ADDRESS
 
@@ -271,7 +277,9 @@ def test_involuntary_authorization_decrease(accounts, threshold_staking, pre_cbd
     assert event["toAmount"] == authorization
 
 
-def test_authorization_decrease_request(accounts, threshold_staking, pre_cbd_application, chain):
+def test_authorization_decrease_request(
+    accounts, threshold_staking, pre_cbd_application, stake_info, chain
+):
     """
     Tests for authorization method: authorizationDecreaseRequested
     """
@@ -373,7 +381,9 @@ def test_authorization_decrease_request(accounts, threshold_staking, pre_cbd_app
     assert event["toAmount"] == 0
 
 
-def test_finish_authorization_decrease(accounts, threshold_staking, pre_cbd_application, chain):
+def test_finish_authorization_decrease(
+    accounts, threshold_staking, pre_cbd_application, stake_info, chain
+):
     """
     Tests for authorization method: finishAuthorizationDecrease
     """
@@ -473,6 +483,7 @@ def test_finish_authorization_decrease(accounts, threshold_staking, pre_cbd_appl
     assert pre_cbd_application.authorizedStake(staking_provider) == 0
     assert not pre_cbd_application.isAuthorized(staking_provider)
     assert not pre_cbd_application.isOperatorConfirmed(staking_provider)
+    assert not pre_cbd_application.stakingProviderInfo(staking_provider)[OPERATOR_CONFIRMED_SLOT]
     assert threshold_staking.authorizedStake(staking_provider, pre_cbd_application.address) == 0
 
     events = pre_cbd_application.AuthorizationDecreaseApproved.from_receipt(tx)
@@ -483,7 +494,7 @@ def test_finish_authorization_decrease(accounts, threshold_staking, pre_cbd_appl
     assert event["toAmount"] == 0
 
 
-def test_resync(accounts, threshold_staking, pre_cbd_application):
+def test_resync(accounts, threshold_staking, pre_cbd_application, stake_info):
     """
     Tests for authorization method: resynchronizeAuthorization
     """
@@ -589,6 +600,7 @@ def test_resync(accounts, threshold_staking, pre_cbd_application):
     assert pre_cbd_application.authorizedStake(staking_provider) == 0
     assert not pre_cbd_application.isAuthorized(staking_provider)
     assert not pre_cbd_application.isOperatorConfirmed(staking_provider)
+    assert not pre_cbd_application.stakingProviderInfo(staking_provider)[OPERATOR_CONFIRMED_SLOT]
 
     events = pre_cbd_application.AuthorizationReSynchronized.from_receipt(tx)
     assert len(events) == 1

@@ -11,24 +11,14 @@ import "../contracts/lib/SignatureVerifier.sol";
 /**
 * @notice Contract for testing the Adjudicator contract
 */
-contract ExtendedAdjudicator is Adjudicator {
+contract PRECBDApplicationForAdjudicatorMock {
 
     uint32 public immutable secondsPerPeriod = 1;
     mapping (address => uint96) public stakingProviderInfo;
     mapping (address => uint256) public rewardInfo;
     mapping (address => address) _stakingProviderFromOperator;
 
-    constructor(
-        SignatureVerifier.HashAlgorithm _hashAlgorithm,
-        uint256 _basePenalty,
-        uint256 _penaltyHistoryCoefficient,
-        uint256 _percentagePenaltyCoefficient
-    )
-        Adjudicator(_hashAlgorithm, _basePenalty, _penaltyHistoryCoefficient, _percentagePenaltyCoefficient)
-    {
-    }
-
-    function stakingProviderFromOperator(address _operator) public view override returns (address) {
+    function stakingProviderFromOperator(address _operator) public view returns (address) {
         return _stakingProviderFromOperator[_operator];
     }
 
@@ -40,7 +30,7 @@ contract ExtendedAdjudicator is Adjudicator {
         _stakingProviderFromOperator[_operator] = _stakingProvider;
     }
 
-    function authorizedStake(address _stakingProvider) public view override returns (uint96) {
+    function authorizedStake(address _stakingProvider) public view returns (uint96) {
         return stakingProviderInfo[_stakingProvider];
     }
 
@@ -49,7 +39,7 @@ contract ExtendedAdjudicator is Adjudicator {
         uint96 _penalty,
         address _investigator
     )
-        internal override
+        external
     {
         stakingProviderInfo[_stakingProvider] -= _penalty;
         rewardInfo[_investigator] += 1;

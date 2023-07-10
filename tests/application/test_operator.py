@@ -24,7 +24,7 @@ MIN_AUTHORIZATION = Web3.to_wei(40_000, "ether")
 MIN_OPERATOR_SECONDS = 24 * 60 * 60
 
 
-def test_bond_operator(accounts, threshold_staking, pre_cbd_application, chain):
+def test_bond_operator(accounts, threshold_staking, pre_cbd_application, stake_info, chain):
     (
         creator,
         staking_provider_1,
@@ -321,7 +321,9 @@ def test_bond_operator(accounts, threshold_staking, pre_cbd_application, chain):
     assert pre_cbd_application.stakingProviderFromOperator(operator2) == ZERO_ADDRESS
 
 
-def test_confirm_address(accounts, threshold_staking, pre_cbd_application, chain, project):
+def test_confirm_address(
+    accounts, threshold_staking, pre_cbd_application, stake_info, chain, project
+):
     creator, staking_provider, operator, *everyone_else = accounts[0:]
     min_authorization = MIN_AUTHORIZATION
     min_operator_seconds = MIN_OPERATOR_SECONDS
@@ -369,7 +371,8 @@ def test_slash(accounts, threshold_staking, pre_cbd_application):
     min_authorization = MIN_AUTHORIZATION
     penalty = min_authorization
 
-    pre_cbd_application.testSlash(staking_provider, penalty, investigator, sender=creator)
+    pre_cbd_application.setAdjudicator(creator, sender=creator)
+    pre_cbd_application.slash(staking_provider, penalty, investigator, sender=creator)
     assert threshold_staking.amountToSeize() == penalty
     assert threshold_staking.rewardMultiplier() == 100
     assert threshold_staking.notifier() == investigator
