@@ -12,7 +12,7 @@ def deploy_mocks(deployer):
     corresponding contract addresses"""
     nucypher_token = project.NuCypherToken.deploy(1_000_000_000, sender=deployer)
     t_staking_for_escrow = project.ThresholdStakingForStakingEscrowMock.deploy(sender=deployer)
-    t_staking_for_pre = project.ThresholdStakingForPREApplicationMock.deploy(sender=deployer)
+    t_staking_for_pre = project.ThresholdStakingForPRECBDApplicationMock.deploy(sender=deployer)
     total_supply = Web3.to_wei(10_000_000_000, "ether")
     t_token = project.TToken.deploy(total_supply, sender=deployer)
     work_lock = project.WorkLockForStakingEscrowMock.deploy(nucypher_token, sender=deployer)

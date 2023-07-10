@@ -48,7 +48,7 @@ def token(project, accounts):
 
 @pytest.fixture()
 def threshold_staking(project, accounts):
-    threshold_staking = accounts[0].deploy(project.ThresholdStakingForPREApplicationMock)
+    threshold_staking = accounts[0].deploy(project.ThresholdStakingForPRECBDApplicationMock)
     return threshold_staking
 
 
@@ -73,10 +73,10 @@ def encode_function_data(initializer=None, *args):
 
 
 @pytest.fixture()
-def pre_application(project, accounts, token, threshold_staking):
+def pre_cbd_application(project, accounts, token, threshold_staking):
     creator = accounts[0]
     contract = creator.deploy(
-        project.ExtendedPREApplication,
+        project.ExtendedPRECBDApplication,
         token.address,
         threshold_staking.address,
         HASH_ALGORITHM,
@@ -97,9 +97,16 @@ def pre_application(project, accounts, token, threshold_staking):
         encoded_initializer_function,
         sender=creator,
     )
-    proxy_contract = project.ExtendedPREApplication.at(proxy.address)
+    proxy_contract = project.ExtendedPRECBDApplication.at(proxy.address)
 
     threshold_staking.setApplication(proxy_contract.address, sender=creator)
     proxy_contract.initialize(sender=creator)
 
     return proxy_contract
+
+
+@pytest.fixture()
+def stake_info(project, deployer, pre_cbd_application):
+    contract = project.StakeInfo.deploy([pre_cbd_application.address], sender=deployer)
+    pre_cbd_application.setUpdatableStakeInfo(contract.address, sender=deployer)
+    return contract

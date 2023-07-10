@@ -11,13 +11,14 @@ import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import "@threshold/contracts/staking/IApplication.sol";
 import "@threshold/contracts/staking/IStaking.sol";
 import "./Adjudicator.sol";
+import "./coordination/IUpdatableStakeInfo.sol";
 
 
 /**
-* @title PRE Application
+* @title PRE+CBD Application
 * @notice Contract distributes rewards for participating in app and slashes for violating rules
 */
-contract PREApplication is IApplication, Adjudicator, OwnableUpgradeable {
+contract PRECBDApplication is IApplication, Adjudicator, OwnableUpgradeable {
 
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
@@ -132,6 +133,7 @@ contract PREApplication is IApplication, Adjudicator, OwnableUpgradeable {
 
     IStaking public immutable tStaking;
     IERC20 public immutable token;
+    IUpdatableStakeInfo public updatableStakeInfo;
 
     mapping (address => StakingProviderInfo) public stakingProviderInfo;
     address[] public stakingProviders;
@@ -226,6 +228,18 @@ contract PREApplication is IApplication, Adjudicator, OwnableUpgradeable {
      */
     function initialize() external initializer {
         __Ownable_init();
+    }
+
+    /**
+     * @notice Set contract for multi-chain interactions
+     */
+    function setUpdatableStakeInfo(IUpdatableStakeInfo _updatableStakeInfo) external onlyOwner {
+        require(address(_updatableStakeInfo) != address(updatableStakeInfo), "New address must not be equal to the current one");
+        if (address(_updatableStakeInfo) != address(0)) {
+            // trying to call contract to be sure that is correct address
+            _updatableStakeInfo.updateOperator(address(0), address(0));
+        }
+        updatableStakeInfo = _updatableStakeInfo;
     }
 
     //------------------------Reward------------------------------

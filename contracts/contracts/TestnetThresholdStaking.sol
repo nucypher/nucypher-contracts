@@ -18,12 +18,12 @@ contract TestnetThresholdStaking is Ownable {
         uint96 nuInTStake;
     }
 
-    IApplication public preApplication;
+    IApplication public application;
 
     mapping (address => StakingProviderInfo) public stakingProviderInfo;
 
-    function setApplication(IApplication _preApplication) external onlyOwner {
-        preApplication = _preApplication;
+    function setApplication(IApplication _application) external onlyOwner {
+        application = _application;
     }
 
     function stakedNu(address) external view returns (uint256) {

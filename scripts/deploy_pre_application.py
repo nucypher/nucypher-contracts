@@ -20,7 +20,7 @@ def main(account_id=None):
         t_token = deployments_config.get("t_token")
 
     # TODO deploy proxy
-    pre_app = project.PREApplication.deploy(
+    pre_app = project.PRECBDApplication.deploy(
         t_token,
         t_staking,
         deployments_config.get("pre_hash_algorithm"),
