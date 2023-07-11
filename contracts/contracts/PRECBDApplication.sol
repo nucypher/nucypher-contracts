@@ -376,6 +376,7 @@ contract PRECBDApplication is IApplication, OwnableUpgradeable {
 
         info.authorized = _toAmount;
         emit AuthorizationIncreased(_stakingProvider, _fromAmount, _toAmount);
+        _updateAuthorization(_stakingProvider, info);
     }
 
     /**
@@ -406,9 +407,9 @@ contract PRECBDApplication is IApplication, OwnableUpgradeable {
         if (info.authorized == 0) {
             _stakingProviderFromOperator[info.operator] = address(0);
             info.operator = address(0);
-            info.operatorConfirmed = false;
             _releaseOperator(_stakingProvider);
         }
+        _updateAuthorization(_stakingProvider, info);
     }
 
     /**
@@ -438,6 +439,7 @@ contract PRECBDApplication is IApplication, OwnableUpgradeable {
         info.deauthorizing = _fromAmount - _toAmount;
         info.endDeauthorization = uint64(block.timestamp + deauthorizationDuration);
         emit AuthorizationDecreaseRequested(_stakingProvider, _fromAmount, _toAmount);
+        _updateAuthorization(_stakingProvider, info);
     }
 
     /**
@@ -463,9 +465,9 @@ contract PRECBDApplication is IApplication, OwnableUpgradeable {
         if (info.authorized == 0) {
             _stakingProviderFromOperator[info.operator] = address(0);
             info.operator = address(0);
-            info.operatorConfirmed = false;
             _releaseOperator(_stakingProvider);
         }
+        _updateAuthorization(_stakingProvider, info);
     }
 
     /**
@@ -490,9 +492,9 @@ contract PRECBDApplication is IApplication, OwnableUpgradeable {
         if (info.authorized == 0) {
             _stakingProviderFromOperator[info.operator] = address(0);
             info.operator = address(0);
-            info.operatorConfirmed = false;
             _releaseOperator(_stakingProvider);
         }
+        _updateAuthorization(_stakingProvider, info);
     }
 
     //-------------------------Main-------------------------
@@ -515,6 +517,13 @@ contract PRECBDApplication is IApplication, OwnableUpgradeable {
     */
     function authorizedStake(address _stakingProvider) public view returns (uint96) {
         return stakingProviderInfo[_stakingProvider].authorized;
+    }
+
+    /**
+    * @notice Get all tokens delegated to the staking provider
+    */
+    function getEligibleAmount(StakingProviderInfo storage _info) internal view returns (uint96) {
+        return _info.authorized - _info.deauthorizing;
     }
 
     /**
@@ -542,7 +551,7 @@ contract PRECBDApplication is IApplication, OwnableUpgradeable {
         for (uint256 i = _startIndex; i < endIndex; i++) {
             address stakingProvider = stakingProviders[i];
             StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
-            uint256 eligibleAmount = info.authorized - info.deauthorizing;
+            uint256 eligibleAmount = getEligibleAmount(info);
             if (eligibleAmount < minimumAuthorization || !info.operatorConfirmed) {
                 continue;
             }
@@ -629,7 +638,6 @@ contract PRECBDApplication is IApplication, OwnableUpgradeable {
         // Bond new operator (or unbond if _operator == address(0))
         info.operator = _operator;
         info.operatorStartTimestamp = uint64(block.timestamp);
-        info.operatorConfirmed = false;
         emit OperatorBonded(_stakingProvider, _operator, previousOperator, block.timestamp);
         _releaseOperator(_stakingProvider);
     }
@@ -653,10 +661,27 @@ contract PRECBDApplication is IApplication, OwnableUpgradeable {
             updatableStakeInfo.updateOperator(stakingProvider, msg.sender);
         }
     }
+    
+    //-------------------------XChain-------------------------
 
+    /**
+    * @notice Resets operator confirmation
+    */
     function _releaseOperator(address _stakingProvider) internal {
+        stakingProviderInfo[_stakingProvider].operatorConfirmed = false;
         if (address(updatableStakeInfo) != address(0)) {
             updatableStakeInfo.updateOperator(_stakingProvider, address(0));
+        }
+    }
+
+    /**
+    * @notice Send updated authorized amount to xchain contract
+    */
+    function _updateAuthorization(address _stakingProvider, StakingProviderInfo storage _info) internal {
+        if (address(updatableStakeInfo) != address(0)) {
+            // TODO send both authorized and eligible amounts in case of slashing from StakeInfo
+            uint96 eligibleAmount = getEligibleAmount(_info);
+            updatableStakeInfo.updateAmount(_stakingProvider, eligibleAmount);
         }
     }
 

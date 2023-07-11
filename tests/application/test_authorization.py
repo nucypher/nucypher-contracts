@@ -26,6 +26,8 @@ END_DEAUTHORIZATION_SLOT = 5
 MIN_AUTHORIZATION = Web3.to_wei(40_000, "ether")
 DEAUTHORIZATION_DURATION = 60 * 60 * 24 * 60  # 60 days in seconds
 
+STAKE_INFO_OPERATOR_SLOT = 0
+
 
 def test_authorization_increase(accounts, threshold_staking, pre_cbd_application, stake_info):
     """
@@ -165,6 +167,7 @@ def test_involuntary_authorization_decrease(
     assert pre_cbd_application.isAuthorized(staking_provider)
     assert not pre_cbd_application.isOperatorConfirmed(staking_provider)
     assert not pre_cbd_application.stakingProviderInfo(staking_provider)[OPERATOR_CONFIRMED_SLOT]
+    assert stake_info.stakes(staking_provider)[STAKE_INFO_OPERATOR_SLOT] == ZERO_ADDRESS
 
     events = pre_cbd_application.AuthorizationInvoluntaryDecreased.from_receipt(tx)
     assert len(events) == 1
@@ -194,6 +197,7 @@ def test_involuntary_authorization_decrease(
     assert pre_cbd_application.isAuthorized(staking_provider)
     assert not pre_cbd_application.isOperatorConfirmed(staking_provider)
     assert not pre_cbd_application.stakingProviderInfo(staking_provider)[OPERATOR_CONFIRMED_SLOT]
+    assert stake_info.stakes(staking_provider)[STAKE_INFO_OPERATOR_SLOT] == ZERO_ADDRESS
 
     events = pre_cbd_application.AuthorizationInvoluntaryDecreased.from_receipt(tx)
     assert len(events) == 1
@@ -224,6 +228,7 @@ def test_involuntary_authorization_decrease(
     assert pre_cbd_application.isOperatorConfirmed(staking_provider)
     assert pre_cbd_application.getOperatorFromStakingProvider(staking_provider) == staking_provider
     assert pre_cbd_application.stakingProviderFromOperator(staking_provider) == staking_provider
+    assert stake_info.stakes(staking_provider)[STAKE_INFO_OPERATOR_SLOT] == staking_provider
 
     events = pre_cbd_application.AuthorizationInvoluntaryDecreased.from_receipt(tx)
     assert len(events) == 1
@@ -245,6 +250,7 @@ def test_involuntary_authorization_decrease(
     assert not pre_cbd_application.stakingProviderInfo(staking_provider)[OPERATOR_CONFIRMED_SLOT]
     assert pre_cbd_application.getOperatorFromStakingProvider(staking_provider) == ZERO_ADDRESS
     assert pre_cbd_application.stakingProviderFromOperator(staking_provider) == ZERO_ADDRESS
+    assert stake_info.stakes(staking_provider)[STAKE_INFO_OPERATOR_SLOT] == ZERO_ADDRESS
 
     events = pre_cbd_application.AuthorizationInvoluntaryDecreased.from_receipt(tx)
     assert len(events) == 1
@@ -275,6 +281,14 @@ def test_involuntary_authorization_decrease(
     assert event["stakingProvider"] == staking_provider
     assert event["fromAmount"] == value
     assert event["toAmount"] == authorization
+
+    # Decrease everything again without syncing with StakeInfo
+    pre_cbd_application.setUpdatableStakeInfo(ZERO_ADDRESS, sender=creator)
+    threshold_staking.involuntaryAuthorizationDecrease(
+        staking_provider, authorization, 0, sender=creator
+    )
+    assert pre_cbd_application.getOperatorFromStakingProvider(staking_provider) == ZERO_ADDRESS
+    assert stake_info.stakes(staking_provider)[STAKE_INFO_OPERATOR_SLOT] == staking_provider
 
 
 def test_authorization_decrease_request(
@@ -460,6 +474,7 @@ def test_finish_authorization_decrease(
         threshold_staking.authorizedStake(staking_provider, pre_cbd_application.address)
         == new_value
     )
+    assert stake_info.stakes(staking_provider)[STAKE_INFO_OPERATOR_SLOT] == staking_provider
 
     events = pre_cbd_application.AuthorizationDecreaseApproved.from_receipt(tx)
     assert len(events) == 1
@@ -485,6 +500,7 @@ def test_finish_authorization_decrease(
     assert not pre_cbd_application.isOperatorConfirmed(staking_provider)
     assert not pre_cbd_application.stakingProviderInfo(staking_provider)[OPERATOR_CONFIRMED_SLOT]
     assert threshold_staking.authorizedStake(staking_provider, pre_cbd_application.address) == 0
+    assert stake_info.stakes(staking_provider)[STAKE_INFO_OPERATOR_SLOT] == ZERO_ADDRESS
 
     events = pre_cbd_application.AuthorizationDecreaseApproved.from_receipt(tx)
     assert len(events) == 1
@@ -492,6 +508,18 @@ def test_finish_authorization_decrease(
     assert event["stakingProvider"] == staking_provider
     assert event["fromAmount"] == value
     assert event["toAmount"] == 0
+
+    # Decrease everything again without syncing with StakeInfo
+    value = minimum_authorization
+    threshold_staking.authorizationIncreased(staking_provider, 0, value, sender=creator)
+    pre_cbd_application.bondOperator(staking_provider, staking_provider, sender=staking_provider)
+    pre_cbd_application.confirmOperatorAddress(sender=staking_provider)
+    threshold_staking.authorizationDecreaseRequested(staking_provider, value, 0, sender=creator)
+    chain.pending_timestamp += deauthorization_duration
+    pre_cbd_application.setUpdatableStakeInfo(ZERO_ADDRESS, sender=creator)
+    pre_cbd_application.finishAuthorizationDecrease(staking_provider, sender=creator)
+    assert pre_cbd_application.getOperatorFromStakingProvider(staking_provider) == ZERO_ADDRESS
+    assert stake_info.stakes(staking_provider)[STAKE_INFO_OPERATOR_SLOT] == staking_provider
 
 
 def test_resync(accounts, threshold_staking, pre_cbd_application, stake_info):
@@ -551,6 +579,7 @@ def test_resync(accounts, threshold_staking, pre_cbd_application, stake_info):
     assert pre_cbd_application.authorizedStake(staking_provider) == new_value
     assert pre_cbd_application.isAuthorized(staking_provider)
     assert pre_cbd_application.isOperatorConfirmed(staking_provider)
+    assert stake_info.stakes(staking_provider)[STAKE_INFO_OPERATOR_SLOT] == staking_provider
 
     events = pre_cbd_application.AuthorizationReSynchronized.from_receipt(tx)
     assert len(events) == 1
@@ -579,6 +608,7 @@ def test_resync(accounts, threshold_staking, pre_cbd_application, stake_info):
     assert pre_cbd_application.authorizedStake(staking_provider) == new_value
     assert pre_cbd_application.isAuthorized(staking_provider)
     assert pre_cbd_application.isOperatorConfirmed(staking_provider)
+    assert stake_info.stakes(staking_provider)[STAKE_INFO_OPERATOR_SLOT] == staking_provider
 
     events = pre_cbd_application.AuthorizationReSynchronized.from_receipt(tx)
     assert len(events) == 1
@@ -601,6 +631,7 @@ def test_resync(accounts, threshold_staking, pre_cbd_application, stake_info):
     assert not pre_cbd_application.isAuthorized(staking_provider)
     assert not pre_cbd_application.isOperatorConfirmed(staking_provider)
     assert not pre_cbd_application.stakingProviderInfo(staking_provider)[OPERATOR_CONFIRMED_SLOT]
+    assert stake_info.stakes(staking_provider)[STAKE_INFO_OPERATOR_SLOT] == ZERO_ADDRESS
 
     events = pre_cbd_application.AuthorizationReSynchronized.from_receipt(tx)
     assert len(events) == 1
@@ -608,3 +639,14 @@ def test_resync(accounts, threshold_staking, pre_cbd_application, stake_info):
     assert event["stakingProvider"] == staking_provider
     assert event["fromAmount"] == value
     assert event["toAmount"] == 0
+
+    # Resync again without syncing with StakeInfo
+    value = minimum_authorization
+    threshold_staking.authorizationIncreased(staking_provider, 0, value, sender=creator)
+    pre_cbd_application.bondOperator(staking_provider, staking_provider, sender=staking_provider)
+    pre_cbd_application.confirmOperatorAddress(sender=staking_provider)
+    threshold_staking.setAuthorized(staking_provider, 0, sender=creator)
+    pre_cbd_application.setUpdatableStakeInfo(ZERO_ADDRESS, sender=creator)
+    pre_cbd_application.resynchronizeAuthorization(staking_provider, sender=creator)
+    assert pre_cbd_application.getOperatorFromStakingProvider(staking_provider) == ZERO_ADDRESS
+    assert stake_info.stakes(staking_provider)[STAKE_INFO_OPERATOR_SLOT] == staking_provider
