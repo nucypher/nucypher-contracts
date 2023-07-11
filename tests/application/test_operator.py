@@ -97,7 +97,7 @@ def test_bond_operator(accounts, threshold_staking, pre_cbd_application, stake_i
     assert pre_cbd_application.getStakingProvidersLength() == 1
     assert pre_cbd_application.stakingProviders(0) == staking_provider_3
     assert stake_info.stakes(staking_provider_3)[STAKE_INFO_OPERATOR_SLOT] == ZERO_ADDRESS
-    assert stake_info.operatorToProvider(operator1) == ZERO_ADDRESS
+    assert stake_info.stakingProviderFromOperator(operator1) == ZERO_ADDRESS
 
     # No active stakingProviders before confirmation
     all_locked, staking_providers = pre_cbd_application.getActiveStakingProviders(0, 0)
@@ -108,7 +108,7 @@ def test_bond_operator(accounts, threshold_staking, pre_cbd_application, stake_i
     assert pre_cbd_application.stakingProviderInfo(staking_provider_3)[CONFIRMATION_SLOT]
     assert pre_cbd_application.isOperatorConfirmed(operator1)
     assert stake_info.stakes(staking_provider_3)[STAKE_INFO_OPERATOR_SLOT] == operator1
-    assert stake_info.operatorToProvider(operator1) == staking_provider_3
+    assert stake_info.stakingProviderFromOperator(operator1) == staking_provider_3
 
     events = pre_cbd_application.OperatorBonded.from_receipt(tx)
     assert len(events) == 1
@@ -159,7 +159,7 @@ def test_bond_operator(accounts, threshold_staking, pre_cbd_application, stake_i
     assert pre_cbd_application.getStakingProvidersLength() == 1
     assert pre_cbd_application.stakingProviders(0) == staking_provider_3
     assert stake_info.stakes(staking_provider_3)[STAKE_INFO_OPERATOR_SLOT] == ZERO_ADDRESS
-    assert stake_info.operatorToProvider(operator1) == ZERO_ADDRESS
+    assert stake_info.stakingProviderFromOperator(operator1) == ZERO_ADDRESS
 
     # Resetting operator removes from active list before next confirmation
     all_locked, staking_providers = pre_cbd_application.getActiveStakingProviders(0, 0)
@@ -186,7 +186,7 @@ def test_bond_operator(accounts, threshold_staking, pre_cbd_application, stake_i
     assert pre_cbd_application.getStakingProvidersLength() == 1
     assert pre_cbd_application.stakingProviders(0) == staking_provider_3
     assert stake_info.stakes(staking_provider_3)[STAKE_INFO_OPERATOR_SLOT] == ZERO_ADDRESS
-    assert stake_info.operatorToProvider(operator2) == ZERO_ADDRESS
+    assert stake_info.stakingProviderFromOperator(operator2) == ZERO_ADDRESS
 
     events = pre_cbd_application.OperatorBonded.from_receipt(tx)
     assert len(events) == 1
@@ -205,7 +205,7 @@ def test_bond_operator(accounts, threshold_staking, pre_cbd_application, stake_i
     assert pre_cbd_application.isOperatorConfirmed(operator2)
     assert pre_cbd_application.stakingProviderInfo(staking_provider_3)[CONFIRMATION_SLOT]
     assert stake_info.stakes(staking_provider_3)[STAKE_INFO_OPERATOR_SLOT] == operator2
-    assert stake_info.operatorToProvider(operator2) == staking_provider_3
+    assert stake_info.stakingProviderFromOperator(operator2) == staking_provider_3
 
     # Another staking provider can bond a free operator
     assert pre_cbd_application.authorizedOverall() == min_authorization
@@ -219,7 +219,7 @@ def test_bond_operator(accounts, threshold_staking, pre_cbd_application, stake_i
     assert pre_cbd_application.stakingProviders(1) == staking_provider_4
     assert pre_cbd_application.authorizedOverall() == min_authorization
     assert stake_info.stakes(staking_provider_4)[STAKE_INFO_OPERATOR_SLOT] == ZERO_ADDRESS
-    assert stake_info.operatorToProvider(operator1) == ZERO_ADDRESS
+    assert stake_info.stakingProviderFromOperator(operator1) == ZERO_ADDRESS
 
     events = pre_cbd_application.OperatorBonded.from_receipt(tx)
     assert len(events) == 1
@@ -241,7 +241,7 @@ def test_bond_operator(accounts, threshold_staking, pre_cbd_application, stake_i
     assert pre_cbd_application.stakingProviderInfo(staking_provider_4)[CONFIRMATION_SLOT]
     assert pre_cbd_application.authorizedOverall() == 2 * min_authorization
     assert stake_info.stakes(staking_provider_4)[STAKE_INFO_OPERATOR_SLOT] == operator1
-    assert stake_info.operatorToProvider(operator1) == staking_provider_4
+    assert stake_info.stakingProviderFromOperator(operator1) == staking_provider_4
 
     chain.pending_timestamp += min_operator_seconds
     tx = pre_cbd_application.bondOperator(staking_provider_4, operator3, sender=staking_provider_4)
@@ -256,7 +256,7 @@ def test_bond_operator(accounts, threshold_staking, pre_cbd_application, stake_i
     assert pre_cbd_application.stakingProviders(1) == staking_provider_4
     assert pre_cbd_application.authorizedOverall() == min_authorization
     assert stake_info.stakes(staking_provider_4)[STAKE_INFO_OPERATOR_SLOT] == ZERO_ADDRESS
-    assert stake_info.operatorToProvider(operator1) == ZERO_ADDRESS
+    assert stake_info.stakingProviderFromOperator(operator1) == ZERO_ADDRESS
 
     # Resetting operator removes from active list before next confirmation
     all_locked, staking_providers = pre_cbd_application.getActiveStakingProviders(1, 0)
@@ -310,7 +310,7 @@ def test_bond_operator(accounts, threshold_staking, pre_cbd_application, stake_i
     )
     pre_cbd_application.confirmOperatorAddress(sender=staking_provider_1)
     assert stake_info.stakes(staking_provider_1)[STAKE_INFO_OPERATOR_SLOT] == staking_provider_1
-    assert stake_info.operatorToProvider(staking_provider_1) == staking_provider_1
+    assert stake_info.stakingProviderFromOperator(staking_provider_1) == staking_provider_1
 
     # If stake will be less than minimum then provider is not active
     threshold_staking.authorizationIncreased(

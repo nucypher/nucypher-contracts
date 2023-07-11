@@ -27,7 +27,7 @@ contract StakeInfo is AccessControl, IUpdatableStakeInfo, IAccessControlApplicat
     }
 
     mapping(address => Stake) public stakes;
-    mapping(address => address) public operatorToProvider;
+    mapping(address => address) private operatorToProvider;
 
     function stakingProviderFromOperator(address _operator) external view returns (address){
         return operatorToProvider[_operator];
