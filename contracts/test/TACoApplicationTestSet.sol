@@ -3,13 +3,13 @@
 pragma solidity ^0.8.0;
 
 
-import "../contracts/PRECBDApplication.sol";
+import "../contracts/TACoApplication.sol";
 import "../threshold/IApplication.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 
 /**
-* @notice Contract for testing PRE application contract
+* @notice Contract for testing the application contract
 */
 contract TToken is ERC20("T", "T") {
 
@@ -21,9 +21,9 @@ contract TToken is ERC20("T", "T") {
 
 
 /**
-* @notice Contract for testing PRE+CBD application contract
+* @notice Contract for testing TACo application contract
 */
-contract ThresholdStakingForPRECBDApplicationMock {
+contract ThresholdStakingForTACoApplicationMock {
 
     struct StakingProviderInfo {
         address owner;
@@ -153,9 +153,9 @@ contract ThresholdStakingForPRECBDApplicationMock {
 */
 contract Intermediary {
 
-    PRECBDApplication immutable public application;
+    TACoApplication immutable public application;
 
-    constructor(PRECBDApplication _application) {
+    constructor(TACoApplication _application) {
         application = _application;
     }
 

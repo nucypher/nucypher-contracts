@@ -14,10 +14,10 @@ import "./coordination/IUpdatableStakeInfo.sol";
 
 
 /**
-* @title PRE+CBD Application
+* @title TACo Application
 * @notice Contract distributes rewards for participating in app and slashes for violating rules
 */
-contract PRECBDApplication is IApplication, OwnableUpgradeable {
+contract TACoApplication is IApplication, OwnableUpgradeable {
 
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
@@ -349,8 +349,8 @@ contract PRECBDApplication is IApplication, OwnableUpgradeable {
     /**
     * @notice Recalculate reward and save increased authorization. Can be called only by staking contract
     * @param _stakingProvider Address of staking provider
-    * @param _fromAmount Amount of previously authorized tokens to PRE application by staking provider
-    * @param _toAmount Amount of authorized tokens to PRE application by staking provider
+    * @param _fromAmount Amount of previously authorized tokens to TACo application by staking provider
+    * @param _toAmount Amount of authorized tokens to TACo application by staking provider
     */
     function authorizationIncreased(
         address _stakingProvider,

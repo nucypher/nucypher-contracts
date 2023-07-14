@@ -11,7 +11,7 @@ import "../contracts/lib/SignatureVerifier.sol";
 /**
 * @notice Contract for testing the Adjudicator contract
 */
-contract PRECBDApplicationForAdjudicatorMock {
+contract TACoApplicationForAdjudicatorMock {
 
     uint32 public immutable secondsPerPeriod = 1;
     mapping (address => uint96) public stakingProviderInfo;

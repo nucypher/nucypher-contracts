@@ -6,7 +6,7 @@ import "./lib/ReEncryptionValidator.sol";
 import "./lib/SignatureVerifier.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "./PRECBDApplication.sol";
+import "./TACoApplication.sol";
 
 
 /**
@@ -38,7 +38,7 @@ contract Adjudicator {
     uint256 public immutable basePenalty;
     uint256 public immutable penaltyHistoryCoefficient;
     uint256 public immutable percentagePenaltyCoefficient;
-    PRECBDApplication public immutable application;
+    TACoApplication public immutable application;
 
     mapping (address => uint256) public penaltyHistory;
     mapping (bytes32 => bool) public evaluatedCFrags;
@@ -52,7 +52,7 @@ contract Adjudicator {
     * @param _percentagePenaltyCoefficient Coefficient for calculating the percentage penalty
     */
     constructor(
-        PRECBDApplication _application,
+        TACoApplication _application,
         SignatureVerifier.HashAlgorithm _hashAlgorithm,
         uint256 _basePenalty,
         uint256 _penaltyHistoryCoefficient,
