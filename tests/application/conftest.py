@@ -66,7 +66,7 @@ def encode_function_data(initializer=None, *args):
 
 
 @pytest.fixture()
-def pre_cbd_application(project, creator, token, threshold_staking):
+def taco_application(project, creator, token, threshold_staking):
     contract = creator.deploy(
         project.TACoApplication,
         token.address,
@@ -94,7 +94,7 @@ def pre_cbd_application(project, creator, token, threshold_staking):
 
 
 @pytest.fixture()
-def stake_info(project, creator, pre_cbd_application):
-    contract = project.StakeInfo.deploy([pre_cbd_application.address], sender=creator)
-    pre_cbd_application.setUpdatableStakeInfo(contract.address, sender=creator)
+def stake_info(project, creator, taco_application):
+    contract = project.StakeInfo.deploy([taco_application.address], sender=creator)
+    taco_application.setUpdatableStakeInfo(contract.address, sender=creator)
     return contract
