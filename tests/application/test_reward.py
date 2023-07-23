@@ -113,7 +113,7 @@ def test_push_reward(accounts, token, threshold_staking, taco_application, chain
     assert taco_application.lastTimeRewardApplicable() == timestamp
     assert taco_application.rewardPerTokenStored() == 0
     assert taco_application.rewardPerToken() == 0
-    assert taco_application.availableRewardsed(staking_provider_1) == 0
+    assert taco_application.availableRewards(staking_provider_1) == 0
 
     events = taco_application.RewardAdded.from_receipt(tx)
     assert len(events) == 1
@@ -426,7 +426,7 @@ def test_withdraw(accounts, token, threshold_staking, taco_application, chain):
     # Withdraw
     chain.pending_timestamp += reward_duration // 2
     assert taco_application.availableRewards(staking_provider) == new_earned
-    tx = taco_application.withdraw(staking_provider, sender=beneficiary)
+    tx = taco_application.withdrawRewards(staking_provider, sender=beneficiary)
     new_reward_per_token = taco_application.rewardPerToken()
     assert taco_application.rewardPerTokenStored() == new_reward_per_token
     assert taco_application.stakingProviderInfo(staking_provider)[REWARDS_SLOT] == 0
