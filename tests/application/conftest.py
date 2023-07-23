@@ -55,7 +55,7 @@ def threshold_staking(project, accounts):
 def encode_function_data(initializer=None, *args):
     """Encodes the function call so we can work with an initializer.
     Args:
-        initializer ([brownie.network.contract.ContractTx], optional):
+        initializer ([ape.Contract.ContractMethodHandler], optional):
         The initializer function we want to call. Example: `box.store`.
         Defaults to None.
         args (Any, optional):

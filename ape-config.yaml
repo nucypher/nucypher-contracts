@@ -18,6 +18,9 @@ dependencies:
   - name: fx-portal
     github: 0xPolygon/fx-portal
     version: 1.0.5
+  - name: threshold
+    github: threshold-network/solidity-contracts
+    version: 1.2.1
 
 solidity:
   version: 0.8.20
@@ -26,6 +29,7 @@ solidity:
     - "@openzeppelin/contracts=openzeppelin/v4.9.1"
     - "@openzeppelin-upgradeable/contracts=openzeppelin-upgradeable/v4.9.1"
     - "@fx-portal/contracts=fx-portal/v1.0.5"
+    - "@threshold/contracts=threshold/v1.2.1"
 
 deployments:
   polygon:

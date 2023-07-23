@@ -69,7 +69,7 @@ def test_push_reward(accounts, token, threshold_staking, pre_application, chain)
     assert pre_application.lastTimeRewardApplicable() == timestamp
     assert pre_application.rewardPerTokenStored() == 0
     assert pre_application.rewardPerToken() == 0
-    assert pre_application.earned(staking_provider_1) == 0
+    assert pre_application.availableRewards(staking_provider_1) == 0
 
     events = pre_application.RewardAdded.from_receipt(tx)
     assert len(events) == 1
@@ -90,7 +90,7 @@ def test_push_reward(accounts, token, threshold_staking, pre_application, chain)
     assert pre_application.lastTimeRewardApplicable() == timestamp
     assert pre_application.rewardPerTokenStored() == 0
     assert pre_application.rewardPerToken() == 0
-    assert pre_application.earned(staking_provider_1) == 0
+    assert pre_application.availableRewards(staking_provider_1) == 0
 
     events = pre_application.RewardAdded.from_receipt(tx)
     assert len(events) == 1
@@ -113,7 +113,7 @@ def test_push_reward(accounts, token, threshold_staking, pre_application, chain)
     assert pre_application.lastTimeRewardApplicable() == timestamp
     assert pre_application.rewardPerTokenStored() == 0
     assert pre_application.rewardPerToken() == 0
-    assert pre_application.earned(staking_provider_1) == 0
+    assert pre_application.availableRewards(staking_provider_1) == 0
 
     events = pre_application.RewardAdded.from_receipt(tx)
     assert len(events) == 1
@@ -126,7 +126,7 @@ def test_push_reward(accounts, token, threshold_staking, pre_application, chain)
     expected_reward_per_token = int(reward_portion * 1e18) // value // 2
     assert abs(pre_application.rewardPerToken() - expected_reward_per_token) < ERROR
     expected_reward = reward_portion // 2
-    assert abs(pre_application.earned(staking_provider_1) - expected_reward) < ERROR
+    assert abs(pre_application.availableRewards(staking_provider_1) - expected_reward) < ERROR
 
     chain.pending_timestamp += reward_duration // 2
     assert pre_application.rewardPerTokenStored() == 0
@@ -134,7 +134,7 @@ def test_push_reward(accounts, token, threshold_staking, pre_application, chain)
     reward_per_token = pre_application.rewardPerToken()
     assert abs(reward_per_token - expected_reward_per_token) <= 100
     expected_reward = reward_portion
-    reward = pre_application.earned(staking_provider_1)
+    reward = pre_application.availableRewards(staking_provider_1)
     assert abs(reward - expected_reward) <= ERROR
 
     # Add another staking provider without confirmation and push reward again
@@ -149,8 +149,8 @@ def test_push_reward(accounts, token, threshold_staking, pre_application, chain)
     assert pre_application.lastTimeRewardApplicable() == timestamp
     assert pre_application.rewardPerTokenStored() == reward_per_token
     assert pre_application.rewardPerToken() == reward_per_token
-    assert pre_application.earned(staking_provider_1) == reward
-    assert pre_application.earned(staking_provider_2) == 0
+    assert pre_application.availableRewards(staking_provider_1) == reward
+    assert pre_application.availableRewards(staking_provider_2) == 0
 
     events = pre_application.RewardAdded.from_receipt(tx)
     assert len(events) == 1
@@ -158,8 +158,11 @@ def test_push_reward(accounts, token, threshold_staking, pre_application, chain)
     assert event["reward"] == reward_portion
 
     chain.pending_timestamp += reward_duration
-    assert abs(pre_application.earned(staking_provider_1) - (reward + reward_portion)) < ERROR
-    assert pre_application.earned(staking_provider_2) == 0
+    assert (
+        abs(pre_application.availableRewards(staking_provider_1) - (reward + reward_portion))
+        < ERROR
+    )
+    assert pre_application.availableRewards(staking_provider_2) == 0
 
 
 def test_update_reward(accounts, token, threshold_staking, pre_application, chain):
@@ -185,11 +188,11 @@ def test_update_reward(accounts, token, threshold_staking, pre_application, chai
         new_reward_per_token = pre_application.rewardPerToken()
         assert new_reward_per_token > reward_per_token
         assert pre_application.rewardPerTokenStored() == new_reward_per_token
-        staking_provider_1_new_reward = pre_application.earned(staking_provider_1)
+        staking_provider_1_new_reward = pre_application.availableRewards(staking_provider_1)
         assert staking_provider_1_new_reward > staking_provider_1_reward
         assert pre_application.stakingProviderInfo(staking_provider_1)[REWARDS_SLOT] == 0
         assert pre_application.stakingProviderInfo(staking_provider_1)[REWARDS_PAID_SLOT] == 0
-        assert pre_application.earned(staking_provider_2) == 0
+        assert pre_application.availableRewards(staking_provider_2) == 0
         assert pre_application.stakingProviderInfo(staking_provider_2)[REWARDS_SLOT] == 0
         assert (
             pre_application.stakingProviderInfo(staking_provider_2)[REWARDS_PAID_SLOT]
@@ -206,11 +209,11 @@ def test_update_reward(accounts, token, threshold_staking, pre_application, chai
         new_reward_per_token = pre_application.rewardPerToken()
         assert new_reward_per_token > reward_per_token
         assert pre_application.rewardPerTokenStored() == new_reward_per_token
-        staking_provider_1_new_reward = pre_application.earned(staking_provider_1)
+        staking_provider_1_new_reward = pre_application.availableRewards(staking_provider_1)
         assert staking_provider_1_new_reward > staking_provider_1_reward
         assert pre_application.stakingProviderInfo(staking_provider_1)[REWARDS_SLOT] == 0
         assert pre_application.stakingProviderInfo(staking_provider_1)[REWARDS_PAID_SLOT] == 0
-        staking_provider_2_new_reward = pre_application.earned(staking_provider_2)
+        staking_provider_2_new_reward = pre_application.availableRewards(staking_provider_2)
         assert staking_provider_2_new_reward > staking_provider_2_reward
         assert (
             pre_application.stakingProviderInfo(staking_provider_2)[REWARDS_SLOT]
@@ -235,17 +238,17 @@ def test_update_reward(accounts, token, threshold_staking, pre_application, chai
     pre_application.pushReward(2 * reward_portion, sender=distributor)
     assert pre_application.rewardPerTokenStored() == 0
     assert pre_application.rewardPerToken() == 0
-    assert pre_application.earned(staking_provider_1) == 0
+    assert pre_application.availableRewards(staking_provider_1) == 0
 
     chain.pending_timestamp += reward_duration // 2
-    # Reward per token will be updated but nothing earned yet
+    # Reward per token will be updated but nothing availableRewards yet
     threshold_staking.authorizationIncreased(staking_provider_2, 0, 4 * value, sender=creator)
     check_reward_no_confirmation()
 
     # Add reward, wait and bond operator
     pre_application.pushReward(reward_portion, sender=distributor)
     chain.pending_timestamp += reward_duration // 2
-    # Reward per token will be updated but nothing earned yet (need confirmation)
+    # Reward per token will be updated but nothing availableRewards yet (need confirmation)
     pre_application.bondOperator(staking_provider_2, staking_provider_2, sender=staking_provider_2)
     check_reward_no_confirmation()
 
@@ -280,7 +283,7 @@ def test_update_reward(accounts, token, threshold_staking, pre_application, chai
     # Wait and confirm operator
     pre_application.pushReward(reward_portion, sender=distributor)
     chain.pending_timestamp += reward_duration // 2
-    # Reward per token will be updated but nothing earned yet (just confirmed operator)
+    # Reward per token will be updated but nothing availableRewards yet (just confirmed operator)
     pre_application.confirmOperatorAddress(sender=staking_provider_2)
     check_reward_no_confirmation()
 
@@ -321,14 +324,14 @@ def test_update_reward(accounts, token, threshold_staking, pre_application, chai
     # Bond operator with confirmation (confirmation will be dropped)
     pre_application.pushReward(reward_portion, sender=distributor)
     chain.pending_timestamp += min_operator_seconds
-    # Reward per token will be updated but nothing earned yet (need confirmation)
+    # Reward per token will be updated but nothing availableRewards yet (need confirmation)
     pre_application.bondOperator(staking_provider_2, everyone_else[0], sender=staking_provider_2)
     check_reward_with_confirmation()
 
     # Push reward wait some time and check that no more reward
     pre_application.pushReward(reward_portion, sender=distributor)
     chain.pending_timestamp += reward_duration
-    assert pre_application.earned(staking_provider_2) == staking_provider_2_reward
+    assert pre_application.availableRewards(staking_provider_2) == staking_provider_2_reward
     assert (
         pre_application.stakingProviderInfo(staking_provider_2)[REWARDS_SLOT]
         == staking_provider_2_reward
@@ -359,16 +362,16 @@ def test_withdraw(accounts, token, threshold_staking, pre_application, chain):
     # No rewards, no staking providers
     threshold_staking.setRoles(staking_provider, owner, beneficiary, authorizer, sender=creator)
     with ape.reverts():
-        pre_application.withdraw(staking_provider, sender=beneficiary)
+        pre_application.withdrawRewards(staking_provider, sender=beneficiary)
 
     # Prepare one staking provider and reward
     threshold_staking.authorizationIncreased(staking_provider, 0, value, sender=creator)
     pre_application.bondOperator(staking_provider, staking_provider, sender=staking_provider)
     pre_application.confirmOperatorAddress(sender=staking_provider)
 
-    # Nothing earned yet
+    # Nothing availableRewards yet
     with ape.reverts():
-        pre_application.withdraw(staking_provider, sender=beneficiary)
+        pre_application.withdrawRewards(staking_provider, sender=beneficiary)
 
     pre_application.setRewardDistributor(distributor, sender=creator)
     token.transfer(distributor, 100 * reward_portion, sender=creator)
@@ -376,35 +379,35 @@ def test_withdraw(accounts, token, threshold_staking, pre_application, chain):
     pre_application.pushReward(reward_portion, sender=distributor)
     assert pre_application.rewardPerTokenStored() == 0
     assert pre_application.rewardPerToken() == 0
-    assert pre_application.earned(staking_provider) == 0
+    assert pre_application.availableRewards(staking_provider) == 0
 
     chain.pending_timestamp += reward_duration
     # Only beneficiary can withdraw reward
     with ape.reverts():
-        pre_application.withdraw(staking_provider, sender=owner)
+        pre_application.withdrawRewards(staking_provider, sender=owner)
     with ape.reverts():
-        pre_application.withdraw(staking_provider, sender=authorizer)
+        pre_application.withdrawRewards(staking_provider, sender=authorizer)
 
     reward_per_token = pre_application.rewardPerToken()
     assert reward_per_token > 0
-    earned = pre_application.earned(staking_provider)
-    assert earned > 0
+    availableRewards = pre_application.availableRewards(staking_provider)
+    assert availableRewards > 0
 
-    tx = pre_application.withdraw(staking_provider, sender=beneficiary)
+    tx = pre_application.withdrawRewards(staking_provider, sender=beneficiary)
     assert pre_application.rewardPerTokenStored() == reward_per_token
     assert pre_application.stakingProviderInfo(staking_provider)[REWARDS_SLOT] == 0
     assert (
         pre_application.stakingProviderInfo(staking_provider)[REWARDS_PAID_SLOT] == reward_per_token
     )
-    assert token.balanceOf(beneficiary) == earned
-    assert token.balanceOf(pre_application.address) == reward_portion - earned
+    assert token.balanceOf(beneficiary) == availableRewards
+    assert token.balanceOf(pre_application.address) == reward_portion - availableRewards
 
     events = pre_application.RewardPaid.from_receipt(tx)
     assert len(events) == 1
     event = events[0]
     assert event["stakingProvider"] == staking_provider
     assert event["beneficiary"] == beneficiary
-    assert event["reward"] == earned
+    assert event["reward"] == availableRewards
 
     # Add one more staking provider, push reward again and drop operator
     chain.pending_timestamp += min_operator_seconds
@@ -416,13 +419,15 @@ def test_withdraw(accounts, token, threshold_staking, pre_application, chain):
     chain.pending_timestamp += reward_duration // 2
     pre_application.bondOperator(staking_provider, ZERO_ADDRESS, sender=staking_provider)
 
-    new_earned = pre_application.earned(staking_provider)
-    assert pre_application.stakingProviderInfo(staking_provider)[REWARDS_SLOT] == new_earned
+    new_availableRewards = pre_application.availableRewards(staking_provider)
+    assert (
+        pre_application.stakingProviderInfo(staking_provider)[REWARDS_SLOT] == new_availableRewards
+    )
 
     # Withdraw
     chain.pending_timestamp += reward_duration // 2
-    assert pre_application.earned(staking_provider) == new_earned
-    tx = pre_application.withdraw(staking_provider, sender=beneficiary)
+    assert pre_application.availableRewards(staking_provider) == new_availableRewards
+    tx = pre_application.withdrawRewards(staking_provider, sender=beneficiary)
     new_reward_per_token = pre_application.rewardPerToken()
     assert pre_application.rewardPerTokenStored() == new_reward_per_token
     assert pre_application.stakingProviderInfo(staking_provider)[REWARDS_SLOT] == 0
@@ -430,12 +435,15 @@ def test_withdraw(accounts, token, threshold_staking, pre_application, chain):
         pre_application.stakingProviderInfo(staking_provider)[REWARDS_PAID_SLOT]
         == new_reward_per_token
     )
-    assert token.balanceOf(beneficiary) == earned + new_earned
-    assert token.balanceOf(pre_application.address) == 2 * reward_portion - earned - new_earned
+    assert token.balanceOf(beneficiary) == availableRewards + new_availableRewards
+    assert (
+        token.balanceOf(pre_application.address)
+        == 2 * reward_portion - availableRewards - new_availableRewards
+    )
 
     events = pre_application.RewardPaid.from_receipt(tx)
     assert len(events) == 1
     event = events[0]
     assert event["stakingProvider"] == staking_provider
     assert event["beneficiary"] == beneficiary
-    assert event["reward"] == new_earned
+    assert event["reward"] == new_availableRewards

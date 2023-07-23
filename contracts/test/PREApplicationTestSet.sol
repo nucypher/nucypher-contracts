@@ -181,7 +181,7 @@ contract ExtendedPREApplication is PREApplication {
         uint256 _basePenalty,
         uint256 _penaltyHistoryCoefficient,
         uint256 _percentagePenaltyCoefficient,
-        uint256 _minAuthorization,
+        uint96 _minimumAuthorization,
         uint256 _minWorkerSeconds,
         uint256 _rewardDuration,
         uint256 _deauthorizationDuration
@@ -193,7 +193,7 @@ contract ExtendedPREApplication is PREApplication {
             _basePenalty,
             _penaltyHistoryCoefficient,
             _percentagePenaltyCoefficient,
-            _minAuthorization,
+            _minimumAuthorization,
             _minWorkerSeconds,
             _rewardDuration,
             _deauthorizationDuration

@@ -9,7 +9,7 @@ import "./lib/Bits.sol";
 import "./proxy/Upgradeable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../threshold/IStaking.sol";
+import "@threshold/contracts/staking/IStaking.sol";
 
 
 /**

@@ -8,8 +8,8 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
-import "../threshold/IApplication.sol";
-import "../threshold/IStaking.sol";
+import "@threshold/contracts/staking/IApplication.sol";
+import "@threshold/contracts/staking/IStaking.sol";
 import "./Adjudicator.sol";
 
 
@@ -125,7 +125,7 @@ contract PREApplication is IApplication, Adjudicator, OwnableUpgradeable {
         uint96 rewardPerTokenPaid;
     }
 
-    uint256 public immutable minAuthorization;
+    uint96 public immutable minimumAuthorization;
     uint256 public immutable minOperatorSeconds;
     uint256 public immutable rewardDuration;
     uint256 public immutable deauthorizationDuration;
@@ -152,7 +152,7 @@ contract PREApplication is IApplication, Adjudicator, OwnableUpgradeable {
     * @param _basePenalty Base for the penalty calculation
     * @param _penaltyHistoryCoefficient Coefficient for calculating the penalty depending on the history
     * @param _percentagePenaltyCoefficient Coefficient for calculating the percentage penalty
-    * @param _minAuthorization Amount of minimum allowable authorization
+    * @param _minimumAuthorization Amount of minimum allowable authorization
     * @param _minOperatorSeconds Min amount of seconds while an operator can't be changed
     * @param _rewardDuration Duration of one reward cycle
     * @param _deauthorizationDuration Duration of decreasing authorization
@@ -164,7 +164,7 @@ contract PREApplication is IApplication, Adjudicator, OwnableUpgradeable {
         uint256 _basePenalty,
         uint256 _penaltyHistoryCoefficient,
         uint256 _percentagePenaltyCoefficient,
-        uint256 _minAuthorization,
+        uint96 _minimumAuthorization,
         uint256 _minOperatorSeconds,
         uint256 _rewardDuration,
         uint256 _deauthorizationDuration
@@ -184,7 +184,7 @@ contract PREApplication is IApplication, Adjudicator, OwnableUpgradeable {
         );
         rewardDuration = _rewardDuration;
         deauthorizationDuration = _deauthorizationDuration;
-        minAuthorization = _minAuthorization;
+        minimumAuthorization = _minimumAuthorization;
         token = _token;
         tStaking = _tStaking;
         minOperatorSeconds = _minOperatorSeconds;
@@ -250,7 +250,7 @@ contract PREApplication is IApplication, Adjudicator, OwnableUpgradeable {
         lastUpdateTime = lastTimeRewardApplicable();
         if (_stakingProvider != address(0)) {
             StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
-            info.tReward = earned(_stakingProvider);
+            info.tReward = availableRewards(_stakingProvider);
             info.rewardPerTokenPaid = rewardPerTokenStored;
         }
     }
@@ -280,7 +280,7 @@ contract PREApplication is IApplication, Adjudicator, OwnableUpgradeable {
     * @notice Returns amount of reward for the staking provider
     * @param _stakingProvider Staking provider address
     */
-    function earned(address _stakingProvider) public view returns (uint96) {
+    function availableRewards(address _stakingProvider) public view returns (uint96) {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         if (!info.operatorConfirmed) {
             return info.tReward;
@@ -316,13 +316,13 @@ contract PREApplication is IApplication, Adjudicator, OwnableUpgradeable {
     * @notice Withdraw available amount of T reward to beneficiary. Can be called only by beneficiary
     * @param _stakingProvider Staking provider address
     */
-    function withdraw(address _stakingProvider) external updateReward(_stakingProvider) {
+    function withdrawRewards(address _stakingProvider) external updateReward(_stakingProvider) {
         address beneficiary = getBeneficiary(_stakingProvider);
         require(msg.sender == beneficiary, "Caller must be beneficiary");
 
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
-        require(info.tReward > 0, "No reward to withdraw");
         uint96 value = info.tReward;
+        require(value > 0, "No reward to withdraw");
         info.tReward = 0;
         emit RewardPaid(_stakingProvider, beneficiary, value);
         token.safeTransfer(beneficiary, value);
@@ -352,7 +352,7 @@ contract PREApplication is IApplication, Adjudicator, OwnableUpgradeable {
         external override onlyStakingContract updateReward(_stakingProvider)
     {
         require(_stakingProvider != address(0) && _toAmount > 0, "Input parameters must be specified");
-        require(_toAmount >= minAuthorization, "Authorization must be greater than minimum");
+        require(_toAmount >= minimumAuthorization, "Authorization must be greater than minimum");
 
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         require(
@@ -418,7 +418,7 @@ contract PREApplication is IApplication, Adjudicator, OwnableUpgradeable {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         require(_toAmount <= info.authorized, "Amount to decrease greater than authorized");
         require(
-            _toAmount == 0 || _toAmount >= minAuthorization,
+            _toAmount == 0 || _toAmount >= minimumAuthorization,
             "Resulting authorization will be less than minimum"
         );
         if (info.operatorConfirmed) {
@@ -532,7 +532,7 @@ contract PREApplication is IApplication, Adjudicator, OwnableUpgradeable {
             address stakingProvider = stakingProviders[i];
             StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
             uint256 eligibleAmount = info.authorized - info.deauthorizing;
-            if (eligibleAmount < minAuthorization || !info.operatorConfirmed) {
+            if (eligibleAmount < minimumAuthorization || !info.operatorConfirmed) {
                 continue;
             }
             activeStakingProviders[resultIndex][0] = uint256(uint160(stakingProvider));

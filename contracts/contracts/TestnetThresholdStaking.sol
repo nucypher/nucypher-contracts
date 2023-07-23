@@ -3,7 +3,7 @@
 pragma solidity ^0.8.0;
 
 
-import "../threshold/IApplication.sol";
+import "@threshold/contracts/staking/IApplication.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 
