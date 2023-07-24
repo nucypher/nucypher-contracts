@@ -6,6 +6,7 @@ import "./lib/ReEncryptionValidator.sol";
 import "./lib/SignatureVerifier.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "./TACoApplication.sol";
 
 
 /**
@@ -13,7 +14,7 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 * @notice Supervises operators' behavior and punishes when something's wrong.
 * @dev |v3.1.1|
 */
-abstract contract Adjudicator {
+contract Adjudicator {
 
     using UmbralDeserializer for bytes;
     using SafeCast for uint256;
@@ -37,6 +38,7 @@ abstract contract Adjudicator {
     uint256 public immutable basePenalty;
     uint256 public immutable penaltyHistoryCoefficient;
     uint256 public immutable percentagePenaltyCoefficient;
+    TACoApplication public immutable application;
 
     mapping (address => uint256) public penaltyHistory;
     mapping (bytes32 => bool) public evaluatedCFrags;
@@ -50,16 +52,22 @@ abstract contract Adjudicator {
     * @param _percentagePenaltyCoefficient Coefficient for calculating the percentage penalty
     */
     constructor(
+        TACoApplication _application,
         SignatureVerifier.HashAlgorithm _hashAlgorithm,
         uint256 _basePenalty,
         uint256 _penaltyHistoryCoefficient,
         uint256 _percentagePenaltyCoefficient
     ) {
-        require(_percentagePenaltyCoefficient != 0, "Wrong input parameters");
+        require(
+            _percentagePenaltyCoefficient != 0 && 
+            address(_application.token()) != address(0), 
+            "Wrong input parameters"
+        );
         hashAlgorithm = _hashAlgorithm;
         basePenalty = _basePenalty;
         percentagePenaltyCoefficient = _percentagePenaltyCoefficient;
         penaltyHistoryCoefficient = _penaltyHistoryCoefficient;
+        application = _application;
     }
 
     /**
@@ -146,17 +154,17 @@ abstract contract Adjudicator {
         address operator = SignatureVerifier.recover(
             SignatureVerifier.hashEIP191(stamp, bytes1(0x45)), // Currently, we use version E (0x45) of EIP191 signatures
             _operatorIdentityEvidence);
-        address stakingProvider = stakingProviderFromOperator(operator);
+        address stakingProvider = application.stakingProviderFromOperator(operator);
         require(stakingProvider != address(0), "Operator must be related to a provider");
 
         // 5. Check that staking provider can be slashed
-        uint96 stakingProviderValue = authorizedStake(stakingProvider);
+        uint96 stakingProviderValue = application.authorizedStake(stakingProvider);
         require(stakingProviderValue > 0, "Provider has no tokens");
 
         // 6. If CFrag was incorrect, slash staking provider
         if (!cFragIsCorrect) {
             uint96 penalty = calculatePenalty(stakingProvider, stakingProviderValue);
-            slash(stakingProvider, penalty, msg.sender);
+            application.slash(stakingProvider, penalty, msg.sender);
             emit IncorrectCFragVerdict(evaluationHash, operator, stakingProvider);
         }
     }
@@ -175,27 +183,5 @@ abstract contract Adjudicator {
         penaltyHistory[_stakingProvider] = penaltyHistory[_stakingProvider] + 1;
         return penalty.toUint96();
     }
-
-    /**
-    * @notice Get all tokens delegated to the staking provider
-    */
-    function authorizedStake(address _stakingProvider) public view virtual returns (uint96);
-
-    /**
-    * @notice Get staking provider address bonded with specified operator address
-    */
-    function stakingProviderFromOperator(address _operator) public view virtual returns (address);
-
-    /**
-    * @notice Slash the provider's stake and reward the investigator
-    * @param _stakingProvider Staking provider address
-    * @param _penalty Penalty
-    * @param _investigator Investigator
-    */
-    function slash(
-        address _stakingProvider,
-        uint96 _penalty,
-        address _investigator
-    ) internal virtual;
 
 }

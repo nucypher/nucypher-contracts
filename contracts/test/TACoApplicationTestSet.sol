@@ -3,12 +3,13 @@
 pragma solidity ^0.8.0;
 
 
-import "../contracts/PREApplication.sol";
+import "../contracts/TACoApplication.sol";
+import "@threshold/contracts/staking/IApplication.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 
 /**
-* @notice Contract for testing PRE application contract
+* @notice Contract for testing the application contract
 */
 contract TToken is ERC20("T", "T") {
 
@@ -20,9 +21,9 @@ contract TToken is ERC20("T", "T") {
 
 
 /**
-* @notice Contract for testing PRE application contract
+* @notice Contract for testing TACo application contract
 */
-contract ThresholdStakingForPREApplicationMock {
+contract ThresholdStakingForTACoApplicationMock {
 
     struct StakingProviderInfo {
         address owner;
@@ -32,7 +33,7 @@ contract ThresholdStakingForPREApplicationMock {
         uint96 decreaseRequestTo;
     }
 
-    PREApplication public preApplication;
+    IApplication public application;
 
     mapping (address => StakingProviderInfo) public stakingProviderInfo;
 
@@ -41,8 +42,8 @@ contract ThresholdStakingForPREApplicationMock {
     address public notifier;
     address[] public stakingProvidersToSeize;
 
-    function setApplication(PREApplication _preApplication) external {
-        preApplication = _preApplication;
+    function setApplication(IApplication _application) external {
+        application = _application;
     }
 
     function stakedNu(address) external view returns (uint256) {
@@ -80,7 +81,7 @@ contract ThresholdStakingForPREApplicationMock {
     }
 
     function authorizedStake(address _stakingProvider, address _application) external view returns (uint96) {
-        require(_stakingProvider == _application || _application == address(preApplication));
+        require(_stakingProvider == _application || _application == address(application));
         return stakingProviderInfo[_stakingProvider].authorized;
     }
 
@@ -118,7 +119,7 @@ contract ThresholdStakingForPREApplicationMock {
     }
 
     function authorizationIncreased(address _stakingProvider, uint96 _fromAmount, uint96 _toAmount) external {
-        preApplication.authorizationIncreased(_stakingProvider, _fromAmount, _toAmount);
+        application.authorizationIncreased(_stakingProvider, _fromAmount, _toAmount);
         stakingProviderInfo[_stakingProvider].authorized = _toAmount;
     }
 
@@ -129,7 +130,7 @@ contract ThresholdStakingForPREApplicationMock {
     )
         external
     {
-        preApplication.involuntaryAuthorizationDecrease(_stakingProvider, _fromAmount, _toAmount);
+        application.involuntaryAuthorizationDecrease(_stakingProvider, _fromAmount, _toAmount);
         stakingProviderInfo[_stakingProvider].authorized = _toAmount;
     }
 
@@ -140,7 +141,7 @@ contract ThresholdStakingForPREApplicationMock {
     )
         external
     {
-        preApplication.authorizationDecreaseRequested(_stakingProvider, _fromAmount, _toAmount);
+        application.authorizationDecreaseRequested(_stakingProvider, _fromAmount, _toAmount);
         stakingProviderInfo[_stakingProvider].decreaseRequestTo = _toAmount;
     }
 
@@ -152,60 +153,18 @@ contract ThresholdStakingForPREApplicationMock {
 */
 contract Intermediary {
 
-    PREApplication immutable public preApplication;
+    TACoApplication immutable public application;
 
-    constructor(PREApplication _preApplication) {
-        preApplication = _preApplication;
+    constructor(TACoApplication _application) {
+        application = _application;
     }
 
     function bondOperator(address _operator) external {
-        preApplication.bondOperator(address(this), _operator);
+        application.bondOperator(address(this), _operator);
     }
 
     function confirmOperatorAddress() external {
-        preApplication.confirmOperatorAddress();
-    }
-
-}
-
-
-/**
-* @notice Extended contract
-*/
-contract ExtendedPREApplication is PREApplication {
-
-    constructor(
-        IERC20 _token,
-        IStaking _tStaking,
-        SignatureVerifier.HashAlgorithm _hashAlgorithm,
-        uint256 _basePenalty,
-        uint256 _penaltyHistoryCoefficient,
-        uint256 _percentagePenaltyCoefficient,
-        uint96 _minimumAuthorization,
-        uint256 _minWorkerSeconds,
-        uint256 _rewardDuration,
-        uint256 _deauthorizationDuration
-    )
-        PREApplication(
-            _token,
-            _tStaking,
-            _hashAlgorithm,
-            _basePenalty,
-            _penaltyHistoryCoefficient,
-            _percentagePenaltyCoefficient,
-            _minimumAuthorization,
-            _minWorkerSeconds,
-            _rewardDuration,
-            _deauthorizationDuration
-        )
-    {}
-
-    function testSlash(
-        address _stakingProvider,
-        uint96 _penalty,
-        address _investigator
-    ) external {
-        slash(_stakingProvider, _penalty, _investigator);
+        application.confirmOperatorAddress();
     }
 
 }

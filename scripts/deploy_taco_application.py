@@ -20,13 +20,9 @@ def main(account_id=None):
         t_token = deployments_config.get("t_token")
 
     # TODO deploy proxy
-    pre_app = project.PREApplication.deploy(
+    pre_app = project.TACoApplication.deploy(
         t_token,
         t_staking,
-        deployments_config.get("pre_hash_algorithm"),
-        deployments_config.get("pre_base_penalty"),
-        deployments_config.get("pre_penalty_history_coefficient"),
-        deployments_config.get("pre_percentage_penalty_coefficient"),
         deployments_config.get("pre_min_authorization"),
         deployments_config.get("pre_min_operator_seconds"),
         deployments_config.get("reward_duration"),
