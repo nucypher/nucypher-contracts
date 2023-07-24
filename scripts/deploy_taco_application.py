@@ -20,7 +20,7 @@ def main(account_id=None):
         t_token = deployments_config.get("t_token")
 
     # TODO deploy proxy
-    pre_app = project.TACoApplication.deploy(
+    taco_app = project.TACoApplication.deploy(
         t_token,
         t_staking,
         deployments_config.get("pre_min_authorization"),
@@ -30,4 +30,4 @@ def main(account_id=None):
         sender=deployer,
         publish=deployments_config.get("verify"),
     )
-    return pre_app
+    return taco_app

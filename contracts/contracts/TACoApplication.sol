@@ -153,8 +153,8 @@ contract TACoApplication is IApplication, OwnableUpgradeable {
     * @param _tStaking T token staking contract
     * @param _minimumAuthorization Amount of minimum allowable authorization
     * @param _minOperatorSeconds Min amount of seconds while an operator can't be changed
-    * @param _rewardDuration Duration of one reward cycle
-    * @param _deauthorizationDuration Duration of decreasing authorization
+    * @param _rewardDuration Duration of one reward cycle in seconds
+    * @param _deauthorizationDuration Duration of decreasing authorization in seconds
     */
     constructor(
         IERC20 _token,
@@ -229,7 +229,7 @@ contract TACoApplication is IApplication, OwnableUpgradeable {
     }
 
     /**
-     * @notice Set Set adjudicator contract. If zero then slashing is disabled
+     * @notice Set adjudicator contract. If zero then slashing is disabled
      */
     function setAdjudicator(address _adjudicator) external onlyOwner {
         require(address(_adjudicator) != address(adjudicator), "New address must not be equal to the current one");
@@ -285,7 +285,7 @@ contract TACoApplication is IApplication, OwnableUpgradeable {
     }
 
     /**
-    * @notice Returns amount of reward for the staking provider
+    * @notice Returns amount of reward in T units for the staking provider
     * @param _stakingProvider Staking provider address
     */
     function availableRewards(address _stakingProvider) public view returns (uint96) {
@@ -598,7 +598,7 @@ contract TACoApplication is IApplication, OwnableUpgradeable {
     /**
     * @notice Bond operator
     * @param _stakingProvider Staking provider address
-    * @param _operator Operator address. Must be a real address, not a contract
+    * @param _operator Operator address. Must be an EOA, not a contract address
     */
     function bondOperator(address _stakingProvider, address _operator)
         external onlyOwnerOrStakingProvider(_stakingProvider) updateReward(_stakingProvider)

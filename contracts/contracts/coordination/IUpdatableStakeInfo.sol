@@ -3,8 +3,8 @@
 pragma solidity ^0.8.0;
 
 /**
-* @title StakeInfo
-* @notice StakeInfo
+* @title IUpdatableStakeInfo
+* @notice Interface for x-chain interactions between application and coordinator
 */
 interface IUpdatableStakeInfo {
 

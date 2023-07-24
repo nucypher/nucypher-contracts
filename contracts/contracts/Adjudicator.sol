@@ -43,8 +43,6 @@ contract Adjudicator {
     mapping (address => uint256) public penaltyHistory;
     mapping (bytes32 => bool) public evaluatedCFrags;
 
-    uint256[50] private reservedSlots;
-
     /**
     * @param _hashAlgorithm Hashing algorithm
     * @param _basePenalty Base for the penalty calculation
@@ -155,7 +153,7 @@ contract Adjudicator {
             SignatureVerifier.hashEIP191(stamp, bytes1(0x45)), // Currently, we use version E (0x45) of EIP191 signatures
             _operatorIdentityEvidence);
         address stakingProvider = application.stakingProviderFromOperator(operator);
-        require(stakingProvider != address(0), "Operator must be related to a provider");
+        require(stakingProvider != address(0), "Operator must be associated with a provider");
 
         // 5. Check that staking provider can be slashed
         uint96 stakingProviderValue = application.authorizedStake(stakingProvider);
