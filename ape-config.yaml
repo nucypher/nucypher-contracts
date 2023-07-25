@@ -36,12 +36,15 @@ deployments:
     mainnet:
       - contract_type: DAI
         address: '0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063'
+      - contract_type: fx_child
+        address: '0x8397259c983751DAf40400790063935a11afa28a'
     mumbai:
       - contract_type: DAI
         address: '0x001B3B4d0F3714Ca98ba10F6042DaEbF0B1B7b6F'
       - contract_type: StakeInfo
         address: '0xC1379866Fb0c100DCBFAb7b470009C4827D47DD8'
-      - fx_child: '0xCf73231F28B7331BBe3124B907840A94851f9f11'
+      - contract_type: fx_child
+        address: '0xCf73231F28B7331BBe3124B907840A94851f9f11'
       - verify: False
   ethereum:
     local:
@@ -83,6 +86,10 @@ deployments:
         max_dkg_size: 8
         pre_application: '0x685b8Fd02aB87d8FfFff7346cB101A5cE4185bf3'
         verify: True
+      - contract_type: fx_root
+        address: '0x3d1d3E34f7fB6D26245E6640E1c50710eFFf15bA'
+      - contract_type: checkpoint_manager
+        address: '0x2890bA17EfE978480615e330ecB65333b880928e'
     mumbai:
       - stake_info_contract: '0xC1379866Fb0c100DCBFAb7b470009C4827D47DD8'
         max_dkg_size: 16
@@ -98,6 +105,10 @@ deployments:
         pre_min_authorization: 40000000000000000000000
         pre_min_operator_seconds: 86400  # one day in seconds
         verify: True
+      - contract_type: fx_root
+        address: '0xfe5e5D361b2ad62c541bAb87C45a0B9B018389a2'
+      - contract_type: checkpoint_manager
+        address: '0x86e4dc95c7fbdbf52e33d563bbdb00823894c287'
 
 
 test:
