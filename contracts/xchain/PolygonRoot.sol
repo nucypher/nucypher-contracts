@@ -11,10 +11,12 @@ contract PolygonRoot is FxBaseRootTunnel, IUpdatableStakeInfo {
     constructor(
         address _checkpointManager,
         address _fxRoot,
-        address _source
+        address _source,
+        address _fxChildTunnel
     ) FxBaseRootTunnel(_checkpointManager, _fxRoot) {
         require(_source != address(0), "Wrong input parameters");
         source = _source;
+        fxChildTunnel = _fxChildTunnel;
     }
 
     /**
