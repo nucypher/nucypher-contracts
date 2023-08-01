@@ -3,7 +3,7 @@
 pragma solidity ^0.8.0;
 
 
-import "./SimplePREApplication.sol";
+import "@threshold/contracts/staking/IApplication.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 
@@ -18,12 +18,12 @@ contract TestnetThresholdStaking is Ownable {
         uint96 nuInTStake;
     }
 
-    SimplePREApplication public preApplication;
+    IApplication public application;
 
     mapping (address => StakingProviderInfo) public stakingProviderInfo;
 
-    function setApplication(SimplePREApplication _preApplication) external onlyOwner {
-        preApplication = _preApplication;
+    function setApplication(IApplication _application) external onlyOwner {
+        application = _application;
     }
 
     function stakedNu(address) external view returns (uint256) {

@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 
 import "../contracts/StakingEscrow.sol";
 import "../contracts/NuCypherToken.sol";
-import "../threshold/IStaking.sol";
+import "@threshold/contracts/staking/IStaking.sol";
 
 /**
 * @notice Enhanced version of StakingEscrow to use in tests
