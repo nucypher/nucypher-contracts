@@ -56,16 +56,18 @@ contract Coordinator is AccessControlDefaultAdminRules {
         bytes decryptionRequestStaticKey;
     }
 
-    // TODO: Optimize layout
     struct Ritual {
         address initiator;
         uint32 initTimestamp;
         uint32 endTimestamp;
         uint16 totalTranscripts;
         uint16 totalAggregations;
+
         address authority;
         uint16 dkgSize;
+        uint16 threshold;
         bool aggregationMismatch;
+
         IEncryptionAuthorizer accessController;
         BLS12381.G1Point publicKey;
         bytes aggregatedTranscript;
@@ -206,6 +208,11 @@ contract Coordinator is AccessControlDefaultAdminRules {
         return ritual.participant;
     }
 
+    function getThresholdForRitualSize(uint16 size) public pure returns (uint16) {
+        return 1 + size / 2;
+        // Alternatively: 1 + 2*size/3 (for >66.6%) or 1 + 3*size/5 (for >60%)
+    }
+
     function initiateRitual(
         address[] calldata providers,
         address authority,
@@ -218,8 +225,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
             isInitiationPublic || hasRole(INITIATOR_ROLE, msg.sender),
             "Sender can't initiate ritual"
         );
-        // TODO: Validate service fees, expiration dates, threshold
-        uint256 length = providers.length;
+        uint16 length = uint16(providers.length);
         require(2 <= length && length <= maxDkgSize, "Invalid number of nodes");
         require(duration > 0, "Invalid ritual duration"); // TODO: We probably want to restrict it more
 
@@ -227,7 +233,8 @@ contract Coordinator is AccessControlDefaultAdminRules {
         Ritual storage ritual = rituals.push();
         ritual.initiator = msg.sender;
         ritual.authority = authority;
-        ritual.dkgSize = uint16(length);
+        ritual.dkgSize = length;
+        ritual.threshold = getThresholdForRitualSize(length);
         ritual.initTimestamp = uint32(block.timestamp);
         ritual.endTimestamp = ritual.initTimestamp + duration;
         ritual.accessController = accessController;
