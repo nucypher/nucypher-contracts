@@ -67,16 +67,17 @@ def test_create_policy(subscription_manager, accounts, chain):
     assert policy[3] == size
     assert policy[4] == "0x0000000000000000000000000000000000000000"
 
-    events = subscription_manager.PolicyCreated.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert bytes(event["policyId"]) == policy_id
-    assert event["sponsor"] == alice
-    assert event["owner"] == alice
-    assert event["size"] == size
-    assert event["startTimestamp"] == start
-    assert event["endTimestamp"] == end
-    assert event["cost"] == fee
+    assert tx.events == [
+        subscription_manager.PolicyCreated(
+            policyId=policy_id,
+            sponsor=alice,
+            owner=alice,
+            size=size,
+            startTimestamp=start,
+            endTimestamp=end,
+            cost=fee,
+        )
+    ]
 
 
 def test_create_policy_with_sponsor(subscription_manager, accounts, chain):
@@ -103,16 +104,17 @@ def test_create_policy_with_sponsor(subscription_manager, accounts, chain):
     assert policy[3] == size
     assert policy[4] == alice
 
-    events = subscription_manager.PolicyCreated.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert bytes(event["policyId"]) == policy_id
-    assert event["sponsor"] == sponsor
-    assert event["owner"] == alice
-    assert event["size"] == size
-    assert event["startTimestamp"] == start
-    assert event["endTimestamp"] == end
-    assert event["cost"] == fee
+    assert tx.events == [
+        subscription_manager.PolicyCreated(
+            policyId=policy_id,
+            sponsor=sponsor,
+            owner=alice,
+            size=size,
+            startTimestamp=start,
+            endTimestamp=end,
+            cost=fee,
+        )
+    ]
 
 
 def test_create_policy_with_same_id(subscription_manager, accounts, chain):

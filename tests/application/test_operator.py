@@ -111,12 +111,14 @@ def test_bond_operator(accounts, threshold_staking, taco_application, stake_info
     assert stake_info.stakingProviderFromOperator(operator1) == staking_provider_3
 
     events = taco_application.OperatorBonded.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["stakingProvider"] == staking_provider_3
-    assert event["operator"] == operator1
-    assert event["previousOperator"] == ZERO_ADDRESS
-    assert event["startTimestamp"] == timestamp
+    assert events == [
+        taco_application.OperatorBonded(
+            stakingProvider=staking_provider_3,
+            operator=operator1,
+            previousOperator=ZERO_ADDRESS,
+            startTimestamp=timestamp,
+        )
+    ]
 
     # After confirmation operator is becoming active
     all_locked, staking_providers = taco_application.getActiveStakingProviders(0, 0)
@@ -163,14 +165,14 @@ def test_bond_operator(accounts, threshold_staking, taco_application, stake_info
     assert len(staking_providers) == 0
 
     events = taco_application.OperatorBonded.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["stakingProvider"] == staking_provider_3
-    # Now the operator has been unbonded ...
-    assert event["operator"] == ZERO_ADDRESS
-    assert event["previousOperator"] == operator1
-    # ... with a new starting period.
-    assert event["startTimestamp"] == timestamp
+    assert events == [
+        taco_application.OperatorBonded(
+            stakingProvider=staking_provider_3,
+            operator=ZERO_ADDRESS,
+            previousOperator=operator1,
+            startTimestamp=timestamp,
+        )
+    ]
 
     # The staking provider can bond now a new operator, without waiting additional time.
     tx = taco_application.bondOperator(staking_provider_3, operator2, sender=staking_provider_3)
@@ -185,12 +187,14 @@ def test_bond_operator(accounts, threshold_staking, taco_application, stake_info
     assert stake_info.stakingProviderFromOperator(operator2) == ZERO_ADDRESS
 
     events = taco_application.OperatorBonded.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["stakingProvider"] == staking_provider_3
-    assert event["operator"] == operator2
-    assert event["previousOperator"] == ZERO_ADDRESS
-    assert event["startTimestamp"] == timestamp
+    assert events == [
+        taco_application.OperatorBonded(
+            stakingProvider=staking_provider_3,
+            operator=operator2,
+            previousOperator=ZERO_ADDRESS,
+            startTimestamp=timestamp,
+        )
+    ]
 
     # Now the previous operator can no longer make a confirmation
     with ape.reverts():
@@ -218,12 +222,14 @@ def test_bond_operator(accounts, threshold_staking, taco_application, stake_info
     assert stake_info.stakingProviderFromOperator(operator1) == ZERO_ADDRESS
 
     events = taco_application.OperatorBonded.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["stakingProvider"] == staking_provider_4
-    assert event["operator"] == operator1
-    assert event["previousOperator"] == ZERO_ADDRESS
-    assert event["startTimestamp"] == timestamp
+    assert events == [
+        taco_application.OperatorBonded(
+            stakingProvider=staking_provider_4,
+            operator=operator1,
+            previousOperator=ZERO_ADDRESS,
+            startTimestamp=timestamp,
+        )
+    ]
 
     # The first operator still can't be a staking provider
     threshold_staking.setRoles(operator1, sender=creator)
@@ -260,12 +266,14 @@ def test_bond_operator(accounts, threshold_staking, taco_application, stake_info
     assert len(staking_providers) == 0
 
     events = taco_application.OperatorBonded.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["stakingProvider"] == staking_provider_4
-    assert event["operator"] == operator3
-    assert event["previousOperator"] == operator1
-    assert event["startTimestamp"] == timestamp
+    assert events == [
+        taco_application.OperatorBonded(
+            stakingProvider=staking_provider_4,
+            operator=operator3,
+            previousOperator=operator1,
+            startTimestamp=timestamp,
+        )
+    ]
 
     # The first operator is free and can deposit tokens and become a staking provider
     threshold_staking.setRoles(operator1, sender=creator)
@@ -291,12 +299,14 @@ def test_bond_operator(accounts, threshold_staking, taco_application, stake_info
     assert taco_application.stakingProviders(2) == staking_provider_1
 
     events = taco_application.OperatorBonded.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["stakingProvider"] == staking_provider_1
-    assert event["operator"] == staking_provider_1
-    assert event["previousOperator"] == ZERO_ADDRESS
-    assert event["startTimestamp"] == timestamp
+    assert events == [
+        taco_application.OperatorBonded(
+            stakingProvider=staking_provider_1,
+            operator=staking_provider_1,
+            previousOperator=ZERO_ADDRESS,
+            startTimestamp=timestamp,
+        )
+    ]
 
     # If stake will be less than minimum then confirmation is still possible
     threshold_staking.involuntaryAuthorizationDecrease(
@@ -374,6 +384,9 @@ def test_confirm_address(accounts, threshold_staking, taco_application, chain, p
     event = events[0]
     assert event["stakingProvider"] == staking_provider
     assert event["operator"] == operator
+    assert events == [
+        taco_application.OperatorConfirmed(stakingProvider=staking_provider, operator=operator)
+    ]
 
     # Can't confirm twice
     with ape.reverts():

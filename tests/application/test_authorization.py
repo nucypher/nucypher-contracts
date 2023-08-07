@@ -63,11 +63,11 @@ def test_authorization_increase(accounts, threshold_staking, taco_application, s
 
     # Check that all events are emitted
     events = taco_application.AuthorizationIncreased.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["stakingProvider"] == staking_provider
-    assert event["fromAmount"] == 0
-    assert event["toAmount"] == value
+    assert events == [
+        taco_application.AuthorizationIncreased(
+            stakingProvider=staking_provider, fromAmount=0, toAmount=value
+        )
+    ]
 
     # Decrease and try to increase again
     threshold_staking.involuntaryAuthorizationDecrease(
@@ -90,11 +90,11 @@ def test_authorization_increase(accounts, threshold_staking, taco_application, s
     assert taco_application.isAuthorized(staking_provider)
 
     events = taco_application.AuthorizationIncreased.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["stakingProvider"] == staking_provider
-    assert event["fromAmount"] == value // 2
-    assert event["toAmount"] == value
+    assert events == [
+        taco_application.AuthorizationIncreased(
+            stakingProvider=staking_provider, fromAmount=value // 2, toAmount=value
+        )
+    ]
 
     # Confirm operator address and try to increase authorization again
     taco_application.bondOperator(staking_provider, staking_provider, sender=staking_provider)
@@ -113,11 +113,11 @@ def test_authorization_increase(accounts, threshold_staking, taco_application, s
     assert taco_application.isAuthorized(staking_provider)
 
     events = taco_application.AuthorizationIncreased.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["stakingProvider"] == staking_provider
-    assert event["fromAmount"] == value
-    assert event["toAmount"] == authorization
+    assert events == [
+        taco_application.AuthorizationIncreased(
+            stakingProvider=staking_provider, fromAmount=value, toAmount=authorization
+        )
+    ]
 
     # Emulate slash and desync by sending smaller fromAmount
     tx = threshold_staking.authorizationIncreased(
@@ -130,11 +130,11 @@ def test_authorization_increase(accounts, threshold_staking, taco_application, s
     assert taco_application.isAuthorized(staking_provider)
 
     events = taco_application.AuthorizationIncreased.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["stakingProvider"] == staking_provider
-    assert event["fromAmount"] == value // 2
-    assert event["toAmount"] == value
+    assert events == [
+        taco_application.AuthorizationIncreased(
+            stakingProvider=staking_provider, fromAmount=value // 2, toAmount=value
+        )
+    ]
 
     # Increase again without syncing with StakeInfo
     taco_application.setUpdatableStakeInfo(ZERO_ADDRESS, sender=creator)
@@ -181,11 +181,11 @@ def test_involuntary_authorization_decrease(
     assert stake_info.stakes(staking_provider)[STAKE_INFO_OPERATOR_SLOT] == ZERO_ADDRESS
 
     events = taco_application.AuthorizationInvoluntaryDecreased.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["stakingProvider"] == staking_provider
-    assert event["fromAmount"] == value
-    assert event["toAmount"] == authorization
+    assert events == [
+        taco_application.AuthorizationInvoluntaryDecreased(
+            stakingProvider=staking_provider, fromAmount=value, toAmount=authorization
+        )
+    ]
 
     # Prepare request to decrease before involuntary decrease
     threshold_staking.authorizationDecreaseRequested(
@@ -210,11 +210,11 @@ def test_involuntary_authorization_decrease(
     assert stake_info.stakes(staking_provider)[STAKE_INFO_OPERATOR_SLOT] == ZERO_ADDRESS
 
     events = taco_application.AuthorizationInvoluntaryDecreased.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["stakingProvider"] == staking_provider
-    assert event["fromAmount"] == value // 2
-    assert event["toAmount"] == authorization
+    assert events == [
+        taco_application.AuthorizationInvoluntaryDecreased(
+            stakingProvider=staking_provider, fromAmount=value // 2, toAmount=authorization
+        )
+    ]
 
     # Confirm operator address and decrease again
     taco_application.bondOperator(staking_provider, staking_provider, sender=staking_provider)
@@ -240,11 +240,11 @@ def test_involuntary_authorization_decrease(
     assert stake_info.stakes(staking_provider)[STAKE_INFO_OPERATOR_SLOT] == staking_provider
 
     events = taco_application.AuthorizationInvoluntaryDecreased.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["stakingProvider"] == staking_provider
-    assert event["fromAmount"] == value // 4
-    assert event["toAmount"] == authorization
+    assert events == [
+        taco_application.AuthorizationInvoluntaryDecreased(
+            stakingProvider=staking_provider, fromAmount=value // 4, toAmount=authorization
+        )
+    ]
 
     # Decrease everything
     tx = threshold_staking.involuntaryAuthorizationDecrease(
@@ -263,11 +263,11 @@ def test_involuntary_authorization_decrease(
     assert stake_info.stakes(staking_provider)[STAKE_INFO_OPERATOR_SLOT] == ZERO_ADDRESS
 
     events = taco_application.AuthorizationInvoluntaryDecreased.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["stakingProvider"] == staking_provider
-    assert event["fromAmount"] == authorization
-    assert event["toAmount"] == 0
+    assert events == [
+        taco_application.AuthorizationInvoluntaryDecreased(
+            stakingProvider=staking_provider, fromAmount=authorization, toAmount=0
+        )
+    ]
 
     # Emulate slash and desync by sending smaller fromAmount
     threshold_staking.authorizationIncreased(staking_provider, 0, 2 * value, sender=creator)
@@ -286,11 +286,11 @@ def test_involuntary_authorization_decrease(
     assert stake_info.authorizedStake(staking_provider) == authorization
 
     events = taco_application.AuthorizationInvoluntaryDecreased.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["stakingProvider"] == staking_provider
-    assert event["fromAmount"] == value
-    assert event["toAmount"] == authorization
+    assert events == [
+        taco_application.AuthorizationInvoluntaryDecreased(
+            stakingProvider=staking_provider, fromAmount=value, toAmount=authorization
+        )
+    ]
 
     # Decrease everything again without syncing with StakeInfo
     taco_application.setUpdatableStakeInfo(ZERO_ADDRESS, sender=creator)
@@ -352,11 +352,11 @@ def test_authorization_decrease_request(
     assert taco_application.isAuthorized(staking_provider)
 
     events = taco_application.AuthorizationDecreaseRequested.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["stakingProvider"] == staking_provider
-    assert event["fromAmount"] == value
-    assert event["toAmount"] == minimum_authorization
+    assert events == [
+        taco_application.AuthorizationDecreaseRequested(
+            stakingProvider=staking_provider, fromAmount=value, toAmount=minimum_authorization
+        )
+    ]
 
     # Confirm operator address and request full decrease
     taco_application.bondOperator(staking_provider, staking_provider, sender=staking_provider)
@@ -379,11 +379,11 @@ def test_authorization_decrease_request(
     assert taco_application.isAuthorized(staking_provider)
 
     events = taco_application.AuthorizationDecreaseRequested.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["stakingProvider"] == staking_provider
-    assert event["fromAmount"] == value
-    assert event["toAmount"] == 0
+    assert events == [
+        taco_application.AuthorizationDecreaseRequested(
+            stakingProvider=staking_provider, fromAmount=value, toAmount=0
+        )
+    ]
 
     # Emulate slash and desync by sending smaller fromAmount
     tx = threshold_staking.authorizationDecreaseRequested(
@@ -396,11 +396,11 @@ def test_authorization_decrease_request(
     assert stake_info.authorizedStake(staking_provider) == 0
 
     events = taco_application.AuthorizationDecreaseRequested.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["stakingProvider"] == staking_provider
-    assert event["fromAmount"] == value // 2
-    assert event["toAmount"] == 0
+    assert events == [
+        taco_application.AuthorizationDecreaseRequested(
+            stakingProvider=staking_provider, fromAmount=value // 2, toAmount=0
+        )
+    ]
 
     # Request decrease without syncing with StakeInfo
     taco_application.setUpdatableStakeInfo(ZERO_ADDRESS, sender=creator)
@@ -453,11 +453,11 @@ def test_finish_authorization_decrease(
     )
 
     events = taco_application.AuthorizationDecreaseApproved.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["stakingProvider"] == staking_provider
-    assert event["fromAmount"] == value
-    assert event["toAmount"] == new_value
+    assert events == [
+        taco_application.AuthorizationDecreaseApproved(
+            stakingProvider=staking_provider, fromAmount=value, toAmount=new_value
+        )
+    ]
 
     # Confirm operator, request again then desync values and finish decrease
     value = new_value
@@ -488,11 +488,11 @@ def test_finish_authorization_decrease(
     assert stake_info.stakes(staking_provider)[STAKE_INFO_OPERATOR_SLOT] == staking_provider
 
     events = taco_application.AuthorizationDecreaseApproved.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["stakingProvider"] == staking_provider
-    assert event["fromAmount"] == value
-    assert event["toAmount"] == new_value
+    assert events == [
+        taco_application.AuthorizationDecreaseApproved(
+            stakingProvider=staking_provider, fromAmount=value, toAmount=new_value
+        )
+    ]
 
     # Decrease everything
     value = new_value
@@ -515,11 +515,11 @@ def test_finish_authorization_decrease(
     assert stake_info.stakes(staking_provider)[STAKE_INFO_OPERATOR_SLOT] == ZERO_ADDRESS
 
     events = taco_application.AuthorizationDecreaseApproved.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["stakingProvider"] == staking_provider
-    assert event["fromAmount"] == value
-    assert event["toAmount"] == 0
+    assert events == [
+        taco_application.AuthorizationDecreaseApproved(
+            stakingProvider=staking_provider, fromAmount=value, toAmount=0
+        )
+    ]
 
     # Decrease everything again without syncing with StakeInfo
     value = minimum_authorization
@@ -570,11 +570,11 @@ def test_resync(accounts, threshold_staking, taco_application, stake_info):
     assert taco_application.isAuthorized(staking_provider)
 
     events = taco_application.AuthorizationReSynchronized.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["stakingProvider"] == staking_provider
-    assert event["fromAmount"] == value
-    assert event["toAmount"] == new_value
+    assert events == [
+        taco_application.AuthorizationReSynchronized(
+            stakingProvider=staking_provider, fromAmount=value, toAmount=new_value
+        )
+    ]
 
     # Confirm operator and change authorized amount again
     value = new_value
@@ -597,11 +597,11 @@ def test_resync(accounts, threshold_staking, taco_application, stake_info):
     assert stake_info.stakes(staking_provider)[STAKE_INFO_OPERATOR_SLOT] == staking_provider
 
     events = taco_application.AuthorizationReSynchronized.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["stakingProvider"] == staking_provider
-    assert event["fromAmount"] == value
-    assert event["toAmount"] == new_value
+    assert events == [
+        taco_application.AuthorizationReSynchronized(
+            stakingProvider=staking_provider, fromAmount=value, toAmount=new_value
+        )
+    ]
 
     # Request decrease and change authorized amount again
     value = new_value
@@ -623,11 +623,11 @@ def test_resync(accounts, threshold_staking, taco_application, stake_info):
     assert stake_info.stakes(staking_provider)[STAKE_INFO_OPERATOR_SLOT] == staking_provider
 
     events = taco_application.AuthorizationReSynchronized.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["stakingProvider"] == staking_provider
-    assert event["fromAmount"] == value
-    assert event["toAmount"] == new_value
+    assert events == [
+        taco_application.AuthorizationReSynchronized(
+            stakingProvider=staking_provider, fromAmount=value, toAmount=new_value
+        )
+    ]
 
     # Set authorized amount to zero and resync again
     value = new_value
@@ -647,11 +647,11 @@ def test_resync(accounts, threshold_staking, taco_application, stake_info):
     assert stake_info.stakes(staking_provider)[STAKE_INFO_OPERATOR_SLOT] == ZERO_ADDRESS
 
     events = taco_application.AuthorizationReSynchronized.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["stakingProvider"] == staking_provider
-    assert event["fromAmount"] == value
-    assert event["toAmount"] == 0
+    assert events == [
+        taco_application.AuthorizationReSynchronized(
+            stakingProvider=staking_provider, fromAmount=value, toAmount=0
+        )
+    ]
 
     # Resync again without syncing with StakeInfo
     value = minimum_authorization
