@@ -337,6 +337,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
             keccak256(ritual.aggregatedTranscript) != aggregatedTranscriptDigest
         ) {
             ritual.aggregationMismatch = true;
+            delete ritual.publicKey;
             emit EndRitual({ritualId: ritualId, successful: false});
         }
 
