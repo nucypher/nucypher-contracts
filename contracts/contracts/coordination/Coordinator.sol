@@ -227,7 +227,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
         );
         uint16 length = uint16(providers.length);
         require(2 <= length && length <= maxDkgSize, "Invalid number of nodes");
-        require(duration > 0, "Invalid ritual duration"); // TODO: We probably want to restrict it more
+        require(duration >= 24 hours, "Invalid ritual duration");  // TODO: Define minimum duration #106
 
         uint32 id = uint32(rituals.length);
         Ritual storage ritual = rituals.push();
