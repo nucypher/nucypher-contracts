@@ -10,7 +10,7 @@ TIMEOUT = 1000
 MAX_DKG_SIZE = 4
 FEE_RATE = 42
 ERC20_SUPPLY = 10**24
-DURATION = 1234
+DURATION = 48 * 60 * 60
 
 RitualState = IntEnum(
     "RitualState",
@@ -168,14 +168,29 @@ def test_initiate_ritual(
         allow_logic=global_allow_list,
     )
 
+    ritualID = 0
     events = coordinator.StartRitual.from_receipt(tx)
     assert len(events) == 1
     event = events[0]
-    assert event["ritualId"] == 0
+    assert event["ritualId"] == ritualID
     assert event["authority"] == authority
     assert event["participants"] == tuple(n.address.lower() for n in nodes)
 
     assert coordinator.getRitualState(0) == RitualState.AWAITING_TRANSCRIPTS
+    
+    ritual_struct = coordinator.rituals(ritualID)
+    assert ritual_struct[0] == initiator
+    init, end = ritual_struct[1], ritual_struct[2]
+    assert end - init == DURATION
+    total_transcripts, total_aggregations = ritual_struct[3], ritual_struct[4]
+    assert total_transcripts == total_aggregations == 0
+    assert ritual_struct[5] == authority
+    assert ritual_struct[6] == len(nodes)
+    assert ritual_struct[7] == 1 + len(nodes) // 2  # threshold
+    assert not ritual_struct[8]  # aggregationMismatch
+    assert ritual_struct[9] == global_allow_list.address  # accessController
+    assert ritual_struct[10] == (b"\x00" * 32, b"\x00" * 16)  # publicKey
+    assert not ritual_struct[11]  # aggregatedTranscript
 
 
 def test_provider_public_key(coordinator, nodes):
@@ -289,35 +304,40 @@ def test_post_aggregation(
         nodes=nodes,
         allow_logic=global_allow_list,
     )
+    ritualID = 0
     transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
     for node in nodes:
-        coordinator.postTranscript(0, transcript, sender=node)
+        coordinator.postTranscript(ritualID, transcript, sender=node)
 
     aggregated = transcript  # has the same size as transcript
     decryption_request_static_keys = [os.urandom(42) for _ in nodes]
     dkg_public_key = (os.urandom(32), os.urandom(16))
     for i, node in enumerate(nodes):
-        assert coordinator.getRitualState(0) == RitualState.AWAITING_AGGREGATIONS
+        assert coordinator.getRitualState(ritualID) == RitualState.AWAITING_AGGREGATIONS
         tx = coordinator.postAggregation(
-            0, aggregated, dkg_public_key, decryption_request_static_keys[i], sender=node
+            ritualID, aggregated, dkg_public_key, decryption_request_static_keys[i],
+            sender=node
         )
 
         events = coordinator.AggregationPosted.from_receipt(tx)
         assert events == [
             coordinator.AggregationPosted(
-                ritualId=0, node=node, aggregatedTranscriptDigest=Web3.keccak(aggregated)
+                ritualId=ritualID, node=node, aggregatedTranscriptDigest=Web3.keccak(aggregated)
             )
         ]
 
-    participants = coordinator.getParticipants(0)
+    participants = coordinator.getParticipants(ritualID)
     for i, participant in enumerate(participants):
         assert participant.aggregated
         assert participant.decryptionRequestStaticKey == decryption_request_static_keys[i]
 
-    assert coordinator.getRitualState(0) == RitualState.FINALIZED
+    assert coordinator.getRitualState(ritualID) == RitualState.FINALIZED
     events = coordinator.EndRitual.from_receipt(tx)
-    assert events == [coordinator.EndRitual(ritualId=0, successful=True)]
+    assert events == [coordinator.EndRitual(ritualId=ritualID, successful=True)]
 
+    retrieved_public_key = coordinator.getPublicKeyFromRitualId(ritualID)
+    assert retrieved_public_key == dkg_public_key
+    assert coordinator.getRitualIdFromPublicKey(dkg_public_key) == ritualID
 
 def test_authorize_using_global_allow_list(
     coordinator, nodes, deployer, initiator, erc20, flat_rate_fee_model, global_allow_list
