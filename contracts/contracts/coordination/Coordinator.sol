@@ -81,18 +81,18 @@ contract Coordinator is AccessControlDefaultAdminRules {
 
     bytes32 public constant INITIATOR_ROLE = keccak256("INITIATOR_ROLE");
 
-    mapping(address => ParticipantKey[]) internal keysHistory;
-
     IAccessControlApplication public immutable application;
 
     Ritual[] public rituals;
     uint32 public timeout;
     uint16 public maxDkgSize;
     bool public isInitiationPublic;
-    IFeeModel internal feeModel; // TODO: Consider making feeModel specific to each ritual
-    IReimbursementPool internal reimbursementPool;
     uint256 public totalPendingFees;
     mapping(uint256 => uint256) public pendingFees;
+    IFeeModel internal feeModel; // TODO: Consider making feeModel specific to each ritual
+    IReimbursementPool internal reimbursementPool;
+    mapping(address => ParticipantKey[]) internal keysHistory;
+    mapping(bytes32 => uint32) internal ritualPublicKeyRegistry;
 
     constructor(
         IAccessControlApplication _stakes,
@@ -109,7 +109,6 @@ contract Coordinator is AccessControlDefaultAdminRules {
     }
 
     function getRitualState(uint32 ritualId) external view returns (RitualState) {
-        // TODO: restrict to ritualId < rituals.length?
         return getRitualState(rituals[ritualId]);
     }
 
@@ -345,12 +344,38 @@ contract Coordinator is AccessControlDefaultAdminRules {
             ritual.totalAggregations++;
             if (ritual.totalAggregations == ritual.dkgSize) {
                 processPendingFee(ritualId);
+                // Register ritualId + 1 to discern ritualID#0 from unregistered keys.
+                // See getRitualIdFromPublicKey() for inverse operation.
+                bytes32 registryKey = keccak256(abi.encodePacked(
+                    BLS12381.g1PointToBytes(dkgPublicKey)
+                ));
+                ritualPublicKeyRegistry[registryKey] = ritualId + 1;
                 emit EndRitual({ritualId: ritualId, successful: true});
                 // TODO: Consider including public key in event
             }
         }
 
         processReimbursement(initialGasLeft);
+    }
+
+    function getRitualIdFromPublicKey(
+        BLS12381.G1Point memory dkgPublicKey
+    ) external view returns (uint32 ritualId) {
+        // If public key is not registered, result will produce underflow error
+        bytes32 registryKey = keccak256(abi.encodePacked(
+            BLS12381.g1PointToBytes(dkgPublicKey)
+        ));
+        return ritualPublicKeyRegistry[registryKey] - 1;
+    }
+
+    function getPublicKeyFromRitualId(uint32 ritualId) 
+    external view returns (BLS12381.G1Point memory dkgPublicKey) {
+        Ritual storage ritual = rituals[ritualId];
+        require(
+            getRitualState(ritual) == RitualState.FINALIZED,
+            "Ritual not finalized"
+        );
+       return ritual.publicKey;
     }
 
     function getParticipantFromProvider(
