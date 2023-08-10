@@ -29,15 +29,15 @@ library ReEncryptionValidator {
     //------------------------------//
 
     // Base field order
-    uint256 constant FIELD_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F;
+    uint256 internal constant FIELD_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F;
 
     // -2 mod FIELD_ORDER
-    uint256 constant MINUS_2 = 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2d;
+    uint256 internal constant MINUS_2 = 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2d;
 
     // (-1/2) mod FIELD_ORDER
-    uint256 constant MINUS_ONE_HALF = 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffff7ffffe17;
+    uint256 internal constant MINUS_ONE_HALF = 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffff7ffffe17;
 
-
+    /* solhint-disable var-name-mixedcase */
     //
 
     /**
@@ -414,9 +414,9 @@ library ReEncryptionValidator {
     /// @param Q An EC point in affine coordinates
     /// @return R An EC point in Jacobian coordinates with the sum, represented by an array of 3 uint256
     function addAffineJacobian(
-    	uint[2] memory P,
-    	uint[2] memory Q
-    ) internal pure returns (uint[3] memory R) {
+    	uint256[2] memory P,
+    	uint256[2] memory Q
+    ) internal pure returns (uint256[3] memory R) {
 
         uint256 p = FIELD_ORDER;
         uint256 a   = P[0];
@@ -440,7 +440,7 @@ library ReEncryptionValidator {
     /// @notice Point doubling in Jacobian coordinates
     /// @param P An EC point in Jacobian coordinates.
     /// @return Q An EC point in Jacobian coordinates
-    function doubleJacobian(uint[3] memory P) internal pure returns (uint[3] memory Q) {
+    function doubleJacobian(uint256[3] memory P) internal pure returns (uint256[3] memory Q) {
         uint256 z = P[2];
         if (z == 0)
             return Q;

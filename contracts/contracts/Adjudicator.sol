@@ -30,10 +30,6 @@ contract Adjudicator {
         address indexed stakingProvider
     );
 
-    // used only for upgrading
-    bytes32 constant RESERVED_CAPSULE_AND_CFRAG_BYTES = bytes32(0);
-    address constant RESERVED_ADDRESS = address(0);
-
     SignatureVerifier.HashAlgorithm public immutable hashAlgorithm;
     uint256 public immutable basePenalty;
     uint256 public immutable penaltyHistoryCoefficient;

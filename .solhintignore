@@ -1,0 +1,5 @@
+**/contracts/contracts/proxy/
+**/contracts/contracts/StakingEscrow.sol
+**/contracts/contracts/NuCypherToken.sol
+**/contracts/test/proxy/
+**/contracts/test/StakingEscrowTestSet.sol

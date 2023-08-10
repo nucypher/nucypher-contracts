@@ -187,6 +187,7 @@ contract ReEncryptionValidatorMock {
 
     using UmbralDeserializer for bytes;
 
+    /* solhint-disable func-name-mixedcase, var-name-mixedcase */
     function UMBRAL_PARAMETER_U_SIGN() public pure returns (uint8) {
         return ReEncryptionValidator.UMBRAL_PARAMETER_U_SIGN;
     }
@@ -270,13 +271,13 @@ contract ReEncryptionValidatorMock {
     }
 
     function addAffineJacobian(
-    	uint[2] memory P,
-    	uint[2] memory Q
-    ) public pure returns (uint[3] memory) {
+    	uint256[2] memory P,
+    	uint256[2] memory Q
+    ) public pure returns (uint256[3] memory) {
         return ReEncryptionValidator.addAffineJacobian(P, Q);
     }
 
-    function doubleJacobian(uint[3] memory P) public pure returns (uint[3] memory) {
+    function doubleJacobian(uint256[3] memory P) public pure returns (uint256[3] memory) {
         return ReEncryptionValidator.doubleJacobian(P);
     }
 }

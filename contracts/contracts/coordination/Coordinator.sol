@@ -74,7 +74,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
 
     bytes32 public constant INITIATOR_ROLE = keccak256("INITIATOR_ROLE");
 
-    mapping(address => ParticipantKey[]) keysHistory;
+    mapping(address => ParticipantKey[]) internal keysHistory;
 
     IAccessControlApplication public immutable application;
 
@@ -82,8 +82,8 @@ contract Coordinator is AccessControlDefaultAdminRules {
     uint32 public timeout;
     uint16 public maxDkgSize;
     bool public isInitiationPublic;
-    IFeeModel feeModel;  // TODO: Consider making feeModel specific to each ritual
-    IReimbursementPool reimbursementPool;
+    IFeeModel internal feeModel;  // TODO: Consider making feeModel specific to each ritual
+    IReimbursementPool internal reimbursementPool;
     uint256 public totalPendingFees;
     mapping(uint256 => uint256) public pendingFees;
 
@@ -126,6 +126,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
             return RitualState.AWAITING_TRANSCRIPTS;
         } else if (ritual.totalAggregations < ritual.dkgSize) {
             return RitualState.AWAITING_AGGREGATIONS;
+        // solhint-disable-next-line no-empty-blocks
         } else {
             // TODO: Is it possible to reach this state?
             //   - No public key
@@ -150,10 +151,10 @@ contract Coordinator is AccessControlDefaultAdminRules {
         emit ParticipantPublicKeySet(lastRitualId, provider, _publicKey);
     }
 
-    function getProviderPublicKey(address _provider, uint _ritualId) external view returns (BLS12381.G2Point memory) {
+    function getProviderPublicKey(address _provider, uint256 _ritualId) external view returns (BLS12381.G2Point memory) {
         ParticipantKey[] storage participantHistory = keysHistory[_provider];
 
-        for (uint i = participantHistory.length - 1; i >= 0; i--) {
+        for (uint256 i = participantHistory.length - 1; i >= 0; i--) {
             if (participantHistory[i].lastRitualId <= _ritualId) {
                 return participantHistory[i].publicKey;
             }
@@ -370,9 +371,9 @@ contract Coordinator is AccessControlDefaultAdminRules {
         Ritual storage ritual,
         address provider
     ) internal view returns (Participant storage) {
-        uint length = ritual.participant.length;
+        uint256 length = ritual.participant.length;
         // TODO: Improve with binary search
-        for (uint i = 0; i < length; i++) {
+        for (uint256 i = 0; i < length; i++) {
             Participant storage participant = ritual.participant[i];
             if (participant.provider == provider) {
                 return participant;

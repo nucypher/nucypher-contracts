@@ -12,7 +12,7 @@ library SignatureVerifier {
     enum HashAlgorithm {KECCAK256, SHA256, RIPEMD160}
 
     // Header for Version E as defined by EIP191. First byte ('E') is also the version
-    bytes25 constant EIP191_VERSION_E_HEADER = "Ethereum Signed Message:\n";
+    bytes25 internal constant EIP191_VERSION_E_HEADER = "Ethereum Signed Message:\n";
 
     /**
     * @notice Recover signer address from hash and signature
@@ -24,6 +24,7 @@ library SignatureVerifier {
         pure
         returns (address)
     {
+        // solhint-disable-next-line reason-string
         require(_signature.length == 65);
 
         bytes32 r;
@@ -39,6 +40,7 @@ library SignatureVerifier {
         if (v < 27) {
             v += 27;
         }
+        // solhint-disable-next-line reason-string
         require(v == 27 || v == 28);
         return ecrecover(_hash, v, r, s);
     }
@@ -88,6 +90,7 @@ library SignatureVerifier {
         pure
         returns (bool)
     {
+        // solhint-disable-next-line reason-string
         require(_publicKey.length == 64);
         return toAddress(_publicKey) == recover(hash(_message, _algorithm), _signature);
     }
@@ -153,6 +156,7 @@ library SignatureVerifier {
         view
         returns (bool)
     {
+        // solhint-disable-next-line reason-string
         require(_publicKey.length == 64);
         return toAddress(_publicKey) == recover(hashEIP191(_message, _version), _signature);
     }

@@ -63,14 +63,14 @@ library UmbralDeserializer {
         bytes5  lostBytes;
     }
 
-    uint256 constant BIGNUM_SIZE = 32;
-    uint256 constant POINT_SIZE = 33;
-    uint256 constant SIGNATURE_SIZE = 64;
-    uint256 constant CAPSULE_SIZE = 2 * POINT_SIZE + BIGNUM_SIZE;
-    uint256 constant CORRECTNESS_PROOF_SIZE = 4 * POINT_SIZE + BIGNUM_SIZE + SIGNATURE_SIZE;
-    uint256 constant CAPSULE_FRAG_SIZE = 3 * POINT_SIZE + BIGNUM_SIZE;
-    uint256 constant FULL_CAPSULE_FRAG_SIZE = CAPSULE_FRAG_SIZE + CORRECTNESS_PROOF_SIZE;
-    uint256 constant PRECOMPUTED_DATA_SIZE = (20 * BIGNUM_SIZE) + 32 + 20 + 5;
+    uint256 internal constant BIGNUM_SIZE = 32;
+    uint256 internal constant POINT_SIZE = 33;
+    uint256 internal constant SIGNATURE_SIZE = 64;
+    uint256 internal constant CAPSULE_SIZE = 2 * POINT_SIZE + BIGNUM_SIZE;
+    uint256 internal constant CORRECTNESS_PROOF_SIZE = 4 * POINT_SIZE + BIGNUM_SIZE + SIGNATURE_SIZE;
+    uint256 internal constant CAPSULE_FRAG_SIZE = 3 * POINT_SIZE + BIGNUM_SIZE;
+    uint256 internal constant FULL_CAPSULE_FRAG_SIZE = CAPSULE_FRAG_SIZE + CORRECTNESS_PROOF_SIZE;
+    uint256 internal constant PRECOMPUTED_DATA_SIZE = (20 * BIGNUM_SIZE) + 32 + 20 + 5;
 
     /**
     * @notice Deserialize to capsule (not activated)
@@ -78,6 +78,7 @@ library UmbralDeserializer {
     function toCapsule(bytes memory _capsuleBytes)
         internal pure returns (Capsule memory capsule)
     {
+        // solhint-disable-next-line reason-string
         require(_capsuleBytes.length == CAPSULE_SIZE);
         uint256 pointer = getPointer(_capsuleBytes);
         pointer = copyPoint(pointer, capsule.pointE);
@@ -93,6 +94,7 @@ library UmbralDeserializer {
     function toCorrectnessProof(uint256 _pointer, uint256 _proofBytesLength)
         internal pure returns (CorrectnessProof memory proof)
     {
+        // solhint-disable-next-line reason-string
         require(_proofBytesLength >= CORRECTNESS_PROOF_SIZE);
 
         _pointer = copyPoint(_pointer, proof.pointE2);
@@ -128,6 +130,7 @@ library UmbralDeserializer {
         internal pure returns (CapsuleFrag memory cFrag)
     {
         uint256 cFragBytesLength = _cFragBytes.length;
+        // solhint-disable-next-line reason-string
         require(cFragBytesLength >= FULL_CAPSULE_FRAG_SIZE);
 
         uint256 pointer = getPointer(_cFragBytes);
@@ -146,9 +149,10 @@ library UmbralDeserializer {
     function toPreComputedData(bytes memory _preComputedData)
         internal pure returns (PreComputedData memory data)
     {
+        // solhint-disable-next-line reason-string
         require(_preComputedData.length == PRECOMPUTED_DATA_SIZE);
-        uint256 initial_pointer = getPointer(_preComputedData);
-        uint256 pointer = initial_pointer;
+        uint256 initialPointer = getPointer(_preComputedData);
+        uint256 pointer = initialPointer;
 
         data.pointEyCoord = uint256(getBytes32(pointer));
         pointer += BIGNUM_SIZE;
@@ -225,7 +229,8 @@ library UmbralDeserializer {
         data.lostBytes = bytes5(getBytes32(pointer));
         pointer += 5;
 
-        require(pointer == initial_pointer + PRECOMPUTED_DATA_SIZE);
+        // solhint-disable-next-line reason-string
+        require(pointer == initialPointer + PRECOMPUTED_DATA_SIZE);
     }
 
     // TODO extract to external library if needed (#1500)

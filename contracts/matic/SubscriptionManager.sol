@@ -137,11 +137,11 @@ contract SubscriptionManager is Initializable, AccessControlUpgradeable {
         emit FeeRateUpdated(oldFee, newFee);
     }
 
-    function setFeeRate(uint256 _ratePerSecond) onlyRole(SET_RATE_ROLE) external {
+    function setFeeRate(uint256 _ratePerSecond) external onlyRole(SET_RATE_ROLE) {
         _setFeeRate(_ratePerSecond);
     }
 
-    function sweep(address payable recipient) onlyRole(WITHDRAW_ROLE) external {
+    function sweep(address payable recipient) external onlyRole(WITHDRAW_ROLE) {
         uint256 balance = address(this).balance;
         (bool sent, ) = recipient.call{value: balance}("");
         require(sent, "Failed transfer");

@@ -650,6 +650,7 @@ contract TACoApplication is IApplication, OwnableUpgradeable {
         require(isAuthorized(stakingProvider), "No stake associated with the operator");
         StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
         require(!info.operatorConfirmed, "Operator address is already confirmed");
+        // solhint-disable-next-line avoid-tx-origin
         require(msg.sender == tx.origin, "Only operator with real address can make a confirmation");
 
         updateRewardInternal(stakingProvider);

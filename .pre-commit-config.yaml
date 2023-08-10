@@ -13,3 +13,16 @@ repos:
     rev: v4.3.21
     hooks:
     -   id: isort
+
+-   repo: local
+    hooks:
+    -   id: lint-sol
+        name: "lint solidity"
+        description: "Checks Solidity code according to the package's linter configuration"
+        language: node
+        entry: solhint
+        files: '\.sol$'
+        args:
+        - --config=./.solhint.json
+        - --ignore-path=./.solhintignore
+        - ./contracts/**/*.sol

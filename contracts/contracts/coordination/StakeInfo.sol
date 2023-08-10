@@ -21,7 +21,7 @@ contract StakeInfo is AccessControl, IUpdatableStakeInfo, IAccessControlApplicat
     }
 
     constructor(address[] memory updaters){
-        for(uint i = 0; i < updaters.length; i++){
+        for(uint256 i = 0; i < updaters.length; i++){
             _grantRole(UPDATE_ROLE, updaters[i]);
         }
     }
@@ -71,7 +71,7 @@ contract StakeInfo is AccessControl, IUpdatableStakeInfo, IAccessControlApplicat
 
     function batchUpdate(bytes32[] calldata updateInfo) external override onlyRole(UPDATE_ROLE) {
         require(updateInfo.length % 2 == 0, "bad length");
-        for(uint i = 0; i < updateInfo.length; i += 2){
+        for(uint256 i = 0; i < updateInfo.length; i += 2){
             bytes32 word0 = updateInfo[i];
             bytes32 word1 = updateInfo[i + 1];
             

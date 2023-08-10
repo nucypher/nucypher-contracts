@@ -81,6 +81,7 @@ contract ThresholdStakingForTACoApplicationMock {
     }
 
     function authorizedStake(address _stakingProvider, address _application) external view returns (uint96) {
+        // solhint-disable-next-line reason-string
         require(_stakingProvider == _application || _application == address(application));
         return stakingProviderInfo[_stakingProvider].authorized;
     }

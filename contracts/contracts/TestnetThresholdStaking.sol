@@ -69,7 +69,7 @@ contract TestnetThresholdStaking is Ownable {
         info.nuInTStake = _nuInTStake;
     }
 
-    function authorizedStake(address _stakingProvider, address _application) external view returns (uint96) {
+    function authorizedStake(address /* _stakingProvider */, address /* _application */) external view returns (uint96) {
         return 0;
     }
 

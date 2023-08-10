@@ -33,7 +33,8 @@ library Snapshot {
             if (uint32(_time) == currentTime) {
                 _self[length - 1] = encodeSnapshot(uint32(_time), uint96(_value));
                 return;
-            } else if (uint32(_time) < currentTime){
+            } else if (uint32(_time) < currentTime){ 
+            // solhint-disable-next-line reason-string
                 revert();
             }
         }
