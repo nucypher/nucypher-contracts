@@ -105,7 +105,7 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
         uint256 _feeRatePerSecond
     )
         AccessControlDefaultAdminRules(0, _admin)
-        FlatRateFeeModel(_currency, _feeRatePerSecond, _stakes)
+        FlatRateFeeModel(_currency, _feeRatePerSecond)
     {
         application = _stakes;
         timeout = _timeout;
