@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/AccessControlDefaultAdminRules.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./IFeeModel.sol";
+import "./FlatRateFeeModel.sol";
 import "./IReimbursementPool.sol";
 import "../lib/BLS12381.sol";
 import "../../threshold/IAccessControlApplication.sol";
@@ -13,9 +13,9 @@ import "./IEncryptionAuthorizer.sol";
 
 /**
  * @title Coordinator
- * @notice Coordination layer for DKG-TDec
+ * @notice Coordination layer for Threshold Access Control (TACo 🌮)
  */
-contract Coordinator is AccessControlDefaultAdminRules {
+contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
     // Ritual
     event StartRitual(uint32 indexed ritualId, address indexed authority, address[] participants);
     event StartAggregationRound(uint32 indexed ritualId);
@@ -101,13 +101,15 @@ contract Coordinator is AccessControlDefaultAdminRules {
         uint32 _timeout,
         uint16 _maxDkgSize,
         address _admin,
-        IFeeModel _feeModel
-    ) AccessControlDefaultAdminRules(0, _admin) {
-        require(address(_feeModel.stakes()) == address(_stakes), "Invalid stakes for fee model");
+        IERC20 _currency,
+        uint256 _feeRatePerSecond
+    )
+        AccessControlDefaultAdminRules(0, _admin)
+        FlatRateFeeModel(_currency, _feeRatePerSecond, _stakes)
+    {
         application = _stakes;
         timeout = _timeout;
         maxDkgSize = _maxDkgSize;
-        feeModel = IFeeModel(_feeModel);
     }
 
     function getRitualState(uint32 ritualId) external view returns (RitualState) {
@@ -413,12 +415,11 @@ contract Coordinator is AccessControlDefaultAdminRules {
         address[] calldata providers,
         uint32 duration
     ) internal {
-        uint256 ritualCost = feeModel.getRitualInitiationCost(providers, duration);
+        uint256 ritualCost = getRitualInitiationCost(providers, duration);
         if (ritualCost > 0) {
             totalPendingFees += ritualCost;
             assert(pendingFees[ritualId] == 0); // TODO: This is an invariant, not sure if actually needed
             pendingFees[ritualId] += ritualCost;
-            IERC20 currency = IERC20(feeModel.currency());
             currency.safeTransferFrom(msg.sender, address(this), ritualCost);
             // TODO: Define methods to manage these funds
         }
@@ -447,7 +448,6 @@ contract Coordinator is AccessControlDefaultAdminRules {
             uint256 expectedTransactions = 2 * ritual.dkgSize;
             uint256 consumedFee = (pending * executedTransactions) / expectedTransactions;
             uint256 refundableFee = pending - consumedFee;
-            IERC20 currency = IERC20(feeModel.currency());
             currency.transferFrom(address(this), ritual.initiator, refundableFee);
         }
     }
