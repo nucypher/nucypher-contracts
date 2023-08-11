@@ -2,13 +2,10 @@
 
 pragma solidity ^0.8.0;
 
-
 import "@threshold/contracts/staking/IApplication.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-
 contract TestnetThresholdStaking is Ownable {
-
     struct StakingProviderInfo {
         address owner;
         address payable beneficiary;
@@ -20,7 +17,7 @@ contract TestnetThresholdStaking is Ownable {
 
     IApplication public application;
 
-    mapping (address => StakingProviderInfo) public stakingProviderInfo;
+    mapping(address => StakingProviderInfo) public stakingProviderInfo;
 
     function setApplication(IApplication _application) external onlyOwner {
         application = _application;
@@ -35,9 +32,7 @@ contract TestnetThresholdStaking is Ownable {
         address _owner,
         address payable _beneficiary,
         address _authorizer
-    )
-        external onlyOwner
-    {
+    ) external onlyOwner {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         info.owner = _owner;
         info.beneficiary = _beneficiary;
@@ -45,9 +40,9 @@ contract TestnetThresholdStaking is Ownable {
     }
 
     /**
-    * @dev If the function is called with only the _stakingProvider parameter,
-    * we presume that the caller wants that address set for the other roles as well.
-    */
+     * @dev If the function is called with only the _stakingProvider parameter,
+     * we presume that the caller wants that address set for the other roles as well.
+     */
     function setRoles(address _stakingProvider) external onlyOwner {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         info.owner = _stakingProvider;
@@ -60,35 +55,32 @@ contract TestnetThresholdStaking is Ownable {
         uint96 _tStake,
         uint96 _keepInTStake,
         uint96 _nuInTStake
-    )
-        external onlyOwner
-    {
+    ) external onlyOwner {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         info.tStake = _tStake;
         info.keepInTStake = _keepInTStake;
         info.nuInTStake = _nuInTStake;
     }
 
-    function authorizedStake(address /* _stakingProvider */, address /* _application */) external view returns (uint96) {
+    function authorizedStake(
+        address /* _stakingProvider */,
+        address /* _application */
+    ) external view returns (uint96) {
         return 0;
     }
 
-    function stakes(address _stakingProvider) external view returns (
-        uint96 tStake,
-        uint96 keepInTStake,
-        uint96 nuInTStake
-    ) {
+    function stakes(
+        address _stakingProvider
+    ) external view returns (uint96 tStake, uint96 keepInTStake, uint96 nuInTStake) {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         tStake = info.tStake;
         keepInTStake = info.keepInTStake;
         nuInTStake = info.nuInTStake;
     }
 
-    function rolesOf(address _stakingProvider) external view returns (
-        address owner,
-        address payable beneficiary,
-        address authorizer
-    ) {
+    function rolesOf(
+        address _stakingProvider
+    ) external view returns (address owner, address payable beneficiary, address authorizer) {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         owner = info.owner;
         beneficiary = info.beneficiary;

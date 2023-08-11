@@ -4,7 +4,6 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "./IEncryptionAuthorizer.sol";
 import "./Coordinator.sol";
 
-
 contract GlobalAllowList is AccessControlDefaultAdminRules, IEncryptionAuthorizer {
     using ECDSA for bytes32;
 
@@ -21,8 +20,10 @@ contract GlobalAllowList is AccessControlDefaultAdminRules, IEncryptionAuthorize
     }
 
     modifier onlyAuthority(uint32 ritualId) {
-        require(coordinator.getAuthority(ritualId) == msg.sender,
-            "Only ritual authority is permitted");
+        require(
+            coordinator.getAuthority(ritualId) == msg.sender,
+            "Only ritual authority is permitted"
+        );
         _;
     }
 
@@ -35,23 +36,33 @@ contract GlobalAllowList is AccessControlDefaultAdminRules, IEncryptionAuthorize
         uint32 ritualId,
         bytes memory evidence,
         bytes32 digest
-    ) public view override returns(bool) {
-        address recovered_address = digest.toEthSignedMessageHash().recover(evidence);
-        return authorizations[ritualId][recovered_address];
+    ) public view override returns (bool) {
+        address recoveredAddress = digest.toEthSignedMessageHash().recover(evidence);
+        return authorizations[ritualId][recoveredAddress];
     }
 
-    function authorize(uint32 ritualId, address[] calldata addresses) public onlyAuthority(ritualId) {
-        require(coordinator.isRitualFinalized(ritualId),
-            "Only active rituals can add authorizations");
-        for (uint256 i=0; i < addresses.length; i++) {
+    function authorize(
+        uint32 ritualId,
+        address[] calldata addresses
+    ) public onlyAuthority(ritualId) {
+        require(
+            coordinator.isRitualFinalized(ritualId),
+            "Only active rituals can add authorizations"
+        );
+        for (uint256 i = 0; i < addresses.length; i++) {
             authorizations[ritualId][addresses[i]] = true;
         }
     }
 
-    function deauthorize(uint32 ritualId, address[] calldata addresses) public onlyAuthority(ritualId) {
-        require(coordinator.isRitualFinalized(ritualId),
-            "Only active rituals can add authorizations");
-        for (uint256 i=0; i < addresses.length; i++) {
+    function deauthorize(
+        uint32 ritualId,
+        address[] calldata addresses
+    ) public onlyAuthority(ritualId) {
+        require(
+            coordinator.isRitualFinalized(ritualId),
+            "Only active rituals can add authorizations"
+        );
+        for (uint256 i = 0; i < addresses.length; i++) {
             authorizations[ritualId][addresses[i]] = false;
         }
     }

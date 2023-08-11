@@ -5,14 +5,10 @@ import "@fx-portal/contracts/tunnel/FxBaseChildTunnel.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract PolygonChild is FxBaseChildTunnel, Ownable {
-
-    event MessageReceived(
-        address indexed sender,
-        bytes data
-    );
+    event MessageReceived(address indexed sender, bytes data);
 
     address public stakeInfoAddress;
-    
+
     constructor(address _fxChild) FxBaseChildTunnel(_fxChild) {}
 
     function _processMessageFromRoot(
@@ -21,7 +17,7 @@ contract PolygonChild is FxBaseChildTunnel, Ownable {
         bytes memory data
     ) internal override validateSender(sender) {
         emit MessageReceived(sender, data);
-        //(bool success, /* returnId */ ) = 
+        //(bool success, /* returnId */ ) =
         // solhint-disable-next-line avoid-low-level-calls
         stakeInfoAddress.call(data);
     }
