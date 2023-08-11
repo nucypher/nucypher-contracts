@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title FlatRateFeeModel
- * @notice FlateRateFeeModel
+ * @notice FlatRateFeeModel
  */
 contract FlatRateFeeModel is IFeeModel {
     IERC20 public immutable currency;
