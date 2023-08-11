@@ -72,22 +72,15 @@ def erc20(project, initiator):
 
 
 @pytest.fixture()
-def flat_rate_fee_model(project, deployer, stake_info, erc20):
-    contract = project.FlatRateFeeModel.deploy(
-        erc20.address, FEE_RATE, stake_info.address, sender=deployer
-    )
-    return contract
-
-
-@pytest.fixture()
-def coordinator(project, deployer, stake_info, flat_rate_fee_model, initiator):
+def coordinator(project, deployer, stake_info, erc20, initiator):
     admin = deployer
     contract = project.Coordinator.deploy(
         stake_info.address,
         TIMEOUT,
         MAX_DKG_SIZE,
         admin,
-        flat_rate_fee_model.address,
+        erc20.address,
+        FEE_RATE,
         sender=deployer,
     )
     contract.grantRole(contract.INITIATOR_ROLE(), initiator, sender=admin)
@@ -144,11 +137,11 @@ def test_invalid_initiate_ritual(coordinator, nodes, accounts, initiator, global
         )
 
 
-def initiate_ritual(coordinator, erc20, fee_model, allow_logic, authority, nodes):
+def initiate_ritual(coordinator, erc20, allow_logic, authority, nodes):
     for node in nodes:
         public_key = gen_public_key()
         coordinator.setProviderPublicKey(public_key, sender=node)
-    cost = fee_model.getRitualInitiationCost(nodes, DURATION)
+    cost = coordinator.getRitualInitiationCost(nodes, DURATION)
     erc20.approve(coordinator.address, cost, sender=authority)
     tx = coordinator.initiateRitual(
         nodes, authority, DURATION, allow_logic.address, sender=authority
@@ -156,13 +149,10 @@ def initiate_ritual(coordinator, erc20, fee_model, allow_logic, authority, nodes
     return authority, tx
 
 
-def test_initiate_ritual(
-    coordinator, nodes, initiator, erc20, global_allow_list, flat_rate_fee_model
-):
+def test_initiate_ritual(coordinator, nodes, initiator, erc20, global_allow_list):
     authority, tx = initiate_ritual(
         coordinator=coordinator,
         erc20=erc20,
-        fee_model=flat_rate_fee_model,
         authority=initiator,
         nodes=nodes,
         allow_logic=global_allow_list,
@@ -207,13 +197,10 @@ def test_provider_public_key(coordinator, nodes):
     assert coordinator.getProviderPublicKey(selected_provider, ritual_id) == public_key
 
 
-def test_post_transcript(
-    coordinator, nodes, initiator, erc20, flat_rate_fee_model, global_allow_list
-):
+def test_post_transcript(coordinator, nodes, initiator, erc20, global_allow_list):
     initiate_ritual(
         coordinator=coordinator,
         erc20=erc20,
-        fee_model=flat_rate_fee_model,
         authority=initiator,
         nodes=nodes,
         allow_logic=global_allow_list,
@@ -241,12 +228,11 @@ def test_post_transcript(
 
 
 def test_post_transcript_but_not_part_of_ritual(
-    coordinator, nodes, initiator, erc20, flat_rate_fee_model, global_allow_list
+    coordinator, nodes, initiator, erc20, global_allow_list
 ):
     initiate_ritual(
         coordinator=coordinator,
         erc20=erc20,
-        fee_model=flat_rate_fee_model,
         authority=initiator,
         nodes=nodes,
         allow_logic=global_allow_list,
@@ -258,12 +244,11 @@ def test_post_transcript_but_not_part_of_ritual(
 
 
 def test_post_transcript_but_already_posted_transcript(
-    coordinator, nodes, initiator, erc20, flat_rate_fee_model, global_allow_list
+    coordinator, nodes, initiator, erc20, global_allow_list
 ):
     initiate_ritual(
         coordinator=coordinator,
         erc20=erc20,
-        fee_model=flat_rate_fee_model,
         authority=initiator,
         nodes=nodes,
         allow_logic=global_allow_list,
@@ -275,12 +260,11 @@ def test_post_transcript_but_already_posted_transcript(
 
 
 def test_post_transcript_but_not_waiting_for_transcripts(
-    coordinator, nodes, initiator, erc20, flat_rate_fee_model, global_allow_list
+    coordinator, nodes, initiator, erc20, global_allow_list
 ):
     initiate_ritual(
         coordinator=coordinator,
         erc20=erc20,
-        fee_model=flat_rate_fee_model,
         authority=initiator,
         nodes=nodes,
         allow_logic=global_allow_list,
@@ -293,13 +277,10 @@ def test_post_transcript_but_not_waiting_for_transcripts(
         coordinator.postTranscript(0, transcript, sender=nodes[1])
 
 
-def test_post_aggregation(
-    coordinator, nodes, initiator, erc20, flat_rate_fee_model, global_allow_list
-):
+def test_post_aggregation(coordinator, nodes, initiator, erc20, global_allow_list):
     initiate_ritual(
         coordinator=coordinator,
         erc20=erc20,
-        fee_model=flat_rate_fee_model,
         authority=initiator,
         nodes=nodes,
         allow_logic=global_allow_list,
@@ -340,13 +321,12 @@ def test_post_aggregation(
     assert coordinator.getRitualIdFromPublicKey(dkg_public_key) == ritualID
 
 def test_authorize_using_global_allow_list(
-    coordinator, nodes, deployer, initiator, erc20, flat_rate_fee_model, global_allow_list
+    coordinator, nodes, deployer, initiator, erc20, global_allow_list
 ):
 
     initiate_ritual(
         coordinator=coordinator,
         erc20=erc20,
-        fee_model=flat_rate_fee_model,
         authority=initiator,
         nodes=nodes,
         allow_logic=global_allow_list,
