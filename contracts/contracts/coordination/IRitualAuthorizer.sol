@@ -4,6 +4,6 @@ interface IRitualAuthorizer {
     function isAuthorized(
         uint32 ritualID,
         bytes memory evidence, // signature
-        bytes memory digest   // signed message hash
+        bytes32 digest   // signed message hash
     ) external view returns(bool);
 }

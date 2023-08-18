@@ -4,6 +4,7 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "./IRitualAuthorizer.sol";
 import "./Coordinator.sol";
 
+
 contract GlobalAllowList is AccessControlDefaultAdminRules, IRitualAuthorizer {
     using ECDSA for bytes32;
 
@@ -25,11 +26,9 @@ contract GlobalAllowList is AccessControlDefaultAdminRules, IRitualAuthorizer {
     function isAuthorized(
         uint32 ritualID,
         bytes memory evidence,
-        bytes memory digest
+        bytes32 digest
     ) public view override returns(bool) {
-        address recovered_address = keccak256(digest)
-          .toEthSignedMessageHash()
-          .recover(evidence);
+        address recovered_address = digest.toEthSignedMessageHash().recover(evidence);
         return authorizations[ritualID][recovered_address];
     }
 
