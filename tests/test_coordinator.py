@@ -3,6 +3,7 @@ from enum import IntEnum
 
 import ape
 import pytest
+from eth_account.messages import encode_defunct
 from web3 import Web3
 
 TIMEOUT = 1000
@@ -329,3 +330,72 @@ def test_post_aggregation(coordinator, nodes, initiator, erc20, flat_rate_fee_mo
     event = events[0]
     assert event["ritualId"] == 0
     assert event["successful"]
+
+
+def test_authorize_using_global_allow_list(
+        coordinator,
+        nodes,
+        deployer,
+        initiator,
+        erc20,
+        flat_rate_fee_model,
+        global_allow_list
+):
+
+    initiate_ritual(
+        coordinator=coordinator,
+        erc20=erc20,
+        fee_model=flat_rate_fee_model,
+        authority=initiator,
+        nodes=nodes,
+        allow_logic=global_allow_list
+    )
+
+    global_allow_list.setCoordinator(coordinator.address, sender=deployer)
+
+    # This block mocks the signature of a threshold decryption request
+    w3 = Web3()
+    data = os.urandom(32)
+    digest = Web3.keccak(data)
+    signable_message = encode_defunct(digest)
+    signed_digest = w3.eth.account.sign_message(signable_message, private_key=deployer.private_key)
+    signature = signed_digest.signature
+
+    # Not authorized
+    assert not global_allow_list.isAuthorized(0, bytes(signature), bytes(digest))
+
+    # Negative test cases for authorization
+    with ape.reverts("Only ritual authority is permitted"):
+        global_allow_list.authorize(0, [deployer.address], sender=deployer)
+
+    with ape.reverts("Only active rituals can add authorizations"):
+        global_allow_list.authorize(0, [deployer.address], sender=initiator)
+
+    # Finalize ritual
+    transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
+    for node in nodes:
+        coordinator.postTranscript(0, transcript, sender=node)
+
+    aggregated = transcript
+    decryption_request_static_keys = [os.urandom(42) for _ in nodes]
+    dkg_public_key = (os.urandom(32), os.urandom(16))
+    for i, node in enumerate(nodes):
+        coordinator.postAggregation(0, aggregated, dkg_public_key, decryption_request_static_keys[i], sender=node)
+
+    # Actually authorize
+    global_allow_list.authorize(0, [deployer.address], sender=initiator)
+
+    # Authorized
+    assert global_allow_list.isAuthorized(0, bytes(signature), bytes(digest))
+
+    # Deauthorize
+    global_allow_list.deauthorize(0, [deployer.address], sender=initiator)
+    assert not global_allow_list.isAuthorized(0, bytes(signature), bytes(digest))
+
+    # Reauthorize in batch
+    addresses_to_authorize = [deployer.address, initiator.address]
+    global_allow_list.authorize(0, addresses_to_authorize, sender=initiator)
+    signed_digest = w3.eth.account.sign_message(signable_message, private_key=initiator.private_key)
+    initiator_signature = signed_digest.signature
+    assert global_allow_list.isAuthorized(0, bytes(initiator_signature), bytes(digest))
+    assert global_allow_list.isAuthorized(0, bytes(signature), bytes(digest))
