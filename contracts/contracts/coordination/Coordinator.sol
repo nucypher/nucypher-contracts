@@ -9,7 +9,7 @@ import "./IFeeModel.sol";
 import "./IReimbursementPool.sol";
 import "../lib/BLS12381.sol";
 import "../../threshold/IAccessControlApplication.sol";
-import "./IRitualAuthorizer.sol";
+import "./IEncryptionAuthorizer.sol";
 
 /**
 * @title Coordinator
@@ -59,7 +59,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
         address authority;
         uint16 dkgSize;
         bool aggregationMismatch;
-        IRitualAuthorizer accessController;
+        IEncryptionAuthorizer accessController;
         BLS12381.G1Point publicKey;
         bytes aggregatedTranscript;
         Participant[] participant;
@@ -103,7 +103,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
     }
 
     function getRitualState(uint32 ritualId) external view returns (RitualState){
-        // TODO: restrict to ritualID < rituals.length?
+        // TODO: restrict to ritualId < rituals.length?
         return getRitualState(rituals[ritualId]);
     }
 
@@ -198,12 +198,12 @@ contract Coordinator is AccessControlDefaultAdminRules {
         return ritual.participant;
     }
 
-    function _initiateRitual(
+    function initiateRitual(
         address[] calldata providers,
         address authority,
         uint32 duration,
-        IRitualAuthorizer accessController
-    ) internal returns (uint32) {
+        IEncryptionAuthorizer accessController
+    ) external returns (uint32) {
 
         require(authority != address(0), "Invalid authority");
 
@@ -249,15 +249,6 @@ contract Coordinator is AccessControlDefaultAdminRules {
         // TODO: Include cohort fingerprint in StartRitual event?
         emit StartRitual(id, ritual.authority, providers);
         return id;
-    }
-
-    function initiateRitual(
-        address[] calldata providers,
-        address authority,
-        uint32 duration,
-        IRitualAuthorizer accessController
-    ) external returns (uint32) {
-        return _initiateRitual(providers, authority, duration, accessController);
     }
 
     function cohortFingerprint(address[] calldata nodes) public pure returns (bytes32) {
@@ -391,26 +382,26 @@ contract Coordinator is AccessControlDefaultAdminRules {
     }
 
     function getParticipantFromProvider(
-        uint32 ritualID,
+        uint32 ritualId,
         address provider
     ) external view returns (Participant memory) {
-        return getParticipantFromProvider(rituals[ritualID], provider);
+        return getParticipantFromProvider(rituals[ritualId], provider);
     }
 
-    function processRitualPayment(uint32 ritualID, address[] calldata providers, uint32 duration) internal {
+    function processRitualPayment(uint32 ritualId, address[] calldata providers, uint32 duration) internal {
         uint256 ritualCost = feeModel.getRitualInitiationCost(providers, duration);
         if (ritualCost > 0) {
             totalPendingFees += ritualCost;
-            assert(pendingFees[ritualID] == 0);  // TODO: This is an invariant, not sure if actually needed
-            pendingFees[ritualID] += ritualCost;
+            assert(pendingFees[ritualId] == 0);  // TODO: This is an invariant, not sure if actually needed
+            pendingFees[ritualId] += ritualCost;
             IERC20 currency = IERC20(feeModel.currency());
             currency.safeTransferFrom(msg.sender, address(this), ritualCost);
             // TODO: Define methods to manage these funds
         }
     }
 
-    function processPendingFee(uint32 ritualID) public {
-        Ritual storage ritual = rituals[ritualID];
+    function processPendingFee(uint32 ritualId) public {
+        Ritual storage ritual = rituals[ritualId];
         RitualState state = getRitualState(ritual);
         require(
             state == RitualState.TIMEOUT ||
@@ -418,12 +409,12 @@ contract Coordinator is AccessControlDefaultAdminRules {
             state == RitualState.FINALIZED,
             "Ritual is not ended"
         );
-        uint256 pending = pendingFees[ritualID];
+        uint256 pending = pendingFees[ritualId];
         require(pending > 0, "No pending fees for this ritual");
 
         // Finalize fees for this ritual
         totalPendingFees -= pending;
-        delete pendingFees[ritualID];
+        delete pendingFees[ritualId];
         // Transfer fees back to initiator if failed
         if (state == RitualState.TIMEOUT || state == RitualState.INVALID) {
             // Amount to refund depends on how much work nodes did for the ritual.
