@@ -9,6 +9,7 @@ import "./IFeeModel.sol";
 import "./IReimbursementPool.sol";
 import "../lib/BLS12381.sol";
 import "../../threshold/IAccessControlApplication.sol";
+import "./IEncryptionAuthorizer.sol";
 
 /**
 * @title Coordinator
@@ -58,6 +59,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
         address authority;
         uint16 dkgSize;
         bool aggregationMismatch;
+        IEncryptionAuthorizer accessController;
         BLS12381.G1Point publicKey;
         bytes aggregatedTranscript;
         Participant[] participant;
@@ -100,9 +102,13 @@ contract Coordinator is AccessControlDefaultAdminRules {
         feeModel = IFeeModel(_feeModel);
     }
 
-    function getRitualState(uint256 ritualId) external view returns (RitualState){
-        // TODO: restrict to ritualID < rituals.length?
+    function getRitualState(uint32 ritualId) external view returns (RitualState){
+        // TODO: restrict to ritualId < rituals.length?
         return getRitualState(rituals[ritualId]);
+    }
+
+    function isRitualFinalized(uint32 ritualId) external view returns (bool){
+        return getRitualState(rituals[ritualId]) == RitualState.FINALIZED;
     }
 
     function getRitualState(Ritual storage ritual) internal view returns (RitualState){
@@ -125,6 +131,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
             //   - No public key
             //   - All transcripts and all aggregations
             //   - Still within the deadline
+            revert("Invalid ritual state");
         }
     }
 
@@ -175,6 +182,13 @@ contract Coordinator is AccessControlDefaultAdminRules {
         // TODO: Events
     }
 
+    function setRitualAuthority(uint32 ritualId, address authority) external {
+        Ritual storage ritual = rituals[ritualId];
+        require(getRitualState(ritual) == RitualState.FINALIZED, "Ritual not finalized");
+        require(msg.sender == ritual.authority, "Sender not ritual authority");
+        ritual.authority = authority;
+    }
+
     function numberOfRituals() external view returns (uint256) {
         return rituals.length;
     }
@@ -187,8 +201,12 @@ contract Coordinator is AccessControlDefaultAdminRules {
     function initiateRitual(
         address[] calldata providers,
         address authority,
-        uint32 duration
+        uint32 duration,
+        IEncryptionAuthorizer accessController
     ) external returns (uint32) {
+
+        require(authority != address(0), "Invalid authority");
+
         require(
             isInitiationPublic || hasRole(INITIATOR_ROLE, msg.sender),
             "Sender can't initiate ritual"
@@ -205,6 +223,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
         ritual.dkgSize = uint16(length);
         ritual.initTimestamp = uint32(block.timestamp);
         ritual.endTimestamp = ritual.initTimestamp + duration;
+        ritual.accessController = accessController;
 
         address previous = address(0);
         for (uint256 i = 0; i < length; i++) {
@@ -270,6 +289,10 @@ contract Coordinator is AccessControlDefaultAdminRules {
             emit StartAggregationRound(ritualId);
         }
         processReimbursement(initialGasLeft);
+    }
+
+    function getAuthority(uint32 ritualId) external view returns (address) {
+        return rituals[ritualId].authority;
     }
 
     function postAggregation(
@@ -359,26 +382,26 @@ contract Coordinator is AccessControlDefaultAdminRules {
     }
 
     function getParticipantFromProvider(
-        uint256 ritualID,
+        uint32 ritualId,
         address provider
     ) external view returns (Participant memory) {
-        return getParticipantFromProvider(rituals[ritualID], provider);
+        return getParticipantFromProvider(rituals[ritualId], provider);
     }
 
-    function processRitualPayment(uint256 ritualID, address[] calldata providers, uint32 duration) internal {
+    function processRitualPayment(uint32 ritualId, address[] calldata providers, uint32 duration) internal {
         uint256 ritualCost = feeModel.getRitualInitiationCost(providers, duration);
         if (ritualCost > 0) {
             totalPendingFees += ritualCost;
-            assert(pendingFees[ritualID] == 0);  // TODO: This is an invariant, not sure if actually needed
-            pendingFees[ritualID] += ritualCost;
+            assert(pendingFees[ritualId] == 0);  // TODO: This is an invariant, not sure if actually needed
+            pendingFees[ritualId] += ritualCost;
             IERC20 currency = IERC20(feeModel.currency());
             currency.safeTransferFrom(msg.sender, address(this), ritualCost);
             // TODO: Define methods to manage these funds
         }
     }
 
-    function processPendingFee(uint256 ritualID) public {
-        Ritual storage ritual = rituals[ritualID];
+    function processPendingFee(uint32 ritualId) public {
+        Ritual storage ritual = rituals[ritualId];
         RitualState state = getRitualState(ritual);
         require(
             state == RitualState.TIMEOUT ||
@@ -386,12 +409,12 @@ contract Coordinator is AccessControlDefaultAdminRules {
             state == RitualState.FINALIZED,
             "Ritual is not ended"
         );
-        uint256 pending = pendingFees[ritualID];
+        uint256 pending = pendingFees[ritualId];
         require(pending > 0, "No pending fees for this ritual");
 
         // Finalize fees for this ritual
         totalPendingFees -= pending;
-        delete pendingFees[ritualID];
+        delete pendingFees[ritualId];
         // Transfer fees back to initiator if failed
         if (state == RitualState.TIMEOUT || state == RitualState.INVALID) {
             // Amount to refund depends on how much work nodes did for the ritual.
