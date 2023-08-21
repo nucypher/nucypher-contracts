@@ -17,7 +17,6 @@ contract PolygonChild is FxBaseChildTunnel, Ownable {
         bytes memory data
     ) internal override validateSender(sender) {
         emit MessageReceived(sender, data);
-        //(bool success, /* returnId */ ) =
         // solhint-disable-next-line avoid-low-level-calls
         stakeInfoAddress.call(data);
     }

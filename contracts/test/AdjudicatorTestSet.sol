@@ -5,8 +5,6 @@ pragma solidity ^0.8.0;
 import "../contracts/Adjudicator.sol";
 import "../contracts/lib/SignatureVerifier.sol";
 
-//import "../contracts/proxy/Upgradeable.sol";
-
 /**
  * @notice Contract for testing the Adjudicator contract
  */
