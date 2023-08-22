@@ -14,9 +14,7 @@ contract GlobalAllowList is AccessControlDefaultAdminRules, IEncryptionAuthorize
         Coordinator _coordinator,
         address _admin
     ) AccessControlDefaultAdminRules(0, _admin) {
-        require(address(_coordinator) != address(0), "Coordinator cannot be zero address");
-        require(_coordinator.numberOfRituals() >= 0, "Invalid coordinator");
-        coordinator = _coordinator;
+        setCoordinator(_coordinator);
     }
 
     modifier onlyAuthority(uint32 ritualId) {
@@ -27,8 +25,9 @@ contract GlobalAllowList is AccessControlDefaultAdminRules, IEncryptionAuthorize
         _;
     }
 
-    function setCoordinator(Coordinator _coordinator) public {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Only admin can set coordinator");
+    function setCoordinator(Coordinator _coordinator) public onlyRole(DEFAULT_ADMIN_ROLE){
+        require(address(_coordinator) != address(0), "Coordinator cannot be zero address");
+        require(_coordinator.numberOfRituals() >= 0, "Invalid coordinator");
         coordinator = _coordinator;
     }
 

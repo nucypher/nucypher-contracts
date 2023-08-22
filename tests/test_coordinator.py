@@ -332,6 +332,10 @@ def test_authorize_using_global_allow_list(
         allow_logic=global_allow_list,
     )
 
+    access_control_error_message = f"AccessControl: account {initiator.address.lower()} is missing role 0x{'00'*32}"
+    with ape.reverts(access_control_error_message):
+        global_allow_list.setCoordinator(coordinator.address, sender=initiator)
+
     global_allow_list.setCoordinator(coordinator.address, sender=deployer)
 
     # This block mocks the signature of a threshold decryption request
