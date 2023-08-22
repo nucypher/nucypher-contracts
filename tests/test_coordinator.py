@@ -369,16 +369,16 @@ def test_authorize_using_global_allow_list(
     global_allow_list.authorize(0, [deployer.address], sender=initiator)
 
     # Authorized
-    assert global_allow_list.isAuthorized(0, bytes(signature), bytes(digest))
+    assert global_allow_list.isAuthorized(0, bytes(signature), bytes(data))
 
     # Deauthorize
     global_allow_list.deauthorize(0, [deployer.address], sender=initiator)
-    assert not global_allow_list.isAuthorized(0, bytes(signature), bytes(digest))
+    assert not global_allow_list.isAuthorized(0, bytes(signature), bytes(data))
 
     # Reauthorize in batch
     addresses_to_authorize = [deployer.address, initiator.address]
     global_allow_list.authorize(0, addresses_to_authorize, sender=initiator)
     signed_digest = w3.eth.account.sign_message(signable_message, private_key=initiator.private_key)
     initiator_signature = signed_digest.signature
-    assert global_allow_list.isAuthorized(0, bytes(initiator_signature), bytes(digest))
-    assert global_allow_list.isAuthorized(0, bytes(signature), bytes(digest))
+    assert global_allow_list.isAuthorized(0, bytes(initiator_signature), bytes(data))
+    assert global_allow_list.isAuthorized(0, bytes(signature), bytes(data))

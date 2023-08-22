@@ -2,8 +2,8 @@ pragma solidity ^0.8.0;
 
 interface IEncryptionAuthorizer {
     function isAuthorized(
-        uint32 ritualID,
-        bytes memory evidence, // signature
-        bytes32 digest // signed message hash
+        uint32 ritualId,
+        bytes memory evidence,  // supporting evidence for authorization
+        bytes memory ciphertextHeader  // data to be signed by authorized
     ) external view returns (bool);
 }

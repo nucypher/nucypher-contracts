@@ -35,8 +35,9 @@ contract GlobalAllowList is AccessControlDefaultAdminRules, IEncryptionAuthorize
     function isAuthorized(
         uint32 ritualId,
         bytes memory evidence,
-        bytes32 digest
+        bytes memory ciphertextHeader
     ) public view override returns (bool) {
+        bytes32 digest = keccak256(ciphertextHeader);
         address recoveredAddress = digest.toEthSignedMessageHash().recover(evidence);
         return authorizations[ritualId][recoveredAddress];
     }
