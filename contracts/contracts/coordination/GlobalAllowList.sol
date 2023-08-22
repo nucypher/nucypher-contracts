@@ -8,7 +8,7 @@ contract GlobalAllowList is AccessControlDefaultAdminRules, IEncryptionAuthorize
     using ECDSA for bytes32;
 
     Coordinator public coordinator;
-    mapping(uint256 => mapping(address => bool)) public authorizations;
+    mapping(bytes32 => bool) authorizations;
 
     constructor(
         Coordinator _coordinator,
@@ -32,39 +32,49 @@ contract GlobalAllowList is AccessControlDefaultAdminRules, IEncryptionAuthorize
         coordinator = _coordinator;
     }
 
+    function lookupKey(uint32 ritualId, address encryptor) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(ritualId, encryptor));
+    }
+
+    function isAddressAuthorized(uint32 ritualId, address encryptor) public view returns (bool) {
+        return authorizations[lookupKey(ritualId, encryptor)];
+    }
+
     function isAuthorized(
         uint32 ritualId,
         bytes memory evidence,
         bytes memory ciphertextHeader
-    ) public view override returns (bool) {
+    ) external view override returns (bool) {
         bytes32 digest = keccak256(ciphertextHeader);
         address recoveredAddress = digest.toEthSignedMessageHash().recover(evidence);
-        return authorizations[ritualId][recoveredAddress];
+        return isAddressAuthorized(ritualId, recoveredAddress);
     }
 
     function authorize(
         uint32 ritualId,
         address[] calldata addresses
-    ) public onlyAuthority(ritualId) {
-        require(
-            coordinator.isRitualFinalized(ritualId),
-            "Only active rituals can add authorizations"
-        );
-        for (uint256 i = 0; i < addresses.length; i++) {
-            authorizations[ritualId][addresses[i]] = true;
-        }
+    ) external onlyAuthority(ritualId) {
+        setAuthorizations(ritualId, addresses, true);
     }
 
     function deauthorize(
         uint32 ritualId,
         address[] calldata addresses
-    ) public onlyAuthority(ritualId) {
+    ) external onlyAuthority(ritualId) {
+        setAuthorizations(ritualId, addresses, false);
+    }
+
+    function setAuthorizations(
+        uint32 ritualId,
+        address[] calldata addresses,
+        bool value
+    ) internal {
         require(
             coordinator.isRitualFinalized(ritualId),
             "Only active rituals can add authorizations"
         );
         for (uint256 i = 0; i < addresses.length; i++) {
-            authorizations[ritualId][addresses[i]] = false;
+            authorizations[lookupKey(ritualId, addresses[i])] = value;
         }
     }
 }
