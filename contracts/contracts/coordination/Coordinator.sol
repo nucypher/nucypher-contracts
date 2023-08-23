@@ -82,6 +82,7 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
     using SafeERC20 for IERC20;
 
     bytes32 public constant INITIATOR_ROLE = keccak256("INITIATOR_ROLE");
+    bytes32 public constant TREASURY_ROLE = keccak256("TREASURY_ROLE");
 
     IAccessControlApplication public immutable application;
 
@@ -421,7 +422,6 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
             assert(pendingFees[ritualId] == 0); // TODO: This is an invariant, not sure if actually needed
             pendingFees[ritualId] += ritualCost;
             currency.safeTransferFrom(msg.sender, address(this), ritualCost);
-            // TODO: Define methods to manage these funds
         }
     }
 
@@ -448,7 +448,7 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
             uint256 expectedTransactions = 2 * ritual.dkgSize;
             uint256 consumedFee = (pending * executedTransactions) / expectedTransactions;
             uint256 refundableFee = pending - consumedFee;
-            currency.transferFrom(address(this), ritual.initiator, refundableFee);
+            currency.safeTransfer(ritual.initiator, refundableFee);
         }
     }
 
@@ -462,5 +462,15 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
                 return;
             }
         }
+    }
+
+    function withdrawTokens(IERC20 token, uint256 amount) external onlyRole(TREASURY_ROLE) {
+        if (address(token) == address(currency)){
+            require(
+                amount <= token.balanceOf(address(this)) - totalPendingFees,
+                "Can't withdraw pending fees"
+            );
+        }
+        token.safeTransfer(msg.sender, amount);
     }
 }

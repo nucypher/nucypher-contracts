@@ -36,6 +36,11 @@ def gen_public_key():
     return (os.urandom(32), os.urandom(32), os.urandom(32))
 
 
+def access_control_error_message(address, role=None):
+    role = Web3.to_hex(role or b'\x00'*32)
+    return f"AccessControl: account {address.lower()} is missing role {role}"
+
+
 @pytest.fixture(scope="module")
 def nodes(accounts):
     return sorted(accounts[:MAX_DKG_SIZE], key=lambda x: x.address.lower())
@@ -53,6 +58,13 @@ def deployer(accounts):
     deployer_index = MAX_DKG_SIZE + 2
     assert len(accounts) >= deployer_index
     return accounts[deployer_index]
+
+
+@pytest.fixture(scope="module")
+def treasury(accounts):
+    treasury_index = MAX_DKG_SIZE + 3
+    assert len(accounts) >= treasury_index
+    return accounts[treasury_index]
 
 
 @pytest.fixture()
@@ -149,7 +161,7 @@ def initiate_ritual(coordinator, erc20, allow_logic, authority, nodes):
     return authority, tx
 
 
-def test_initiate_ritual(coordinator, nodes, initiator, erc20, global_allow_list):
+def test_initiate_ritual(coordinator, nodes, initiator, erc20, global_allow_list, deployer, treasury):
     authority, tx = initiate_ritual(
         coordinator=coordinator,
         erc20=erc20,
@@ -181,6 +193,18 @@ def test_initiate_ritual(coordinator, nodes, initiator, erc20, global_allow_list
     assert ritual_struct[9] == global_allow_list.address  # accessController
     assert ritual_struct[10] == (b"\x00" * 32, b"\x00" * 16)  # publicKey
     assert not ritual_struct[11]  # aggregatedTranscript
+
+    fee = coordinator.getRitualInitiationCost(nodes, DURATION)
+    assert erc20.balanceOf(coordinator) == fee
+    assert coordinator.totalPendingFees() == fee
+    assert coordinator.pendingFees(ritualID) == fee
+
+    with ape.reverts(access_control_error_message(treasury.address, coordinator.TREASURY_ROLE())):
+        coordinator.withdrawTokens(erc20.address, 1, sender=treasury)
+
+    coordinator.grantRole(coordinator.TREASURY_ROLE(), treasury, sender=deployer)
+    with ape.reverts("Can't withdraw pending fees"):
+        coordinator.withdrawTokens(erc20.address, 1, sender=treasury)
 
 
 def test_provider_public_key(coordinator, nodes):
@@ -277,7 +301,7 @@ def test_post_transcript_but_not_waiting_for_transcripts(
         coordinator.postTranscript(0, transcript, sender=nodes[1])
 
 
-def test_post_aggregation(coordinator, nodes, initiator, erc20, global_allow_list):
+def test_post_aggregation(coordinator, nodes, initiator, erc20, global_allow_list, treasury, deployer):
     initiate_ritual(
         coordinator=coordinator,
         erc20=erc20,
@@ -320,6 +344,17 @@ def test_post_aggregation(coordinator, nodes, initiator, erc20, global_allow_lis
     assert retrieved_public_key == dkg_public_key
     assert coordinator.getRitualIdFromPublicKey(dkg_public_key) == ritualID
 
+    fee = coordinator.getRitualInitiationCost(nodes, DURATION)
+    assert erc20.balanceOf(coordinator) == fee
+    assert coordinator.totalPendingFees() == 0
+    assert coordinator.pendingFees(ritualID) == 0
+
+    coordinator.grantRole(coordinator.TREASURY_ROLE(), treasury, sender=deployer)
+    with ape.reverts("Can't withdraw pending fees"):
+        coordinator.withdrawTokens(erc20.address, fee + 1, sender=treasury)
+    coordinator.withdrawTokens(erc20.address, fee, sender=treasury)
+
+
 def test_authorize_using_global_allow_list(
     coordinator, nodes, deployer, initiator, erc20, global_allow_list
 ):
@@ -332,8 +367,7 @@ def test_authorize_using_global_allow_list(
         allow_logic=global_allow_list,
     )
 
-    access_control_error_message = f"AccessControl: account {initiator.address.lower()} is missing role 0x{'00'*32}"
-    with ape.reverts(access_control_error_message):
+    with ape.reverts(access_control_error_message(initiator.address, role=0)):
         global_allow_list.setCoordinator(coordinator.address, sender=initiator)
 
     global_allow_list.setCoordinator(coordinator.address, sender=deployer)
