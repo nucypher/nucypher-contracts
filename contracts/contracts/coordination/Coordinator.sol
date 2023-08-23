@@ -19,7 +19,6 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
     // Ritual
     event StartRitual(uint32 indexed ritualId, address indexed authority, address[] participants);
     event StartAggregationRound(uint32 indexed ritualId);
-    // TODO: Do we want the public key here? If so, we want 2 events or do we reuse this event?
     event EndRitual(uint32 indexed ritualId, bool successful);
 
     // Node
@@ -52,7 +51,7 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
     struct Participant {
         address provider;
         bool aggregated;
-        bytes transcript; // TODO: Consider event processing complexity vs storage cost
+        bytes transcript;
         bytes decryptionRequestStaticKey;
     }
 
@@ -138,11 +137,11 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
             return RitualState.AWAITING_AGGREGATIONS;
             // solhint-disable-next-line no-empty-blocks
         } else {
-            // TODO: Is it possible to reach this state?
+            // It shouldn't be possible to reach this state:
             //   - No public key
             //   - All transcripts and all aggregations
             //   - Still within the deadline
-            revert("Invalid ritual state");
+            assert(false);
         }
     }
 
@@ -260,7 +259,6 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
 
         processRitualPayment(id, providers, duration);
 
-        // TODO: Include cohort fingerprint in StartRitual event?
         emit StartRitual(id, ritual.authority, providers);
         return id;
     }
@@ -288,7 +286,7 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
 
         // Nodes commit to their transcript
         bytes32 transcriptDigest = keccak256(transcript);
-        participant.transcript = transcript; // TODO: ???
+        participant.transcript = transcript;
         emit TranscriptPosted(ritualId, provider, transcriptDigest);
         ritual.totalTranscripts++;
 
@@ -362,7 +360,6 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
                 ));
                 ritualPublicKeyRegistry[registryKey] = ritualId + 1;
                 emit EndRitual({ritualId: ritualId, successful: true});
-                // TODO: Consider including public key in event
             }
         }
 
@@ -419,8 +416,7 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
         uint256 ritualCost = getRitualInitiationCost(providers, duration);
         if (ritualCost > 0) {
             totalPendingFees += ritualCost;
-            assert(pendingFees[ritualId] == 0); // TODO: This is an invariant, not sure if actually needed
-            pendingFees[ritualId] += ritualCost;
+            pendingFees[ritualId] = ritualCost;
             currency.safeTransferFrom(msg.sender, address(this), ritualCost);
         }
     }
@@ -452,7 +448,6 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
 
     function processReimbursement(uint256 initialGasLeft) internal {
         if (address(reimbursementPool) != address(0)) {
-            // TODO: Consider defining a method
             uint256 gasUsed = initialGasLeft - gasleft();
             try reimbursementPool.refund(gasUsed, msg.sender) {
                 return;
