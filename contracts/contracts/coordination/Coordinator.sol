@@ -442,12 +442,10 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
         delete pendingFees[ritualId];
         // Transfer fees back to initiator if failed
         if (state == RitualState.TIMEOUT || state == RitualState.INVALID) {
-            // Amount to refund depends on how much work nodes did for the ritual.
+            // Refund everything minus cost of renting cohort for a day
             // TODO: Validate if this is enough to remove griefing attacks
-            uint256 executedTransactions = ritual.totalTranscripts + ritual.totalAggregations;
-            uint256 expectedTransactions = 2 * ritual.dkgSize;
-            uint256 consumedFee = (pending * executedTransactions) / expectedTransactions;
-            uint256 refundableFee = pending - consumedFee;
+            uint256 duration = ritual.endTimestamp - ritual.initTimestamp;
+            uint256 refundableFee = pending * (duration - 1 days) / duration;
             currency.safeTransfer(ritual.initiator, refundableFee);
         }
     }
