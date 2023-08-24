@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-
 import "../contracts/lib/SignatureVerifier.sol";
 import "../contracts/lib/Snapshot.sol";
 import "../contracts/lib/UmbralDeserializer.sol";
@@ -10,15 +9,10 @@ import "../contracts/lib/ReEncryptionValidator.sol";
 import "../contracts/lib/BLS12381.sol";
 
 /**
-* @notice Contract for using SignatureVerifier library
-*/
+ * @notice Contract for using SignatureVerifier library
+ */
 contract SignatureVerifierMock {
-
-    function recover(bytes32 _hash, bytes memory _signature)
-        public
-        pure
-        returns (address)
-    {
+    function recover(bytes32 _hash, bytes memory _signature) public pure returns (address) {
         return SignatureVerifier.recover(_hash, _signature);
     }
 
@@ -26,11 +20,10 @@ contract SignatureVerifierMock {
         return SignatureVerifier.toAddress(_publicKey);
     }
 
-    function hash(bytes memory _message, SignatureVerifier.HashAlgorithm _algorithm)
-        public
-        pure
-        returns (bytes32 result)
-    {
+    function hash(
+        bytes memory _message,
+        SignatureVerifier.HashAlgorithm _algorithm
+    ) public pure returns (bytes32 result) {
         return SignatureVerifier.hash(_message, _algorithm);
     }
 
@@ -39,11 +32,7 @@ contract SignatureVerifierMock {
         bytes memory _signature,
         bytes memory _publicKey,
         SignatureVerifier.HashAlgorithm _algorithm
-    )
-        public
-        pure
-        returns (bool)
-    {
+    ) public pure returns (bool) {
         return SignatureVerifier.verify(_message, _signature, _publicKey, _algorithm);
     }
 
@@ -52,36 +41,27 @@ contract SignatureVerifierMock {
         bytes memory _signature,
         bytes memory _publicKey,
         bytes1 _version
-    )
-        public
-        view
-        returns (bool)
-    {
+    ) public view returns (bool) {
         return SignatureVerifier.verifyEIP191(_message, _signature, _publicKey, _version);
     }
 
-    function hashEIP191(
-        bytes memory _message,
-        bytes1 _version
-    )
-        public
-        view
-        returns (bytes32)
-    {
+    function hashEIP191(bytes memory _message, bytes1 _version) public view returns (bytes32) {
         return SignatureVerifier.hashEIP191(_message, _version);
     }
-
 }
 
-
 /**
-* @dev Contract for testing UmbralDeserializer library
-*/
+ * @dev Contract for testing UmbralDeserializer library
+ */
 contract UmbralDeserializerMock {
     using UmbralDeserializer for bytes;
 
-    function toCapsule(bytes memory _capsuleBytes)
-        public pure returns (
+    function toCapsule(
+        bytes memory _capsuleBytes
+    )
+        public
+        pure
+        returns (
             bytes1 pointESign,
             bytes32 pointEXCoord,
             bytes1 pointVSign,
@@ -97,8 +77,12 @@ contract UmbralDeserializerMock {
         bnSig = bytes32(capsule.bnSig);
     }
 
-    function toCorrectnessProof(bytes memory _proofBytes)
-        public pure returns (
+    function toCorrectnessProof(
+        bytes memory _proofBytes
+    )
+        public
+        pure
+        returns (
             bytes1 pointE2Sign,
             bytes32 pointE2XCoord,
             bytes1 pointV2Sign,
@@ -127,8 +111,12 @@ contract UmbralDeserializerMock {
     }
 
     // `toCapsuleFrag` is split into two methods because of EVM stack problems with many variables
-    function toCorrectnessProofFromCapsuleFrag(bytes memory _cFragBytes)
-        public pure returns (
+    function toCorrectnessProofFromCapsuleFrag(
+        bytes memory _cFragBytes
+    )
+        public
+        pure
+        returns (
             bytes1 pointE2Sign,
             bytes32 pointE2XCoord,
             bytes1 pointV2Sign,
@@ -157,8 +145,12 @@ contract UmbralDeserializerMock {
         metadata = proof.metadata;
     }
 
-    function toCapsuleFrag(bytes memory _cFragBytes)
-        public pure returns (
+    function toCapsuleFrag(
+        bytes memory _cFragBytes
+    )
+        public
+        pure
+        returns (
             bytes1 pointE1Sign,
             bytes32 pointE1XCoord,
             bytes1 pointV1Sign,
@@ -179,14 +171,13 @@ contract UmbralDeserializerMock {
     }
 }
 
-
 /**
-* @notice Contract for using ReEncryptionValidator library
-*/
+ * @notice Contract for using ReEncryptionValidator library
+ */
 contract ReEncryptionValidatorMock {
-
     using UmbralDeserializer for bytes;
 
+    /* solhint-disable func-name-mixedcase, var-name-mixedcase */
     function UMBRAL_PARAMETER_U_SIGN() public pure returns (uint8) {
         return ReEncryptionValidator.UMBRAL_PARAMETER_U_SIGN;
     }
@@ -215,81 +206,73 @@ contract ReEncryptionValidatorMock {
         bytes memory _capsuleBytes,
         bytes memory _cFragBytes,
         bytes memory _precomputedBytes
-    )
-        public pure returns (bool)
-    {
+    ) public pure returns (bool) {
         return ReEncryptionValidator.validateCFrag(_capsuleBytes, _cFragBytes, _precomputedBytes);
     }
 
     function computeProofChallengeScalar(
         bytes memory _capsuleBytes,
         bytes memory _cFragBytes
-    )
-        public pure returns (uint256)
-    {
+    ) public pure returns (uint256) {
         UmbralDeserializer.Capsule memory _capsule = _capsuleBytes.toCapsule();
         UmbralDeserializer.CapsuleFrag memory _cFrag = _cFragBytes.toCapsuleFrag();
         return ReEncryptionValidator.computeProofChallengeScalar(_capsule, _cFrag);
     }
 
-    function extendedKeccakToBN (bytes memory _data) public pure returns (uint256) {
+    function extendedKeccakToBN(bytes memory _data) public pure returns (uint256) {
         return ReEncryptionValidator.extendedKeccakToBN(_data);
     }
 
-	function checkCompressedPoint(
-		uint8 _pointSign,
-		uint256 _pointX,
-		uint256 _pointY
-	) public pure returns(bool) {
+    function checkCompressedPoint(
+        uint8 _pointSign,
+        uint256 _pointX,
+        uint256 _pointY
+    ) public pure returns (bool) {
         return ReEncryptionValidator.checkCompressedPoint(_pointSign, _pointX, _pointY);
-	}
+    }
 
-    function checkSerializedCoordinates(bytes memory _coords) public pure returns(bool) {
-		return ReEncryptionValidator.checkSerializedCoordinates(_coords);
-	}
+    function checkSerializedCoordinates(bytes memory _coords) public pure returns (bool) {
+        return ReEncryptionValidator.checkSerializedCoordinates(_coords);
+    }
 
     function isOnCurve(uint256 Px, uint256 Py) public pure returns (bool) {
         return ReEncryptionValidator.isOnCurve(Px, Py);
     }
 
     function ecmulVerify(
-    	uint256 x1,
-    	uint256 y1,
-    	uint256 scalar,
-    	uint256 qx,
-    	uint256 qy
-    ) public pure returns(bool) {
+        uint256 x1,
+        uint256 y1,
+        uint256 scalar,
+        uint256 qx,
+        uint256 qy
+    ) public pure returns (bool) {
         return ReEncryptionValidator.ecmulVerify(x1, y1, scalar, qx, qy);
-	}
+    }
 
-    function eqAffineJacobian(
-    	uint256[2] memory P,
-    	uint256[3] memory Q
-    ) public pure returns(bool){
+    function eqAffineJacobian(uint256[2] memory P, uint256[3] memory Q) public pure returns (bool) {
         return ReEncryptionValidator.eqAffineJacobian(P, Q);
     }
 
     function addAffineJacobian(
-    	uint[2] memory P,
-    	uint[2] memory Q
-    ) public pure returns (uint[3] memory) {
+        uint256[2] memory P,
+        uint256[2] memory Q
+    ) public pure returns (uint256[3] memory) {
         return ReEncryptionValidator.addAffineJacobian(P, Q);
     }
 
-    function doubleJacobian(uint[3] memory P) public pure returns (uint[3] memory) {
+    function doubleJacobian(uint256[3] memory P) public pure returns (uint256[3] memory) {
         return ReEncryptionValidator.doubleJacobian(P);
     }
 }
 
 /**
-* @notice Contract for using Snapshot library
-*/
+ * @notice Contract for using Snapshot library
+ */
 contract SnapshotMock {
-
     // Helpers
     uint128[] public history;
 
-    function length() public view returns(uint256){
+    function length() public view returns (uint256) {
         return history.length;
     }
 
@@ -298,11 +281,11 @@ contract SnapshotMock {
     }
 
     // Mock functions
-    function encodeSnapshot(uint32 _time, uint96 _value) public pure returns(uint128) {
+    function encodeSnapshot(uint32 _time, uint96 _value) public pure returns (uint128) {
         return Snapshot.encodeSnapshot(_time, _value);
     }
 
-    function decodeSnapshot(uint128 _snapshot) public pure returns(uint32, uint96){
+    function decodeSnapshot(uint128 _snapshot) public pure returns (uint32, uint96) {
         return Snapshot.decodeSnapshot(_snapshot);
     }
 
@@ -321,14 +304,12 @@ contract SnapshotMock {
     function lastValue() public view returns (uint96) {
         return Snapshot.lastValue(history);
     }
-
 }
 
 /**
-* @notice Contract for using BLS12381 library
-*/
+ * @notice Contract for using BLS12381 library
+ */
 contract BLSLibraryMock {
-
     // using BLS12381 for bytes;
     // BLS12381.G1Point internal g1;
     // BLS12381.G2Point internal g2;
@@ -341,27 +322,37 @@ contract BLSLibraryMock {
         return BLS12381.G2_POINT_SIZE;
     }
 
-    function bytesToG1Point(bytes calldata pointBytes) public pure returns(BLS12381.G1Point memory){
+    function bytesToG1Point(
+        bytes calldata pointBytes
+    ) public pure returns (BLS12381.G1Point memory) {
         return BLS12381.bytesToG1Point(pointBytes);
     }
 
-    function bytesToG2Point(bytes calldata pointBytes) public pure returns(BLS12381.G2Point memory){
+    function bytesToG2Point(
+        bytes calldata pointBytes
+    ) public pure returns (BLS12381.G2Point memory) {
         return BLS12381.bytesToG2Point(pointBytes);
     }
 
-    function g1PointToBytes(BLS12381.G1Point calldata point) public pure returns(bytes memory){
+    function g1PointToBytes(BLS12381.G1Point calldata point) public pure returns (bytes memory) {
         return BLS12381.g1PointToBytes(point);
     }
 
-    function g2PointToBytes(BLS12381.G2Point calldata point) public pure returns(bytes memory){
+    function g2PointToBytes(BLS12381.G2Point calldata point) public pure returns (bytes memory) {
         return BLS12381.g2PointToBytes(point);
     }
 
-    function eqG1Point(BLS12381.G1Point calldata p0, BLS12381.G1Point calldata p1) public pure returns(bool){
+    function eqG1Point(
+        BLS12381.G1Point calldata p0,
+        BLS12381.G1Point calldata p1
+    ) public pure returns (bool) {
         return BLS12381.eqG1Point(p0, p1);
     }
 
-    function eqG2Point(BLS12381.G2Point calldata p0, BLS12381.G2Point calldata p1) public pure returns(bool){
+    function eqG2Point(
+        BLS12381.G2Point calldata p0,
+        BLS12381.G2Point calldata p1
+    ) public pure returns (bool) {
         return BLS12381.eqG2Point(p0, p1);
     }
 }

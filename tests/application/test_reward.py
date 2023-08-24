@@ -46,11 +46,7 @@ def test_push_reward(accounts, token, threshold_staking, taco_application, chain
 
     tx = taco_application.setRewardDistributor(distributor, sender=creator)
     assert taco_application.rewardDistributor() == distributor
-
-    events = taco_application.RewardDistributorSet.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["distributor"] == distributor
+    assert tx.events == [taco_application.RewardDistributorSet(distributor=distributor)]
 
     # Can't distribute zero rewards
     with ape.reverts():
@@ -72,9 +68,7 @@ def test_push_reward(accounts, token, threshold_staking, taco_application, chain
     assert taco_application.availableRewards(staking_provider_1) == 0
 
     events = taco_application.RewardAdded.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["reward"] == reward_portion
+    assert events == [taco_application.RewardAdded(reward=reward_portion)]
 
     # Wait some time and push reward again (without staking providers)
     chain.pending_timestamp += reward_duration // 2 - 1
@@ -93,9 +87,7 @@ def test_push_reward(accounts, token, threshold_staking, taco_application, chain
     assert taco_application.availableRewards(staking_provider_1) == 0
 
     events = taco_application.RewardAdded.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["reward"] == reward_portion
+    assert events == [taco_application.RewardAdded(reward=reward_portion)]
 
     # Wait, add one staking provider and push reward again
     chain.pending_timestamp += reward_duration
@@ -116,9 +108,7 @@ def test_push_reward(accounts, token, threshold_staking, taco_application, chain
     assert taco_application.availableRewards(staking_provider_1) == 0
 
     events = taco_application.RewardAdded.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["reward"] == reward_portion
+    assert events == [taco_application.RewardAdded(reward=reward_portion)]
 
     # Wait some time and check reward for staking provider
     chain.pending_timestamp += reward_duration // 2
@@ -153,9 +143,7 @@ def test_push_reward(accounts, token, threshold_staking, taco_application, chain
     assert taco_application.availableRewards(staking_provider_2) == 0
 
     events = taco_application.RewardAdded.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["reward"] == reward_portion
+    assert events == [taco_application.RewardAdded(reward=reward_portion)]
 
     chain.pending_timestamp += reward_duration
     assert (
@@ -404,11 +392,11 @@ def test_withdraw(accounts, token, threshold_staking, taco_application, chain):
     assert token.balanceOf(taco_application.address) == reward_portion - earned
 
     events = taco_application.RewardPaid.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["stakingProvider"] == staking_provider
-    assert event["beneficiary"] == beneficiary
-    assert event["reward"] == earned
+    assert events == [
+        taco_application.RewardPaid(
+            stakingProvider=staking_provider, beneficiary=beneficiary, reward=earned
+        )
+    ]
 
     # Add one more staking provider, push reward again and drop operator
     chain.pending_timestamp += min_operator_seconds
@@ -438,8 +426,8 @@ def test_withdraw(accounts, token, threshold_staking, taco_application, chain):
     assert token.balanceOf(taco_application.address) == 2 * reward_portion - earned - new_earned
 
     events = taco_application.RewardPaid.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["stakingProvider"] == staking_provider
-    assert event["beneficiary"] == beneficiary
-    assert event["reward"] == new_earned
+    assert events == [
+        taco_application.RewardPaid(
+            stakingProvider=staking_provider, beneficiary=beneficiary, reward=new_earned
+        )
+    ]

@@ -2,27 +2,27 @@
 
 pragma solidity ^0.8.0;
 
-
 import "../contracts/Adjudicator.sol";
 import "../contracts/lib/SignatureVerifier.sol";
-//import "../contracts/proxy/Upgradeable.sol";
-
 
 /**
-* @notice Contract for testing the Adjudicator contract
-*/
+ * @notice Contract for testing the Adjudicator contract
+ */
 contract TACoApplicationForAdjudicatorMock {
-
     uint32 public immutable secondsPerPeriod = 1;
-    mapping (address => uint96) public stakingProviderInfo;
-    mapping (address => uint256) public rewardInfo;
-    mapping (address => address) _stakingProviderFromOperator;
+    mapping(address => uint96) public stakingProviderInfo;
+    mapping(address => uint256) public rewardInfo;
+    mapping(address => address) internal _stakingProviderFromOperator;
 
     function stakingProviderFromOperator(address _operator) public view returns (address) {
         return _stakingProviderFromOperator[_operator];
     }
 
-    function setStakingProviderInfo(address _stakingProvider, uint96 _amount, address _operator) public {
+    function setStakingProviderInfo(
+        address _stakingProvider,
+        uint96 _amount,
+        address _operator
+    ) public {
         stakingProviderInfo[_stakingProvider] = _amount;
         if (_operator == address(0)) {
             _operator = _stakingProvider;
@@ -34,19 +34,11 @@ contract TACoApplicationForAdjudicatorMock {
         return stakingProviderInfo[_stakingProvider];
     }
 
-    function slash(
-        address _stakingProvider,
-        uint96 _penalty,
-        address _investigator
-    )
-        external
-    {
+    function slash(address _stakingProvider, uint96 _penalty, address _investigator) external {
         stakingProviderInfo[_stakingProvider] -= _penalty;
         rewardInfo[_investigator] += 1;
     }
-
 }
-
 
 ///**
 //* @notice Upgrade to this contract must lead to fail

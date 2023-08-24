@@ -6,10 +6,8 @@ import "@openzeppelin-upgradeable/contracts/access/AccessControlUpgradeable.sol"
 import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
 
 contract SubscriptionManager is Initializable, AccessControlUpgradeable {
-
-    bytes32 public constant SET_RATE_ROLE = 
-        keccak256("Power to set the fee rate");
-    bytes32 public constant WITHDRAW_ROLE = 
+    bytes32 public constant SET_RATE_ROLE = keccak256("Power to set the fee rate");
+    bytes32 public constant WITHDRAW_ROLE =
         keccak256("Power to withdraw funds from SubscriptionManager");
 
     // The layout of policy struct is optimized, so sponsor, timestamps and size
@@ -39,7 +37,7 @@ contract SubscriptionManager is Initializable, AccessControlUpgradeable {
     uint256 public feeRate;
 
     // Mapping that stores policy structs, keyed by policy ID
-    mapping (bytes16 => Policy) internal _policies;
+    mapping(bytes16 => Policy) internal _policies;
 
     function initialize(uint256 _feeRate) public initializer {
         _setFeeRate(_feeRate);
@@ -52,7 +50,7 @@ contract SubscriptionManager is Initializable, AccessControlUpgradeable {
         uint16 _size,
         uint32 _startTimestamp,
         uint32 _endTimestamp
-    ) public view returns (uint256){
+    ) public view returns (uint256) {
         uint32 duration = _endTimestamp - _startTimestamp;
         require(duration > 0, "Invalid timestamps");
         require(_size > 0, "Invalid policy size");
@@ -65,9 +63,7 @@ contract SubscriptionManager is Initializable, AccessControlUpgradeable {
         uint16 _size,
         uint32 _startTimestamp,
         uint32 _endTimestamp
-    )
-        external payable
-    {
+    ) external payable {
         require(
             _startTimestamp < _endTimestamp && block.timestamp < _endTimestamp,
             "Invalid timestamps"
@@ -81,27 +77,22 @@ contract SubscriptionManager is Initializable, AccessControlUpgradeable {
     }
 
     /**
-    * @notice Create policy
-    * @param _policyId Policy id
-    * @param _policyOwner Policy owner. Zero address means sender is owner
-    * @param _size Number of nodes involved in the policy
-    * @param _startTimestamp Start timestamp of the policy in seconds
-    * @param _endTimestamp End timestamp of the policy in seconds
-    */
+     * @notice Create policy
+     * @param _policyId Policy id
+     * @param _policyOwner Policy owner. Zero address means sender is owner
+     * @param _size Number of nodes involved in the policy
+     * @param _startTimestamp Start timestamp of the policy in seconds
+     * @param _endTimestamp End timestamp of the policy in seconds
+     */
     function _createPolicy(
         bytes16 _policyId,
         address _policyOwner,
         uint16 _size,
         uint32 _startTimestamp,
         uint32 _endTimestamp
-    )
-        internal returns (Policy storage policy)
-    {
+    ) internal returns (Policy storage policy) {
         policy = _policies[_policyId];
-        require(
-            policy.endTimestamp < block.timestamp,
-            "Policy is currently active"
-        );
+        require(policy.endTimestamp < block.timestamp, "Policy is currently active");
 
         policy.sponsor = payable(msg.sender);
         policy.startTimestamp = _startTimestamp;
@@ -123,11 +114,11 @@ contract SubscriptionManager is Initializable, AccessControlUpgradeable {
         );
     }
 
-    function getPolicy(bytes16 _policyID) public view returns(Policy memory){
+    function getPolicy(bytes16 _policyID) public view returns (Policy memory) {
         return _policies[_policyID];
     }
 
-    function isPolicyActive(bytes16 _policyID) public view returns(bool){
+    function isPolicyActive(bytes16 _policyID) public view returns (bool) {
         return _policies[_policyID].endTimestamp > block.timestamp;
     }
 
@@ -137,14 +128,13 @@ contract SubscriptionManager is Initializable, AccessControlUpgradeable {
         emit FeeRateUpdated(oldFee, newFee);
     }
 
-    function setFeeRate(uint256 _ratePerSecond) onlyRole(SET_RATE_ROLE) external {
+    function setFeeRate(uint256 _ratePerSecond) external onlyRole(SET_RATE_ROLE) {
         _setFeeRate(_ratePerSecond);
     }
 
-    function sweep(address payable recipient) onlyRole(WITHDRAW_ROLE) external {
+    function sweep(address payable recipient) external onlyRole(WITHDRAW_ROLE) {
         uint256 balance = address(this).balance;
         (bool sent, ) = recipient.call{value: balance}("");
         require(sent, "Failed transfer");
     }
-
 }

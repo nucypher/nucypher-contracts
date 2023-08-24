@@ -2,29 +2,23 @@
 
 pragma solidity ^0.8.0;
 
-
 import "../contracts/TACoApplication.sol";
 import "@threshold/contracts/staking/IApplication.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-
 /**
-* @notice Contract for testing the application contract
-*/
+ * @notice Contract for testing the application contract
+ */
 contract TToken is ERC20("T", "T") {
-
-    constructor (uint256 _totalSupplyOfTokens) {
+    constructor(uint256 _totalSupplyOfTokens) {
         _mint(msg.sender, _totalSupplyOfTokens);
     }
-
 }
 
-
 /**
-* @notice Contract for testing TACo application contract
-*/
+ * @notice Contract for testing TACo application contract
+ */
 contract ThresholdStakingForTACoApplicationMock {
-
     struct StakingProviderInfo {
         address owner;
         address payable beneficiary;
@@ -35,7 +29,7 @@ contract ThresholdStakingForTACoApplicationMock {
 
     IApplication public application;
 
-    mapping (address => StakingProviderInfo) public stakingProviderInfo;
+    mapping(address => StakingProviderInfo) public stakingProviderInfo;
 
     uint96 public amountToSeize;
     uint256 public rewardMultiplier;
@@ -55,9 +49,7 @@ contract ThresholdStakingForTACoApplicationMock {
         address _owner,
         address payable _beneficiary,
         address _authorizer
-    )
-        public
-    {
+    ) public {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         info.owner = _owner;
         info.beneficiary = _beneficiary;
@@ -65,9 +57,9 @@ contract ThresholdStakingForTACoApplicationMock {
     }
 
     /**
-    * @dev If the function is called with only the _stakingProvider parameter,
-    * we presume that the caller wants that address set for the other roles as well.
-    */
+     * @dev If the function is called with only the _stakingProvider parameter,
+     * we presume that the caller wants that address set for the other roles as well.
+     */
     function setRoles(address _stakingProvider) external {
         setRoles(_stakingProvider, _stakingProvider, payable(_stakingProvider), _stakingProvider);
     }
@@ -80,16 +72,18 @@ contract ThresholdStakingForTACoApplicationMock {
         stakingProviderInfo[_stakingProvider].decreaseRequestTo = _decreaseRequestTo;
     }
 
-    function authorizedStake(address _stakingProvider, address _application) external view returns (uint96) {
+    function authorizedStake(
+        address _stakingProvider,
+        address _application
+    ) external view returns (uint96) {
+        // solhint-disable-next-line reason-string
         require(_stakingProvider == _application || _application == address(application));
         return stakingProviderInfo[_stakingProvider].authorized;
     }
 
-    function rolesOf(address _stakingProvider) external view returns (
-        address owner,
-        address payable beneficiary,
-        address authorizer
-    ) {
+    function rolesOf(
+        address _stakingProvider
+    ) external view returns (address owner, address payable beneficiary, address authorizer) {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         owner = info.owner;
         beneficiary = info.beneficiary;
@@ -118,7 +112,11 @@ contract ThresholdStakingForTACoApplicationMock {
         return stakingProvidersToSeize.length;
     }
 
-    function authorizationIncreased(address _stakingProvider, uint96 _fromAmount, uint96 _toAmount) external {
+    function authorizationIncreased(
+        address _stakingProvider,
+        uint96 _fromAmount,
+        uint96 _toAmount
+    ) external {
         application.authorizationIncreased(_stakingProvider, _fromAmount, _toAmount);
         stakingProviderInfo[_stakingProvider].authorized = _toAmount;
     }
@@ -127,9 +125,7 @@ contract ThresholdStakingForTACoApplicationMock {
         address _stakingProvider,
         uint96 _fromAmount,
         uint96 _toAmount
-    )
-        external
-    {
+    ) external {
         application.involuntaryAuthorizationDecrease(_stakingProvider, _fromAmount, _toAmount);
         stakingProviderInfo[_stakingProvider].authorized = _toAmount;
     }
@@ -138,22 +134,17 @@ contract ThresholdStakingForTACoApplicationMock {
         address _stakingProvider,
         uint96 _fromAmount,
         uint96 _toAmount
-    )
-        external
-    {
+    ) external {
         application.authorizationDecreaseRequested(_stakingProvider, _fromAmount, _toAmount);
         stakingProviderInfo[_stakingProvider].decreaseRequestTo = _toAmount;
     }
-
 }
 
-
 /**
-* @notice Intermediary contract for testing operator
-*/
+ * @notice Intermediary contract for testing operator
+ */
 contract Intermediary {
-
-    TACoApplication immutable public application;
+    TACoApplication public immutable application;
 
     constructor(TACoApplication _application) {
         application = _application;
@@ -166,5 +157,4 @@ contract Intermediary {
     function confirmOperatorAddress() external {
         application.confirmOperatorAddress();
     }
-
 }

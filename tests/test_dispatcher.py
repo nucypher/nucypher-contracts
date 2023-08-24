@@ -52,16 +52,10 @@ def test_dispatcher(project, accounts):
     assert creator == event["owner"]
 
     events = dispatcher.StateVerified.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert contract1_lib.address == event["testTarget"]
-    assert creator == event["sender"]
+    assert events == [dispatcher.StateVerified(testTarget=contract1_lib.address, sender=creator)]
 
     events = dispatcher.UpgradeFinished.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert contract1_lib.address == event["target"]
-    assert creator == event["sender"]
+    assert events == [dispatcher.UpgradeFinished(target=contract1_lib.address, sender=creator)]
 
     # Assign dispatcher address as contract.
     # In addition to the interface can be used ContractV1, ContractV2 or ContractV3 ABI
@@ -125,16 +119,13 @@ def test_dispatcher(project, accounts):
     assert creator == event["owner"]
 
     events = dispatcher.StateVerified.from_receipt(tx)
-    assert len(events) == 2
-    for event in events:
-        assert contract2_lib.address == event["testTarget"]
-        assert creator == event["sender"]
+    assert events == [
+        dispatcher.StateVerified(testTarget=contract2_lib.address, sender=creator),
+        dispatcher.StateVerified(testTarget=contract2_lib.address, sender=creator),
+    ]
 
     events = dispatcher.UpgradeFinished.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert contract2_lib.address == event["target"]
-    assert creator == event["sender"]
+    assert events == [dispatcher.UpgradeFinished(target=contract2_lib.address, sender=creator)]
 
     # Check values and methods after upgrade
     assert 20 == contract_instance.returnValue()
@@ -205,16 +196,10 @@ def test_dispatcher(project, accounts):
     assert creator == event["owner"]
 
     events = dispatcher.StateVerified.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert contract2_lib.address == event["testTarget"]
-    assert creator == event["sender"]
+    assert events == [dispatcher.StateVerified(testTarget=contract2_lib.address, sender=creator)]
 
     events = dispatcher.UpgradeFinished.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert contract1_lib.address == event["target"]
-    assert creator == event["sender"]
+    assert events == [dispatcher.UpgradeFinished(target=contract1_lib.address, sender=creator)]
 
     # Can't upgrade to the bad version
     with ape.reverts():
@@ -226,10 +211,7 @@ def test_dispatcher(project, accounts):
     # Create Event
     contract_instance = project.ContractV1.at(dispatcher.address)
     tx = contract_instance.createEvent(33, sender=creator)
-    events = contract_instance.EventV1.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert 33 == event["value"]
+    assert tx.events == [contract_instance.EventV1(value=33)]
 
     # Upgrade to the version 3
     tx1 = dispatcher.upgrade(contract2_lib.address, sender=creator)
@@ -250,28 +232,22 @@ def test_dispatcher(project, accounts):
     assert creator == event["owner"]
 
     events = dispatcher.StateVerified.from_receipt(tx1)
-    assert len(events) == 2
-    for event in events:
-        assert contract2_lib.address == event["testTarget"]
-        assert creator == event["sender"]
+    assert events == [
+        dispatcher.StateVerified(testTarget=contract2_lib.address, sender=creator),
+        dispatcher.StateVerified(testTarget=contract2_lib.address, sender=creator),
+    ]
 
     events = dispatcher.StateVerified.from_receipt(tx2)
-    assert len(events) == 2
-    for event in events:
-        assert contract3_lib.address == event["testTarget"]
-        assert creator == event["sender"]
+    assert events == [
+        dispatcher.StateVerified(testTarget=contract3_lib.address, sender=creator),
+        dispatcher.StateVerified(testTarget=contract3_lib.address, sender=creator),
+    ]
 
     events = dispatcher.UpgradeFinished.from_receipt(tx1)
-    assert len(events) == 1
-    event = events[0]
-    assert contract2_lib.address == event["target"]
-    assert creator == event["sender"]
+    assert events == [dispatcher.UpgradeFinished(target=contract2_lib.address, sender=creator)]
 
     events = dispatcher.UpgradeFinished.from_receipt(tx2)
-    assert len(events) == 1
-    event = events[0]
-    assert contract3_lib.address == event["target"]
-    assert creator == event["sender"]
+    assert events == [dispatcher.UpgradeFinished(target=contract3_lib.address, sender=creator)]
 
     contract_instance = project.ContractV3.at(dispatcher.address)
     assert contract3_lib.address == dispatcher.target()
@@ -298,10 +274,7 @@ def test_dispatcher(project, accounts):
 
     # Create and check events
     tx = contract_instance.createEvent(22, sender=creator)
-    events = contract_instance.EventV2.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert 22 == event["value"]
+    assert tx.events == [contract_instance.EventV2(value=22)]
 
     # Check upgrading to the contract with explicit storage slots
     tx = dispatcher.upgrade(contract4_lib.address, sender=creator)
@@ -328,16 +301,13 @@ def test_dispatcher(project, accounts):
     assert 77 == contract_instance.anotherStorageValue()
 
     events = dispatcher.StateVerified.from_receipt(tx)
-    assert len(events) == 2
-    for event in events:
-        assert contract4_lib.address == event["testTarget"]
-        assert creator == event["sender"]
+    assert events == [
+        dispatcher.StateVerified(testTarget=contract4_lib.address, sender=creator),
+        dispatcher.StateVerified(testTarget=contract4_lib.address, sender=creator),
+    ]
 
     events = dispatcher.UpgradeFinished.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert contract4_lib.address == event["target"]
-    assert creator == event["sender"]
+    assert events == [dispatcher.UpgradeFinished(target=contract4_lib.address, sender=creator)]
 
     # Upgrade to the previous version - check that new `verifyState` can handle old contract
     tx = dispatcher.upgrade(contract3_lib.address, sender=creator)
@@ -363,10 +333,10 @@ def test_dispatcher(project, accounts):
     assert 77 == contract_instance.anotherStorageValue()
 
     events = dispatcher.StateVerified.from_receipt(tx)
-    assert len(events) == 2
-    for event in events:
-        assert contract3_lib.address == event["testTarget"]
-        assert creator == event["sender"]
+    assert events == [
+        dispatcher.StateVerified(testTarget=contract3_lib.address, sender=creator),
+        dispatcher.StateVerified(testTarget=contract3_lib.address, sender=creator),
+    ]
 
 
 def test_selfdestruct(project, accounts):
