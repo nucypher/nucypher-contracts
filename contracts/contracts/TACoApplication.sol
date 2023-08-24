@@ -9,13 +9,14 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import "@threshold/contracts/staking/IApplication.sol";
 import "@threshold/contracts/staking/IStaking.sol";
-import "./coordination/IUpdatableStakeInfo.sol";
+import "./coordination/ITACoRootToChild.sol";
+import "./coordination/ITACoChildToRoot.sol";
 
 /**
  * @title TACo Application
  * @notice Contract distributes rewards for participating in app and slashes for violating rules
  */
-contract TACoApplication is IApplication, OwnableUpgradeable {
+contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
 
@@ -127,13 +128,6 @@ contract TACoApplication is IApplication, OwnableUpgradeable {
         uint256 startTimestamp
     );
 
-    /**
-     * @notice Signals that an operator address is confirmed
-     * @param stakingProvider Staking provider address
-     * @param operator Operator address
-     */
-    event OperatorConfirmed(address indexed stakingProvider, address indexed operator);
-
     struct StakingProviderInfo {
         address operator;
         bool operatorConfirmed;
@@ -153,7 +147,7 @@ contract TACoApplication is IApplication, OwnableUpgradeable {
     IStaking public immutable tStaking;
     IERC20 public immutable token;
 
-    IUpdatableStakeInfo public updatableStakeInfo;
+    ITACoRootToChild public childApplication;
     address public adjudicator;
 
     mapping(address => StakingProviderInfo) public stakingProviderInfo;
@@ -237,16 +231,16 @@ contract TACoApplication is IApplication, OwnableUpgradeable {
     /**
      * @notice Set contract for multi-chain interactions
      */
-    function setUpdatableStakeInfo(IUpdatableStakeInfo _updatableStakeInfo) external onlyOwner {
+    function setChildApplication(ITACoRootToChild _childApplication) external onlyOwner {
         require(
-            address(_updatableStakeInfo) != address(updatableStakeInfo),
+            address(_childApplication) != address(childApplication),
             "New address must not be equal to the current one"
         );
-        if (address(_updatableStakeInfo) != address(0)) {
+        if (address(_childApplication) != address(0)) {
             // trying to call contract to be sure that is correct address
-            _updatableStakeInfo.updateOperator(address(0), address(0));
+            _childApplication.updateOperator(address(0), address(0));
         }
-        updatableStakeInfo = _updatableStakeInfo;
+        childApplication = _childApplication;
     }
 
     /**
@@ -681,28 +675,29 @@ contract TACoApplication is IApplication, OwnableUpgradeable {
         info.operator = _operator;
         info.operatorStartTimestamp = uint64(block.timestamp);
         emit OperatorBonded(_stakingProvider, _operator, previousOperator, block.timestamp);
-        _releaseOperator(_stakingProvider);
+
+        if (address(childApplication) != address(0)) {
+            childApplication.updateOperator(_stakingProvider, _operator);
+        }
     }
 
     /**
      * @notice Make a confirmation by operator
      */
-    function confirmOperatorAddress() external {
-        address stakingProvider = _stakingProviderFromOperator[msg.sender];
+    function confirmOperatorAddress(address _operator) external override {
+        require(
+            msg.sender == address(childApplication),
+            "Only StakeInfo contract allowed to confirm operator"
+        );
+        address stakingProvider = _stakingProviderFromOperator[_operator];
         require(isAuthorized(stakingProvider), "No stake associated with the operator");
         StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
         require(!info.operatorConfirmed, "Operator address is already confirmed");
-        // solhint-disable-next-line avoid-tx-origin
-        require(msg.sender == tx.origin, "Only operator with real address can make a confirmation");
 
         updateRewardInternal(stakingProvider);
         info.operatorConfirmed = true;
         authorizedOverall += info.authorized;
-        emit OperatorConfirmed(stakingProvider, msg.sender);
-
-        if (address(updatableStakeInfo) != address(0)) {
-            updatableStakeInfo.updateOperator(stakingProvider, msg.sender);
-        }
+        emit OperatorConfirmed(stakingProvider, _operator);
     }
 
     //-------------------------XChain-------------------------
@@ -712,8 +707,8 @@ contract TACoApplication is IApplication, OwnableUpgradeable {
      */
     function _releaseOperator(address _stakingProvider) internal {
         stakingProviderInfo[_stakingProvider].operatorConfirmed = false;
-        if (address(updatableStakeInfo) != address(0)) {
-            updatableStakeInfo.updateOperator(_stakingProvider, address(0));
+        if (address(childApplication) != address(0)) {
+            childApplication.updateOperator(_stakingProvider, address(0));
         }
     }
 
@@ -724,10 +719,10 @@ contract TACoApplication is IApplication, OwnableUpgradeable {
         address _stakingProvider,
         StakingProviderInfo storage _info
     ) internal {
-        if (address(updatableStakeInfo) != address(0)) {
+        if (address(childApplication) != address(0)) {
             // TODO send both authorized and eligible amounts in case of slashing from StakeInfo
             uint96 eligibleAmount = getEligibleAmount(_info);
-            updatableStakeInfo.updateAmount(_stakingProvider, eligibleAmount);
+            childApplication.updateAuthorization(_stakingProvider, eligibleAmount);
         }
     }
 

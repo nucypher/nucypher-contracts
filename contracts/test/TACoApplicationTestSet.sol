@@ -140,21 +140,21 @@ contract ThresholdStakingForTACoApplicationMock {
     }
 }
 
-/**
- * @notice Intermediary contract for testing operator
- */
-contract Intermediary {
-    TACoApplication public immutable application;
+// /**
+//  * @notice Intermediary contract for testing operator
+//  */
+// contract Intermediary {
+//     TACoApplication public immutable application;
 
-    constructor(TACoApplication _application) {
-        application = _application;
-    }
+//     constructor(TACoApplication _application) {
+//         application = _application;
+//     }
 
-    function bondOperator(address _operator) external {
-        application.bondOperator(address(this), _operator);
-    }
+//     function bondOperator(address _operator) external {
+//         application.bondOperator(address(this), _operator);
+//     }
 
-    function confirmOperatorAddress() external {
-        application.confirmOperatorAddress();
-    }
-}
+//     function confirmOperatorAddress() external {
+//         application.confirmOperatorAddress();
+//     }
+// }

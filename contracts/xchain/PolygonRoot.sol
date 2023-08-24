@@ -2,59 +2,65 @@
 pragma solidity ^0.8.0;
 
 import "@fx-portal/contracts/tunnel/FxBaseRootTunnel.sol";
-import "../contracts/coordination/IUpdatableStakeInfo.sol";
+import "../contracts/coordination/ITACoRootToChild.sol";
 
-contract PolygonRoot is FxBaseRootTunnel, IUpdatableStakeInfo {
-    address public immutable source;
-    bytes public latestData;
+contract PolygonRoot is FxBaseRootTunnel, ITACoRootToChild {
+    address public immutable rootApplication;
+
+    // bytes public latestData;
 
     constructor(
         address _checkpointManager,
         address _fxRoot,
-        address _source,
+        address _rootApplication,
         address _fxChildTunnel
     ) FxBaseRootTunnel(_checkpointManager, _fxRoot) {
-        require(_source != address(0), "Wrong input parameters");
-        source = _source;
+        require(_rootApplication != address(0), "Wrong input parameters");
+        rootApplication = _rootApplication;
         fxChildTunnel = _fxChildTunnel;
     }
 
     /**
-     * @dev Checks caller is source of data
+     * @dev Checks caller is the root application
      */
-    modifier onlySource() {
-        require(msg.sender == source, "Caller must be the source");
+    modifier onlyRootApplication() {
+        require(msg.sender == rootApplication, "Caller must be the root app");
         _;
     }
 
     function _processMessageFromChild(bytes memory data) internal override {
-        latestData = data;
+        // latestData = data;
+        // solhint-disable-next-line avoid-low-level-calls
+        rootApplication.call(data);
     }
 
     function updateOperator(
         address stakingProvider,
         address operator
-    ) external override onlySource {
+    ) external override onlyRootApplication {
         bytes memory message = abi.encodeWithSelector(
-            IUpdatableStakeInfo.updateOperator.selector,
+            ITACoRootToChild.updateOperator.selector,
             stakingProvider,
             operator
         );
         _sendMessageToChild(message);
     }
 
-    function updateAmount(address stakingProvider, uint96 amount) external override onlySource {
+    function updateAuthorization(
+        address stakingProvider,
+        uint96 amount
+    ) external override onlyRootApplication {
         bytes memory message = abi.encodeWithSelector(
-            IUpdatableStakeInfo.updateAmount.selector,
+            ITACoRootToChild.updateAuthorization.selector,
             stakingProvider,
             amount
         );
         _sendMessageToChild(message);
     }
 
-    function batchUpdate(bytes32[] calldata updateInfo) external override onlySource {
+    function batchUpdate(bytes32[] calldata updateInfo) external override onlyRootApplication {
         bytes memory message = abi.encodeWithSelector(
-            IUpdatableStakeInfo.batchUpdate.selector,
+            ITACoRootToChild.batchUpdate.selector,
             updateInfo
         );
         _sendMessageToChild(message);
