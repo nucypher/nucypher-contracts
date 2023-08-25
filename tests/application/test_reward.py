@@ -28,7 +28,9 @@ REWARD_DURATION = 60 * 60 * 24 * 7  # one week in seconds
 DEAUTHORIZATION_DURATION = 60 * 60 * 24 * 60  # 60 days in seconds
 
 
-def test_push_reward(accounts, token, threshold_staking, taco_application, chain):
+def test_push_reward(
+    accounts, token, threshold_staking, taco_application, child_application, chain
+):
     creator, distributor, staking_provider_1, staking_provider_2, *everyone_else = accounts[0:]
     min_authorization = MIN_AUTHORIZATION
     reward_portion = min_authorization
@@ -93,7 +95,7 @@ def test_push_reward(accounts, token, threshold_staking, taco_application, chain
     chain.pending_timestamp += reward_duration
     threshold_staking.authorizationIncreased(staking_provider_1, 0, value, sender=creator)
     taco_application.bondOperator(staking_provider_1, staking_provider_1, sender=staking_provider_1)
-    taco_application.confirmOperatorAddress(sender=staking_provider_1)
+    child_application.confirmOperatorAddress(staking_provider_1, sender=staking_provider_1)
 
     tx = taco_application.pushReward(reward_portion, sender=distributor)
     timestamp = chain.pending_timestamp - 1
@@ -153,7 +155,9 @@ def test_push_reward(accounts, token, threshold_staking, taco_application, chain
     assert taco_application.availableRewards(staking_provider_2) == 0
 
 
-def test_update_reward(accounts, token, threshold_staking, taco_application, chain):
+def test_update_reward(
+    accounts, token, threshold_staking, taco_application, child_application, chain
+):
     creator, distributor, staking_provider_1, staking_provider_2, *everyone_else = accounts[0:]
     min_authorization = MIN_AUTHORIZATION
     reward_portion = min_authorization
@@ -218,7 +222,7 @@ def test_update_reward(accounts, token, threshold_staking, taco_application, cha
     # Prepare one staking provider and reward
     threshold_staking.authorizationIncreased(staking_provider_1, 0, value, sender=creator)
     taco_application.bondOperator(staking_provider_1, staking_provider_1, sender=staking_provider_1)
-    taco_application.confirmOperatorAddress(sender=staking_provider_1)
+    child_application.confirmOperatorAddress(staking_provider_1, sender=staking_provider_1)
 
     taco_application.setRewardDistributor(distributor, sender=creator)
     token.transfer(distributor, 100 * reward_portion, sender=creator)
@@ -272,7 +276,7 @@ def test_update_reward(accounts, token, threshold_staking, taco_application, cha
     taco_application.pushReward(reward_portion, sender=distributor)
     chain.pending_timestamp += reward_duration // 2
     # Reward per token will be updated but nothing earned yet (just confirmed operator)
-    taco_application.confirmOperatorAddress(sender=staking_provider_2)
+    child_application.confirmOperatorAddress(staking_provider_2, sender=staking_provider_2)
     check_reward_no_confirmation()
 
     # Increase authorization with confirmation
@@ -330,7 +334,7 @@ def test_update_reward(accounts, token, threshold_staking, taco_application, cha
     )
 
 
-def test_withdraw(accounts, token, threshold_staking, taco_application, chain):
+def test_withdraw(accounts, token, threshold_staking, taco_application, child_application, chain):
     (
         creator,
         distributor,
@@ -355,7 +359,7 @@ def test_withdraw(accounts, token, threshold_staking, taco_application, chain):
     # Prepare one staking provider and reward
     threshold_staking.authorizationIncreased(staking_provider, 0, value, sender=creator)
     taco_application.bondOperator(staking_provider, staking_provider, sender=staking_provider)
-    taco_application.confirmOperatorAddress(sender=staking_provider)
+    child_application.confirmOperatorAddress(staking_provider, sender=staking_provider)
 
     # Nothing earned yet
     with ape.reverts():
@@ -403,7 +407,7 @@ def test_withdraw(accounts, token, threshold_staking, taco_application, chain):
     threshold_staking.setRoles(staking_provider_2, sender=creator)
     threshold_staking.authorizationIncreased(staking_provider_2, 0, value, sender=creator)
     taco_application.bondOperator(staking_provider_2, staking_provider_2, sender=staking_provider_2)
-    taco_application.confirmOperatorAddress(sender=staking_provider_2)
+    child_application.confirmOperatorAddress(staking_provider_2, sender=staking_provider_2)
     taco_application.pushReward(reward_portion, sender=distributor)
     chain.pending_timestamp += reward_duration // 2
     taco_application.bondOperator(staking_provider, ZERO_ADDRESS, sender=staking_provider)

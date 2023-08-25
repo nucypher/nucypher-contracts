@@ -23,10 +23,8 @@ CONFIRMATION_SLOT = 1
 MIN_AUTHORIZATION = Web3.to_wei(40_000, "ether")
 MIN_OPERATOR_SECONDS = 24 * 60 * 60
 
-STAKE_INFO_OPERATOR_SLOT = 0
 
-
-def test_bond_operator(accounts, threshold_staking, taco_application, stake_info, chain):
+def test_bond_operator(accounts, threshold_staking, taco_application, child_application, chain):
     (
         creator,
         staking_provider_1,
@@ -69,7 +67,7 @@ def test_bond_operator(accounts, threshold_staking, taco_application, stake_info
 
     # Staking provider can't confirm operator address because there is no operator by default
     with ape.reverts():
-        taco_application.confirmOperatorAddress(sender=staking_provider_1)
+        child_application.confirmOperatorAddress(staking_provider_1, sender=staking_provider_1)
 
     # Staking provider can't bond another staking provider as operator
     with ape.reverts():
@@ -96,19 +94,19 @@ def test_bond_operator(accounts, threshold_staking, taco_application, stake_info
     assert not taco_application.isOperatorConfirmed(operator1)
     assert taco_application.getStakingProvidersLength() == 1
     assert taco_application.stakingProviders(0) == staking_provider_3
-    assert stake_info.stakes(staking_provider_3)[STAKE_INFO_OPERATOR_SLOT] == ZERO_ADDRESS
-    assert stake_info.stakingProviderFromOperator(operator1) == ZERO_ADDRESS
+    assert child_application.operatorFromStakingProvider(staking_provider_3) == operator1
+    assert child_application.stakingProviderFromOperator(operator1) == staking_provider_3
 
     # No active stakingProviders before confirmation
     all_locked, staking_providers = taco_application.getActiveStakingProviders(0, 0)
     assert all_locked == 0
     assert len(staking_providers) == 0
 
-    taco_application.confirmOperatorAddress(sender=operator1)
+    child_application.confirmOperatorAddress(operator1, sender=operator1)
     assert taco_application.stakingProviderInfo(staking_provider_3)[CONFIRMATION_SLOT]
     assert taco_application.isOperatorConfirmed(operator1)
-    assert stake_info.stakes(staking_provider_3)[STAKE_INFO_OPERATOR_SLOT] == operator1
-    assert stake_info.stakingProviderFromOperator(operator1) == staking_provider_3
+    assert child_application.operatorFromStakingProvider(staking_provider_3) == operator1
+    assert child_application.stakingProviderFromOperator(operator1) == staking_provider_3
 
     events = taco_application.OperatorBonded.from_receipt(tx)
     assert events == [
@@ -156,8 +154,8 @@ def test_bond_operator(accounts, threshold_staking, taco_application, stake_info
     assert not taco_application.isOperatorConfirmed(operator1)
     assert taco_application.getStakingProvidersLength() == 1
     assert taco_application.stakingProviders(0) == staking_provider_3
-    assert stake_info.stakes(staking_provider_3)[STAKE_INFO_OPERATOR_SLOT] == ZERO_ADDRESS
-    assert stake_info.stakingProviderFromOperator(operator1) == ZERO_ADDRESS
+    assert child_application.operatorFromStakingProvider(staking_provider_3) == ZERO_ADDRESS
+    assert child_application.stakingProviderFromOperator(operator1) == ZERO_ADDRESS
 
     # Resetting operator removes from active list before next confirmation
     all_locked, staking_providers = taco_application.getActiveStakingProviders(0, 0)
@@ -183,8 +181,8 @@ def test_bond_operator(accounts, threshold_staking, taco_application, stake_info
     assert not taco_application.isOperatorConfirmed(operator2)
     assert taco_application.getStakingProvidersLength() == 1
     assert taco_application.stakingProviders(0) == staking_provider_3
-    assert stake_info.stakes(staking_provider_3)[STAKE_INFO_OPERATOR_SLOT] == ZERO_ADDRESS
-    assert stake_info.stakingProviderFromOperator(operator2) == ZERO_ADDRESS
+    assert child_application.operatorFromStakingProvider(staking_provider_3) == operator2
+    assert child_application.stakingProviderFromOperator(operator2) == staking_provider_3
 
     events = taco_application.OperatorBonded.from_receipt(tx)
     assert events == [
@@ -198,14 +196,14 @@ def test_bond_operator(accounts, threshold_staking, taco_application, stake_info
 
     # Now the previous operator can no longer make a confirmation
     with ape.reverts():
-        taco_application.confirmOperatorAddress(sender=operator1)
+        child_application.confirmOperatorAddress(operator1, sender=operator1)
     # Only new operator can
-    taco_application.confirmOperatorAddress(sender=operator2)
+    child_application.confirmOperatorAddress(operator2, sender=operator2)
     assert not taco_application.isOperatorConfirmed(operator1)
     assert taco_application.isOperatorConfirmed(operator2)
     assert taco_application.stakingProviderInfo(staking_provider_3)[CONFIRMATION_SLOT]
-    assert stake_info.stakes(staking_provider_3)[STAKE_INFO_OPERATOR_SLOT] == operator2
-    assert stake_info.stakingProviderFromOperator(operator2) == staking_provider_3
+    assert child_application.operatorFromStakingProvider(staking_provider_3) == operator2
+    assert child_application.stakingProviderFromOperator(operator2) == staking_provider_3
 
     # Another staking provider can bond a free operator
     assert taco_application.authorizedOverall() == min_authorization
@@ -218,8 +216,8 @@ def test_bond_operator(accounts, threshold_staking, taco_application, stake_info
     assert taco_application.getStakingProvidersLength() == 2
     assert taco_application.stakingProviders(1) == staking_provider_4
     assert taco_application.authorizedOverall() == min_authorization
-    assert stake_info.stakes(staking_provider_4)[STAKE_INFO_OPERATOR_SLOT] == ZERO_ADDRESS
-    assert stake_info.stakingProviderFromOperator(operator1) == ZERO_ADDRESS
+    assert child_application.operatorFromStakingProvider(staking_provider_4) == operator1
+    assert child_application.stakingProviderFromOperator(operator1) == staking_provider_4
 
     events = taco_application.OperatorBonded.from_receipt(tx)
     assert events == [
@@ -238,12 +236,12 @@ def test_bond_operator(accounts, threshold_staking, taco_application, stake_info
     threshold_staking.setRoles(operator1, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, sender=creator)
 
     # Bond operator again
-    taco_application.confirmOperatorAddress(sender=operator1)
+    child_application.confirmOperatorAddress(operator1, sender=operator1)
     assert taco_application.isOperatorConfirmed(operator1)
     assert taco_application.stakingProviderInfo(staking_provider_4)[CONFIRMATION_SLOT]
     assert taco_application.authorizedOverall() == 2 * min_authorization
-    assert stake_info.stakes(staking_provider_4)[STAKE_INFO_OPERATOR_SLOT] == operator1
-    assert stake_info.stakingProviderFromOperator(operator1) == staking_provider_4
+    assert child_application.operatorFromStakingProvider(staking_provider_4) == operator1
+    assert child_application.stakingProviderFromOperator(operator1) == staking_provider_4
 
     chain.pending_timestamp += min_operator_seconds
     tx = taco_application.bondOperator(staking_provider_4, operator3, sender=staking_provider_4)
@@ -257,8 +255,9 @@ def test_bond_operator(accounts, threshold_staking, taco_application, stake_info
     assert taco_application.getStakingProvidersLength() == 2
     assert taco_application.stakingProviders(1) == staking_provider_4
     assert taco_application.authorizedOverall() == min_authorization
-    assert stake_info.stakes(staking_provider_4)[STAKE_INFO_OPERATOR_SLOT] == ZERO_ADDRESS
-    assert stake_info.stakingProviderFromOperator(operator1) == ZERO_ADDRESS
+    assert child_application.operatorFromStakingProvider(staking_provider_4) == operator3
+    assert child_application.stakingProviderFromOperator(operator1) == ZERO_ADDRESS
+    assert child_application.stakingProviderFromOperator(operator3) == staking_provider_4
 
     # Resetting operator removes from active list before next confirmation
     all_locked, staking_providers = taco_application.getActiveStakingProviders(1, 0)
@@ -312,9 +311,9 @@ def test_bond_operator(accounts, threshold_staking, taco_application, stake_info
     threshold_staking.involuntaryAuthorizationDecrease(
         staking_provider_1, min_authorization, min_authorization - 1, sender=creator
     )
-    taco_application.confirmOperatorAddress(sender=staking_provider_1)
-    assert stake_info.stakes(staking_provider_1)[STAKE_INFO_OPERATOR_SLOT] == staking_provider_1
-    assert stake_info.stakingProviderFromOperator(staking_provider_1) == staking_provider_1
+    child_application.confirmOperatorAddress(staking_provider_1, sender=staking_provider_1)
+    assert child_application.operatorFromStakingProvider(staking_provider_1) == staking_provider_1
+    assert child_application.stakingProviderFromOperator(staking_provider_1) == staking_provider_1
 
     # If stake will be less than minimum then provider is not active
     threshold_staking.authorizationIncreased(
@@ -335,7 +334,7 @@ def test_bond_operator(accounts, threshold_staking, taco_application, stake_info
     assert len(staking_providers) == 0
 
     # Reset xchain contract before next bonding
-    taco_application.setUpdatableStakeInfo(ZERO_ADDRESS, sender=creator)
+    taco_application.setChildApplication(ZERO_ADDRESS, sender=creator)
 
     # Unbond and rebond oeprator
     taco_application.bondOperator(staking_provider_3, ZERO_ADDRESS, sender=staking_provider_3)
@@ -349,48 +348,40 @@ def test_bond_operator(accounts, threshold_staking, taco_application, stake_info
     assert taco_application.stakingProviderFromOperator(operator2) == ZERO_ADDRESS
 
 
-def test_confirm_address(accounts, threshold_staking, taco_application, chain, project):
+def test_confirm_address(
+    accounts, threshold_staking, taco_application, child_application, chain, project
+):
     creator, staking_provider, operator, *everyone_else = accounts[0:]
     min_authorization = MIN_AUTHORIZATION
     min_operator_seconds = MIN_OPERATOR_SECONDS
 
     # Operator must be associated with staking provider
     with ape.reverts():
-        taco_application.confirmOperatorAddress(sender=staking_provider)
+        child_application.confirmOperatorAddress(staking_provider, sender=staking_provider)
     threshold_staking.setRoles(staking_provider, sender=creator)
-
-    # Deploy intermediary contract
-    intermediary = creator.deploy(project.Intermediary, taco_application.address, sender=creator)
-
-    # Bond contract as an operator
     threshold_staking.authorizationIncreased(staking_provider, 0, min_authorization, sender=creator)
-    taco_application.bondOperator(staking_provider, intermediary.address, sender=staking_provider)
 
-    # But can't make a confirmation using an intermediary contract
-    with ape.reverts():
-        intermediary.confirmOperatorAddress(sender=staking_provider)
-
-    # Bond operator again and make confirmation
+    # Bond operator and make confirmation
     chain.pending_timestamp += min_operator_seconds
     taco_application.bondOperator(staking_provider, operator, sender=staking_provider)
     assert taco_application.authorizedOverall() == 0
-    tx = taco_application.confirmOperatorAddress(sender=operator)
+    tx = child_application.confirmOperatorAddress(operator, sender=operator)
     assert taco_application.isOperatorConfirmed(operator)
     assert taco_application.stakingProviderInfo(staking_provider)[CONFIRMATION_SLOT]
     assert taco_application.authorizedOverall() == min_authorization
 
     events = taco_application.OperatorConfirmed.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["stakingProvider"] == staking_provider
-    assert event["operator"] == operator
     assert events == [
         taco_application.OperatorConfirmed(stakingProvider=staking_provider, operator=operator)
     ]
 
-    # Can't confirm twice
-    with ape.reverts():
-        taco_application.confirmOperatorAddress(sender=operator)
+    # Can confirm twice
+    earned = taco_application.availableRewards(staking_provider)
+    child_application.confirmOperatorAddress(operator, sender=operator)
+    assert taco_application.isOperatorConfirmed(operator)
+    assert taco_application.stakingProviderInfo(staking_provider)[CONFIRMATION_SLOT]
+    assert taco_application.authorizedOverall() == min_authorization
+    assert taco_application.availableRewards(staking_provider) == earned
 
 
 def test_slash(accounts, threshold_staking, taco_application):

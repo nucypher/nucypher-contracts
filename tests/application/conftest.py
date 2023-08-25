@@ -94,7 +94,9 @@ def taco_application(project, creator, token, threshold_staking):
 
 
 @pytest.fixture()
-def stake_info(project, creator, taco_application):
-    contract = project.StakeInfo.deploy([taco_application.address], sender=creator)
-    taco_application.setUpdatableStakeInfo(contract.address, sender=creator)
+def child_application(project, creator, taco_application):
+    contract = project.ChildApplicationForTACoApplicationMock.deploy(
+        taco_application.address, sender=creator
+    )
+    taco_application.setChildApplication(contract.address, sender=creator)
     return contract

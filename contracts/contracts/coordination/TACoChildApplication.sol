@@ -13,7 +13,6 @@ import "./ITACoChildToRoot.sol";
  */
 contract TACoChildApplication is AccessControl, ITACoRootToChild, ITACoChildApplication {
     bytes32 public constant UPDATE_ROLE = keccak256("UPDATE_ROLE");
-    bytes32 public constant DEPLOYER_ROLE = keccak256("DEPLOYER_ROLE");
 
     struct StakingProviderInfo {
         address operator;
@@ -35,13 +34,14 @@ contract TACoChildApplication is AccessControl, ITACoRootToChild, ITACoChildAppl
         );
         rootApplication = _rootApplication;
 
+        // TODO Issue #112
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         for (uint256 i = 0; i < updaters.length; i++) {
             _grantRole(UPDATE_ROLE, updaters[i]);
         }
     }
 
-    function setCoordinator(address _coordinator) external onlyRole(DEPLOYER_ROLE) {
+    function setCoordinator(address _coordinator) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(coordinator == address(0), "Coordinator already set");
         require(_coordinator != address(0), "Coordinator must be specified");
         // require(_coordinator.numberOfRituals() >= 0, "Invalid coordinator");
@@ -78,6 +78,7 @@ contract TACoChildApplication is AccessControl, ITACoRootToChild, ITACoChildAppl
             stakingProviderFromOperator[oldOperator] = address(0);
             stakingProviderFromOperator[operator] = stakingProvider;
             info.operatorConfirmed = false;
+            // TODO placeholder to notify Coordinator
 
             emit OperatorUpdated(stakingProvider, operator);
         }
@@ -112,10 +113,9 @@ contract TACoChildApplication is AccessControl, ITACoRootToChild, ITACoChildAppl
         require(msg.sender == coordinator, "Only Coordinator allowed to confirm operator");
         address stakingProvider = stakingProviderFromOperator[_operator];
         StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
-        if (info.operatorConfirmed) {
-            return;
-        }
         require(info.authorized > 0, "No stake associated with the operator");
+        // TODO maybe allow second confirmation, just do not send root call
+        require(!info.operatorConfirmed, "Can't confirm same operator twice");
         info.operatorConfirmed = true;
         rootApplication.confirmOperatorAddress(_operator);
     }

@@ -140,6 +140,36 @@ contract ThresholdStakingForTACoApplicationMock {
     }
 }
 
+/**
+ * @notice Contract for testing TACo application contract
+ */
+contract ChildApplicationForTACoApplicationMock {
+    TACoApplication public immutable rootApplication;
+
+    mapping(address => uint96) public authorizedStake;
+    mapping(address => address) public operatorFromStakingProvider;
+    mapping(address => address) public stakingProviderFromOperator;
+
+    constructor(TACoApplication _rootApplication) {
+        rootApplication = _rootApplication;
+    }
+
+    function updateOperator(address _stakingProvider, address _operator) external {
+        address oldOperator = operatorFromStakingProvider[_stakingProvider];
+        stakingProviderFromOperator[oldOperator] = address(0);
+        operatorFromStakingProvider[_stakingProvider] = _operator;
+        stakingProviderFromOperator[_operator] = _stakingProvider;
+    }
+
+    function updateAuthorization(address _stakingProvider, uint96 _amount) external {
+        authorizedStake[_stakingProvider] = _amount;
+    }
+
+    function confirmOperatorAddress(address _operator) external {
+        rootApplication.confirmOperatorAddress(_operator);
+    }
+}
+
 // /**
 //  * @notice Intermediary contract for testing operator
 //  */

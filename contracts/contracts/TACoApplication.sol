@@ -676,6 +676,7 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
         info.operatorStartTimestamp = uint64(block.timestamp);
         emit OperatorBonded(_stakingProvider, _operator, previousOperator, block.timestamp);
 
+        info.operatorConfirmed = false;
         if (address(childApplication) != address(0)) {
             childApplication.updateOperator(_stakingProvider, _operator);
         }
@@ -687,17 +688,19 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
     function confirmOperatorAddress(address _operator) external override {
         require(
             msg.sender == address(childApplication),
-            "Only StakeInfo contract allowed to confirm operator"
+            "Only child application allowed to confirm operator"
         );
         address stakingProvider = _stakingProviderFromOperator[_operator];
-        require(isAuthorized(stakingProvider), "No stake associated with the operator");
+        // TODO this case possible only in case of desync
+        require(stakingProvider != address(0), "Operator has no bond with staking provider");
         StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
-        require(!info.operatorConfirmed, "Operator address is already confirmed");
 
-        updateRewardInternal(stakingProvider);
-        info.operatorConfirmed = true;
-        authorizedOverall += info.authorized;
-        emit OperatorConfirmed(stakingProvider, _operator);
+        if (!info.operatorConfirmed) {
+            updateRewardInternal(stakingProvider);
+            info.operatorConfirmed = true;
+            authorizedOverall += info.authorized;
+            emit OperatorConfirmed(stakingProvider, _operator);
+        }
     }
 
     //-------------------------XChain-------------------------
@@ -720,7 +723,7 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
         StakingProviderInfo storage _info
     ) internal {
         if (address(childApplication) != address(0)) {
-            // TODO send both authorized and eligible amounts in case of slashing from StakeInfo
+            // TODO send both authorized and eligible amounts in case of slashing from child app
             uint96 eligibleAmount = getEligibleAmount(_info);
             childApplication.updateAuthorization(_stakingProvider, eligibleAmount);
         }
