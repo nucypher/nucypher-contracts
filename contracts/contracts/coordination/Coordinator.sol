@@ -61,12 +61,12 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
         uint32 endTimestamp;
         uint16 totalTranscripts;
         uint16 totalAggregations;
-
+        //
         address authority;
         uint16 dkgSize;
         uint16 threshold;
         bool aggregationMismatch;
-
+        //
         IEncryptionAuthorizer accessController;
         BLS12381.G1Point publicKey;
         bytes aggregatedTranscript;
@@ -103,10 +103,7 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
         address _admin,
         IERC20 _currency,
         uint256 _feeRatePerSecond
-    )
-        AccessControlDefaultAdminRules(0, _admin)
-        FlatRateFeeModel(_currency, _feeRatePerSecond)
-    {
+    ) AccessControlDefaultAdminRules(0, _admin) FlatRateFeeModel(_currency, _feeRatePerSecond) {
         application = _stakes;
         timeout = _timeout;
         maxDkgSize = _maxDkgSize;
@@ -229,7 +226,7 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
         );
         uint16 length = uint16(providers.length);
         require(2 <= length && length <= maxDkgSize, "Invalid number of nodes");
-        require(duration >= 24 hours, "Invalid ritual duration");  // TODO: Define minimum duration #106
+        require(duration >= 24 hours, "Invalid ritual duration"); // TODO: Define minimum duration #106
 
         uint32 id = uint32(rituals.length);
         Ritual storage ritual = rituals.push();
@@ -355,9 +352,9 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
                 processPendingFee(ritualId);
                 // Register ritualId + 1 to discern ritualID#0 from unregistered keys.
                 // See getRitualIdFromPublicKey() for inverse operation.
-                bytes32 registryKey = keccak256(abi.encodePacked(
-                    BLS12381.g1PointToBytes(dkgPublicKey)
-                ));
+                bytes32 registryKey = keccak256(
+                    abi.encodePacked(BLS12381.g1PointToBytes(dkgPublicKey))
+                );
                 ritualPublicKeyRegistry[registryKey] = ritualId + 1;
                 emit EndRitual({ritualId: ritualId, successful: true});
             }
@@ -370,20 +367,16 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
         BLS12381.G1Point memory dkgPublicKey
     ) external view returns (uint32 ritualId) {
         // If public key is not registered, result will produce underflow error
-        bytes32 registryKey = keccak256(abi.encodePacked(
-            BLS12381.g1PointToBytes(dkgPublicKey)
-        ));
+        bytes32 registryKey = keccak256(abi.encodePacked(BLS12381.g1PointToBytes(dkgPublicKey)));
         return ritualPublicKeyRegistry[registryKey] - 1;
     }
 
-    function getPublicKeyFromRitualId(uint32 ritualId) 
-    external view returns (BLS12381.G1Point memory dkgPublicKey) {
+    function getPublicKeyFromRitualId(
+        uint32 ritualId
+    ) external view returns (BLS12381.G1Point memory dkgPublicKey) {
         Ritual storage ritual = rituals[ritualId];
-        require(
-            getRitualState(ritual) == RitualState.FINALIZED,
-            "Ritual not finalized"
-        );
-       return ritual.publicKey;
+        require(getRitualState(ritual) == RitualState.FINALIZED, "Ritual not finalized");
+        return ritual.publicKey;
     }
 
     function getParticipantFromProvider(
@@ -441,7 +434,7 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
             // Refund everything minus cost of renting cohort for a day
             // TODO: Validate if this is enough to remove griefing attacks
             uint256 duration = ritual.endTimestamp - ritual.initTimestamp;
-            uint256 refundableFee = pending * (duration - 1 days) / duration;
+            uint256 refundableFee = (pending * (duration - 1 days)) / duration;
             currency.safeTransfer(ritual.initiator, refundableFee);
         }
     }
@@ -458,7 +451,7 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
     }
 
     function withdrawTokens(IERC20 token, uint256 amount) external onlyRole(TREASURY_ROLE) {
-        if (address(token) == address(currency)){
+        if (address(token) == address(currency)) {
             require(
                 amount <= token.balanceOf(address(this)) - totalPendingFees,
                 "Can't withdraw pending fees"

@@ -8,7 +8,7 @@ contract GlobalAllowList is AccessControlDefaultAdminRules, IEncryptionAuthorize
     using ECDSA for bytes32;
 
     Coordinator public coordinator;
-    mapping(bytes32 => bool) authorizations;
+    mapping(bytes32 => bool) internal authorizations;
 
     constructor(
         Coordinator _coordinator,
@@ -25,7 +25,7 @@ contract GlobalAllowList is AccessControlDefaultAdminRules, IEncryptionAuthorize
         _;
     }
 
-    function setCoordinator(Coordinator _coordinator) public onlyRole(DEFAULT_ADMIN_ROLE){
+    function setCoordinator(Coordinator _coordinator) public onlyRole(DEFAULT_ADMIN_ROLE) {
         require(address(_coordinator) != address(0), "Coordinator cannot be zero address");
         require(_coordinator.numberOfRituals() >= 0, "Invalid coordinator");
         coordinator = _coordinator;
@@ -63,11 +63,7 @@ contract GlobalAllowList is AccessControlDefaultAdminRules, IEncryptionAuthorize
         setAuthorizations(ritualId, addresses, false);
     }
 
-    function setAuthorizations(
-        uint32 ritualId,
-        address[] calldata addresses,
-        bool value
-    ) internal {
+    function setAuthorizations(uint32 ritualId, address[] calldata addresses, bool value) internal {
         require(
             coordinator.isRitualFinalized(ritualId),
             "Only active rituals can add authorizations"

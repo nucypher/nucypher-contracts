@@ -21,7 +21,7 @@ contract FlatRateFeeModel is IFeeModel {
     function getRitualInitiationCost(
         address[] calldata providers,
         uint32 duration
-    ) public view returns(uint256) {
+    ) public view returns (uint256) {
         uint256 size = providers.length;
         require(duration > 0, "Invalid ritual duration");
         require(size > 0, "Invalid ritual size");
