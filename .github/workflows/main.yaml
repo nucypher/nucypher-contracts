@@ -67,10 +67,10 @@ jobs:
       - name: Install Solidity plugin for Prettier
         run: npm install prettier-plugin-solidity
 
-      - name: Solidty Lint
+      - name: Solidity Lint
         run: solhint 'contracts/**/*.sol'
 
-      - name: Python lint
+      - name: Python Lint
         uses: cclauss/GitHub-Action-for-pylint@0.7.0
         continue-on-error: true
         with:

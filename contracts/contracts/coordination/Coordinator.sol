@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/AccessControlDefaultAdminRules.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./IFeeModel.sol";
+import "./FlatRateFeeModel.sol";
 import "./IReimbursementPool.sol";
 import "../lib/BLS12381.sol";
 import "../../threshold/IAccessControlApplication.sol";
@@ -13,13 +13,12 @@ import "./IEncryptionAuthorizer.sol";
 
 /**
  * @title Coordinator
- * @notice Coordination layer for DKG-TDec
+ * @notice Coordination layer for Threshold Access Control (TACo 🌮)
  */
-contract Coordinator is AccessControlDefaultAdminRules {
+contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
     // Ritual
     event StartRitual(uint32 indexed ritualId, address indexed authority, address[] participants);
     event StartAggregationRound(uint32 indexed ritualId);
-    // TODO: Do we want the public key here? If so, we want 2 events or do we reuse this event?
     event EndRitual(uint32 indexed ritualId, bool successful);
 
     // Node
@@ -52,20 +51,22 @@ contract Coordinator is AccessControlDefaultAdminRules {
     struct Participant {
         address provider;
         bool aggregated;
-        bytes transcript; // TODO: Consider event processing complexity vs storage cost
+        bytes transcript;
         bytes decryptionRequestStaticKey;
     }
 
-    // TODO: Optimize layout
     struct Ritual {
         address initiator;
         uint32 initTimestamp;
         uint32 endTimestamp;
         uint16 totalTranscripts;
         uint16 totalAggregations;
+        //
         address authority;
         uint16 dkgSize;
+        uint16 threshold;
         bool aggregationMismatch;
+        //
         IEncryptionAuthorizer accessController;
         BLS12381.G1Point publicKey;
         bytes aggregatedTranscript;
@@ -80,8 +81,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
     using SafeERC20 for IERC20;
 
     bytes32 public constant INITIATOR_ROLE = keccak256("INITIATOR_ROLE");
-
-    mapping(address => ParticipantKey[]) internal keysHistory;
+    bytes32 public constant TREASURY_ROLE = keccak256("TREASURY_ROLE");
 
     IAccessControlApplication public immutable application;
 
@@ -89,27 +89,27 @@ contract Coordinator is AccessControlDefaultAdminRules {
     uint32 public timeout;
     uint16 public maxDkgSize;
     bool public isInitiationPublic;
-    IFeeModel internal feeModel; // TODO: Consider making feeModel specific to each ritual
-    IReimbursementPool internal reimbursementPool;
     uint256 public totalPendingFees;
     mapping(uint256 => uint256) public pendingFees;
+    IFeeModel internal feeModel; // TODO: Consider making feeModel specific to each ritual
+    IReimbursementPool internal reimbursementPool;
+    mapping(address => ParticipantKey[]) internal keysHistory;
+    mapping(bytes32 => uint32) internal ritualPublicKeyRegistry;
 
     constructor(
         IAccessControlApplication _stakes,
         uint32 _timeout,
         uint16 _maxDkgSize,
         address _admin,
-        IFeeModel _feeModel
-    ) AccessControlDefaultAdminRules(0, _admin) {
-        require(address(_feeModel.stakes()) == address(_stakes), "Invalid stakes for fee model");
+        IERC20 _currency,
+        uint256 _feeRatePerSecond
+    ) AccessControlDefaultAdminRules(0, _admin) FlatRateFeeModel(_currency, _feeRatePerSecond) {
         application = _stakes;
         timeout = _timeout;
         maxDkgSize = _maxDkgSize;
-        feeModel = IFeeModel(_feeModel);
     }
 
     function getRitualState(uint32 ritualId) external view returns (RitualState) {
-        // TODO: restrict to ritualId < rituals.length?
         return getRitualState(rituals[ritualId]);
     }
 
@@ -134,11 +134,11 @@ contract Coordinator is AccessControlDefaultAdminRules {
             return RitualState.AWAITING_AGGREGATIONS;
             // solhint-disable-next-line no-empty-blocks
         } else {
-            // TODO: Is it possible to reach this state?
+            // It shouldn't be possible to reach this state:
             //   - No public key
             //   - All transcripts and all aggregations
             //   - Still within the deadline
-            revert("Invalid ritual state");
+            assert(false);
         }
     }
 
@@ -207,6 +207,11 @@ contract Coordinator is AccessControlDefaultAdminRules {
         return ritual.participant;
     }
 
+    function getThresholdForRitualSize(uint16 size) public pure returns (uint16) {
+        return 1 + size / 2;
+        // Alternatively: 1 + 2*size/3 (for >66.6%) or 1 + 3*size/5 (for >60%)
+    }
+
     function initiateRitual(
         address[] calldata providers,
         address authority,
@@ -219,16 +224,16 @@ contract Coordinator is AccessControlDefaultAdminRules {
             isInitiationPublic || hasRole(INITIATOR_ROLE, msg.sender),
             "Sender can't initiate ritual"
         );
-        // TODO: Validate service fees, expiration dates, threshold
-        uint256 length = providers.length;
+        uint16 length = uint16(providers.length);
         require(2 <= length && length <= maxDkgSize, "Invalid number of nodes");
-        require(duration > 0, "Invalid ritual duration"); // TODO: We probably want to restrict it more
+        require(duration >= 24 hours, "Invalid ritual duration"); // TODO: Define minimum duration #106
 
         uint32 id = uint32(rituals.length);
         Ritual storage ritual = rituals.push();
         ritual.initiator = msg.sender;
         ritual.authority = authority;
-        ritual.dkgSize = uint16(length);
+        ritual.dkgSize = length;
+        ritual.threshold = getThresholdForRitualSize(length);
         ritual.initTimestamp = uint32(block.timestamp);
         ritual.endTimestamp = ritual.initTimestamp + duration;
         ritual.accessController = accessController;
@@ -251,7 +256,6 @@ contract Coordinator is AccessControlDefaultAdminRules {
 
         processRitualPayment(id, providers, duration);
 
-        // TODO: Include cohort fingerprint in StartRitual event?
         emit StartRitual(id, ritual.authority, providers);
         return id;
     }
@@ -279,7 +283,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
 
         // Nodes commit to their transcript
         bytes32 transcriptDigest = keccak256(transcript);
-        participant.transcript = transcript; // TODO: ???
+        participant.transcript = transcript;
         emit TranscriptPosted(ritualId, provider, transcriptDigest);
         ritual.totalTranscripts++;
 
@@ -338,6 +342,7 @@ contract Coordinator is AccessControlDefaultAdminRules {
             keccak256(ritual.aggregatedTranscript) != aggregatedTranscriptDigest
         ) {
             ritual.aggregationMismatch = true;
+            delete ritual.publicKey;
             emit EndRitual({ritualId: ritualId, successful: false});
         }
 
@@ -345,12 +350,33 @@ contract Coordinator is AccessControlDefaultAdminRules {
             ritual.totalAggregations++;
             if (ritual.totalAggregations == ritual.dkgSize) {
                 processPendingFee(ritualId);
+                // Register ritualId + 1 to discern ritualID#0 from unregistered keys.
+                // See getRitualIdFromPublicKey() for inverse operation.
+                bytes32 registryKey = keccak256(
+                    abi.encodePacked(BLS12381.g1PointToBytes(dkgPublicKey))
+                );
+                ritualPublicKeyRegistry[registryKey] = ritualId + 1;
                 emit EndRitual({ritualId: ritualId, successful: true});
-                // TODO: Consider including public key in event
             }
         }
 
         processReimbursement(initialGasLeft);
+    }
+
+    function getRitualIdFromPublicKey(
+        BLS12381.G1Point memory dkgPublicKey
+    ) external view returns (uint32 ritualId) {
+        // If public key is not registered, result will produce underflow error
+        bytes32 registryKey = keccak256(abi.encodePacked(BLS12381.g1PointToBytes(dkgPublicKey)));
+        return ritualPublicKeyRegistry[registryKey] - 1;
+    }
+
+    function getPublicKeyFromRitualId(
+        uint32 ritualId
+    ) external view returns (BLS12381.G1Point memory dkgPublicKey) {
+        Ritual storage ritual = rituals[ritualId];
+        require(getRitualState(ritual) == RitualState.FINALIZED, "Ritual not finalized");
+        return ritual.publicKey;
     }
 
     function getParticipantFromProvider(
@@ -380,14 +406,11 @@ contract Coordinator is AccessControlDefaultAdminRules {
         address[] calldata providers,
         uint32 duration
     ) internal {
-        uint256 ritualCost = feeModel.getRitualInitiationCost(providers, duration);
+        uint256 ritualCost = getRitualInitiationCost(providers, duration);
         if (ritualCost > 0) {
             totalPendingFees += ritualCost;
-            assert(pendingFees[ritualId] == 0); // TODO: This is an invariant, not sure if actually needed
-            pendingFees[ritualId] += ritualCost;
-            IERC20 currency = IERC20(feeModel.currency());
+            pendingFees[ritualId] = ritualCost;
             currency.safeTransferFrom(msg.sender, address(this), ritualCost);
-            // TODO: Define methods to manage these funds
         }
     }
 
@@ -408,20 +431,16 @@ contract Coordinator is AccessControlDefaultAdminRules {
         delete pendingFees[ritualId];
         // Transfer fees back to initiator if failed
         if (state == RitualState.TIMEOUT || state == RitualState.INVALID) {
-            // Amount to refund depends on how much work nodes did for the ritual.
+            // Refund everything minus cost of renting cohort for a day
             // TODO: Validate if this is enough to remove griefing attacks
-            uint256 executedTransactions = ritual.totalTranscripts + ritual.totalAggregations;
-            uint256 expectedTransactions = 2 * ritual.dkgSize;
-            uint256 consumedFee = (pending * executedTransactions) / expectedTransactions;
-            uint256 refundableFee = pending - consumedFee;
-            IERC20 currency = IERC20(feeModel.currency());
-            currency.transferFrom(address(this), ritual.initiator, refundableFee);
+            uint256 duration = ritual.endTimestamp - ritual.initTimestamp;
+            uint256 refundableFee = (pending * (duration - 1 days)) / duration;
+            currency.safeTransfer(ritual.initiator, refundableFee);
         }
     }
 
     function processReimbursement(uint256 initialGasLeft) internal {
         if (address(reimbursementPool) != address(0)) {
-            // TODO: Consider defining a method
             uint256 gasUsed = initialGasLeft - gasleft();
             try reimbursementPool.refund(gasUsed, msg.sender) {
                 return;
@@ -429,5 +448,15 @@ contract Coordinator is AccessControlDefaultAdminRules {
                 return;
             }
         }
+    }
+
+    function withdrawTokens(IERC20 token, uint256 amount) external onlyRole(TREASURY_ROLE) {
+        if (address(token) == address(currency)) {
+            require(
+                amount <= token.balanceOf(address(this)) - totalPendingFees,
+                "Can't withdraw pending fees"
+            );
+        }
+        token.safeTransfer(msg.sender, amount);
     }
 }
