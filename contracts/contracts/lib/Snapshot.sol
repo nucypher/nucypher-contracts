@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-
 /**
  * @title Snapshot
  * @notice Manages snapshots of size 128 bits (32 bits for timestamp, 96 bits for value)
@@ -12,12 +11,11 @@ pragma solidity ^0.8.0;
  * On average, adding snapshots spends ~6500 less gas than the 256-bit checkpoints of Aragon's Checkpointing
  */
 library Snapshot {
-
-    function encodeSnapshot(uint32 _time, uint96 _value) internal pure returns(uint128) {
-        return uint128(uint256(_time) << 96 | uint256(_value));
+    function encodeSnapshot(uint32 _time, uint96 _value) internal pure returns (uint128) {
+        return uint128((uint256(_time) << 96) | uint256(_value));
     }
 
-    function decodeSnapshot(uint128 _snapshot) internal pure returns(uint32 time, uint96 value){
+    function decodeSnapshot(uint128 _snapshot) internal pure returns (uint32 time, uint96 value) {
         time = uint32(bytes4(bytes16(_snapshot)));
         value = uint96(_snapshot);
     }
@@ -33,7 +31,8 @@ library Snapshot {
             if (uint32(_time) == currentTime) {
                 _self[length - 1] = encodeSnapshot(uint32(_time), uint96(_value));
                 return;
-            } else if (uint32(_time) < currentTime){
+            } else if (uint32(_time) < currentTime) {
+                // solhint-disable-next-line reason-string
                 revert();
             }
         }

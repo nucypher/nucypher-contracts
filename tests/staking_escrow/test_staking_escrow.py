@@ -53,10 +53,7 @@ def test_staking_from_worklock(project, accounts, token, worklock, escrow):
 
     # Check that all events are emitted
     events = escrow.Deposited.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["staker"] == staker1
-    assert event["value"] == value
+    assert events == [escrow.Deposited(staker=staker1, value=value)]
 
     # Deposit directly and then through WorkLock
     escrow.setStaker(staker2, value, 0, sender=staker2)
@@ -68,10 +65,7 @@ def test_staking_from_worklock(project, accounts, token, worklock, escrow):
 
     # Check that all events are emitted
     events = escrow.Deposited.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["staker"] == staker2
-    assert event["value"] == value
+    assert events == [escrow.Deposited(staker=staker2, value=value)]
 
     # Emulate case when staker withdraws everything and then deposits from WorkLock
     escrow.setStaker(staker3, 0, 1, sender=staker3)
@@ -83,10 +77,7 @@ def test_staking_from_worklock(project, accounts, token, worklock, escrow):
 
     # Check that all events are emitted
     events = escrow.Deposited.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["staker"] == staker3
-    assert event["value"] == value
+    assert events == [escrow.Deposited(staker=staker3, value=value)]
 
 
 def test_slashing(accounts, token, worklock, threshold_staking, escrow):
@@ -116,12 +107,9 @@ def test_slashing(accounts, token, worklock, threshold_staking, escrow):
     assert token.balanceOf(investigator) == reward
 
     events = escrow.Slashed.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["staker"] == staker
-    assert event["penalty"] == stake
-    assert event["investigator"] == investigator
-    assert event["reward"] == reward
+    assert events == [
+        escrow.Slashed(staker=staker, penalty=stake, investigator=investigator, reward=reward)
+    ]
 
     # Slash small part
     worklock.depositFromWorkLock(staker, stake, 0, sender=creator)
@@ -134,12 +122,14 @@ def test_slashing(accounts, token, worklock, threshold_staking, escrow):
     assert token.balanceOf(investigator) == reward + amount_to_slash
 
     events = escrow.Slashed.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["staker"] == staker
-    assert event["penalty"] == amount_to_slash
-    assert event["investigator"] == investigator
-    assert event["reward"] == amount_to_slash
+    assert events == [
+        escrow.Slashed(
+            staker=staker,
+            penalty=amount_to_slash,
+            investigator=investigator,
+            reward=amount_to_slash,
+        )
+    ]
 
     # Slash without reward
     tx = threshold_staking.slashStaker(staker, amount_to_slash, investigator, 0, sender=creator)
@@ -148,12 +138,9 @@ def test_slashing(accounts, token, worklock, threshold_staking, escrow):
     assert token.balanceOf(investigator) == reward + amount_to_slash
 
     events = escrow.Slashed.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["staker"] == staker
-    assert event["penalty"] == amount_to_slash
-    assert event["investigator"] == investigator
-    assert event["reward"] == 0
+    assert events == [
+        escrow.Slashed(staker=staker, penalty=amount_to_slash, investigator=investigator, reward=0)
+    ]
 
 
 def test_request_merge(accounts, threshold_staking, escrow):
@@ -169,18 +156,14 @@ def test_request_merge(accounts, threshold_staking, escrow):
     assert escrow.stakerInfo(staker1)[STAKING_PROVIDER_SLOT] == staking_provider_1
     assert threshold_staking.stakingProviders(staking_provider_1)[0] == 0
 
-    events = escrow.MergeRequested.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["staker"] == staker1
-    assert event["stakingProvider"] == staking_provider_1
+    assert tx.events == [escrow.MergeRequested(staker=staker1, stakingProvider=staking_provider_1)]
 
     # Request can be made several times
     tx = threshold_staking.requestMerge(staker1, staking_provider_1, sender=creator)
     assert escrow.getAllTokens(staker1) == 0
     assert escrow.stakerInfo(staker1)[STAKING_PROVIDER_SLOT] == staking_provider_1
     assert threshold_staking.stakingProviders(staking_provider_1)[0] == 0
-    assert "MergeRequested" not in tx.events
+    assert tx.events == []
 
     # Can change provider if old provider has no delegated stake
     tx = threshold_staking.requestMerge(staker1, staker1, sender=creator)
@@ -188,11 +171,7 @@ def test_request_merge(accounts, threshold_staking, escrow):
     assert escrow.stakerInfo(staker1)[STAKING_PROVIDER_SLOT] == staker1
     assert threshold_staking.stakingProviders(staking_provider_1)[0] == 0
 
-    events = escrow.MergeRequested.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["staker"] == staker1
-    assert event["stakingProvider"] == staker1
+    assert tx.events == [escrow.MergeRequested(staker=staker1, stakingProvider=staker1)]
 
     # Requesting merge for existent staker will return stake
     value = 1000
@@ -202,11 +181,7 @@ def test_request_merge(accounts, threshold_staking, escrow):
     assert escrow.stakerInfo(staker2)[STAKING_PROVIDER_SLOT] == staking_provider_2
     assert threshold_staking.stakingProviders(staking_provider_2)[0] == value
 
-    events = escrow.MergeRequested.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["staker"] == staker2
-    assert event["stakingProvider"] == staking_provider_2
+    assert tx.events == [escrow.MergeRequested(staker=staker2, stakingProvider=staking_provider_2)]
 
     # Request can be made several times
     threshold_staking.requestMerge(staker2, staking_provider_2, sender=creator)
@@ -219,8 +194,7 @@ def test_request_merge(accounts, threshold_staking, escrow):
     assert escrow.getAllTokens(staker2) == 2 * value
     assert escrow.stakerInfo(staker2)[STAKING_PROVIDER_SLOT] == staking_provider_2
     assert threshold_staking.stakingProviders(staking_provider_2)[0] == 2 * value
-    events = escrow.MergeRequested.from_receipt(tx)
-    assert len(events) == 0
+    assert tx.events == []
 
     # Request can be done only with the same provider when NU is staked
     with ape.reverts():
@@ -233,18 +207,16 @@ def test_request_merge(accounts, threshold_staking, escrow):
     assert escrow.stakerInfo(staker2)[STAKING_PROVIDER_SLOT] == staking_provider_1
     assert threshold_staking.stakingProviders(staking_provider_1)[0] == 2 * value
 
-    events = escrow.MergeRequested.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["staker"] == staker2
-    assert event["stakingProvider"] == staking_provider_1
+    assert tx.events == [escrow.MergeRequested(staker=staker2, stakingProvider=staking_provider_1)]
 
 
 def test_withdraw(accounts, token, worklock, threshold_staking, escrow, chain):
     creator, staker, staking_provider = accounts[0:3]
 
     # Deposit some tokens
-    value = Web3.to_wei(ONE_HOUR, "ether")  # Exclude rounding error  # TODO NU(ONE_HOUR, 'NU').to_units()
+    value = Web3.to_wei(
+        ONE_HOUR, "ether"
+    )  # Exclude rounding error  # TODO NU(ONE_HOUR, 'NU').to_units()
     token.transfer(worklock.address, 10 * value, sender=creator)
     worklock.depositFromWorkLock(staker, value + 1, 0, sender=creator)
 
@@ -255,10 +227,7 @@ def test_withdraw(accounts, token, worklock, threshold_staking, escrow, chain):
     assert token.balanceOf(escrow.address) == value
 
     events = escrow.Withdrawn.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["staker"] == staker
-    assert event["value"] == 1
+    assert events == [escrow.Withdrawn(staker=staker, value=1)]
 
     threshold_staking.requestMerge(staker, staking_provider, sender=creator)
 
@@ -292,10 +261,7 @@ def test_withdraw(accounts, token, worklock, threshold_staking, escrow, chain):
     assert token.balanceOf(escrow.address) == value - to_withdraw
 
     events = escrow.Withdrawn.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["staker"] == staker
-    assert event["value"] == to_withdraw
+    assert events == [escrow.Withdrawn(staker=staker, value=to_withdraw)]
 
     # Can't withdraw more than unstaked
     chain.pending_timestamp += 30 * 60
@@ -317,10 +283,7 @@ def test_withdraw(accounts, token, worklock, threshold_staking, escrow, chain):
     assert token.balanceOf(escrow.address) == value // 2
 
     events = escrow.Withdrawn.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["staker"] == staker
-    assert event["value"] == unstaked
+    assert events == [escrow.Withdrawn(staker=staker, value=unstaked)]
 
     # Now unstake and withdraw everything
     threshold_staking.setStakedNu(staking_provider, 0, sender=creator)
@@ -330,10 +293,7 @@ def test_withdraw(accounts, token, worklock, threshold_staking, escrow, chain):
     assert token.balanceOf(escrow.address) == 0
 
     events = escrow.Withdrawn.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["staker"] == staker
-    assert event["value"] == value // 2
+    assert events == [escrow.Withdrawn(staker=staker, value=value // 2)]
 
 
 def test_vesting(accounts, token, worklock, escrow, chain):
@@ -357,9 +317,7 @@ def test_vesting(accounts, token, worklock, escrow, chain):
             [staker1, staker2], [release_timestamp, release_timestamp], [rate], sender=creator
         )
     with ape.reverts():
-        escrow.setupVesting(
-            [staker1, staker2], [release_timestamp], [rate, rate], sender=creator
-        )
+        escrow.setupVesting([staker1, staker2], [release_timestamp], [rate, rate], sender=creator)
     with ape.reverts():
         escrow.setupVesting(
             [staker1], [release_timestamp, release_timestamp], [rate, rate], sender=creator
@@ -381,12 +339,9 @@ def test_vesting(accounts, token, worklock, escrow, chain):
     assert escrow.stakerInfo(staker1)[VESTING_RELEASE_TIMESTAMP_SLOT] == release_timestamp
     assert escrow.stakerInfo(staker1)[VESTING_RELEASE_RATE_SLOT] == rate
 
-    events = escrow.VestingSet.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["staker"] == staker1
-    assert event["releaseTimestamp"] == release_timestamp
-    assert event["releaseRate"] == rate
+    assert tx.events == [
+        escrow.VestingSet(staker=staker1, releaseTimestamp=release_timestamp, releaseRate=rate)
+    ]
 
     chain.pending_timestamp += 40 * 60
     now = chain.pending_timestamp - 1
@@ -401,7 +356,9 @@ def test_vesting(accounts, token, worklock, escrow, chain):
         escrow.setupVesting([staker1], [release_timestamp], [rate], sender=creator)
 
     # Try again with three other stakers
-    value = Web3.to_wei(ONE_HOUR, "ether")  # Exclude rounding error  # TODO NU(ONE_HOUR, 'NU').to_units()
+    value = Web3.to_wei(
+        ONE_HOUR, "ether"
+    )  # Exclude rounding error  # TODO NU(ONE_HOUR, 'NU').to_units()
     worklock.depositFromWorkLock(staker2, value, 0, sender=creator)
     worklock.depositFromWorkLock(staker3, value, 0, sender=creator)
     worklock.depositFromWorkLock(staker4, value, 0, sender=creator)
@@ -430,20 +387,11 @@ def test_vesting(accounts, token, worklock, escrow, chain):
     assert escrow.stakerInfo(staker4)[VESTING_RELEASE_TIMESTAMP_SLOT] == release_timestamp_4
     assert escrow.stakerInfo(staker4)[VESTING_RELEASE_RATE_SLOT] == rate_4
 
-    events = escrow.VestingSet.from_receipt(tx)
-    assert len(events) == 3
-    event = events[0]
-    assert event["staker"] == staker2
-    assert event["releaseTimestamp"] == release_timestamp_2
-    assert event["releaseRate"] == rate_2
-    event = events[1]
-    assert event["staker"] == staker3
-    assert event["releaseTimestamp"] == release_timestamp_3
-    assert event["releaseRate"] == rate_3
-    event = events[2]
-    assert event["staker"] == staker4
-    assert event["releaseTimestamp"] == release_timestamp_4
-    assert event["releaseRate"] == rate_4
+    assert tx.events == [
+        escrow.VestingSet(staker=staker2, releaseTimestamp=release_timestamp_2, releaseRate=rate_2),
+        escrow.VestingSet(staker=staker3, releaseTimestamp=release_timestamp_3, releaseRate=rate_3),
+        escrow.VestingSet(staker=staker4, releaseTimestamp=release_timestamp_4, releaseRate=rate_4),
+    ]
 
     chain.pending_timestamp += ONE_HOUR
     assert escrow.getUnvestedTokens(staker2) == 0
@@ -459,7 +407,7 @@ def test_vesting(accounts, token, worklock, escrow, chain):
 def test_combined_vesting(accounts, token, worklock, escrow, chain):
     staker = "0xcd087a44ED8EE2aCe79F497c803005Ff79A64A94"
     value = Web3.to_wei(1_500_000, "ether")  # TODO
-    
+
     creator = accounts[0]
 
     token.transfer(worklock.address, 10 * value, sender=creator)
@@ -474,12 +422,9 @@ def test_combined_vesting(accounts, token, worklock, escrow, chain):
     assert escrow.stakerInfo(staker)[VESTING_RELEASE_TIMESTAMP_SLOT] == release_timestamp
     assert escrow.stakerInfo(staker)[VESTING_RELEASE_RATE_SLOT] == rate
 
-    events = escrow.VestingSet.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert event["staker"] == staker
-    assert event["releaseTimestamp"] == release_timestamp
-    assert event["releaseRate"] == rate
+    assert tx.events == [
+        escrow.VestingSet(staker=staker, releaseTimestamp=release_timestamp, releaseRate=rate)
+    ]
 
     chain.pending_timestamp += 40 * 60
     now = chain.pending_timestamp - 1

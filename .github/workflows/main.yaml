@@ -12,64 +12,66 @@ env:
   NODE_OPTIONS: --max_old_space_size=4096
 
 jobs:
-
   tests:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Cache Compiler Installations
-      uses: actions/cache@v2
-      with:
-        path: |
-          ~/.solcx
-          ~/.vvm
-        key: compiler-cache
+      - name: Cache Compiler Installations
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.solcx
+            ~/.vvm
+          key: compiler-cache
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: 16.x
-        cache: 'npm'
-    - run: npm install -g ganache
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: "npm"
+      - run: npm install -g ganache
 
-    - name: Setup Python 3.8
-      uses: actions/setup-python@v3
-      with:
-        cache: 'pip'
-        python-version: '3.8'
-    - run: pip install -r requirements.txt
+      - name: Setup Python 3.8
+        uses: actions/setup-python@v3
+        with:
+          cache: "pip"
+          python-version: "3.8"
+      - run: pip install -r requirements.txt
 
-    - name: Run Tests
-      run: ape test
+      - name: Run Tests
+        run: ape test
 
-    - name: Deploy NuCypher Token
-      run: ape run scripts/deploy_nucypher_token.py --network ethereum:local
+      - name: Deploy NuCypher Token
+        run: ape run scripts/deploy_nucypher_token.py --network ethereum:local
 
-    - name: Deploy Simple PRE
-      run: ape run scripts/deploy_simple_pre.py --network ethereum:local
+      - name: Deploy TACo Application
+        run: ape run scripts/deploy_taco_application.py --network ethereum:local
 
-    - name: Deploy Staking Escrow
-      run: ape run scripts/deploy_staking_escrow.py --network ethereum:local
+      - name: Deploy Staking Escrow
+        run: ape run scripts/deploy_staking_escrow.py --network ethereum:local
 
-    - name: Deploy Subscription Manager
-      run: ape run scripts/deploy_subscription_manager.py --network ethereum:local
+      - name: Deploy Subscription Manager
+        run: ape run scripts/deploy_subscription_manager.py --network ethereum:local
 
   linting:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Install Solhint
-      run: npm install -g solhint
+      - name: Install Solhint and Prettier
+        run: npm install -g solhint solhint-plugin-prettier prettier
 
-    - name: Solidty Lint
-      run: solhint 'contracts/**/*.sol'
+      - name: Install Solidity plugin for Prettier
+        run: npm install prettier-plugin-solidity
 
-    - name: Python lint
-      uses: cclauss/GitHub-Action-for-pylint@0.7.0
-      continue-on-error: true
-      with:
-        args: "pylint **/*.py"
+      - name: Solidity Lint
+        run: solhint 'contracts/**/*.sol'
+
+      - name: Python Lint
+        uses: cclauss/GitHub-Action-for-pylint@0.7.0
+        continue-on-error: true
+        with:
+          args: "pylint **/*.py"

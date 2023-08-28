@@ -2,29 +2,59 @@
 pragma solidity ^0.8.0;
 
 import "@fx-portal/contracts/tunnel/FxBaseRootTunnel.sol";
+import "../contracts/coordination/IUpdatableStakeInfo.sol";
 
-
-contract PolygonRoot is FxBaseRootTunnel {
+contract PolygonRoot is FxBaseRootTunnel, IUpdatableStakeInfo {
+    address public immutable source;
     bytes public latestData;
 
-    constructor(address _checkpointManager, address _fxRoot) FxBaseRootTunnel(_checkpointManager, _fxRoot) {}
+    constructor(
+        address _checkpointManager,
+        address _fxRoot,
+        address _source
+    ) FxBaseRootTunnel(_checkpointManager, _fxRoot) {
+        require(_source != address(0), "Wrong input parameters");
+        source = _source;
+    }
+
+    /**
+     * @dev Checks caller is source of data
+     */
+    modifier onlySource() {
+        require(msg.sender == source, "Caller must be the source");
+        _;
+    }
 
     function _processMessageFromChild(bytes memory data) internal override {
         latestData = data;
     }
 
-    function updateOperator(address stakingProvider, address operator) public {
-        bytes memory message = abi.encodeWithSignature("updateOperator(address,address)", stakingProvider, operator);
+    function updateOperator(
+        address stakingProvider,
+        address operator
+    ) external override onlySource {
+        bytes memory message = abi.encodeWithSelector(
+            IUpdatableStakeInfo.updateOperator.selector,
+            stakingProvider,
+            operator
+        );
         _sendMessageToChild(message);
     }
 
-    function updateAmount(address stakingProvider, uint96 amount) public {
-        bytes memory message = abi.encodeWithSignature("updateAmount(address,uint96)", stakingProvider, amount);
+    function updateAmount(address stakingProvider, uint96 amount) external override onlySource {
+        bytes memory message = abi.encodeWithSelector(
+            IUpdatableStakeInfo.updateAmount.selector,
+            stakingProvider,
+            amount
+        );
         _sendMessageToChild(message);
     }
 
-    function batchUpdate(bytes32[] calldata updateInfo) public {
-        bytes memory message = abi.encodeWithSignature("batchUpdate(bytes32[])", updateInfo);
+    function batchUpdate(bytes32[] calldata updateInfo) external override onlySource {
+        bytes memory message = abi.encodeWithSelector(
+            IUpdatableStakeInfo.batchUpdate.selector,
+            updateInfo
+        );
         _sendMessageToChild(message);
     }
 }

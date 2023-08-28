@@ -16,6 +16,7 @@ along with nucypher.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import ape
+from ape.utils import ZERO_ADDRESS
 from web3 import Web3
 
 
@@ -34,16 +35,11 @@ def test_upgrading(accounts, token, project):
     dispatcher = creator.deploy(project.Dispatcher, contract_library_v1.address)
 
     tx = creator.history[-1]
-    events = dispatcher.StateVerified.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert contract_library_v1.address == event["testTarget"]
-    assert event["sender"] == creator
-    events = dispatcher.UpgradeFinished.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert contract_library_v1.address == event["target"]
-    assert event["sender"] == creator
+    assert tx.events == [
+        dispatcher.OwnershipTransferred(previousOwner=ZERO_ADDRESS, newOwner=creator),
+        dispatcher.StateVerified(testTarget=contract_library_v1.address, sender=creator),
+        dispatcher.UpgradeFinished(target=contract_library_v1.address, sender=creator),
+    ]
 
     # Deploy second version of the contract
     contract_library_v2 = creator.deploy(
@@ -74,16 +70,11 @@ def test_upgrading(accounts, token, project):
     contract.setValueToCheck(3, sender=creator)
     assert contract.valueToCheck() == 3
 
-    events = dispatcher.StateVerified.from_receipt(tx)
-    assert len(events) == 2
-    event = events[0]
-    assert contract_library_v2.address == event["testTarget"]
-    assert event["sender"] == creator
-    events = dispatcher.UpgradeFinished.from_receipt(tx)
-    assert len(events) == 1
-    event = events[0]
-    assert contract_library_v2.address == event["target"]
-    assert event["sender"] == creator
+    assert tx.events == [
+        dispatcher.StateVerified(testTarget=contract_library_v2.address, sender=creator),
+        dispatcher.StateVerified(testTarget=contract_library_v2.address, sender=creator),
+        dispatcher.UpgradeFinished(target=contract_library_v2.address, sender=creator),
+    ]
 
     # Can't upgrade to the previous version or to the bad version
     contract_library_bad = creator.deploy(
@@ -115,6 +106,11 @@ def test_upgrading(accounts, token, project):
     event = events[0]
     assert contract_library_v1.address == event["target"]
     assert event["sender"] == creator
+
+    assert tx.events == [
+        dispatcher.StateVerified(testTarget=contract_library_v2.address, sender=creator),
+        dispatcher.UpgradeFinished(target=contract_library_v1.address, sender=creator),
+    ]
 
 
 def test_measure_work(accounts, token, worklock, escrow):
