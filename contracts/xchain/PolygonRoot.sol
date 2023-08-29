@@ -7,8 +7,6 @@ import "../contracts/coordination/ITACoRootToChild.sol";
 contract PolygonRoot is FxBaseRootTunnel, ITACoRootToChild {
     address public immutable rootApplication;
 
-    // bytes public latestData;
-
     constructor(
         address _checkpointManager,
         address _fxRoot,
@@ -29,7 +27,6 @@ contract PolygonRoot is FxBaseRootTunnel, ITACoRootToChild {
     }
 
     function _processMessageFromChild(bytes memory data) internal override {
-        // latestData = data;
         // solhint-disable-next-line avoid-low-level-calls
         rootApplication.call(data);
     }
@@ -54,14 +51,6 @@ contract PolygonRoot is FxBaseRootTunnel, ITACoRootToChild {
             ITACoRootToChild.updateAuthorization.selector,
             stakingProvider,
             amount
-        );
-        _sendMessageToChild(message);
-    }
-
-    function batchUpdate(bytes32[] calldata updateInfo) external override onlyRootApplication {
-        bytes memory message = abi.encodeWithSelector(
-            ITACoRootToChild.batchUpdate.selector,
-            updateInfo
         );
         _sendMessageToChild(message);
     }

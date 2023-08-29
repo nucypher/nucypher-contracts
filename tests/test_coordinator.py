@@ -69,8 +69,7 @@ def treasury(accounts):
 
 @pytest.fixture()
 def application(project, deployer, nodes):
-    dummy = project.Dummy.deploy(sender=deployer)
-    contract = project.TACoChildApplication.deploy(dummy.address, [deployer], sender=deployer)
+    contract = project.ChildApplicationForCoordinatorMock.deploy(sender=deployer)
     for n in nodes:
         contract.updateOperator(n, n, sender=deployer)
         contract.updateAuthorization(n, 42, sender=deployer)
@@ -97,7 +96,6 @@ def coordinator(project, deployer, application, erc20, initiator):
         sender=deployer,
     )
     contract.grantRole(contract.INITIATOR_ROLE(), initiator, sender=admin)
-    application.setCoordinator(contract.address, sender=deployer)
     return contract
 
 

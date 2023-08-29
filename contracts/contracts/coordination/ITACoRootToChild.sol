@@ -13,6 +13,4 @@ interface ITACoRootToChild {
     function updateOperator(address stakingProvider, address operator) external;
 
     function updateAuthorization(address stakingProvider, uint96 amount) external;
-
-    function batchUpdate(bytes32[] calldata updateInfo) external;
 }

@@ -2,7 +2,8 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin-upgradeable/contracts/access/AccessControlUpgradeable.sol";
+import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "./ITACoRootToChild.sol";
 import "../../threshold/ITACoChildApplication.sol";
 import "./ITACoChildToRoot.sol";
@@ -11,9 +12,7 @@ import "./ITACoChildToRoot.sol";
  * @title TACoChildApplication
  * @notice TACoChildApplication
  */
-contract TACoChildApplication is AccessControl, ITACoRootToChild, ITACoChildApplication {
-    bytes32 public constant UPDATE_ROLE = keccak256("UPDATE_ROLE");
-
+contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initializable {
     struct StakingProviderInfo {
         address operator;
         bool operatorConfirmed;
@@ -27,27 +26,30 @@ contract TACoChildApplication is AccessControl, ITACoRootToChild, ITACoChildAppl
     mapping(address => StakingProviderInfo) public stakingProviderInfo;
     mapping(address => address) public stakingProviderFromOperator;
 
-    constructor(ITACoChildToRoot _rootApplication, address[] memory updaters) {
+    /**
+     * @dev Checks caller is root application
+     */
+    modifier onlyRootApplication() {
+        require(msg.sender == address(rootApplication), "Caller must be the root application");
+        _;
+    }
+
+    constructor(ITACoChildToRoot _rootApplication) {
         require(
             address(_rootApplication) != address(0),
             "Address for root application must be specified"
         );
         rootApplication = _rootApplication;
-
-        // TODO Issue #112
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        for (uint256 i = 0; i < updaters.length; i++) {
-            _grantRole(UPDATE_ROLE, updaters[i]);
-        }
     }
 
-    function setCoordinator(address _coordinator) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    /**
+     * @notice Initialize function for using with OpenZeppelin proxy
+     */
+    function initialize(address _coordinator) external initializer {
         require(coordinator == address(0), "Coordinator already set");
         require(_coordinator != address(0), "Coordinator must be specified");
         // require(_coordinator.numberOfRituals() >= 0, "Invalid coordinator");
         coordinator = _coordinator;
-
-        // TODO reset role?
     }
 
     function authorizedStake(address _stakingProvider) external view returns (uint96) {
@@ -57,14 +59,14 @@ contract TACoChildApplication is AccessControl, ITACoRootToChild, ITACoChildAppl
     function updateOperator(
         address stakingProvider,
         address operator
-    ) external override onlyRole(UPDATE_ROLE) {
+    ) external override onlyRootApplication {
         _updateOperator(stakingProvider, operator);
     }
 
     function updateAuthorization(
         address stakingProvider,
         uint96 amount
-    ) external override onlyRole(UPDATE_ROLE) {
+    ) external override onlyRootApplication {
         _updateAuthorization(stakingProvider, amount);
     }
 
@@ -94,29 +96,41 @@ contract TACoChildApplication is AccessControl, ITACoRootToChild, ITACoChildAppl
         }
     }
 
-    function batchUpdate(bytes32[] calldata updateInfo) external override onlyRole(UPDATE_ROLE) {
-        require(updateInfo.length % 2 == 0, "bad length");
-        for (uint256 i = 0; i < updateInfo.length; i += 2) {
-            bytes32 word0 = updateInfo[i];
-            bytes32 word1 = updateInfo[i + 1];
-
-            address provider = address(bytes20(word0));
-            uint96 amount = uint96(uint256(word0));
-            address operator = address(bytes20(word1));
-
-            _updateOperator(provider, operator);
-            _updateAuthorization(provider, amount);
-        }
-    }
-
     function confirmOperatorAddress(address _operator) external override {
         require(msg.sender == coordinator, "Only Coordinator allowed to confirm operator");
         address stakingProvider = stakingProviderFromOperator[_operator];
         StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
         require(info.authorized > 0, "No stake associated with the operator");
-        // TODO maybe allow second confirmation, just do not send root call
+        // TODO maybe allow second confirmation, just do not send root call?
         require(!info.operatorConfirmed, "Can't confirm same operator twice");
         info.operatorConfirmed = true;
         rootApplication.confirmOperatorAddress(_operator);
+    }
+}
+
+contract TestnetTACoChildApplication is AccessControlUpgradeable, TACoChildApplication {
+    bytes32 public constant UPDATE_ROLE = keccak256("UPDATE_ROLE");
+
+    constructor(ITACoChildToRoot _rootApplication) TACoChildApplication(_rootApplication) {}
+
+    function initialize(address _coordinator, address[] memory updaters) external initializer {
+        coordinator = _coordinator;
+        for (uint256 i = 0; i < updaters.length; i++) {
+            _grantRole(UPDATE_ROLE, updaters[i]);
+        }
+    }
+
+    function forceUpdateOperator(
+        address stakingProvider,
+        address operator
+    ) external onlyRole(UPDATE_ROLE) {
+        _updateOperator(stakingProvider, operator);
+    }
+
+    function forceUpdateAuthorization(
+        address stakingProvider,
+        uint96 amount
+    ) external onlyRole(UPDATE_ROLE) {
+        _updateAuthorization(stakingProvider, amount);
     }
 }

@@ -691,10 +691,13 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
             "Only child application allowed to confirm operator"
         );
         address stakingProvider = _stakingProviderFromOperator[_operator];
-        // TODO this case possible only in case of desync
-        require(stakingProvider != address(0), "Operator has no bond with staking provider");
-        StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
+        // TODO only in case of desync, maybe just exit?
+        // require(stakingProvider != address(0), "Operator has no bond with staking provider");
+        if (stakingProvider == address(0)) {
+            return;
+        }
 
+        StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
         if (!info.operatorConfirmed) {
             updateRewardInternal(stakingProvider);
             info.operatorConfirmed = true;

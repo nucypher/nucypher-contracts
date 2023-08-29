@@ -169,22 +169,3 @@ contract ChildApplicationForTACoApplicationMock {
         rootApplication.confirmOperatorAddress(_operator);
     }
 }
-
-// /**
-//  * @notice Intermediary contract for testing operator
-//  */
-// contract Intermediary {
-//     TACoApplication public immutable application;
-
-//     constructor(TACoApplication _application) {
-//         application = _application;
-//     }
-
-//     function bondOperator(address _operator) external {
-//         application.bondOperator(address(this), _operator);
-//     }
-
-//     function confirmOperatorAddress() external {
-//         application.confirmOperatorAddress();
-//     }
-// }

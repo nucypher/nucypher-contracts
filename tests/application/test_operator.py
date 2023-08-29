@@ -66,8 +66,8 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     assert taco_application.stakingProviderFromOperator(staking_provider_4) == ZERO_ADDRESS
 
     # Staking provider can't confirm operator address because there is no operator by default
-    with ape.reverts():
-        child_application.confirmOperatorAddress(staking_provider_1, sender=staking_provider_1)
+    child_application.confirmOperatorAddress(staking_provider_1, sender=staking_provider_1)
+    assert not taco_application.isOperatorConfirmed(staking_provider_1)
 
     # Staking provider can't bond another staking provider as operator
     with ape.reverts():
@@ -195,8 +195,8 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     ]
 
     # Now the previous operator can no longer make a confirmation
-    with ape.reverts():
-        child_application.confirmOperatorAddress(operator1, sender=operator1)
+    child_application.confirmOperatorAddress(operator1, sender=operator1)
+    assert not taco_application.isOperatorConfirmed(operator1)
     # Only new operator can
     child_application.confirmOperatorAddress(operator2, sender=operator2)
     assert not taco_application.isOperatorConfirmed(operator1)
@@ -355,9 +355,10 @@ def test_confirm_address(
     min_authorization = MIN_AUTHORIZATION
     min_operator_seconds = MIN_OPERATOR_SECONDS
 
-    # Operator must be associated with staking provider
-    with ape.reverts():
-        child_application.confirmOperatorAddress(staking_provider, sender=staking_provider)
+    # Skips confirmation if operator is not associated with staking provider
+    child_application.confirmOperatorAddress(staking_provider, sender=staking_provider)
+    assert not taco_application.isOperatorConfirmed(staking_provider)
+
     threshold_staking.setRoles(staking_provider, sender=creator)
     threshold_staking.authorizationIncreased(staking_provider, 0, min_authorization, sender=creator)
 

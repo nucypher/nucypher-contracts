@@ -150,15 +150,14 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
     function setProviderPublicKey(BLS12381.G2Point calldata _publicKey) external {
         uint32 lastRitualId = uint32(rituals.length);
         address stakingProvider = application.stakingProviderFromOperator(msg.sender);
-        require(stakingProvider != address(0), "Operator has no bond with staking provider"); // TODO
+        require(stakingProvider != address(0), "Operator has no bond with staking provider");
 
         ParticipantKey memory newRecord = ParticipantKey(lastRitualId, _publicKey);
-        // keysHistory[stakingProvider][-1].publicKey != _publicKey; // TODO it's a question
         keysHistory[stakingProvider].push(newRecord);
 
         emit ParticipantPublicKeySet(lastRitualId, stakingProvider, _publicKey);
         // solhint-disable-next-line avoid-tx-origin
-        require(msg.sender == tx.origin, "Only operator with real address can set public key"); // TODO
+        require(msg.sender == tx.origin, "Only operator with real address can set public key");
         application.confirmOperatorAddress(msg.sender);
     }
 

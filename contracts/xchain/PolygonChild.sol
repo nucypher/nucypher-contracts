@@ -31,8 +31,4 @@ contract PolygonChild is ITACoChildToRoot, FxBaseChildTunnel, Ownable {
         );
         _sendMessageToRoot(message);
     }
-
-    function setStakeInfoAddress(address _stakeInfoAddress) public onlyOwner {
-        stakeInfoAddress = _stakeInfoAddress;
-    }
 }
