@@ -45,7 +45,6 @@ deployments:
         address: '0xC1379866Fb0c100DCBFAb7b470009C4827D47DD8'
       - contract_type: fx_child
         address: '0xCf73231F28B7331BBe3124B907840A94851f9f11'
-      - verify: False
   ethereum:
     local:
       - nu_token_supply: 1_000_000_000
