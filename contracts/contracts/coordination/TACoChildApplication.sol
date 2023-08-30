@@ -74,7 +74,7 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
         address oldOperator = info.operator;
 
-        if (operator != oldOperator) {
+        if (stakingProvider != address(0) && operator != oldOperator) {
             info.operator = operator;
             // Update operator to provider mapping
             stakingProviderFromOperator[oldOperator] = address(0);
@@ -90,7 +90,7 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
         uint96 fromAmount = info.authorized;
 
-        if (amount != fromAmount) {
+        if (stakingProvider != address(0) && amount != fromAmount) {
             info.authorized = amount;
             emit AuthorizationUpdated(stakingProvider, amount);
         }
@@ -105,6 +105,7 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         require(!info.operatorConfirmed, "Can't confirm same operator twice");
         info.operatorConfirmed = true;
         rootApplication.confirmOperatorAddress(_operator);
+        emit OperatorConfirmed(stakingProvider, _operator);
     }
 }
 
