@@ -2,24 +2,22 @@
 
 import os
 
-from ape import config, project, networks
-from ape.cli import account_option, network_option, NetworkBoundCommand
-from ape.utils import ZERO_ADDRESS
-
-from ape_etherscan.utils import API_KEY_ENV_KEY_MAP
-
 import click
+from ape import config, networks, project
+from ape.cli import NetworkBoundCommand, account_option, network_option
+from ape.utils import ZERO_ADDRESS
+from ape_etherscan.utils import API_KEY_ENV_KEY_MAP
 
 
 @click.command(cls=NetworkBoundCommand)
 @network_option()
 @account_option()
-@click.option('--currency', default=ZERO_ADDRESS)
-@click.option('--rate', default=None)
-@click.option('--timeout', default=None)
-@click.option('--admin', default=None)
-@click.option('--max_size', default=None)
-@click.option('--verify/--no-verify', default=True)
+@click.option("--currency", default=ZERO_ADDRESS)
+@click.option("--rate", default=None)
+@click.option("--timeout", default=None)
+@click.option("--admin", default=None)
+@click.option("--max_size", default=None)
+@click.option("--verify/--no-verify", default=True)
 def cli(network, account, currency, rate, timeout, admin, max_size, verify):
 
     deployer = account
@@ -27,7 +25,7 @@ def cli(network, account, currency, rate, timeout, admin, max_size, verify):
 
     if rate and currency == ZERO_ADDRESS:
         raise ValueError("ERC20 contract address needed for currency")
-    
+
     # Network
     ecosystem_name = networks.provider.network.ecosystem.name
     network_name = networks.provider.network.name
@@ -38,6 +36,7 @@ def cli(network, account, currency, rate, timeout, admin, max_size, verify):
     # Validate Etherscan verification parameters.
     # This import fails if called before the click network options are evaluated
     from scripts.utils import LOCAL_BLOCKCHAIN_ENVIRONMENTS
+
     is_public_deployment = network_name not in LOCAL_BLOCKCHAIN_ENVIRONMENTS
     if not is_public_deployment:
         verify = False
@@ -59,19 +58,20 @@ def cli(network, account, currency, rate, timeout, admin, max_size, verify):
             currency = next(d for d in deployments if d["contract_type"] == currency)["address"]
         except StopIteration:
             pass
-        
+
         try:
-            stakes = next(d for d in deployments if d["contract_type"] == "StakeInfo")["address"]
+            stakes = next(d for d in deployments if d["contract_type"] == "TACoChildApplication")[
+                "address"
+            ]
         except StopIteration:
-            raise ValueError("StakeInfo deployment needed")
+            raise ValueError("TACoChildApplication deployment needed")
 
     # Parameter defaults
     admin = admin or deployer
     rate = rate or 1
-    timeout = timeout or 60*60
+    timeout = timeout or 60 * 60
     max_size = max_size or 64
 
     params = (stakes, timeout, max_size, admin, currency, rate)
     print("Deployment parameters:", params)
     return project.Coordinator.deploy(*params, sender=deployer, publish=verify)
-    

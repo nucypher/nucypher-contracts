@@ -2,28 +2,26 @@
 
 import os
 
-from ape import config, project, networks
-from ape.cli import account_option, network_option, NetworkBoundCommand
-from ape.utils import ZERO_ADDRESS
-
-from ape_etherscan.utils import API_KEY_ENV_KEY_MAP
-
 import click
+from ape import config, networks, project
+from ape.cli import NetworkBoundCommand, account_option, network_option
+from ape.utils import ZERO_ADDRESS
+from ape_etherscan.utils import API_KEY_ENV_KEY_MAP
 
 
 @click.command(cls=NetworkBoundCommand)
 @network_option()
 @account_option()
-@click.option('--currency', default=ZERO_ADDRESS)
-@click.option('--rate', default=0)
-@click.option('--verify/--no-verify', default=True)
+@click.option("--currency", default=ZERO_ADDRESS)
+@click.option("--rate", default=0)
+@click.option("--verify/--no-verify", default=True)
 def cli(network, account, currency, rate, verify):
-    deployer = account #get_account(account_id)
+    deployer = account  # get_account(account_id)
     click.echo(f"Deployer: {deployer}")
 
     if rate and currency == ZERO_ADDRESS:
         raise ValueError("ERC20 contract address needed for currency")
-    
+
     # Network
     ecosystem_name = networks.provider.network.ecosystem.name
     network_name = networks.provider.network.name
@@ -34,6 +32,7 @@ def cli(network, account, currency, rate, verify):
     # Validate Etherscan verification parameters.
     # This import fails if called before the click network options are evaluated
     from scripts.utils import LOCAL_BLOCKCHAIN_ENVIRONMENTS
+
     is_public_deployment = network_name not in LOCAL_BLOCKCHAIN_ENVIRONMENTS
     if not is_public_deployment:
         verify = False
@@ -53,11 +52,13 @@ def cli(network, account, currency, rate, verify):
             currency = next(d for d in deployments if d["contract_type"] == currency)["address"]
         except StopIteration:
             pass
-        
+
         try:
-            stakes = next(d for d in deployments if d["contract_type"] == "StakeInfo")["address"]
+            stakes = next(d for d in deployments if d["contract_type"] == "TACoChildApplication")[
+                "address"
+            ]
         except StopIteration:
-            raise ValueError("StakeInfo deployment needed")
+            raise ValueError("TACoChildApplication deployment needed")
 
     flat_rate_fee_model = project.FlatRateFeeModel.deploy(
         currency,

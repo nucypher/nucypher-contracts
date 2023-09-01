@@ -49,6 +49,8 @@ deployments:
         address: "0xC1379866Fb0c100DCBFAb7b470009C4827D47DD8"
       - contract_type: fx_child
         address: "0xCf73231F28B7331BBe3124B907840A94851f9f11"
+      - contract_type: TACoChildApplication
+        address: "0x68E95C2548363Bf5856667065Bc1B89CC498969F"
   ethereum:
     local:
       - nu_token_supply: 1_000_000_000

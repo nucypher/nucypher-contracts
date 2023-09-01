@@ -9,7 +9,7 @@ def main():
     print("WARNING: This script will take 40 mins to run to allow messages to sync from L1 to L2")
     print("*******")
     with networks.ethereum.goerli.use_provider("infura"):
-        root = project.PolygonRoot.at("0x55D1E362b81FDC6BaA359630bf3Ffa5900F66777")
+        root = project.PolygonRoot.at("0xD2Cb2A8fbE29adBa1C287b2A0b49f5C4fDc1f5BE")
         root.updateOperator(
             "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600",
             "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600",
@@ -21,10 +21,12 @@ def main():
         time.sleep(60 * i * 5)
         print("Now: {}".format(time.time()))
         with networks.polygon.mumbai.use_provider("infura"):
-            stake_info = project.StakeInfo.at("0x96e7dBa88f79e5CCAEBf0c7678539F6C0d719c99")
-            print(
-                stake_info.stakingProviderFromOperator("0xAe87D865F3A507185656aD0ef52a8E0B9f3d58f8")
+            taco_child = project.TACoChildApplication.at(
+                "0x68E95C2548363Bf5856667065Bc1B89CC498969F"
             )
             print(
-                stake_info.stakingProviderFromOperator("0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600")
+                taco_child.stakingProviderFromOperator("0xAe87D865F3A507185656aD0ef52a8E0B9f3d58f8")
+            )
+            print(
+                taco_child.stakingProviderFromOperator("0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600")
             )
