@@ -57,6 +57,7 @@ def deploy_eth_contracts(deployer, child_address, config, eth_network):
             sender=deployer,
             publish=False,
         )
+        proxy_contract.setChildApplication(root.address, sender=deployer)
 
         return root, proxy_contract, threshold_staking
 
@@ -82,7 +83,7 @@ def deploy_polygon_contracts(deployer, config, poly_network):
             b"",
             sender=deployer,
         )
-        proxy_contract = project.TACoChildApplication.at(proxy.address)
+        proxy_contract = project.TestnetTACoChildApplication.at(proxy.address)
         polygon_child.setChildApplication(proxy_contract.address, sender=deployer)
 
         coordinator = project.CoordinatorForTACoChildApplicationMock.deploy(
@@ -125,7 +126,6 @@ def cli(network_type, account):
         # Set the root contract address in the child contract
         with poly_network.use_provider("infura"):
             poly_child.setFxRootTunnel(root.address)
-            taco_child_app.addUpdaters([poly_child.address])
 
     print("CHILD: {}".format(poly_child.address))
     print("TACo CHILD APP: {}".format(taco_child_app.address))

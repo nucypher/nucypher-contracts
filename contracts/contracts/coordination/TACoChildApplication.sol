@@ -104,8 +104,8 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         // TODO maybe allow second confirmation, just do not send root call?
         require(!info.operatorConfirmed, "Can't confirm same operator twice");
         info.operatorConfirmed = true;
-        rootApplication.confirmOperatorAddress(_operator);
         emit OperatorConfirmed(stakingProvider, _operator);
+        rootApplication.confirmOperatorAddress(_operator);
     }
 }
 
