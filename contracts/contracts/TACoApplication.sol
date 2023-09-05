@@ -128,6 +128,13 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
         uint256 startTimestamp
     );
 
+    /**
+     * @notice Signals that a staking provider made a commitment
+     * @param stakingProvider Staking provider address
+     * @param endCommitment End of commitment
+     */
+    event CommitmentMade(address indexed stakingProvider, uint256 endCommitment);
+
     struct StakingProviderInfo {
         address operator;
         bool operatorConfirmed;
@@ -137,7 +144,10 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
         uint64 endDeauthorization;
         uint96 tReward;
         uint96 rewardPerTokenPaid;
+        uint64 endCommitment;
     }
+
+    uint64 public constant MINIMUM_COMMITMENT = 365 days;
 
     uint96 public immutable minimumAuthorization;
     uint256 public immutable minOperatorSeconds;
@@ -440,6 +450,10 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
             _toAmount == 0 || _toAmount >= minimumAuthorization,
             "Resulting authorization will be less than minimum"
         );
+        require(
+            info.endCommitment <= block.timestamp,
+            "Can't request deauthorization before end of commitment"
+        );
         if (info.operatorConfirmed) {
             resynchronizeAuthorizedOverall(info, _fromAmount);
         }
@@ -475,6 +489,7 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
         info.authorized = toAmount;
         info.deauthorizing = 0;
         info.endDeauthorization = 0;
+        info.endCommitment = 0;
 
         if (info.authorized == 0) {
             _stakingProviderFromOperator[info.operator] = address(0);
@@ -511,6 +526,23 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
             _releaseOperator(_stakingProvider);
         }
         _updateAuthorization(_stakingProvider, info);
+    }
+
+    /**
+     * @notice Make a commitment to not request authorization decrease for specified duration
+     * @param _stakingProvider Staking provider address
+     * @param _duration Duration of commitment
+     */
+    function makeCommitment(
+        address _stakingProvider,
+        uint64 _duration
+    ) external onlyOwnerOrStakingProvider(_stakingProvider) {
+        require(_duration >= MINIMUM_COMMITMENT, "Duration must be greater than minimum");
+        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
+        require(info.endDeauthorization == 0, "Commitment can't be made during deauthorization");
+        require(info.endCommitment == 0, "Commitment already made");
+        info.endCommitment = uint64(block.timestamp) + _duration;
+        emit CommitmentMade(_stakingProvider, info.endCommitment);
     }
 
     //-------------------------Main-------------------------
