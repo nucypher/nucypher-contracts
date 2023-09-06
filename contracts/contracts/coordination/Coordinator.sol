@@ -167,9 +167,9 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
     ) external view returns (BLS12381.G2Point memory) {
         ParticipantKey[] storage participantHistory = keysHistory[_provider];
 
-        for (uint256 i = participantHistory.length - 1; i >= 0; i--) {
-            if (participantHistory[i].lastRitualId <= _ritualId) {
-                return participantHistory[i].publicKey;
+        for (uint256 i = participantHistory.length; i > 0; i--) {
+            if (participantHistory[i - 1].lastRitualId <= _ritualId) {
+                return participantHistory[i - 1].publicKey;
             }
         }
 
