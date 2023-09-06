@@ -27,6 +27,8 @@ def main(account_id=None):
         deployments_config.get("pre_min_operator_seconds"),
         deployments_config.get("reward_duration"),
         deployments_config.get("deauthorization_duration"),
+        deployments_config.get("commitment_duration_1"),
+        deployments_config.get("commitment_duration_2"),
         sender=deployer,
         publish=deployments_config.get("verify"),
     )

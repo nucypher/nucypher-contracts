@@ -62,6 +62,8 @@ deployments:
         pre_percentage_penalty_coefficient: 100000
         reward_duration: 604800 # one week in seconds
         deauthorization_duration: 5184000 # 60 days in seconds
+        commitment_duration_1: 15552000 # 180 days in seconds
+        commitment_duration_2: 31104000 # 360 days in seconds
         verify: False
     rinkeby:
       - nu_token: "0x78D591D90a4a768B9D2790deA465D472b6Fe0f18"
