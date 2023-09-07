@@ -28,7 +28,8 @@ contract PolygonRoot is FxBaseRootTunnel, ITACoRootToChild {
 
     function _processMessageFromChild(bytes memory data) internal override {
         // solhint-disable-next-line avoid-low-level-calls
-        rootApplication.call(data);
+        (bool success, ) = rootApplication.call(data);
+        require(success, "Root tx failed");
     }
 
     function updateOperator(

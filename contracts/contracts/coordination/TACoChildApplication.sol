@@ -40,6 +40,7 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
             "Address for root application must be specified"
         );
         rootApplication = _rootApplication;
+        _disableInitializers();
     }
 
     /**

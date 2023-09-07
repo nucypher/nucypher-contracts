@@ -16,7 +16,8 @@ contract PolygonChild is ITACoChildToRoot, FxBaseChildTunnel, Ownable {
         bytes memory data
     ) internal override validateSender(sender) {
         // solhint-disable-next-line avoid-low-level-calls
-        childApplication.call(data);
+        (bool success, ) = childApplication.call(data);
+        require(success, "Child tx failed");
     }
 
     function setChildApplication(address _childApplication) public onlyOwner {
