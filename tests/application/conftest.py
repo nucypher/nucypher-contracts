@@ -29,7 +29,8 @@ REWARD_DURATION = 60 * 60 * 24 * 7  # one week in seconds
 DEAUTHORIZATION_DURATION = 60 * 60 * 24 * 60  # 60 days in seconds
 TOTAL_SUPPLY = Web3.to_wei(1_000_000_000, "ether")  # TODO NU(1_000_000_000, 'NU').to_units()
 COMMITMENT_DURATION_1 = 182 * 60 * 24 * 60  # 182 days in seconds
-COMMITMENT_DURATION_2 = 365 * 60 * 24 * 60  # 365 days in seconds
+COMMITMENT_DURATION_2 = 2 * COMMITMENT_DURATION_1  # 365 days in seconds
+COMMITMENT_DURATION_3 = 3 * COMMITMENT_DURATION_1  # 365 days in seconds
 
 DEPENDENCY = project.dependencies["openzeppelin"]["4.9.1"]
 
@@ -77,8 +78,7 @@ def taco_application(project, creator, token, threshold_staking):
         MIN_OPERATOR_SECONDS,
         REWARD_DURATION,
         DEAUTHORIZATION_DURATION,
-        COMMITMENT_DURATION_1,
-        COMMITMENT_DURATION_2,
+        [COMMITMENT_DURATION_1, COMMITMENT_DURATION_2, COMMITMENT_DURATION_3],
     )
 
     proxy_admin = DEPENDENCY.ProxyAdmin.deploy(sender=creator)
