@@ -14,6 +14,7 @@ contract FlatRateFeeModel is IFeeModel {
     uint256 public immutable feeRatePerSecond;
 
     constructor(IERC20 _currency, uint256 _feeRatePerSecond) {
+        require(_feeRatePerSecond > 0, "Invalid fee rate");
         currency = _currency;
         feeRatePerSecond = _feeRatePerSecond;
     }
