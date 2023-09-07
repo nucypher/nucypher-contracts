@@ -93,7 +93,7 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
     mapping(uint256 => uint256) public pendingFees;
     IFeeModel internal feeModel; // TODO: Consider making feeModel specific to each ritual
     IReimbursementPool internal reimbursementPool;
-    mapping(address => ParticipantKey[]) internal keysHistory;
+    mapping(address => ParticipantKey[]) internal participantKeysHistory;
     mapping(bytes32 => uint32) internal ritualPublicKeyRegistry;
 
     constructor(
@@ -152,7 +152,7 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
         address provider = application.stakingProviderFromOperator(msg.sender);
 
         ParticipantKey memory newRecord = ParticipantKey(lastRitualId, _publicKey);
-        keysHistory[provider].push(newRecord);
+        participantKeysHistory[provider].push(newRecord);
 
         emit ParticipantPublicKeySet(lastRitualId, provider, _publicKey);
     }
@@ -161,7 +161,7 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
         address _provider,
         uint256 _ritualId
     ) external view returns (BLS12381.G2Point memory) {
-        ParticipantKey[] storage participantHistory = keysHistory[_provider];
+        ParticipantKey[] storage participantHistory = participantKeysHistory[_provider];
 
         for (uint256 i = participantHistory.length; i > 0; i--) {
             if (participantHistory[i - 1].lastRitualId <= _ritualId) {
@@ -243,7 +243,7 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
             Participant storage newParticipant = ritual.participant.push();
             address current = providers[i];
             // Make sure that current provider has already set their public key
-            ParticipantKey[] storage participantHistory = keysHistory[current];
+            ParticipantKey[] storage participantHistory = participantKeysHistory[current];
             require(participantHistory.length > 0, "Provider has not set their public key");
 
             require(previous < current, "Providers must be sorted");
