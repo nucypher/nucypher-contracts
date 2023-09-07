@@ -236,10 +236,6 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
             address(_childApplication) != address(childApplication),
             "New address must not be equal to the current one"
         );
-        if (address(_childApplication) != address(0)) {
-            // trying to call contract to be sure that is correct address
-            _childApplication.updateOperator(address(0), address(0));
-        }
         childApplication = _childApplication;
     }
 

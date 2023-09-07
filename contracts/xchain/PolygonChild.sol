@@ -3,9 +3,8 @@ pragma solidity ^0.8.0;
 
 import "@fx-portal/contracts/tunnel/FxBaseChildTunnel.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "../contracts/coordination/ITACoChildToRoot.sol";
 
-contract PolygonChild is ITACoChildToRoot, FxBaseChildTunnel, Ownable {
+contract PolygonChild is FxBaseChildTunnel, Ownable {
     address public childApplication;
 
     constructor(address _fxChild) FxBaseChildTunnel(_fxChild) {}
@@ -24,12 +23,8 @@ contract PolygonChild is ITACoChildToRoot, FxBaseChildTunnel, Ownable {
         childApplication = _childApplication;
     }
 
-    function confirmOperatorAddress(address operator) external override {
+    fallback() external {
         require(msg.sender == childApplication, "Only child app can call this method");
-        bytes memory message = abi.encodeWithSelector(
-            ITACoChildToRoot.confirmOperatorAddress.selector,
-            operator
-        );
-        _sendMessageToRoot(message);
+        _sendMessageToRoot(msg.data);
     }
 }

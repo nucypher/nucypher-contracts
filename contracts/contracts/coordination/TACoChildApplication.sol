@@ -7,6 +7,7 @@ import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "./ITACoRootToChild.sol";
 import "../../threshold/ITACoChildApplication.sol";
 import "./ITACoChildToRoot.sol";
+import "./Coordinator.sol";
 
 /**
  * @title TACoChildApplication
@@ -49,7 +50,10 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
     function initialize(address _coordinator) external initializer {
         require(coordinator == address(0), "Coordinator already set");
         require(_coordinator != address(0), "Coordinator must be specified");
-        // require(_coordinator.numberOfRituals() >= 0, "Invalid coordinator");
+        require(
+            address(Coordinator(_coordinator).application()) == address(this),
+            "Invalid coordinator"
+        );
         coordinator = _coordinator;
     }
 
