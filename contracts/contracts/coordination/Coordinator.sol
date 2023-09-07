@@ -411,11 +411,10 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
         uint32 duration
     ) internal {
         uint256 ritualCost = getRitualInitiationCost(providers, duration);
-        if (ritualCost > 0) {
-            totalPendingFees += ritualCost;
-            pendingFees[ritualId] = ritualCost;
-            currency.safeTransferFrom(msg.sender, address(this), ritualCost);
-        }
+        require(ritualCost > 0, "Invalid ritual cost");
+        totalPendingFees += ritualCost;
+        pendingFees[ritualId] = ritualCost;
+        currency.safeTransferFrom(msg.sender, address(this), ritualCost);
     }
 
     function processPendingFee(uint32 ritualId) public {
