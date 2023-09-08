@@ -23,6 +23,7 @@ OPERATOR_CONFIRMED_SLOT = 1
 AUTHORIZATION_SLOT = 3
 DEAUTHORIZING_SLOT = 4
 END_DEAUTHORIZATION_SLOT = 5
+END_COMMITMENT_SLOT = 8
 MIN_AUTHORIZATION = Web3.to_wei(40_000, "ether")
 DEAUTHORIZATION_DURATION = 60 * 60 * 24 * 60  # 60 days in seconds
 
@@ -403,9 +404,28 @@ def test_authorization_decrease_request(
     # Request decrease without syncing with child app
     taco_application.setChildApplication(ZERO_ADDRESS, sender=creator)
     threshold_staking.authorizationDecreaseRequested(
-        staking_provider, value // 2, value // 2, sender=creator
+        staking_provider, value // 2, 0, sender=creator
     )
     assert child_application.authorizedStake(staking_provider) == 0
+
+    # Try to request decrease before ending of commitment
+    chain.pending_timestamp += deauthorization_duration
+    taco_application.finishAuthorizationDecrease(staking_provider, sender=creator)
+    threshold_staking.authorizationIncreased(staking_provider, 0, value, sender=creator)
+    commitment_duration = taco_application.commitmentDurationOption1()
+    taco_application.makeCommitment(staking_provider, commitment_duration, sender=staking_provider)
+
+    # Commitment is still active
+    with ape.reverts("Can't request deauthorization before end of commitment"):
+        threshold_staking.authorizationDecreaseRequested(
+            staking_provider, value, value // 2, sender=creator
+        )
+    chain.pending_timestamp += commitment_duration
+
+    # Now decrease can be requested
+    threshold_staking.authorizationDecreaseRequested(
+        staking_provider, value, value // 2, sender=creator
+    )
 
 
 def test_finish_authorization_decrease(
@@ -663,3 +683,94 @@ def test_resync(accounts, threshold_staking, taco_application, child_application
     assert child_application.authorizedStake(staking_provider) == value
     assert taco_application.getOperatorFromStakingProvider(staking_provider) == ZERO_ADDRESS
     assert child_application.operatorFromStakingProvider(staking_provider) == staking_provider
+
+
+def test_commitment(accounts, threshold_staking, taco_application, chain):
+    """
+    Tests for authorization method: makeCommitment
+    """
+
+    creator, staking_provider, another_staking_provider = accounts[0:3]
+    deauthorization_duration = DEAUTHORIZATION_DURATION
+    minimum_authorization = MIN_AUTHORIZATION
+    value = 2 * minimum_authorization
+    commitment_duration_1 = taco_application.commitmentDurationOption1()
+    commitment_duration_2 = taco_application.commitmentDurationOption2()
+    commitment_duration_3 = taco_application.commitmentDurationOption3()
+
+    # Commitment can be made only for authorized staking provider
+    with ape.reverts("Not owner or provider"):
+        taco_application.makeCommitment(
+            staking_provider, commitment_duration_1, sender=staking_provider
+        )
+
+    # Prepare staking provider
+    threshold_staking.authorizationIncreased(staking_provider, 0, value, sender=creator)
+
+    # Begin deauthorization
+    threshold_staking.authorizationDecreaseRequested(
+        staking_provider, value, minimum_authorization, sender=creator
+    )
+
+    # Commitment can't be made during deauthorization
+    with ape.reverts("Commitment can't be made during deauthorization"):
+        taco_application.makeCommitment(
+            staking_provider, commitment_duration_3, sender=staking_provider
+        )
+
+    # Finish deauthorization
+    chain.pending_timestamp += deauthorization_duration
+    taco_application.finishAuthorizationDecrease(staking_provider, sender=creator)
+
+    # Commitment can be made only by staking provider
+    with ape.reverts("Not owner or provider"):
+        taco_application.makeCommitment(
+            staking_provider, commitment_duration_3, sender=another_staking_provider
+        )
+
+    # Commitment duration must be equal to one of options
+    with ape.reverts("Commitment duration must be equal to one of options"):
+        taco_application.makeCommitment(staking_provider, 0, sender=staking_provider)
+    with ape.reverts("Commitment duration must be equal to one of options"):
+        taco_application.makeCommitment(
+            staking_provider, commitment_duration_1 + 1, sender=staking_provider
+        )
+
+    # And make a commitment for shorter duration
+    tx = taco_application.makeCommitment(
+        staking_provider, commitment_duration_1, sender=staking_provider
+    )
+    timestamp = chain.pending_timestamp - 1
+    end_commitment = timestamp + commitment_duration_1
+    assert (
+        taco_application.stakingProviderInfo(staking_provider)[END_COMMITMENT_SLOT]
+        == end_commitment
+    )
+    assert tx.events == [
+        taco_application.CommitmentMade(
+            stakingProvider=staking_provider, endCommitment=end_commitment
+        )
+    ]
+
+    # Commitment can't be made twice
+    with ape.reverts("Commitment already made"):
+        taco_application.makeCommitment(
+            staking_provider, commitment_duration_2, sender=staking_provider
+        )
+
+    # Another staking provider makes a commitment for longer period of time
+    threshold_staking.authorizationIncreased(another_staking_provider, 0, value, sender=creator)
+    tx = taco_application.makeCommitment(
+        another_staking_provider, commitment_duration_3, sender=another_staking_provider
+    )
+    timestamp = chain.pending_timestamp - 1
+    end_commitment = timestamp + commitment_duration_3
+    assert (
+        taco_application.stakingProviderInfo(another_staking_provider)[END_COMMITMENT_SLOT]
+        == end_commitment
+    )
+    assert tx.events == [
+        taco_application.CommitmentMade(
+            stakingProvider=another_staking_provider, endCommitment=end_commitment
+        )
+    ]

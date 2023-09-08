@@ -128,6 +128,13 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
         uint256 startTimestamp
     );
 
+    /**
+     * @notice Signals that a staking provider made a commitment
+     * @param stakingProvider Staking provider address
+     * @param endCommitment End of commitment
+     */
+    event CommitmentMade(address indexed stakingProvider, uint256 endCommitment);
+
     struct StakingProviderInfo {
         address operator;
         bool operatorConfirmed;
@@ -137,12 +144,18 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
         uint64 endDeauthorization;
         uint96 tReward;
         uint96 rewardPerTokenPaid;
+        uint64 endCommitment;
     }
 
     uint96 public immutable minimumAuthorization;
     uint256 public immutable minOperatorSeconds;
     uint256 public immutable rewardDuration;
     uint256 public immutable deauthorizationDuration;
+
+    uint64 public immutable commitmentDurationOption1;
+    uint64 public immutable commitmentDurationOption2;
+    uint64 public immutable commitmentDurationOption3;
+    uint64 public immutable commitmentDurationOption4;
 
     IStaking public immutable tStaking;
     IERC20 public immutable token;
@@ -169,6 +182,7 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
      * @param _minOperatorSeconds Min amount of seconds while an operator can't be changed
      * @param _rewardDuration Duration of one reward cycle in seconds
      * @param _deauthorizationDuration Duration of decreasing authorization in seconds
+     * @param _commitmentDurationOptions Options for commitment duration
      */
     constructor(
         IERC20 _token,
@@ -176,12 +190,15 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
         uint96 _minimumAuthorization,
         uint256 _minOperatorSeconds,
         uint256 _rewardDuration,
-        uint256 _deauthorizationDuration
+        uint256 _deauthorizationDuration,
+        uint64[] memory _commitmentDurationOptions
     ) {
         require(
             _rewardDuration != 0 &&
                 _tStaking.authorizedStake(address(this), address(this)) == 0 &&
-                _token.totalSupply() > 0,
+                _token.totalSupply() > 0 &&
+                _commitmentDurationOptions.length >= 1 &&
+                _commitmentDurationOptions.length <= 4,
             "Wrong input parameters"
         );
         rewardDuration = _rewardDuration;
@@ -190,6 +207,16 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
         token = _token;
         tStaking = _tStaking;
         minOperatorSeconds = _minOperatorSeconds;
+        commitmentDurationOption1 = _commitmentDurationOptions[0];
+        commitmentDurationOption2 = _commitmentDurationOptions.length >= 2
+            ? _commitmentDurationOptions[1]
+            : 0;
+        commitmentDurationOption3 = _commitmentDurationOptions.length >= 3
+            ? _commitmentDurationOptions[2]
+            : 0;
+        commitmentDurationOption4 = _commitmentDurationOptions.length >= 4
+            ? _commitmentDurationOptions[3]
+            : 0;
         _disableInitializers();
     }
 
@@ -440,6 +467,10 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
             _toAmount == 0 || _toAmount >= minimumAuthorization,
             "Resulting authorization will be less than minimum"
         );
+        require(
+            info.endCommitment <= block.timestamp,
+            "Can't request deauthorization before end of commitment"
+        );
         if (info.operatorConfirmed) {
             resynchronizeAuthorizedOverall(info, _fromAmount);
         }
@@ -475,6 +506,7 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
         info.authorized = toAmount;
         info.deauthorizing = 0;
         info.endDeauthorization = 0;
+        info.endCommitment = 0;
 
         if (info.authorized == 0) {
             _stakingProviderFromOperator[info.operator] = address(0);
@@ -511,6 +543,30 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
             _releaseOperator(_stakingProvider);
         }
         _updateAuthorization(_stakingProvider, info);
+    }
+
+    /**
+     * @notice Make a commitment to not request authorization decrease for specified duration
+     * @param _stakingProvider Staking provider address
+     * @param _commitmentDuration Duration of commitment
+     */
+    function makeCommitment(
+        address _stakingProvider,
+        uint64 _commitmentDuration
+    ) external onlyOwnerOrStakingProvider(_stakingProvider) {
+        require(
+            _commitmentDuration > 0 &&
+                (_commitmentDuration == commitmentDurationOption1 ||
+                    _commitmentDuration == commitmentDurationOption2 ||
+                    _commitmentDuration == commitmentDurationOption3 ||
+                    _commitmentDuration == commitmentDurationOption4),
+            "Commitment duration must be equal to one of options"
+        );
+        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
+        require(info.endDeauthorization == 0, "Commitment can't be made during deauthorization");
+        require(info.endCommitment == 0, "Commitment already made");
+        info.endCommitment = uint64(block.timestamp) + _commitmentDuration;
+        emit CommitmentMade(_stakingProvider, info.endCommitment);
     }
 
     //-------------------------Main-------------------------
