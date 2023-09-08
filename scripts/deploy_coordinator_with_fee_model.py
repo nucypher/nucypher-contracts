@@ -13,10 +13,14 @@ from ape_etherscan.utils import API_KEY_ENV_KEY_MAP
 @network_option()
 @account_option()
 @click.option("--currency", default=ZERO_ADDRESS)
-@click.option("--rate", default=0)
+@click.option("--rate", default=None)
+@click.option("--timeout", default=None)
+@click.option("--admin", default=None)
+@click.option("--max_size", default=None)
 @click.option("--verify/--no-verify", default=True)
-def cli(network, account, currency, rate, verify):
-    deployer = account  # get_account(account_id)
+def cli(network, account, currency, rate, timeout, admin, max_size, verify):
+
+    deployer = account
     click.echo(f"Deployer: {deployer}")
 
     if rate and currency == ZERO_ADDRESS:
@@ -39,6 +43,7 @@ def cli(network, account, currency, rate, verify):
     elif verify:
         env_var_key = API_KEY_ENV_KEY_MAP.get(ecosystem_name)
         api_key = os.environ.get(env_var_key)
+        print(api_key)
         if not api_key:
             raise ValueError(f"{env_var_key} is not set")
 
@@ -48,6 +53,7 @@ def cli(network, account, currency, rate, verify):
     except KeyError:
         pass  # TODO: Further validate currency address?
     else:
+        print(deployments)
         try:
             currency = next(d for d in deployments if d["contract_type"] == currency)["address"]
         except StopIteration:
@@ -60,11 +66,12 @@ def cli(network, account, currency, rate, verify):
         except StopIteration:
             raise ValueError("TACoChildApplication deployment needed")
 
-    flat_rate_fee_model = project.FlatRateFeeModel.deploy(
-        currency,
-        rate,
-        stakes,
-        sender=deployer,
-        publish=verify,
-    )
-    return flat_rate_fee_model
+    # Parameter defaults
+    admin = admin or deployer
+    rate = rate or 1
+    timeout = timeout or 60 * 60
+    max_size = max_size or 64
+
+    params = (stakes, timeout, max_size, admin, currency, rate)
+    print("Deployment parameters:", params)
+    return project.Coordinator.deploy(*params, sender=deployer, publish=verify)

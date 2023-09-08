@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./FlatRateFeeModel.sol";
 import "./IReimbursementPool.sol";
 import "../lib/BLS12381.sol";
-import "../../threshold/IAccessControlApplication.sol";
+import "../../threshold/ITACoChildApplication.sol";
 import "./IEncryptionAuthorizer.sol";
 
 /**
@@ -83,7 +83,7 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
     bytes32 public constant INITIATOR_ROLE = keccak256("INITIATOR_ROLE");
     bytes32 public constant TREASURY_ROLE = keccak256("TREASURY_ROLE");
 
-    IAccessControlApplication public immutable application;
+    ITACoChildApplication public immutable application;
 
     Ritual[] public rituals;
     uint32 public timeout;
@@ -97,14 +97,14 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
     mapping(bytes32 => uint32) internal ritualPublicKeyRegistry;
 
     constructor(
-        IAccessControlApplication _stakes,
+        ITACoChildApplication _application,
         uint32 _timeout,
         uint16 _maxDkgSize,
         address _admin,
         IERC20 _currency,
         uint256 _feeRatePerSecond
     ) AccessControlDefaultAdminRules(0, _admin) FlatRateFeeModel(_currency, _feeRatePerSecond) {
-        application = _stakes;
+        application = _application;
         timeout = _timeout;
         maxDkgSize = _maxDkgSize;
     }
@@ -147,14 +147,18 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
         _setRoleAdmin(INITIATOR_ROLE, bytes32(0));
     }
 
-    function setProviderPublicKey(BLS12381.G2Point calldata _publicKey) public {
+    function setProviderPublicKey(BLS12381.G2Point calldata _publicKey) external {
         uint32 lastRitualId = uint32(rituals.length);
-        address provider = application.stakingProviderFromOperator(msg.sender);
+        address stakingProvider = application.stakingProviderFromOperator(msg.sender);
+        require(stakingProvider != address(0), "Operator has no bond with staking provider");
 
         ParticipantKey memory newRecord = ParticipantKey(lastRitualId, _publicKey);
-        keysHistory[provider].push(newRecord);
+        keysHistory[stakingProvider].push(newRecord);
 
-        emit ParticipantPublicKeySet(lastRitualId, provider, _publicKey);
+        emit ParticipantPublicKeySet(lastRitualId, stakingProvider, _publicKey);
+        // solhint-disable-next-line avoid-tx-origin
+        require(msg.sender == tx.origin, "Only operator with real address can set public key");
+        application.confirmOperatorAddress(msg.sender);
     }
 
     function getProviderPublicKey(

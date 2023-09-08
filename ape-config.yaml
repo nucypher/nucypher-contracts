@@ -12,6 +12,10 @@ dependencies:
   - name: openzeppelin
     github: OpenZeppelin/openzeppelin-contracts
     version: 4.9.1
+    config_override:
+      solidity:
+        version: 0.8.20
+        evm_version: paris
   - name: openzeppelin-upgradeable
     github: OpenZeppelin/openzeppelin-contracts-upgradeable
     version: 4.9.1
@@ -35,34 +39,38 @@ deployments:
   polygon:
     mainnet:
       - contract_type: DAI
-        address: '0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063'
+        address: "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063"
+      - contract_type: fx_child
+        address: "0x8397259c983751DAf40400790063935a11afa28a"
     mumbai:
       - contract_type: DAI
-        address: '0x001B3B4d0F3714Ca98ba10F6042DaEbF0B1B7b6F'
+        address: "0x001B3B4d0F3714Ca98ba10F6042DaEbF0B1B7b6F"
       - contract_type: StakeInfo
-        address: '0xC1379866Fb0c100DCBFAb7b470009C4827D47DD8'
-      - fx_child: '0xCf73231F28B7331BBe3124B907840A94851f9f11'
-      - verify: False
+        address: "0xC1379866Fb0c100DCBFAb7b470009C4827D47DD8"
+      - contract_type: fx_child
+        address: "0xCf73231F28B7331BBe3124B907840A94851f9f11"
+      - contract_type: TACoChildApplication
+        address: "0x68E95C2548363Bf5856667065Bc1B89CC498969F"
   ethereum:
     local:
       - nu_token_supply: 1_000_000_000
         pre_min_authorization: 40000000000000000000000
-        pre_min_operator_seconds: 86400  # one day in seconds
+        pre_min_operator_seconds: 86400 # one day in seconds
         pre_hash_algorithm: 1
         pre_base_penalty: 2
         pre_penalty_history_coefficient: 0
         pre_percentage_penalty_coefficient: 100000
-        reward_duration: 604800  # one week in seconds
-        deauthorization_duration: 5184000  # 60 days in seconds
+        reward_duration: 604800 # one week in seconds
+        deauthorization_duration: 5184000 # 60 days in seconds
         verify: False
     rinkeby:
-      - nu_token: '0x78D591D90a4a768B9D2790deA465D472b6Fe0f18'
+      - nu_token: "0x78D591D90a4a768B9D2790deA465D472b6Fe0f18"
         nu_token_supply: 1_000_000_000
-        t_staking: '0x18eFb520dA5D387982C860a64855C14C0AcADF3F'
-        work_lock: '0x0000000000000000000000000000000000000000'
-        staking_escrow: '0x6A6F917a3FF3d33d26BB4743140F205486cD6B4B'
+        t_staking: "0x18eFb520dA5D387982C860a64855C14C0AcADF3F"
+        work_lock: "0x0000000000000000000000000000000000000000"
+        staking_escrow: "0x6A6F917a3FF3d33d26BB4743140F205486cD6B4B"
         pre_min_authorization: 40000000000000000000000
-        pre_min_operator_seconds: 86400  # one day in seconds
+        pre_min_operator_seconds: 86400 # one day in seconds
         verify: True
     # TODO: is there a batter way to manage multiple deployments on the same network?
     # goerli-tapir:
@@ -76,29 +84,38 @@ deployments:
     #     pre_min_authorization: 40000000000000000000000
     #     pre_min_operator_seconds: 86400  # one day in seconds
     goerli: # -lynx
-      - t_staking: '0x81eEefb7B1b3313C89976910096F8f1487301Bb1'
+      - t_staking: "0x81eEefb7B1b3313C89976910096F8f1487301Bb1"
         pre_min_authorization: 40000000000000000000000
-        pre_min_operator_seconds: 86400  # one day in seconds
+        pre_min_operator_seconds: 86400 # one day in seconds
         ritual_timeout: 3600
         max_dkg_size: 8
-        pre_application: '0x685b8Fd02aB87d8FfFff7346cB101A5cE4185bf3'
+        pre_application: "0x685b8Fd02aB87d8FfFff7346cB101A5cE4185bf3"
         verify: True
+        reward_duration: 604800 # one week in seconds
+        deauthorization_duration: 5184000 # 60 days in seconds
+      - contract_type: fx_root
+        address: "0x3d1d3E34f7fB6D26245E6640E1c50710eFFf15bA"
+      - contract_type: checkpoint_manager
+        address: "0x2890bA17EfE978480615e330ecB65333b880928e"
     mumbai:
-      - stake_info_contract: '0xC1379866Fb0c100DCBFAb7b470009C4827D47DD8'
+      - stake_info_contract: "0xC1379866Fb0c100DCBFAb7b470009C4827D47DD8"
         max_dkg_size: 16
-        ritual_timeout: 86400  # one day in seconds
+        ritual_timeout: 86400 # one day in seconds
         verify: True
-        checkpoint_manager: '0x2890bA17EfE978480615e330ecB65333b880928e'
-        fx_root: '0x3d1d3E34f7fB6D26245E6640E1c50710eFFf15bA'
+        checkpoint_manager: "0x2890bA17EfE978480615e330ecB65333b880928e"
+        fx_root: "0x3d1d3E34f7fB6D26245E6640E1c50710eFFf15bA"
     mainnet:
-      - nu_token: '0x4fE83213D56308330EC302a8BD641f1d0113A4Cc'
-        t_staking: '0x01B67b1194C75264d06F808A921228a95C765dd7'
-        work_lock: '0xe9778E69a961e64d3cdBB34CF6778281d34667c2'
-        staking_escrow: '0xbbD3C0C794F40c4f993B03F65343aCC6fcfCb2e2'
+      - nu_token: "0x4fE83213D56308330EC302a8BD641f1d0113A4Cc"
+        t_staking: "0x01B67b1194C75264d06F808A921228a95C765dd7"
+        work_lock: "0xe9778E69a961e64d3cdBB34CF6778281d34667c2"
+        staking_escrow: "0xbbD3C0C794F40c4f993B03F65343aCC6fcfCb2e2"
         pre_min_authorization: 40000000000000000000000
-        pre_min_operator_seconds: 86400  # one day in seconds
+        pre_min_operator_seconds: 86400 # one day in seconds
         verify: True
-
+      - contract_type: fx_root
+        address: "0xfe5e5D361b2ad62c541bAb87C45a0B9B018389a2"
+      - contract_type: checkpoint_manager
+        address: "0x86e4dc95c7fbdbf52e33d563bbdb00823894c287"
 
 test:
   mnemonic: test test test test test test test test test test test junk
