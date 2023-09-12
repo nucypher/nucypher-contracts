@@ -152,7 +152,10 @@ def test_invalid_initiate_ritual(coordinator, nodes, accounts, initiator, global
 def initiate_ritual(coordinator, erc20, allow_logic, authority, nodes):
     for node in nodes:
         public_key = gen_public_key()
+        assert not coordinator.isProviderPublicKeySet(node)
         coordinator.setProviderPublicKey(public_key, sender=node)
+        assert coordinator.isProviderPublicKeySet(node)
+
     cost = coordinator.getRitualInitiationCost(nodes, DURATION)
     erc20.approve(coordinator.address, cost, sender=authority)
     tx = coordinator.initiateRitual(
@@ -212,7 +215,11 @@ def test_initiate_ritual(
 def test_provider_public_key(coordinator, nodes):
     selected_provider = nodes[0]
     public_key = gen_public_key()
+
+    assert not coordinator.isProviderPublicKeySet(selected_provider)
     tx = coordinator.setProviderPublicKey(public_key, sender=selected_provider)
+    assert coordinator.isProviderPublicKeySet(selected_provider)
+
     ritual_id = coordinator.numberOfRituals()
 
     events = coordinator.ParticipantPublicKeySet.from_receipt(tx)

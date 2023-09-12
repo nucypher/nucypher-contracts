@@ -177,6 +177,11 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
         revert("No keys found prior to the provided ritual");
     }
 
+    function isProviderPublicKeySet(address _provider) external view returns (bool) {
+        ParticipantKey[] storage participantHistory = participantKeysHistory[_provider];
+        return participantHistory.length > 0;
+    }
+
     function setTimeout(uint32 newTimeout) external onlyRole(DEFAULT_ADMIN_ROLE) {
         emit TimeoutChanged(timeout, newTimeout);
         timeout = newTimeout;
