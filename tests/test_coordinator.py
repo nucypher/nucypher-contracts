@@ -37,7 +37,7 @@ def gen_public_key():
 
 
 def access_control_error_message(address, role=None):
-    role = Web3.to_hex(role or b'\x00'*32)
+    role = Web3.to_hex(role or b"\x00" * 32)
     return f"AccessControl: account {address.lower()} is missing role {role}"
 
 
@@ -161,7 +161,9 @@ def initiate_ritual(coordinator, erc20, allow_logic, authority, nodes):
     return authority, tx
 
 
-def test_initiate_ritual(coordinator, nodes, initiator, erc20, global_allow_list, deployer, treasury):
+def test_initiate_ritual(
+    coordinator, nodes, initiator, erc20, global_allow_list, deployer, treasury
+):
     authority, tx = initiate_ritual(
         coordinator=coordinator,
         erc20=erc20,
@@ -179,7 +181,7 @@ def test_initiate_ritual(coordinator, nodes, initiator, erc20, global_allow_list
     assert event["participants"] == tuple(n.address.lower() for n in nodes)
 
     assert coordinator.getRitualState(0) == RitualState.AWAITING_TRANSCRIPTS
-    
+
     ritual_struct = coordinator.rituals(ritualID)
     assert ritual_struct[0] == initiator
     init, end = ritual_struct[1], ritual_struct[2]
@@ -301,7 +303,9 @@ def test_post_transcript_but_not_waiting_for_transcripts(
         coordinator.postTranscript(0, transcript, sender=nodes[1])
 
 
-def test_post_aggregation(coordinator, nodes, initiator, erc20, global_allow_list, treasury, deployer):
+def test_post_aggregation(
+    coordinator, nodes, initiator, erc20, global_allow_list, treasury, deployer
+):
     initiate_ritual(
         coordinator=coordinator,
         erc20=erc20,
@@ -320,8 +324,7 @@ def test_post_aggregation(coordinator, nodes, initiator, erc20, global_allow_lis
     for i, node in enumerate(nodes):
         assert coordinator.getRitualState(ritualID) == RitualState.AWAITING_AGGREGATIONS
         tx = coordinator.postAggregation(
-            ritualID, aggregated, dkg_public_key, decryption_request_static_keys[i],
-            sender=node
+            ritualID, aggregated, dkg_public_key, decryption_request_static_keys[i], sender=node
         )
 
         events = coordinator.AggregationPosted.from_receipt(tx)
