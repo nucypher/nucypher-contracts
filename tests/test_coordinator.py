@@ -385,7 +385,6 @@ def test_authorize_using_global_allow_list(
 
     # Not authorized
     assert not global_allow_list.isAuthorized(0, bytes(signature), bytes(digest))
-    assert not coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(digest))
 
     # Negative test cases for authorization
     with ape.reverts("Only ritual authority is permitted"):
@@ -393,6 +392,9 @@ def test_authorize_using_global_allow_list(
 
     with ape.reverts("Only active rituals can add authorizations"):
         global_allow_list.authorize(0, [deployer.address], sender=initiator)
+
+    with ape.reverts("Ritual not finalized"):
+        coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(digest))
 
     # Finalize ritual
     transcript = os.urandom(transcript_size(len(nodes), len(nodes)))

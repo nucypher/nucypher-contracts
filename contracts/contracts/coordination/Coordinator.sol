@@ -412,6 +412,7 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
         bytes memory ciphertextHeader
     ) external view returns (bool) {
         Ritual storage ritual = rituals[ritualId];
+        require(getRitualState(ritual) == RitualState.FINALIZED, "Ritual not finalized");
         return ritual.accessController.isAuthorized(ritualId, evidence, ciphertextHeader);
     }
 
