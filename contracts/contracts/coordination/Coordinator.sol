@@ -56,6 +56,7 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
     }
 
     struct Ritual {
+        // NOTE: changing the order here affects nucypher/nucypher: CoordinatorAgent
         address initiator;
         uint32 initTimestamp;
         uint32 endTimestamp;
@@ -403,6 +404,15 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
         address provider
     ) external view returns (Participant memory) {
         return getParticipantFromProvider(rituals[ritualId], provider);
+    }
+
+    function isEncryptionAuthorized(
+        uint32 ritualId,
+        bytes memory evidence,
+        bytes memory ciphertextHeader
+    ) external view returns (bool) {
+        Ritual storage ritual = rituals[ritualId];
+        return ritual.accessController.isAuthorized(ritualId, evidence, ciphertextHeader);
     }
 
     function processRitualPayment(

@@ -385,6 +385,7 @@ def test_authorize_using_global_allow_list(
 
     # Not authorized
     assert not global_allow_list.isAuthorized(0, bytes(signature), bytes(digest))
+    assert not coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(digest))
 
     # Negative test cases for authorization
     with ape.reverts("Only ritual authority is permitted"):
@@ -411,10 +412,12 @@ def test_authorize_using_global_allow_list(
 
     # Authorized
     assert global_allow_list.isAuthorized(0, bytes(signature), bytes(data))
+    assert coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(data))
 
     # Deauthorize
     global_allow_list.deauthorize(0, [deployer.address], sender=initiator)
     assert not global_allow_list.isAuthorized(0, bytes(signature), bytes(data))
+    assert not coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(data))
 
     # Reauthorize in batch
     addresses_to_authorize = [deployer.address, initiator.address]
@@ -422,4 +425,7 @@ def test_authorize_using_global_allow_list(
     signed_digest = w3.eth.account.sign_message(signable_message, private_key=initiator.private_key)
     initiator_signature = signed_digest.signature
     assert global_allow_list.isAuthorized(0, bytes(initiator_signature), bytes(data))
+    assert coordinator.isEncryptionAuthorized(0, bytes(initiator_signature), bytes(data))
+
     assert global_allow_list.isAuthorized(0, bytes(signature), bytes(data))
+    assert coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(data))
