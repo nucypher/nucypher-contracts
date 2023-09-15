@@ -152,7 +152,10 @@ def test_invalid_initiate_ritual(coordinator, nodes, accounts, initiator, global
 def initiate_ritual(coordinator, erc20, allow_logic, authority, nodes):
     for node in nodes:
         public_key = gen_public_key()
+        assert not coordinator.isProviderPublicKeySet(node)
         coordinator.setProviderPublicKey(public_key, sender=node)
+        assert coordinator.isProviderPublicKeySet(node)
+
     cost = coordinator.getRitualInitiationCost(nodes, DURATION)
     erc20.approve(coordinator.address, cost, sender=authority)
     tx = coordinator.initiateRitual(
@@ -212,7 +215,11 @@ def test_initiate_ritual(
 def test_provider_public_key(coordinator, nodes):
     selected_provider = nodes[0]
     public_key = gen_public_key()
+
+    assert not coordinator.isProviderPublicKeySet(selected_provider)
     tx = coordinator.setProviderPublicKey(public_key, sender=selected_provider)
+    assert coordinator.isProviderPublicKeySet(selected_provider)
+
     ritual_id = coordinator.numberOfRituals()
 
     events = coordinator.ParticipantPublicKeySet.from_receipt(tx)
@@ -393,6 +400,9 @@ def test_authorize_using_global_allow_list(
     with ape.reverts("Only active rituals can add authorizations"):
         global_allow_list.authorize(0, [deployer.address], sender=initiator)
 
+    with ape.reverts("Ritual not finalized"):
+        coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(digest))
+
     # Finalize ritual
     transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
     for node in nodes:
@@ -411,10 +421,12 @@ def test_authorize_using_global_allow_list(
 
     # Authorized
     assert global_allow_list.isAuthorized(0, bytes(signature), bytes(data))
+    assert coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(data))
 
     # Deauthorize
     global_allow_list.deauthorize(0, [deployer.address], sender=initiator)
     assert not global_allow_list.isAuthorized(0, bytes(signature), bytes(data))
+    assert not coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(data))
 
     # Reauthorize in batch
     addresses_to_authorize = [deployer.address, initiator.address]
@@ -422,4 +434,7 @@ def test_authorize_using_global_allow_list(
     signed_digest = w3.eth.account.sign_message(signable_message, private_key=initiator.private_key)
     initiator_signature = signed_digest.signature
     assert global_allow_list.isAuthorized(0, bytes(initiator_signature), bytes(data))
+    assert coordinator.isEncryptionAuthorized(0, bytes(initiator_signature), bytes(data))
+
     assert global_allow_list.isAuthorized(0, bytes(signature), bytes(data))
+    assert coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(data))

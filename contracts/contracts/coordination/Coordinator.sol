@@ -56,6 +56,7 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
     }
 
     struct Ritual {
+        // NOTE: changing the order here affects nucypher/nucypher: CoordinatorAgent
         address initiator;
         uint32 initTimestamp;
         uint32 endTimestamp;
@@ -93,7 +94,7 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
     mapping(uint256 => uint256) public pendingFees;
     IFeeModel internal feeModel; // TODO: Consider making feeModel specific to each ritual
     IReimbursementPool internal reimbursementPool;
-    mapping(address => ParticipantKey[]) internal keysHistory;
+    mapping(address => ParticipantKey[]) internal participantKeysHistory;
     mapping(bytes32 => uint32) internal ritualPublicKeyRegistry;
 
     constructor(
@@ -153,7 +154,7 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
         require(stakingProvider != address(0), "Operator has no bond with staking provider");
 
         ParticipantKey memory newRecord = ParticipantKey(lastRitualId, _publicKey);
-        keysHistory[stakingProvider].push(newRecord);
+        participantKeysHistory[stakingProvider].push(newRecord);
 
         emit ParticipantPublicKeySet(lastRitualId, stakingProvider, _publicKey);
         // solhint-disable-next-line avoid-tx-origin
@@ -165,15 +166,20 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
         address _provider,
         uint256 _ritualId
     ) external view returns (BLS12381.G2Point memory) {
-        ParticipantKey[] storage participantHistory = keysHistory[_provider];
+        ParticipantKey[] storage participantHistory = participantKeysHistory[_provider];
 
-        for (uint256 i = participantHistory.length - 1; i >= 0; i--) {
-            if (participantHistory[i].lastRitualId <= _ritualId) {
-                return participantHistory[i].publicKey;
+        for (uint256 i = participantHistory.length; i > 0; i--) {
+            if (participantHistory[i - 1].lastRitualId <= _ritualId) {
+                return participantHistory[i - 1].publicKey;
             }
         }
 
         revert("No keys found prior to the provided ritual");
+    }
+
+    function isProviderPublicKeySet(address _provider) external view returns (bool) {
+        ParticipantKey[] storage participantHistory = participantKeysHistory[_provider];
+        return participantHistory.length > 0;
     }
 
     function setTimeout(uint32 newTimeout) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -247,7 +253,7 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
             Participant storage newParticipant = ritual.participant.push();
             address current = providers[i];
             // Make sure that current provider has already set their public key
-            ParticipantKey[] storage participantHistory = keysHistory[current];
+            ParticipantKey[] storage participantHistory = participantKeysHistory[current];
             require(participantHistory.length > 0, "Provider has not set their public key");
 
             require(previous < current, "Providers must be sorted");
@@ -405,17 +411,26 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
         return getParticipantFromProvider(rituals[ritualId], provider);
     }
 
+    function isEncryptionAuthorized(
+        uint32 ritualId,
+        bytes memory evidence,
+        bytes memory ciphertextHeader
+    ) external view returns (bool) {
+        Ritual storage ritual = rituals[ritualId];
+        require(getRitualState(ritual) == RitualState.FINALIZED, "Ritual not finalized");
+        return ritual.accessController.isAuthorized(ritualId, evidence, ciphertextHeader);
+    }
+
     function processRitualPayment(
         uint32 ritualId,
         address[] calldata providers,
         uint32 duration
     ) internal {
         uint256 ritualCost = getRitualInitiationCost(providers, duration);
-        if (ritualCost > 0) {
-            totalPendingFees += ritualCost;
-            pendingFees[ritualId] = ritualCost;
-            currency.safeTransferFrom(msg.sender, address(this), ritualCost);
-        }
+        require(ritualCost > 0, "Invalid ritual cost");
+        totalPendingFees += ritualCost;
+        pendingFees[ritualId] = ritualCost;
+        currency.safeTransferFrom(msg.sender, address(this), ritualCost);
     }
 
     function processPendingFee(uint32 ritualId) public {
