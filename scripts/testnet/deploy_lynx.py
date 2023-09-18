@@ -13,12 +13,19 @@ def main():
     This script deploys the Lynx TACo Root Application,
     Lynx TACo Child Application, Lynx Ritual Token, and Lynx Coordinator.
 
-    usage: `ape run testnet deploy_lynx --network ethereum:goerli:https://goerli.infura.io/v3/<API_KEY>`
-
-    September 18, 2023, Deployment:
+    September 18, 2023, Goerli Deployment:
+    ape run testnet deploy_lynx --network ethereum:goerli:https://goerli.infura.io/v3/<API_KEY>
     'LynxRootApplication' deployed to: 0x39F1061d68540F7eb57545C4C731E0945c167016
     'LynxTACoChildApplication' deployed to: 0x892a548592bA66dc3860F75d76cDDb488a838c35
     'Coordinator' deployed to: 0x18566d4590be23e4cb0a8476C80C22096C8c3418
+
+    September 18, 2023, Mumbai Deployment:
+     ape run testnet deploy_lynx  --network polygon:mumbai:https://polygon-mumbai.infura.io/v3/<API_KEY>
+    'LynxRootApplication' deployed to: 0xb6400F55857716A3Ff863e6bE867F01F23C71793
+    'LynxTACoChildApplication' deployed to: 0x3593f90b19F148FCbe7B00201f854d8839F33F86
+    'Coordinator' deployed to: 0x4077ad1CFA834aEd68765dB0Cf3d14701a970a9a
+
+
     """
 
     try:
