@@ -1,19 +1,16 @@
 #!/usr/bin/python3
-import os
 from pathlib import Path
 
-import utils
 from ape import project
 from ape.cli import get_user_selected_account
+
+from utils.deployment import ConstructorParams
 from utils.registry import registry_from_ape_deployments
-from web3 import Web3
+from utils.misc import check_etherscan_plugin
 
 PUBLISH = False
-
-# TODO cleanup; uniqueness, existence etc.
-DEPLOYMENT_REGISTRY_FILEPATH = (
-    Path(utils.__file__).parent / "artifacts" / "lynx_testnet_registry.json"
-)
+CONSTRUCTOR_PARAMS_FILEPATH = Path('')
+DEPLOYMENT_REGISTRY_FILEPATH = Path("lynx_testnet_registry.json")  # TODO: move to artifacts and make unique
 
 
 def main():
@@ -32,26 +29,19 @@ def main():
     'LynxRootApplication' deployed to: 0xb6400F55857716A3Ff863e6bE867F01F23C71793
     'LynxTACoChildApplication' deployed to: 0x3593f90b19F148FCbe7B00201f854d8839F33F86
     'Coordinator' deployed to: 0x4077ad1CFA834aEd68765dB0Cf3d14701a970a9a
-
-
     """
 
-    try:
-        import ape_etherscan  # noqa: F401
-    except ImportError:
-        raise ImportError("Please install the ape-etherscan plugin to use this script.")
-    if not os.environ.get("ETHERSCAN_API_KEY"):
-        raise ValueError("ETHERSCAN_API_KEY is not set.")
-
+    check_etherscan_plugin()
     deployer = get_user_selected_account()
+    config = ConstructorParams.from_file(CONSTRUCTOR_PARAMS_FILEPATH)
 
-    # Lynx TACo Root Application
-    LynxRootApplication = deployer.deploy(project.LynxRootApplication, publish=PUBLISH)
+    LynxRootApplication = deployer.deploy(
+        *config.get_params(project.LynxRootApplication, locals()),
+        publish=PUBLISH
+    )
 
-    # Lynx TACo Child Application
     LynxTACoChildApplication = deployer.deploy(
-        project.LynxTACoChildApplication,
-        LynxRootApplication.address,
+        *config.get_params(project.LynxRootApplication, locals()),
         publish=PUBLISH,
     )
 
@@ -61,28 +51,30 @@ def main():
         publish=PUBLISH,
     )
 
-    # Lynx Ritual Token
     LynxRitualToken = deployer.deploy(
-        project.LynxRitualToken, Web3.to_wei(10_000_000, "ether"), publish=PUBLISH
+        *config.get_params(project.LynxRitualToken, locals()),
+        publish=PUBLISH
     )
 
     # Lynx Coordinator
     Coordinator = deployer.deploy(
-        project.Coordinator,  # coordinator
-        LynxTACoChildApplication.address,  # root_app
-        3600,  # timeout (seconds)
-        4,  # max_dkg_size
-        deployer.address,  # admin
-        LynxRitualToken.address,  # currency
-        1,  # fee_rate (wei per second)
+        *config.get_params(project.Coordinator, locals()),
         publish=PUBLISH,
     )
 
-    LynxTACoChildApplication.setCoordinator(Coordinator.address, sender=deployer)
+    LynxTACoChildApplication.setCoordinator(
+        Coordinator.address,
+        sender=deployer
+    )
 
-    # list deployments
-    deployments = [LynxRootApplication, LynxTACoChildApplication, LynxRitualToken, Coordinator]
+    deployments = [
+        LynxRootApplication,
+        LynxTACoChildApplication,
+        LynxRitualToken,
+        Coordinator
+    ]
 
     registry_from_ape_deployments(
-        deployments=deployments, output_filepath=DEPLOYMENT_REGISTRY_FILEPATH
+        deployments=deployments,
+        output_filepath=DEPLOYMENT_REGISTRY_FILEPATH
     )
