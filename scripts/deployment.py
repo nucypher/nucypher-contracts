@@ -84,7 +84,7 @@ class DeploymentConfig:
             config = OrderedDict(json.load(config_file))
         return cls(config)
 
-    def get_constructor_params(
+    def get_deployment_params(
         self, container: ContractContainer, context: typing.Dict[str, Any], interactive: bool = True
     ) -> List[Any]:
         contract_name = container.contract_type.name
@@ -95,4 +95,5 @@ class DeploymentConfig:
         )
         if interactive:
             _confirm_resolution(resolved_params, contract_name)
-        return list(resolved_params.values())
+
+        return [container, *resolved_params.values()]

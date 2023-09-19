@@ -37,14 +37,12 @@ def main():
     config = DeploymentConfig.from_file(DEPLOYMENT_CONFIG_FILEPATH)
 
     LynxRootApplication = deployer.deploy(
-        project.LynxRootApplication,  # TODO should the container be returned by call below?
-        *config.get_constructor_params(project.LynxRootApplication, locals()),
+        *config.get_deployment_params(project.LynxRootApplication, locals()),
         publish=PUBLISH,
     )
 
     LynxTACoChildApplication = deployer.deploy(
-        project.LynxTACoChildApplication,
-        *config.get_constructor_params(project.LynxTACoChildApplication, locals()),
+        *config.get_deployment_params(project.LynxTACoChildApplication, locals()),
         publish=PUBLISH,
     )
 
@@ -55,15 +53,13 @@ def main():
     )
 
     LynxRitualToken = deployer.deploy(
-        project.LynxRitualToken,
-        *config.get_constructor_params(project.LynxRitualToken, locals()),
+        *config.get_deployment_params(project.LynxRitualToken, locals()),
         publish=PUBLISH,
     )
 
     # Lynx Coordinator
     Coordinator = deployer.deploy(
-        project.Coordinator,
-        *config.get_constructor_params(project.Coordinator, locals()),
+        *config.get_deployment_params(project.Coordinator, locals()),
         publish=PUBLISH,
     )
 
