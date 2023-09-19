@@ -1,3 +1,5 @@
+import os
+
 from ape import accounts, config, networks, project
 from web3 import Web3
 
@@ -40,3 +42,12 @@ def get_account(id):
         return accounts.test_accounts[0]
     else:
         return None
+
+
+def check_etherscan_plugin():
+    try:
+        import ape_etherscan  # noqa: F401
+    except ImportError:
+        raise ImportError("Please install the ape-etherscan plugin to use this script.")
+    if not os.environ.get("ETHERSCAN_API_KEY"):
+        raise ValueError("ETHERSCAN_API_KEY is not set.")

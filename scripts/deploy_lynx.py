@@ -3,14 +3,15 @@ from pathlib import Path
 
 from ape import project
 from ape.cli import get_user_selected_account
-
-from utils.deployment import ConstructorParams
-from utils.registry import registry_from_ape_deployments
-from utils.misc import check_etherscan_plugin
+from scripts.deployment import DeploymentConfig
+from scripts.registry import registry_from_ape_deployments
+from scripts.utils import check_etherscan_plugin
 
 PUBLISH = False
-CONSTRUCTOR_PARAMS_FILEPATH = Path('')
-DEPLOYMENT_REGISTRY_FILEPATH = Path("lynx_testnet_registry.json")  # TODO: move to artifacts and make unique
+DEPLOYMENT_CONFIG_FILEPATH = Path(__file__).parent / "configs" / "lynx_config.json"
+DEPLOYMENT_REGISTRY_FILEPATH = (
+    Path(__file__).parent.parent / "artifacts" / "lynx_testnet_registry.json"
+)  # TODO: make unique
 
 
 def main():
@@ -33,15 +34,17 @@ def main():
 
     check_etherscan_plugin()
     deployer = get_user_selected_account()
-    config = ConstructorParams.from_file(CONSTRUCTOR_PARAMS_FILEPATH)
+    config = DeploymentConfig.from_file(DEPLOYMENT_CONFIG_FILEPATH)
 
     LynxRootApplication = deployer.deploy(
-        *config.get_params(project.LynxRootApplication, locals()),
-        publish=PUBLISH
+        project.LynxRootApplication,  # TODO should the container be returned by call below?
+        *config.get_constructor_params(project.LynxRootApplication, locals()),
+        publish=PUBLISH,
     )
 
     LynxTACoChildApplication = deployer.deploy(
-        *config.get_params(project.LynxRootApplication, locals()),
+        project.LynxTACoChildApplication,
+        *config.get_constructor_params(project.LynxTACoChildApplication, locals()),
         publish=PUBLISH,
     )
 
@@ -52,29 +55,22 @@ def main():
     )
 
     LynxRitualToken = deployer.deploy(
-        *config.get_params(project.LynxRitualToken, locals()),
-        publish=PUBLISH
+        project.LynxRitualToken,
+        *config.get_constructor_params(project.LynxRitualToken, locals()),
+        publish=PUBLISH,
     )
 
     # Lynx Coordinator
     Coordinator = deployer.deploy(
-        *config.get_params(project.Coordinator, locals()),
+        project.Coordinator,
+        *config.get_constructor_params(project.Coordinator, locals()),
         publish=PUBLISH,
     )
 
-    LynxTACoChildApplication.setCoordinator(
-        Coordinator.address,
-        sender=deployer
-    )
+    LynxTACoChildApplication.setCoordinator(Coordinator.address, sender=deployer)
 
-    deployments = [
-        LynxRootApplication,
-        LynxTACoChildApplication,
-        LynxRitualToken,
-        Coordinator
-    ]
+    deployments = [LynxRootApplication, LynxTACoChildApplication, LynxRitualToken, Coordinator]
 
     registry_from_ape_deployments(
-        deployments=deployments,
-        output_filepath=DEPLOYMENT_REGISTRY_FILEPATH
+        deployments=deployments, output_filepath=DEPLOYMENT_REGISTRY_FILEPATH
     )

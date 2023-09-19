@@ -25,10 +25,7 @@ def _resolve_param(value: Any, context: typing.Dict[str, Any]) -> Any:
     return contract_instance.address
 
 
-def _resolve_parameters(
-        parameters: OrderedDict,
-        context: typing.Dict[str, Any]
-) -> OrderedDict:
+def _resolve_parameters(parameters: OrderedDict, context: typing.Dict[str, Any]) -> OrderedDict:
     resolved_params = OrderedDict()
     for name, value in parameters.items():
         if isinstance(value, list):
@@ -42,10 +39,7 @@ def _resolve_parameters(
     return resolved_params
 
 
-def _validate_param(
-        param: Any,
-        contracts: List[str]
-) -> None:
+def _validate_param(param: Any, contracts: List[str]) -> None:
     if not is_variable(param):
         return
     variable = param.strip(VARIABLE_PREFIX)
@@ -53,9 +47,7 @@ def _validate_param(
         raise DeploymentConfigError(f"Variable {param} is not resolvable")
 
 
-def validate_deployment_config(
-        config: typing.OrderedDict[str, Any]
-) -> None:
+def validate_deployment_config(config: typing.OrderedDict[str, Any]) -> None:
     available_contracts = list(config.keys())
     for contract, parameters in config.items():
         for name, value in parameters.items():
@@ -66,12 +58,14 @@ def validate_deployment_config(
                 _validate_param(value, available_contracts)
 
 
-def _confirm_resolution(
-        resolved_params: OrderedDict,
-        contract_name: str
-) -> None:
+def _confirm_resolution(resolved_params: OrderedDict, contract_name: str) -> None:
+    if len(resolved_params) == 0:
+        # Nothing really to confirm
+        print(f"(i) No constructor parameters for {contract_name}; proceeding")
+        return
+
     print(f"Resolved constructor parameters for {contract_name}")
-    for name, resolved_value in resolved_params:
+    for name, resolved_value in resolved_params.items():
         print(f"\t{name}={resolved_value}")
     answer = input("Continue Y/N? ")
     if answer.lower().strip() == "n":
@@ -79,31 +73,26 @@ def _confirm_resolution(
         exit(-1)
 
 
-class ConstructorParams:
-    def __init__(self, constructor_values: OrderedDict):
-        self.params = constructor_values
+class DeploymentConfig:
+    def __init__(self, contracts_configuration: OrderedDict):
+        validate_deployment_config(contracts_configuration)
+        self.contracts_configuration = contracts_configuration
 
     @classmethod
-    def from_file(cls, config_filepath: Path) -> "ConstructorParams":
+    def from_file(cls, config_filepath: Path) -> "DeploymentConfig":
         with open(config_filepath, "r") as config_file:
             config = OrderedDict(json.load(config_file))
         return cls(config)
 
-    def get_params(
-        self,
-        container: ContractContainer,
-        context: typing.Dict[str, Any],
-        interactive: bool = True
+    def get_constructor_params(
+        self, container: ContractContainer, context: typing.Dict[str, Any], interactive: bool = True
     ) -> List[Any]:
         contract_name = container.contract_type.name
-        contract_parameters = self.params[contract_name]
+        contract_parameters = self.contracts_configuration[contract_name]
         resolved_params = _resolve_parameters(
             contract_parameters,
             context,
         )
         if interactive:
-            _confirm_resolution(
-                resolved_params,
-                contract_name
-            )
+            _confirm_resolution(resolved_params, contract_name)
         return list(resolved_params.values())
