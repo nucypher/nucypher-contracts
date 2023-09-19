@@ -4,21 +4,28 @@ from collections import OrderedDict
 from pathlib import Path
 from typing import Any, List
 
+from ape.api import AccountAPI
+from ape.cli import get_user_selected_account
 from ape.contracts.base import ContractContainer
+
+from scripts.utils import check_etherscan_plugin
 
 VARIABLE_PREFIX = "$"
 
 
-class DeploymentConfigError(ValueError):
-    pass
+def prepare_deployment(params_filepath: Path) -> typing.Tuple[AccountAPI, 'ConstructorParameters']:
+    check_etherscan_plugin()
+    deployer = get_user_selected_account()
+    params = ConstructorParameters.from_file(params_filepath)
+    return deployer, params
 
 
-def is_variable(param: Any) -> bool:
+def _is_variable(param: Any) -> bool:
     return isinstance(param, str) and param.startswith(VARIABLE_PREFIX)
 
 
 def _resolve_param(value: Any, context: typing.Dict[str, Any]) -> Any:
-    if not is_variable(value):
+    if not _is_variable(value):
         return value
     variable = value.strip(VARIABLE_PREFIX)
     contract_instance = context[variable]
@@ -40,11 +47,11 @@ def _resolve_parameters(parameters: OrderedDict, context: typing.Dict[str, Any])
 
 
 def _validate_param(param: Any, contracts: List[str]) -> None:
-    if not is_variable(param):
+    if not _is_variable(param):
         return
     variable = param.strip(VARIABLE_PREFIX)
     if variable not in contracts:
-        raise DeploymentConfigError(f"Variable {param} is not resolvable")
+        raise ConstructorParameters.Invalid(f"Variable {param} is not resolvable")
 
 
 def validate_deployment_config(config: typing.OrderedDict[str, Any]) -> None:
@@ -64,27 +71,34 @@ def _confirm_resolution(resolved_params: OrderedDict, contract_name: str) -> Non
         print(f"(i) No constructor parameters for {contract_name}; proceeding")
         return
 
-    print(f"Resolved constructor parameters for {contract_name}")
+    print(f"Constructor parameters for {contract_name}")
     for name, resolved_value in resolved_params.items():
         print(f"\t{name}={resolved_value}")
-    answer = input("Continue Y/N? ")
+    answer = input("Deploy Y/N? ")
     if answer.lower().strip() == "n":
         print("Aborting deployment!")
         exit(-1)
 
 
-class DeploymentConfig:
+class ConstructorParameters:
+
+    class Invalid(Exception):
+        """raised when the constructor parameters are invalid"""
+
     def __init__(self, contracts_configuration: OrderedDict):
         validate_deployment_config(contracts_configuration)
         self.contracts_configuration = contracts_configuration
 
+    def __call__(self, *args, **kwargs):
+        return self.__resolve_constructor_parameters(*args, **kwargs)
+
     @classmethod
-    def from_file(cls, config_filepath: Path) -> "DeploymentConfig":
+    def from_file(cls, config_filepath: Path) -> "ConstructorParameters":
         with open(config_filepath, "r") as config_file:
             config = OrderedDict(json.load(config_file))
         return cls(config)
 
-    def get_deployment_params(
+    def __resolve_constructor_parameters(
         self, container: ContractContainer, context: typing.Dict[str, Any], interactive: bool = True
     ) -> List[Any]:
         contract_name = container.contract_type.name

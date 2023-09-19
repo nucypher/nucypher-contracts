@@ -2,13 +2,12 @@
 from pathlib import Path
 
 from ape import project
-from ape.cli import get_user_selected_account
-from scripts.deployment import DeploymentConfig
+
+from scripts.deployment import prepare_deployment
 from scripts.registry import registry_from_ape_deployments
-from scripts.utils import check_etherscan_plugin
 
 PUBLISH = False
-DEPLOYMENT_CONFIG_FILEPATH = Path(__file__).parent / "configs" / "lynx_config.json"
+DEPLOYMENT_CONFIG_FILEPATH = Path(__file__).parent / "params" / "lynx-alpha-13.json"
 DEPLOYMENT_REGISTRY_FILEPATH = (
     Path(__file__).parent.parent / "artifacts" / "lynx_testnet_registry.json"
 )  # TODO: make unique
@@ -32,17 +31,17 @@ def main():
     'Coordinator' deployed to: 0x4077ad1CFA834aEd68765dB0Cf3d14701a970a9a
     """
 
-    check_etherscan_plugin()
-    deployer = get_user_selected_account()
-    config = DeploymentConfig.from_file(DEPLOYMENT_CONFIG_FILEPATH)
+    deployer, params = prepare_deployment(
+        params_filepath=DEPLOYMENT_CONFIG_FILEPATH
+    )
 
     LynxRootApplication = deployer.deploy(
-        *config.get_deployment_params(project.LynxRootApplication, locals()),
+        *params(project.LynxRootApplication, locals()),
         publish=PUBLISH,
     )
 
     LynxTACoChildApplication = deployer.deploy(
-        *config.get_deployment_params(project.LynxTACoChildApplication, locals()),
+        *params(project.LynxTACoChildApplication, locals()),
         publish=PUBLISH,
     )
 
@@ -53,20 +52,26 @@ def main():
     )
 
     LynxRitualToken = deployer.deploy(
-        *config.get_deployment_params(project.LynxRitualToken, locals()),
+        *params(project.LynxRitualToken, locals()),
         publish=PUBLISH,
     )
 
     # Lynx Coordinator
     Coordinator = deployer.deploy(
-        *config.get_deployment_params(project.Coordinator, locals()),
+        *params(project.Coordinator, locals()),
         publish=PUBLISH,
     )
 
     LynxTACoChildApplication.setCoordinator(Coordinator.address, sender=deployer)
 
-    deployments = [LynxRootApplication, LynxTACoChildApplication, LynxRitualToken, Coordinator]
+    deployments = [
+        LynxRootApplication,
+        LynxTACoChildApplication,
+        LynxRitualToken,
+        Coordinator
+    ]
 
     registry_from_ape_deployments(
-        deployments=deployments, output_filepath=DEPLOYMENT_REGISTRY_FILEPATH
+        deployments=deployments,
+        output_filepath=DEPLOYMENT_REGISTRY_FILEPATH
     )
