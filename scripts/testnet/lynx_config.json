@@ -1,0 +1,17 @@
+{
+  "LynxRootApplication": {},
+  "LynxTACoChildApplication": {
+    "_rootApplication": "$LynxRootApplication"
+  },
+  "LynxRitualToken": {
+    "_totalSupplyOfTokens": 10000000000000000000000000
+  },
+  "Coordinator": {
+    "_application": "$LynxTACoChildApplication",
+    "_timeout": 3600,
+    "_maxDkgSize": 4,
+    "_admin": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600",
+    "_currency": "$LynxRitualToken",
+    "_feeRatePerSecond": 1
+  }
+}
