@@ -36,12 +36,12 @@ def main():
     )
 
     LynxRootApplication = deployer.deploy(
-        *params(project.LynxRootApplication, locals()),
+        *params.get(project.LynxRootApplication, locals()),
         publish=PUBLISH,
     )
 
     LynxTACoChildApplication = deployer.deploy(
-        *params(project.LynxTACoChildApplication, locals()),
+        *params.get(project.LynxTACoChildApplication, locals()),
         publish=PUBLISH,
     )
 
@@ -52,13 +52,13 @@ def main():
     )
 
     LynxRitualToken = deployer.deploy(
-        *params(project.LynxRitualToken, locals()),
+        *params.get(project.LynxRitualToken, locals()),
         publish=PUBLISH,
     )
 
     # Lynx Coordinator
     Coordinator = deployer.deploy(
-        *params(project.Coordinator, locals()),
+        *params.get(project.Coordinator, locals()),
         publish=PUBLISH,
     )
 

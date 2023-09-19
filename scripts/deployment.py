@@ -89,7 +89,7 @@ class ConstructorParameters:
         validate_deployment_config(contracts_configuration)
         self.contracts_configuration = contracts_configuration
 
-    def __call__(self, *args, **kwargs):
+    def get(self, *args, **kwargs):
         return self.__resolve_constructor_parameters(*args, **kwargs)
 
     @classmethod
