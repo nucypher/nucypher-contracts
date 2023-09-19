@@ -68,3 +68,43 @@ The networks used here are standard ape networks, you can see the full list with
 ```
 $ ape networks list
 ```
+
+## NPM publishing process
+
+For interoperability, we keep an NPM package with information of deployed smart contracts, such as address, ABI, etc.
+
+The NPM package can be found in https://www.npmjs.com/package/@nucypher/nucypher-contracts and the process to update it is as follows:
+
+1. Download the last version of the package in a separate folder. Testnet versions end in
+`-<testnet>` (e.g., `-goerli`).
+
+```bash
+  $ npm i @nucypher/nucypher-contracts@x.y.z[-<testnet>]
+```
+2. Copy the `artifacts` folder and paste it into the nucypher-contracts local repository. Only the
+files that we want to be uploaded must be kept.
+
+3. Add the artifacts (`abi` and `address`) and the source code of the smart contract.
+
+4. Leave only the artifacts/contracts of the Ethereum network were the contract to be added is
+deployed (mainnet, Ropsten...).
+
+5. Change the `version` field of the `package.json`. See “Versioning” section.
+
+> If you are uploading testnet contracts, add `<testnet_name>` to the semantic version. For
+> example: "version": "0.3.0-ropsten"
+
+6. Publish the new version:
+
+```bash
+  $ npm publish
+```
+
+### NPM versioning
+
+We follow semantic versioning schema:
+
+https://docs.npmjs.com/about-semantic-versioning
+
+But with some changes: while the major version is 0, we always bump patch version instead of minor
+version.
