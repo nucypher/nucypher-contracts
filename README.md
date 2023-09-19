@@ -71,15 +71,15 @@ $ ape networks list
 
 ## NPM publishing process
 
-When a new smart contract is deployed it is needed to add to NPM package:
+For interoperability, we keep an NPM package with information of deployed smart contracts, such as address, ABI, etc.
 
-https://www.npmjs.com/package/@nucypher/nucypher-contracts
+The NPM package can be found in https://www.npmjs.com/package/@nucypher/nucypher-contracts and the process to update it is as follows:
 
-1. Download the last version of the package in a separated folder. Ropsten versions end in
-`-ropsten`.
+1. Download the last version of the package in a separate folder. Testnet versions end in
+`-<testnet>` (e.g., `-goerli`).
 
 ```bash
-  $ npm i @nucypher/nucypher-contracts@x.y.z[-ropsten]
+  $ npm i @nucypher/nucypher-contracts@x.y.z[-<testnet>]
 ```
 2. Copy the `artifacts` folder and paste it into the nucypher-contracts local repository. Only the
 files that we want to be uploaded must be kept.
