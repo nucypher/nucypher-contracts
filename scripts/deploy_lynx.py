@@ -30,16 +30,16 @@ def main():
     'Coordinator' deployed to: 0x4077ad1CFA834aEd68765dB0Cf3d14701a970a9a
     """
 
-    deployer, params = prepare_deployment(params_filepath=DEPLOYMENT_CONFIG_FILEPATH)
+    deployer, params = prepare_deployment(
+        params_filepath=DEPLOYMENT_CONFIG_FILEPATH, publish=PUBLISH
+    )
 
     LynxRootApplication = deployer.deploy(
-        *params.get(project.LynxRootApplication, locals()),
-        publish=PUBLISH,
+        *params.get(project.LynxRootApplication, locals()), **params.get_kwargs()
     )
 
     LynxTACoChildApplication = deployer.deploy(
-        *params.get(project.LynxTACoChildApplication, locals()),
-        publish=PUBLISH,
+        *params.get(project.LynxTACoChildApplication, locals()), **params.get_kwargs()
     )
 
     LynxRootApplication.setChildApplication(
@@ -48,15 +48,11 @@ def main():
     )
 
     LynxRitualToken = deployer.deploy(
-        *params.get(project.LynxRitualToken, locals()),
-        publish=PUBLISH,
+        *params.get(project.LynxRitualToken, locals()), **params.get_kwargs()
     )
 
     # Lynx Coordinator
-    Coordinator = deployer.deploy(
-        *params.get(project.Coordinator, locals()),
-        publish=PUBLISH,
-    )
+    Coordinator = deployer.deploy(*params.get(project.Coordinator, locals()), **params.get_kwargs())
 
     LynxTACoChildApplication.setCoordinator(Coordinator.address, sender=deployer)
 

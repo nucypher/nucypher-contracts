@@ -12,12 +12,14 @@ from scripts.utils import check_etherscan_plugin
 VARIABLE_PREFIX = "$"
 
 
-def prepare_deployment(params_filepath: Path) -> typing.Tuple[AccountAPI, "DeploymentParameters"]:
+def prepare_deployment(
+    params_filepath: Path, publish: bool
+) -> typing.Tuple[AccountAPI, "ApeDeploymentParameters"]:
     check_etherscan_plugin()
     deployer = get_user_selected_account()
 
     constructor_parameters = ConstructorParameters.from_file(params_filepath)
-    deployment_parameters = DeploymentParameters(constructor_parameters)
+    deployment_parameters = ApeDeploymentParameters(constructor_parameters, publish)
 
     return deployer, deployment_parameters
 
@@ -96,9 +98,13 @@ class ConstructorParameters:
         return resolved_params
 
 
-class DeploymentParameters:
-    def __init__(self, constructor_parameters: ConstructorParameters):
+class ApeDeploymentParameters:
+    def __init__(self, constructor_parameters: ConstructorParameters, publish: bool):
         self.constructor_parameters = constructor_parameters
+        self.publish = publish
+
+    def get_kwargs(self):
+        return {"publish": self.publish}
 
     def get(self, *args, **kwargs):
         return self.__resolve_deployment_parameters(*args, **kwargs)
