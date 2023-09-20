@@ -7,16 +7,15 @@ from typing import Any, List
 from ape.api import AccountAPI
 from ape.cli import get_user_selected_account
 from ape.contracts.base import ContractContainer
-
 from scripts.utils import check_etherscan_plugin
 
 VARIABLE_PREFIX = "$"
 
 
-def prepare_deployment(params_filepath: Path) -> typing.Tuple[AccountAPI, 'ConstructorParameters']:
+def prepare_deployment(params_filepath: Path) -> typing.Tuple[AccountAPI, "DeploymentParameters"]:
     check_etherscan_plugin()
     deployer = get_user_selected_account()
-    params = ConstructorParameters.from_file(params_filepath)
+    params = DeploymentParameters.from_file(params_filepath)
     return deployer, params
 
 
@@ -32,7 +31,9 @@ def _resolve_param(value: Any, context: typing.Dict[str, Any]) -> Any:
     return contract_instance.address
 
 
-def _resolve_parameters(parameters: OrderedDict, context: typing.Dict[str, Any]) -> OrderedDict:
+def _resolve_constructor_parameters(
+    parameters: OrderedDict, context: typing.Dict[str, Any]
+) -> OrderedDict:
     resolved_params = OrderedDict()
     for name, value in parameters.items():
         if isinstance(value, list):
@@ -46,12 +47,12 @@ def _resolve_parameters(parameters: OrderedDict, context: typing.Dict[str, Any])
     return resolved_params
 
 
-def _validate_param(param: Any, contracts: List[str]) -> None:
+def _validate_constructor_param(param: Any, contracts: List[str]) -> None:
     if not _is_variable(param):
         return
     variable = param.strip(VARIABLE_PREFIX)
     if variable not in contracts:
-        raise ConstructorParameters.Invalid(f"Variable {param} is not resolvable")
+        raise DeploymentParameters.Invalid(f"Variable {param} is not resolvable")
 
 
 def validate_deployment_config(config: typing.OrderedDict[str, Any]) -> None:
@@ -60,9 +61,9 @@ def validate_deployment_config(config: typing.OrderedDict[str, Any]) -> None:
         for name, value in parameters.items():
             if isinstance(value, list):
                 for param in value:
-                    _validate_param(param, available_contracts)
+                    _validate_constructor_param(param, available_contracts)
             else:
-                _validate_param(value, available_contracts)
+                _validate_constructor_param(value, available_contracts)
 
 
 def _confirm_resolution(resolved_params: OrderedDict, contract_name: str) -> None:
@@ -80,30 +81,29 @@ def _confirm_resolution(resolved_params: OrderedDict, contract_name: str) -> Non
         exit(-1)
 
 
-class ConstructorParameters:
-
+class DeploymentParameters:
     class Invalid(Exception):
         """raised when the constructor parameters are invalid"""
 
-    def __init__(self, contracts_configuration: OrderedDict):
-        validate_deployment_config(contracts_configuration)
-        self.contracts_configuration = contracts_configuration
+    def __init__(self, constructor_parameters: OrderedDict):
+        validate_deployment_config(constructor_parameters)
+        self.constructor_parameters = constructor_parameters
 
     def get(self, *args, **kwargs):
-        return self.__resolve_constructor_parameters(*args, **kwargs)
+        return self.__resolve_deployment_parameters(*args, **kwargs)
 
     @classmethod
-    def from_file(cls, config_filepath: Path) -> "ConstructorParameters":
+    def from_file(cls, config_filepath: Path) -> "DeploymentParameters":
         with open(config_filepath, "r") as config_file:
             config = OrderedDict(json.load(config_file))
         return cls(config)
 
-    def __resolve_constructor_parameters(
+    def __resolve_deployment_parameters(
         self, container: ContractContainer, context: typing.Dict[str, Any], interactive: bool = True
     ) -> List[Any]:
         contract_name = container.contract_type.name
-        contract_parameters = self.contracts_configuration[contract_name]
-        resolved_params = _resolve_parameters(
+        contract_parameters = self.constructor_parameters[contract_name]
+        resolved_params = _resolve_constructor_parameters(
             contract_parameters,
             context,
         )
