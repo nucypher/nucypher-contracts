@@ -9,7 +9,7 @@ PUBLISH = False
 DEPLOYMENT_CONFIG_FILEPATH = Path(__file__).parent / "params" / "lynx-alpha-13.json"
 DEPLOYMENT_REGISTRY_FILEPATH = (
     Path(__file__).parent.parent / "artifacts" / "lynx_alpha-13_registry.json"
-)  # TODO: make unique
+)
 
 
 def main():
