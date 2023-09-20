@@ -45,7 +45,6 @@ def main():
     LynxRootApplication.setChildApplication(
         LynxTACoChildApplication.address,
         sender=deployer,
-        publish=PUBLISH,
     )
 
     LynxRitualToken = deployer.deploy(
