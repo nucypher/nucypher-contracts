@@ -15,8 +15,11 @@ VARIABLE_PREFIX = "$"
 def prepare_deployment(params_filepath: Path) -> typing.Tuple[AccountAPI, "DeploymentParameters"]:
     check_etherscan_plugin()
     deployer = get_user_selected_account()
-    params = DeploymentParameters.from_file(params_filepath)
-    return deployer, params
+
+    constructor_parameters = ConstructorParameters.from_file(params_filepath)
+    deployment_parameters = DeploymentParameters(constructor_parameters)
+
+    return deployer, deployment_parameters
 
 
 def _is_variable(param: Any) -> bool:
@@ -31,31 +34,15 @@ def _resolve_param(value: Any, context: typing.Dict[str, Any]) -> Any:
     return contract_instance.address
 
 
-def _resolve_constructor_parameters(
-    parameters: OrderedDict, context: typing.Dict[str, Any]
-) -> OrderedDict:
-    resolved_params = OrderedDict()
-    for name, value in parameters.items():
-        if isinstance(value, list):
-            param_value_list = list()
-            for item in value:
-                param = _resolve_param(item, context)
-                param_value_list.append(param)
-            resolved_params[name] = param_value_list
-        else:
-            resolved_params[name] = _resolve_param(value, context)
-    return resolved_params
-
-
 def _validate_constructor_param(param: Any, contracts: List[str]) -> None:
     if not _is_variable(param):
         return
     variable = param.strip(VARIABLE_PREFIX)
     if variable not in contracts:
-        raise DeploymentParameters.Invalid(f"Variable {param} is not resolvable")
+        raise ConstructorParameters.Invalid(f"Variable {param} is not resolvable")
 
 
-def validate_deployment_config(config: typing.OrderedDict[str, Any]) -> None:
+def validate_constructor_parameters(config: typing.OrderedDict[str, Any]) -> None:
     available_contracts = list(config.keys())
     for contract, parameters in config.items():
         for name, value in parameters.items():
@@ -81,32 +68,46 @@ def _confirm_resolution(resolved_params: OrderedDict, contract_name: str) -> Non
         exit(-1)
 
 
-class DeploymentParameters:
+class ConstructorParameters:
     class Invalid(Exception):
-        """raised when the constructor parameters are invalid"""
+        """Raised when the constructor parameters are invalid"""
 
-    def __init__(self, constructor_parameters: OrderedDict):
-        validate_deployment_config(constructor_parameters)
+    def __init__(self, parameters: OrderedDict):
+        validate_constructor_parameters(parameters)
+        self.parameters = parameters
+
+    @classmethod
+    def from_file(cls, params_filepath: Path) -> "ConstructorParameters":
+        with open(params_filepath, "r") as params_file:
+            config = OrderedDict(json.load(params_file))
+        return cls(config)
+
+    def resolve(self, contract_name: str, context: typing.Dict[str, Any]) -> OrderedDict:
+        resolved_params = OrderedDict()
+        for name, value in self.parameters[contract_name].items():
+            if isinstance(value, list):
+                param_value_list = list()
+                for item in value:
+                    param = _resolve_param(item, context)
+                    param_value_list.append(param)
+                resolved_params[name] = param_value_list
+            else:
+                resolved_params[name] = _resolve_param(value, context)
+        return resolved_params
+
+
+class DeploymentParameters:
+    def __init__(self, constructor_parameters: ConstructorParameters):
         self.constructor_parameters = constructor_parameters
 
     def get(self, *args, **kwargs):
         return self.__resolve_deployment_parameters(*args, **kwargs)
 
-    @classmethod
-    def from_file(cls, config_filepath: Path) -> "DeploymentParameters":
-        with open(config_filepath, "r") as config_file:
-            config = OrderedDict(json.load(config_file))
-        return cls(config)
-
     def __resolve_deployment_parameters(
         self, container: ContractContainer, context: typing.Dict[str, Any], interactive: bool = True
     ) -> List[Any]:
         contract_name = container.contract_type.name
-        contract_parameters = self.constructor_parameters[contract_name]
-        resolved_params = _resolve_constructor_parameters(
-            contract_parameters,
-            context,
-        )
+        resolved_params = self.constructor_parameters.resolve(contract_name, context)
         if interactive:
             _confirm_resolution(resolved_params, contract_name)
 
