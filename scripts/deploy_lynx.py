@@ -1,15 +1,14 @@
 #!/usr/bin/python3
-from pathlib import Path
 
 from ape import project
+
 from scripts.deployment import prepare_deployment
 from scripts.registry import registry_from_ape_deployments
+from scripts.utils import ARTIFACTS_DIR, CONSTRUCTOR_PARAMS_DIR
 
 PUBLISH = False
-DEPLOYMENT_CONFIG_FILEPATH = Path(__file__).parent / "params" / "lynx-alpha-13.json"
-DEPLOYMENT_REGISTRY_FILEPATH = (
-    Path(__file__).parent.parent / "artifacts" / "lynx_alpha-13_registry.json"
-)
+CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "lynx-alpha-13-params.json"
+REGISTRY_FILEPATH = ARTIFACTS_DIR / "lynx-alpha-13-registry.json"
 
 
 def main():
