@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 from ape import accounts, config, networks, project
 from web3 import Web3
@@ -35,12 +36,12 @@ def deploy_mocks(deployer):
     )
 
 
-def get_account(id):
+def get_account(_id):
     if CURRENT_NETWORK not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
-        if id is None:
+        if _id is None:
             raise ValueError("Must specify account id when deploying to production networks")
         else:
-            return accounts.load(id)
+            return accounts.load(_id)
 
     elif CURRENT_NETWORK in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
         return accounts.test_accounts[0]
