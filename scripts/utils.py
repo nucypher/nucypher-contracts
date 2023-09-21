@@ -48,7 +48,19 @@ def get_account(id):
         return None
 
 
-def check_etherscan_plugin():
+def check_registry_filepath(registry_filepath: Path) -> None:
+    """
+    Checks that the registry_filepath does not exist,
+    and that its parent directory does exist.
+    """
+    if registry_filepath.exists():
+        raise FileExistsError(f"Registry file already exists at {registry_filepath}")
+    if not registry_filepath.parent.exists():
+        raise FileNotFoundError(f"Parent directory of {registry_filepath} does not exist.")
+
+
+def check_etherscan_plugin() -> None:
+    """Checks that the ape-etherscan plugin is installed and that the ETHERSCAN_API_KEY is set."""
     try:
         import ape_etherscan  # noqa: F401
     except ImportError:

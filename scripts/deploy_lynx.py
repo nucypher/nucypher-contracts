@@ -30,7 +30,9 @@ def main():
     """
 
     deployer, params = prepare_deployment(
-        params_filepath=DEPLOYMENT_CONFIG_FILEPATH, publish=PUBLISH
+        params_filepath=CONSTRUCTOR_PARAMS_FILEPATH,
+        registry_filepath=REGISTRY_FILEPATH,
+        publish=PUBLISH
     )
 
     LynxRootApplication = deployer.deploy(

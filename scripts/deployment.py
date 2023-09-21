@@ -7,16 +7,23 @@ from typing import Any, List
 from ape.api import AccountAPI
 from ape.cli import get_user_selected_account
 from ape.contracts.base import ContractContainer
-from scripts.utils import check_etherscan_plugin
+from scripts.utils import check_etherscan_plugin, check_registry_filepath
 
 VARIABLE_PREFIX = "$"
 
 
 def prepare_deployment(
-    params_filepath: Path, publish: bool
+    params_filepath: Path,
+    registry_filepath: Path,
+    publish: bool
 ) -> typing.Tuple[AccountAPI, "ApeDeploymentParameters"]:
+    """
+    Prepares the deployment by loading the deployment parameters
+    and checking the pre-deployment conditions.
+    """
 
     # pre-deployment checks
+    check_registry_filepath(registry_filepath=registry_filepath)
     check_etherscan_plugin()
     deployer_account = get_user_selected_account()
 
