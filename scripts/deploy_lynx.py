@@ -57,7 +57,11 @@ def main():
 
     LynxTACoChildApplication.setCoordinator(Coordinator.address, sender=deployer)
 
-    deployments = [LynxRootApplication, LynxTACoChildApplication, LynxRitualToken, Coordinator]
+    GlobalAllowList = deployer.deploy(
+        *params.get(project.GlobalAllowList, locals()), **params.get_kwargs()
+    )
+
+    deployments = [LynxRootApplication, LynxTACoChildApplication, LynxRitualToken, Coordinator, GlobalAllowList]
 
     registry_names = {
         LynxRootApplication.contract_type.name: "TACoApplication",

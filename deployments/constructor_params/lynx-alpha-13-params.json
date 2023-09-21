@@ -13,5 +13,9 @@
     "_admin": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600",
     "_currency": "$LynxRitualToken",
     "_feeRatePerSecond": 1
+  },
+  "GlobalAllowList": {
+    "_coordinator": "$Coordinator",
+    "_admin": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
   }
 }
