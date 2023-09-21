@@ -8,8 +8,9 @@ from ape import project
 from ape.api import AccountAPI
 from ape.cli import get_user_selected_account
 from ape.contracts.base import ContractContainer
-
+from scripts.constants import NULL_ADDRESS
 from scripts.utils import check_etherscan_plugin, check_registry_filepath
+from web3.auto.gethdev import w3
 
 VARIABLE_PREFIX = "$"
 
@@ -117,10 +118,21 @@ def _validate_constructor_abi_inputs(
     codex = enumerate(zip(abi_inputs, parameters.items()), start=0)
     for position, (abi_input, resolved_input) in codex:
         name, value = resolved_input
+        # validate name
         if abi_input.name != name:
             raise ConstructorParameters.Invalid(
-                f"Constructor parameter name '{name}' does not match the "
-                f"ABI name '{abi_input.name}' at position {position}"
+                f"Constructor parameter name '{name}' at position {position} does not match the expected ABI name '{abi_input.name}'"
+            )
+
+        # validate value type
+        value_to_validate = value
+        if _is_variable(value):
+            # at the moment only contract addresses are variables
+            # won't know address until deployment; use a placeholder
+            value_to_validate = NULL_ADDRESS
+        if not w3.is_encodable(abi_input.type, value_to_validate):
+            raise ConstructorParameters.Invalid(
+                f"Constructor param name '{name}' at position {position} has a value '{value}' whose type does not match expected ABI type '{abi_input.type}'"
             )
 
 
