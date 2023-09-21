@@ -133,6 +133,27 @@ def _confirm_resolution(
     _confirm_deployment(contract_name)
 
 
+def _validate_constructor_abi(
+        contract_name: str,
+        abi_inputs: List[Any],
+        resolved_params: OrderedDict
+) -> None:
+    """Validates the constructor parameters against the constructor ABI."""
+    if len(resolved_params) != len(abi_inputs):
+        raise ConstructorParameters.Invalid(
+            f"Constructor parameters length for {contract_name} does not match the ABI"
+        )
+    if abi_inputs:
+        codex = enumerate(zip(abi_inputs, resolved_params.items()), start=0)
+        for position, (abi_input, resolved_input) in codex:
+            name, value = resolved_input
+            if abi_input.name != name:
+                raise ConstructorParameters.Invalid(
+                    f"Constructor parameter name '{name}' does not match the "
+                    f"ABI name '{abi_input.name}' at position {position}"
+                )
+
+
 class ConstructorParameters:
     """Represents the constructor parameters for a set of contracts."""
 
@@ -171,8 +192,14 @@ class ApeDeploymentParameters:
         self, container: ContractContainer, context: typing.Dict[str, Any]
     ) -> List[Any]:
         """Resolves the deployment parameters for a single contract."""
+
         contract_name = container.contract_type.name
         resolved_constructor_params = self.constructor_parameters.resolve(contract_name, context)
+        _validate_constructor_abi(
+            contract_name=contract_name,
+            abi_inputs=container.constructor.abi.inputs,
+            resolved_params=resolved_constructor_params
+        )
         _confirm_resolution(resolved_constructor_params, contract_name)
         deployment_params = [container, *resolved_constructor_params.values()]
         return deployment_params
