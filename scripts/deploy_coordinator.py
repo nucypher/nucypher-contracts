@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 from ape import project
 from ape.cli import get_user_selected_account
-from scripts.utils import DEPLOYMENTS_CONFIG
+from scripts.constants import DEPLOYMENTS_CONFIG
 
 
 def main(account_id=None):

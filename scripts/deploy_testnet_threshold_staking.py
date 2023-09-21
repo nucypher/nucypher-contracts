@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 from ape import project
-from scripts.utils import DEPLOYMENTS_CONFIG, get_account
+from scripts.utils import get_account
+from scripts.constants import DEPLOYMENTS_CONFIG
 
 
 def main(account_id=None):

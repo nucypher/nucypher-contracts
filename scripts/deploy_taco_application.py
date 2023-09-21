@@ -1,12 +1,10 @@
 #!/usr/bin/python3
 from ape import project
 from scripts.utils import (
-    CURRENT_NETWORK,
-    DEPLOYMENTS_CONFIG,
-    LOCAL_BLOCKCHAIN_ENVIRONMENTS,
     deploy_mocks,
     get_account,
 )
+from scripts.constants import LOCAL_BLOCKCHAIN_ENVIRONMENTS, CURRENT_NETWORK, DEPLOYMENTS_CONFIG
 
 
 def main(account_id=None):

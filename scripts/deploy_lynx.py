@@ -4,7 +4,7 @@ from ape import project
 
 from scripts.deployment import prepare_deployment
 from scripts.registry import registry_from_ape_deployments
-from scripts.utils import ARTIFACTS_DIR, CONSTRUCTOR_PARAMS_DIR
+from scripts.constants import CONSTRUCTOR_PARAMS_DIR, ARTIFACTS_DIR
 
 PUBLISH = False
 CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "lynx-alpha-13-params.json"

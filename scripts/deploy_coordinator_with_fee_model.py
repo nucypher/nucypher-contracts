@@ -35,7 +35,7 @@ def cli(network, account, currency, rate, timeout, admin, max_size, verify):
     # TODO: Move this to a common deployment utilities module
     # Validate Etherscan verification parameters.
     # This import fails if called before the click network options are evaluated
-    from scripts.utils import LOCAL_BLOCKCHAIN_ENVIRONMENTS
+    from scripts.constants import LOCAL_BLOCKCHAIN_ENVIRONMENTS
 
     is_public_deployment = network_name not in LOCAL_BLOCKCHAIN_ENVIRONMENTS
     if not is_public_deployment:
