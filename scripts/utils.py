@@ -78,6 +78,10 @@ def check_etherscan_plugin() -> None:
 
 def check_infura_plugin() -> None:
     """Checks that the ape-infura plugin is installed."""
+    if CURRENT_NETWORK in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
+        # unnecessary for local deployment
+        return
+
     try:
         import ape_infura  # noqa: F401
     except ImportError:
