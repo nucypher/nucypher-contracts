@@ -59,6 +59,14 @@ def main():
 
     deployments = [LynxRootApplication, LynxTACoChildApplication, LynxRitualToken, Coordinator]
 
-    registry_from_ape_deployments(
-        deployments=deployments, output_filepath=DEPLOYMENT_REGISTRY_FILEPATH
+    registry_names = {
+        LynxRootApplication.contract_type.name: "TACoApplication",
+        LynxTACoChildApplication.contract_type.name: "TACoChildApplication",
+    }
+
+    output_filepath = registry_from_ape_deployments(
+        deployments=deployments,
+        registry_names=registry_names,
+        output_filepath=REGISTRY_FILEPATH
     )
+    print(f"(i) Registry written to {output_filepath}!")
