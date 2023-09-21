@@ -1,6 +1,6 @@
 import json
 import typing
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from pathlib import Path
 from typing import Any, List
 
@@ -111,7 +111,11 @@ def _validate_constructor_abi_inputs(
         if _is_variable(value):
             # at the moment only contract addresses are variables
             # won't know address until deployment; use a placeholder
-            value_to_validate = NULL_ADDRESS
+            context = defaultdict(PlacehodlerContractInstance)
+            if isinstance(value, list):
+                value_to_validate = _resolve_list(value, context)
+            else:
+                value_to_validate = _resolve_param(value, context)
         if not w3.is_encodable(abi_input.type, value_to_validate):
             raise ConstructorParameters.Invalid(
                 f"Constructor param name '{name}' at position {position} has a value '{value}' "
@@ -155,6 +159,10 @@ def _confirm_resolution(resolved_params: OrderedDict, contract_name: str) -> Non
     for name, resolved_value in resolved_params.items():
         print(f"\t{name}={resolved_value}")
     _confirm_deployment(contract_name)
+
+
+class PlacehodlerContractInstance(typing.NamedTuple):
+    address: str = NULL_ADDRESS
 
 
 class ConstructorParameters:
