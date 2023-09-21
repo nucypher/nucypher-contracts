@@ -12,6 +12,7 @@ DEPLOYMENTS_CONFIG = config.get_config("deployments")["ethereum"][CURRENT_NETWOR
 PROJECT_ROOT = Path(__file__).parent.parent
 CONSTRUCTOR_PARAMS_DIR = PROJECT_ROOT / "deployments" / "constructor_params"
 ARTIFACTS_DIR = PROJECT_ROOT / "deployments" / "artifacts"
+ETHERSCAN_API_KEY_ENVVAR = "ETHERSCAN_API_KEY"
 
 
 def deploy_mocks(deployer):
@@ -66,5 +67,8 @@ def check_etherscan_plugin() -> None:
         import ape_etherscan  # noqa: F401
     except ImportError:
         raise ImportError("Please install the ape-etherscan plugin to use this script.")
-    if not os.environ.get("ETHERSCAN_API_KEY"):
-        raise ValueError("ETHERSCAN_API_KEY is not set.")
+    api_key = os.environ.get(ETHERSCAN_API_KEY_ENVVAR)
+    if not api_key:
+        raise ValueError(f"{ETHERSCAN_API_KEY_ENVVAR} is not set.")
+    if not len(api_key) == 34:
+        raise ValueError(f"{ETHERSCAN_API_KEY_ENVVAR} is not valid.")
