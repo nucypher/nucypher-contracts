@@ -2,13 +2,12 @@ import os
 from pathlib import Path
 
 from ape import accounts, project
-from web3 import Web3
-
 from scripts.constants import (
-    LOCAL_BLOCKCHAIN_ENVIRONMENTS,
     CURRENT_NETWORK,
-    ETHERSCAN_API_KEY_ENVVAR
+    ETHERSCAN_API_KEY_ENVVAR,
+    LOCAL_BLOCKCHAIN_ENVIRONMENTS,
 )
+from web3 import Web3
 
 
 def deploy_mocks(deployer):
@@ -59,10 +58,15 @@ def check_registry_filepath(registry_filepath: Path) -> None:
 
 def check_etherscan_plugin() -> None:
     """Checks that the ape-etherscan plugin is installed and that the ETHERSCAN_API_KEY is set."""
+    if CURRENT_NETWORK in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
+        # unnecessary for local deployment
+        return
+
     try:
         import ape_etherscan  # noqa: F401
     except ImportError:
         raise ImportError("Please install the ape-etherscan plugin to use this script.")
+
     api_key = os.environ.get(ETHERSCAN_API_KEY_ENVVAR)
     if not api_key:
         raise ValueError(f"{ETHERSCAN_API_KEY_ENVVAR} is not set.")
