@@ -2,12 +2,14 @@ import os
 from pathlib import Path
 
 from ape import accounts, project
+from web3 import Web3
+
 from scripts.constants import (
     CURRENT_NETWORK,
     ETHERSCAN_API_KEY_ENVVAR,
     LOCAL_BLOCKCHAIN_ENVIRONMENTS,
+    WEB3_INFURA_API_KEY_ENVVAR
 )
-from web3 import Web3
 
 
 def deploy_mocks(deployer):
@@ -72,3 +74,16 @@ def check_etherscan_plugin() -> None:
         raise ValueError(f"{ETHERSCAN_API_KEY_ENVVAR} is not set.")
     if not len(api_key) == 34:
         raise ValueError(f"{ETHERSCAN_API_KEY_ENVVAR} is not valid.")
+
+
+def check_infura_plugin() -> None:
+    """Checks that the ape-infura plugin is installed."""
+    try:
+        import ape_infura  # noqa: F401
+    except ImportError:
+        raise ImportError("Please install the ape-infura plugin to use this script.")
+    api_key = os.environ.get(WEB3_INFURA_API_KEY_ENVVAR)
+    if not api_key:
+        raise ValueError(f"{WEB3_INFURA_API_KEY_ENVVAR} is not set.")
+    if not len(api_key) == 32:
+        raise ValueError(f"{WEB3_INFURA_API_KEY_ENVVAR} is not valid.")

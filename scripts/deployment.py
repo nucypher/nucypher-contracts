@@ -8,9 +8,14 @@ from ape import project
 from ape.api import AccountAPI
 from ape.cli import get_user_selected_account
 from ape.contracts.base import ContractContainer
-from scripts.constants import NULL_ADDRESS
-from scripts.utils import check_etherscan_plugin, check_registry_filepath
 from web3.auto.gethdev import w3
+
+from scripts.constants import NULL_ADDRESS
+from scripts.utils import (
+    check_etherscan_plugin,
+    check_registry_filepath,
+    check_infura_plugin
+)
 
 VARIABLE_PREFIX = "$"
 
@@ -26,6 +31,7 @@ def prepare_deployment(
     # pre-deployment checks
     check_registry_filepath(registry_filepath=registry_filepath)
     check_etherscan_plugin()
+    check_infura_plugin()
 
     # load (and implicitly validate) deployment parameters
     constructor_parameters = ConstructorParameters.from_file(params_filepath)

@@ -10,5 +10,5 @@ PROJECT_ROOT = Path(__file__).parent.parent
 CONSTRUCTOR_PARAMS_DIR = PROJECT_ROOT / "deployments" / "constructor_params"
 ARTIFACTS_DIR = PROJECT_ROOT / "deployments" / "artifacts"
 ETHERSCAN_API_KEY_ENVVAR = "ETHERSCAN_API_KEY"
-
+WEB3_INFURA_API_KEY_ENVVAR = "WEB3_INFURA_API_KEY"
 NULL_ADDRESS = "0x" + "0" * 40
