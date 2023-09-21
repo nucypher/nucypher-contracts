@@ -16,9 +16,7 @@ VARIABLE_PREFIX = "$"
 
 
 def prepare_deployment(
-    params_filepath: Path,
-    registry_filepath: Path,
-    publish: bool
+    params_filepath: Path, registry_filepath: Path, publish: bool
 ) -> typing.Tuple[AccountAPI, "ApeDeploymentParameters"]:
     """
     Prepares the deployment by loading the deployment parameters
@@ -45,10 +43,7 @@ def _is_variable(param: Any) -> bool:
     return result
 
 
-def _resolve_param(
-        value: Any,
-        context: typing.Dict[str, Any]
-) -> Any:
+def _resolve_param(value: Any, context: typing.Dict[str, Any]) -> Any:
     """Resolves a single parameter value."""
     if not _is_variable(value):
         return value  # literally a value
@@ -57,19 +52,13 @@ def _resolve_param(
     return contract_instance.address
 
 
-def _resolve_list(
-        value: List[Any],
-        context: typing.Dict[str, Any]
-) -> List[Any]:
+def _resolve_list(value: List[Any], context: typing.Dict[str, Any]) -> List[Any]:
     """Resolves a list of parameter values."""
     params = [_resolve_param(v, context) for v in value]
     return params
 
 
-def _resolve_parameters(
-        parameters: OrderedDict,
-        context: typing.Dict[str, Any]
-) -> OrderedDict:
+def _resolve_parameters(parameters: OrderedDict, context: typing.Dict[str, Any]) -> OrderedDict:
     """Resolves a dictionary of parameter values for a single contract"""
     resolved_params = OrderedDict()
     for name, value in parameters.items():
@@ -80,10 +69,7 @@ def _resolve_parameters(
     return resolved_params
 
 
-def _validate_constructor_param(
-        param: Any,
-        contracts: List[str]
-) -> None:
+def _validate_constructor_param(param: Any, contracts: List[str]) -> None:
     """Validates a single constructor parameter."""
     if not _is_variable(param):
         return  # literally a value
@@ -92,19 +78,14 @@ def _validate_constructor_param(
         raise ConstructorParameters.Invalid(f"Variable {param} is not resolvable")
 
 
-def _validate_constructor_param_list(
-        params: List[Any],
-        contracts: List[str]
-) -> None:
+def _validate_constructor_param_list(params: List[Any], contracts: List[str]) -> None:
     """Validates a list of constructor parameters."""
     for param in params:
         _validate_constructor_param(param, contracts)
 
 
 def _validate_constructor_abi_inputs(
-        contract_name: str,
-        abi_inputs: List[Any],
-        parameters: OrderedDict
+    contract_name: str, abi_inputs: List[Any], parameters: OrderedDict
 ) -> None:
     """Validates the constructor parameters against the constructor ABI."""
     if len(parameters) != len(abi_inputs):
@@ -121,7 +102,8 @@ def _validate_constructor_abi_inputs(
         # validate name
         if abi_input.name != name:
             raise ConstructorParameters.Invalid(
-                f"Constructor parameter name '{name}' at position {position} does not match the expected ABI name '{abi_input.name}'"
+                f"Constructor parameter name '{name}' at position {position} does not "
+                f"match the expected ABI name '{abi_input.name}'"
             )
 
         # validate value type
@@ -132,13 +114,12 @@ def _validate_constructor_abi_inputs(
             value_to_validate = NULL_ADDRESS
         if not w3.is_encodable(abi_input.type, value_to_validate):
             raise ConstructorParameters.Invalid(
-                f"Constructor param name '{name}' at position {position} has a value '{value}' whose type does not match expected ABI type '{abi_input.type}'"
+                f"Constructor param name '{name}' at position {position} has a value '{value}' "
+                f"whose type does not match expected ABI type '{abi_input.type}'"
             )
 
 
-def validate_constructor_parameters(
-        config: typing.OrderedDict[str, Any]
-) -> None:
+def validate_constructor_parameters(config: typing.OrderedDict[str, Any]) -> None:
     """Validates the constructor parameters for all contracts in a single config."""
     available_contracts = list(config.keys())
     for contract, parameters in config.items():
@@ -151,7 +132,7 @@ def validate_constructor_parameters(
         _validate_constructor_abi_inputs(
             contract_name=contract,
             abi_inputs=contract_container.constructor.abi.inputs,
-            parameters=parameters
+            parameters=parameters,
         )
 
 
@@ -163,10 +144,7 @@ def _confirm_deployment(contract_name: str) -> None:
         exit(-1)
 
 
-def _confirm_resolution(
-        resolved_params: OrderedDict,
-        contract_name: str
-) -> None:
+def _confirm_resolution(resolved_params: OrderedDict, contract_name: str) -> None:
     """Asks the user to confirm the resolved constructor parameters for a single contract."""
     if len(resolved_params) == 0:
         print(f"(i) No constructor parameters for {contract_name}")
@@ -213,9 +191,7 @@ class ApeDeploymentParameters:
         """Returns the deployment kwargs."""
         return {"publish": self.publish}
 
-    def get(
-        self, container: ContractContainer, context: typing.Dict[str, Any]
-    ) -> List[Any]:
+    def get(self, container: ContractContainer, context: typing.Dict[str, Any]) -> List[Any]:
         """Resolves the deployment parameters for a single contract."""
         contract_name = container.contract_type.name
         resolved_constructor_params = self.constructor_parameters.resolve(contract_name, context)
