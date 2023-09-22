@@ -35,37 +35,47 @@ def main():
         publish=PUBLISH
     )
 
-    LynxRootApplication = deployer.deploy(
-        *params.get(project.LynxRootApplication, locals()), **params.get_kwargs()
+    root_application = deployer.deploy(
+        *params.get(project.LynxRootApplication), **params.get_kwargs()
     )
 
-    LynxTACoChildApplication = deployer.deploy(
-        *params.get(project.LynxTACoChildApplication, locals()), **params.get_kwargs()
+    child_application = deployer.deploy(
+        *params.get(project.LynxTACoChildApplication), **params.get_kwargs()
     )
 
-    LynxRootApplication.setChildApplication(
-        LynxTACoChildApplication.address,
+    root_application.setChildApplication(
+        child_application.address,
         sender=deployer,
     )
 
-    LynxRitualToken = deployer.deploy(
-        *params.get(project.LynxRitualToken, locals()), **params.get_kwargs()
+    ritual_token = deployer.deploy(
+        *params.get(project.LynxRitualToken), **params.get_kwargs()
     )
 
-    # Lynx Coordinator
-    Coordinator = deployer.deploy(*params.get(project.Coordinator, locals()), **params.get_kwargs())
-
-    LynxTACoChildApplication.setCoordinator(Coordinator.address, sender=deployer)
-
-    GlobalAllowList = deployer.deploy(
-        *params.get(project.GlobalAllowList, locals()), **params.get_kwargs()
+    coordinator = deployer.deploy(
+        *params.get(project.Coordinator), **params.get_kwargs()
     )
 
-    deployments = [LynxRootApplication, LynxTACoChildApplication, LynxRitualToken, Coordinator, GlobalAllowList]
+    child_application.setCoordinator(
+        coordinator.address,
+        sender=deployer
+    )
+
+    global_allow_list = deployer.deploy(
+        *params.get(project.GlobalAllowList), **params.get_kwargs()
+    )
+
+    deployments = [
+        root_application,
+        child_application,
+        ritual_token,
+        coordinator,
+        global_allow_list
+    ]
 
     registry_names = {
-        LynxRootApplication.contract_type.name: "TACoApplication",
-        LynxTACoChildApplication.contract_type.name: "TACoChildApplication",
+        root_application.contract_type.name: "TACoApplication",
+        child_application.contract_type.name: "TACoChildApplication",
     }
 
     output_filepath = registry_from_ape_deployments(

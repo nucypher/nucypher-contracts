@@ -1,6 +1,6 @@
 import json
 import typing
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 from pathlib import Path
 from typing import Any, List
 
@@ -8,9 +8,10 @@ from ape import project
 from ape.api import AccountAPI
 from ape.cli import get_user_selected_account
 from ape.contracts.base import ContractContainer
+from web3.auto.gethdev import w3
+
 from scripts.constants import NULL_ADDRESS
 from scripts.utils import check_etherscan_plugin, check_infura_plugin, check_registry_filepath
-from web3.auto.gethdev import w3
 
 VARIABLE_PREFIX = "$"
 
@@ -44,29 +45,38 @@ def _is_variable(param: Any) -> bool:
     return result
 
 
-def _resolve_param(value: Any, context: typing.Dict[str, Any]) -> Any:
+def _resolve_param(value: Any) -> Any:
     """Resolves a single parameter value."""
     if not _is_variable(value):
         return value  # literally a value
     variable = value.strip(VARIABLE_PREFIX)
-    contract_instance = context[variable]
+    contract_container = getattr(project, variable)
+    contract_instances = contract_container.deployments
+    if not contract_instances:
+        return NULL_ADDRESS
+    if len(contract_instances) != 1:
+        raise ConstructorParameters.Invalid(
+            f"Variable {value} is ambiguous - "
+            f"expected exactly one contract instance, got {len(contract_instances)}"
+        )
+    contract_instance = contract_instances[0]
     return contract_instance.address
 
 
-def _resolve_list(value: List[Any], context: typing.Dict[str, Any]) -> List[Any]:
+def _resolve_list(value: List[Any]) -> List[Any]:
     """Resolves a list of parameter values."""
-    params = [_resolve_param(v, context) for v in value]
+    params = [_resolve_param(v) for v in value]
     return params
 
 
-def _resolve_parameters(parameters: OrderedDict, context: typing.Dict[str, Any]) -> OrderedDict:
+def _resolve_parameters(parameters: OrderedDict) -> OrderedDict:
     """Resolves a dictionary of parameter values for a single contract"""
     resolved_params = OrderedDict()
     for name, value in parameters.items():
         if isinstance(value, list):
-            resolved_params[name] = _resolve_list(value, context)
+            resolved_params[name] = _resolve_list(value)
         else:
-            resolved_params[name] = _resolve_param(value, context)
+            resolved_params[name] = _resolve_param(value)
     return resolved_params
 
 
@@ -110,13 +120,10 @@ def _validate_constructor_abi_inputs(
         # validate value type
         value_to_validate = value
         if _is_variable(value):
-            # at the moment only contract addresses are variables
-            # won't know address until deployment; use a placeholder
-            context = defaultdict(PlacehodlerContractInstance)
             if isinstance(value, list):
-                value_to_validate = _resolve_list(value, context)
+                value_to_validate = _resolve_list(value)
             else:
-                value_to_validate = _resolve_param(value, context)
+                value_to_validate = _resolve_param(value)
         if not w3.is_encodable(abi_input.type, value_to_validate):
             raise ConstructorParameters.Invalid(
                 f"Constructor param name '{name}' at position {position} has a value '{value}' "
@@ -162,10 +169,6 @@ def _confirm_resolution(resolved_params: OrderedDict, contract_name: str) -> Non
     _confirm_deployment(contract_name)
 
 
-class PlacehodlerContractInstance(typing.NamedTuple):
-    address: str = NULL_ADDRESS
-
-
 class ConstructorParameters:
     """Represents the constructor parameters for a set of contracts."""
 
@@ -183,9 +186,9 @@ class ConstructorParameters:
             config = OrderedDict(json.load(params_file))
         return cls(config)
 
-    def resolve(self, contract_name: str, context: typing.Dict[str, Any]) -> OrderedDict:
+    def resolve(self, contract_name: str) -> OrderedDict:
         """Resolves the constructor parameters for a single contract."""
-        result = _resolve_parameters(self.parameters[contract_name], context)
+        result = _resolve_parameters(self.parameters[contract_name])
         return result
 
 
@@ -200,10 +203,10 @@ class ApeDeploymentParameters:
         """Returns the deployment kwargs."""
         return {"publish": self.publish}
 
-    def get(self, container: ContractContainer, context: typing.Dict[str, Any]) -> List[Any]:
+    def get(self, container: ContractContainer) -> List[Any]:
         """Resolves the deployment parameters for a single contract."""
         contract_name = container.contract_type.name
-        resolved_constructor_params = self.constructor_parameters.resolve(contract_name, context)
+        resolved_constructor_params = self.constructor_parameters.resolve(contract_name)
         _confirm_resolution(resolved_constructor_params, contract_name)
         deployment_params = [container, *resolved_constructor_params.values()]
         return deployment_params
