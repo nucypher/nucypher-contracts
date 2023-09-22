@@ -1,12 +1,17 @@
 #!/usr/bin/python3
 
-from ape import project
+from ape import project, networks
 
+from scripts.constants import (
+    CONSTRUCTOR_PARAMS_DIR,
+    ARTIFACTS_DIR,
+    CURRENT_NETWORK,
+    LOCAL_BLOCKCHAIN_ENVIRONMENTS
+)
 from scripts.deployment import prepare_deployment
 from scripts.registry import registry_from_ape_deployments
-from scripts.constants import CONSTRUCTOR_PARAMS_DIR, ARTIFACTS_DIR
 
-PUBLISH = False
+VERIFY = CURRENT_NETWORK not in LOCAL_BLOCKCHAIN_ENVIRONMENTS
 CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "lynx-alpha-13-params.json"
 REGISTRY_FILEPATH = ARTIFACTS_DIR / "lynx-alpha-13-registry.json"
 
@@ -32,7 +37,6 @@ def main():
     deployer, params = prepare_deployment(
         params_filepath=CONSTRUCTOR_PARAMS_FILEPATH,
         registry_filepath=REGISTRY_FILEPATH,
-        publish=PUBLISH
     )
 
     root_application = deployer.deploy(

@@ -17,11 +17,16 @@ VARIABLE_PREFIX = "$"
 
 
 def prepare_deployment(
-    params_filepath: Path, registry_filepath: Path, publish: bool
+        params_filepath: Path,
+        registry_filepath: Path,
+        publish: bool = False
 ) -> typing.Tuple[AccountAPI, "ApeDeploymentParameters"]:
     """
     Prepares the deployment by loading the deployment parameters
     and checking the pre-deployment conditions.
+
+    NOTE: publish is False by default because we use customized artifact tracking
+    that is not compatible with the ape publish command.
     """
 
     # pre-deployment checks
