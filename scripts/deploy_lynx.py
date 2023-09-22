@@ -98,3 +98,9 @@ def main():
         output_filepath=REGISTRY_FILEPATH
     )
     print(f"(i) Registry written to {output_filepath}!")
+
+    if VERIFY:
+        etherscan = networks.provider.network.explorer
+        for deployment in deployments:
+            print(f"(i) Verifying {deployment.contract_type.name}...")
+            etherscan.publish_contract(deployment.address)
