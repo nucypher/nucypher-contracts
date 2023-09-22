@@ -8,14 +8,9 @@ from ape import project
 from ape.api import AccountAPI
 from ape.cli import get_user_selected_account
 from ape.contracts.base import ContractContainer
-from web3.auto.gethdev import w3
-
 from scripts.constants import NULL_ADDRESS
-from scripts.utils import (
-    check_etherscan_plugin,
-    check_registry_filepath,
-    check_infura_plugin
-)
+from scripts.utils import check_etherscan_plugin, check_infura_plugin, check_registry_filepath
+from web3.auto.gethdev import w3
 
 VARIABLE_PREFIX = "$"
 
@@ -157,11 +152,11 @@ def _confirm_deployment(contract_name: str) -> None:
 def _confirm_resolution(resolved_params: OrderedDict, contract_name: str) -> None:
     """Asks the user to confirm the resolved constructor parameters for a single contract."""
     if len(resolved_params) == 0:
-        print(f"(i) No constructor parameters for {contract_name}")
+        print(f"\n(i) No constructor parameters for {contract_name}")
         _confirm_deployment(contract_name)
         return
 
-    print(f"Constructor parameters for {contract_name}")
+    print(f"\nConstructor parameters for {contract_name}")
     for name, resolved_value in resolved_params.items():
         print(f"\t{name}={resolved_value}")
     _confirm_deployment(contract_name)
