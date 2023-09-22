@@ -69,7 +69,7 @@ def _read_registry(filepath: Path) -> List[RegistryEntry]:
 
 def _write_registry(data: List[RegistryEntry], filepath: Path) -> Path:
     with open(filepath, "w") as registry_file:
-        json_data = json.dumps(data)
+        json_data = json.dumps(data, indent=4)
         registry_file.write(json_data)
     return filepath
 
