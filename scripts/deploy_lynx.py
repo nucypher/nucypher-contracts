@@ -1,12 +1,11 @@
 #!/usr/bin/python3
 
-from ape import project, networks
-
+from ape import networks, project
 from scripts.constants import (
-    CONSTRUCTOR_PARAMS_DIR,
     ARTIFACTS_DIR,
+    CONSTRUCTOR_PARAMS_DIR,
     CURRENT_NETWORK,
-    LOCAL_BLOCKCHAIN_ENVIRONMENTS
+    LOCAL_BLOCKCHAIN_ENVIRONMENTS,
 )
 from scripts.deployment import prepare_deployment
 from scripts.registry import registry_from_ape_deployments
@@ -57,34 +56,27 @@ def main():
         *params.get(project.LynxTACoChildApplication), **params.get_kwargs()
     )
 
+    print("\nSetting TACo Child application on TACo Root")
     root_application.setChildApplication(
         child_application.address,
         sender=deployer,
     )
 
-    ritual_token = deployer.deploy(
-        *params.get(project.LynxRitualToken), **params.get_kwargs()
-    )
+    ritual_token = deployer.deploy(*params.get(project.LynxRitualToken), **params.get_kwargs())
 
-    coordinator = deployer.deploy(
-        *params.get(project.Coordinator), **params.get_kwargs()
-    )
+    coordinator = deployer.deploy(*params.get(project.Coordinator), **params.get_kwargs())
 
-    child_application.setCoordinator(
-        coordinator.address,
-        sender=deployer
-    )
+    print("\nSetting Coordinator on TACo Child application")
+    child_application.setCoordinator(coordinator.address, sender=deployer)
 
-    global_allow_list = deployer.deploy(
-        *params.get(project.GlobalAllowList), **params.get_kwargs()
-    )
+    global_allow_list = deployer.deploy(*params.get(project.GlobalAllowList), **params.get_kwargs())
 
     deployments = [
         root_application,
         child_application,
         ritual_token,
         coordinator,
-        global_allow_list
+        global_allow_list,
     ]
 
     registry_names = {
@@ -93,9 +85,7 @@ def main():
     }
 
     output_filepath = registry_from_ape_deployments(
-        deployments=deployments,
-        registry_names=registry_names,
-        output_filepath=REGISTRY_FILEPATH
+        deployments=deployments, registry_names=registry_names, output_filepath=REGISTRY_FILEPATH
     )
     print(f"(i) Registry written to {output_filepath}!")
 
