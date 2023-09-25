@@ -30,7 +30,7 @@ def main():
     reward_token = deployer.deploy(*params.get(project.LynxStakingToken), **params.get_kwargs())
 
     mock_threshold_staking = deployer.deploy(
-        *params.get(project.ThresholdStakingForTACoApplicationMock), **params.get_kwargs()
+        *params.get(project.TestnetThresholdStaking), **params.get_kwargs()
     )
 
     proxy_admin = deployer.deploy(*params.get(OZ_DEPENDENCY.ProxyAdmin), **params.get_kwargs())
