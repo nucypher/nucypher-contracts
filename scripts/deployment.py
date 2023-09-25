@@ -4,17 +4,20 @@ from collections import OrderedDict
 from pathlib import Path
 from typing import Any, List
 
-from ape import project
+from ape import chain, project
 from ape.api import AccountAPI
 from ape.cli import get_user_selected_account
-from ape.contracts.base import ContractContainer
+from ape.contracts.base import ContractContainer, ContractInstance
 from scripts.constants import NULL_ADDRESS
 from scripts.utils import check_etherscan_plugin, check_infura_plugin, check_registry_filepath
 from web3.auto.gethdev import w3
 
 VARIABLE_PREFIX = "$"
+PROXY_DECLARATION_DELIMETER = ":"
 
 SPECIAL_VARIABLES = {"EMPTY_BYTES": b""}
+
+PROXY_NAME = "TransparentUpgradeableProxy"
 
 
 def prepare_deployment(
@@ -43,10 +46,43 @@ def prepare_deployment(
     return deployer_account, deployment_parameters
 
 
+def _is_proxy_variable(variable: str):
+    return PROXY_DECLARATION_DELIMETER in variable
+
+
+def _resolve_proxy_address(variable) -> str:
+    proxy, target = variable.split(PROXY_DECLARATION_DELIMETER)
+    target_contract_container = _get_contract_container(target)
+    target_contract_instance = _get_contract_instance(target_contract_container)
+    if target_contract_instance == NULL_ADDRESS:
+        # eager validation
+        return NULL_ADDRESS
+
+    local_proxies = chain.contracts._local_proxies
+    for proxy_address, proxy_info in local_proxies.items():
+        if proxy_info.target == target_contract_instance.address:
+            return proxy_address
+
+    raise ConstructorParameters.Invalid(f"Could not determine proxy for {variable}")
+
+
 def _is_variable(param: Any) -> bool:
     """Returns True if the param is a variable."""
     result = isinstance(param, str) and param.startswith(VARIABLE_PREFIX)
     return result
+
+
+def _get_contract_instance(contract_container: ContractContainer) -> ContractInstance:
+    contract_instances = contract_container.deployments
+    if not contract_instances:
+        return NULL_ADDRESS
+    if len(contract_instances) != 1:
+        raise ConstructorParameters.Invalid(
+            f"Variable {contract_container.contract_type.name} is ambiguous - "
+            f"expected exactly one contract instance, got {len(contract_instances)}"
+        )
+    contract_instance = contract_instances[0]
+    return contract_instance
 
 
 def _resolve_param(value: Any) -> Any:
@@ -55,19 +91,20 @@ def _resolve_param(value: Any) -> Any:
         return value  # literally a value
 
     variable = value.strip(VARIABLE_PREFIX)
+
+    # special values
     if variable in SPECIAL_VARIABLES:
         return SPECIAL_VARIABLES[variable]
 
+    # proxied contract
+    if _is_proxy_variable(variable):
+        return _resolve_proxy_address(variable)
+
     contract_container = _get_contract_container(variable)
-    contract_instances = contract_container.deployments
-    if not contract_instances:
+    contract_instance = _get_contract_instance(contract_container)
+    if contract_instance == NULL_ADDRESS:
         return NULL_ADDRESS
-    if len(contract_instances) != 1:
-        raise ConstructorParameters.Invalid(
-            f"Variable {value} is ambiguous - "
-            f"expected exactly one contract instance, got {len(contract_instances)}"
-        )
-    contract_instance = contract_instances[0]
+
     return contract_instance.address
 
 
@@ -93,8 +130,26 @@ def _validate_constructor_param(param: Any, contracts: List[str]) -> None:
     if not _is_variable(param):
         return  # literally a value
     variable = param.strip(VARIABLE_PREFIX)
-    if (variable not in contracts) and (variable not in SPECIAL_VARIABLES):
-        raise ConstructorParameters.Invalid(f"Variable {param} is not resolvable")
+
+    if _is_proxy_variable(variable):
+        proxy, target = variable.split(PROXY_DECLARATION_DELIMETER)
+
+        if proxy != PROXY_NAME:
+            raise ConstructorParameters.Invalid(
+                f"Ambiguous proxy variable {param}; only {PROXY_NAME} "
+                f"allowed before '{PROXY_DECLARATION_DELIMETER}'"
+            )
+
+        # check proxy target
+        variable = target
+
+    if variable in SPECIAL_VARIABLES:
+        return
+
+    if variable in contracts:
+        return
+
+    raise ConstructorParameters.Invalid(f"Variable {param} is not resolvable")
 
 
 def _validate_constructor_param_list(params: List[Any], contracts: List[str]) -> None:
@@ -190,7 +245,7 @@ def _confirm_deployment(contract_name: str) -> None:
 
 
 def _confirm_null_address() -> None:
-    answer = input(f"Null Address detected for deployment parmaeter; Continue? Y/N? ")
+    answer = input("Null Address detected for deployment parameter; Continue? Y/N? ")
     if answer.lower().strip() == "n":
         print("Aborting deployment!")
         exit(-1)
