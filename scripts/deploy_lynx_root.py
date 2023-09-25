@@ -20,6 +20,14 @@ OZ_DEPENDENCY = project.dependencies["openzeppelin"]["4.9.1"]
 def main():
     """
     This script deploys only the Proxied Lynx TACo Root Application.
+
+    September 25, 2023, Deployment:
+    ape-run deploy_lynx --network etherscan:goerli:infura
+    ape-etherscan             0.6.10
+    ape-infura                0.6.3
+    ape-polygon               0.6.5
+    ape-solidity              0.6.9
+    eth-ape                   0.6.20
     """
 
     deployer, params = prepare_deployment(

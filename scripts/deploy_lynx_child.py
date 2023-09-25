@@ -22,27 +22,13 @@ def main():
     This script deploys the Mock Lynx TACo Root Application,
     Proxied Lynx TACo Child Application, Lynx Ritual Token, and Lynx Coordinator.
 
-    September 18, 2023, Goerli Deployment:
-    ape run testnet deploy_lynx --network ethereum:goerli:<INFURA_URI>
-    'LynxRootApplication' deployed to: 0x39F1061d68540F7eb57545C4C731E0945c167016
-    'LynxTACoChildApplication' deployed to: 0x892a548592bA66dc3860F75d76cDDb488a838c35
-    'Coordinator' deployed to: 0x18566d4590be23e4cb0a8476C80C22096C8c3418
-
-    September 18, 2023, Mumbai Deployment:
-     ape run testnet deploy_lynx --network polygon:mumbai:<INFURA_URI>
-    'LynxRootApplication' deployed to: 0xb6400F55857716A3Ff863e6bE867F01F23C71793
-    'LynxTACoChildApplication' deployed to: 0x3593f90b19F148FCbe7B00201f854d8839F33F86
-    'Coordinator' deployed to: 0x4077ad1CFA834aEd68765dB0Cf3d14701a970a9a
-
-    September 22, 2023, Mumbai Deployment:
+    September 25, 2023, Deployment:
+    ape-run deploy_lynx --network polygon:mumbai:infura
     ape-etherscan             0.6.10
     ape-infura                0.6.3
     ape-polygon               0.6.5
     ape-solidity              0.6.9
     eth-ape                   0.6.20
-
-    ape-run deploy_lynx --network polygon:mumbai:infura
-
     """
 
     deployer, params = prepare_deployment(
