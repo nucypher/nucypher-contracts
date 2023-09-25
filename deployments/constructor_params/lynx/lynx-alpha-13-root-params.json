@@ -19,6 +19,6 @@
     "_data": "$EMPTY_BYTES"
   },
   "LynxMockTACoChildApplication": {
-    "_rootApplication": "$TACoApplication"
+    "_rootApplication": "$TransparentUpgradeableProxy:TACoApplication"
   }
 }

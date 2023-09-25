@@ -19,7 +19,7 @@ OZ_DEPENDENCY = project.dependencies["openzeppelin"]["4.9.1"]
 
 def main():
     """
-    This script deploys only the Lynx TACo Root Application.
+    This script deploys only the Proxied Lynx TACo Root Application.
     """
 
     deployer, params = prepare_deployment(
