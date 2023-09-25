@@ -56,7 +56,7 @@ def main():
 
     proxy_admin = deployer.deploy(*params.get(OZ_DEPENDENCY.ProxyAdmin), **params.get_kwargs())
 
-    _ = deployer.deploy(*params.get(project.LynxTACoChildApplication), **params.get_kwargs())
+    taco_implementation = deployer.deploy(*params.get(project.LynxTACoChildApplication), **params.get_kwargs())
 
     proxy = deployer.deploy(
         *params.get(OZ_DEPENDENCY.TransparentUpgradeableProxy), **params.get_kwargs()
@@ -83,6 +83,7 @@ def main():
     deployments = [
         root_application,
         proxy_admin,
+        taco_implementation,
         taco_child_application,
         ritual_token,
         coordinator,
