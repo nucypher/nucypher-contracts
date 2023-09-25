@@ -1,0 +1,24 @@
+{
+  "LynxRitualToken": {
+    "_totalSupplyOfTokens": 10000000000000000000000000
+  },
+  "ThresholdStakingForTACoApplicationMock": {},
+  "ProxyAdmin": {},
+  "TACoApplication": {
+    "_token": "$LynxRitualToken",
+    "_tStaking": "$ThresholdStakingForTACoApplicationMock",
+    "_minimumAuthorization": 40000000000000000000000,
+    "_minOperatorSeconds": 3600,
+    "_rewardDuration": 604800,
+    "_deauthorizationDuration": 5184000,
+    "_commitmentDurationOptions": [15724800, 31449600]
+  },
+  "TransparentUpgradeableProxy": {
+    "_logic": "$TACoApplication",
+    "admin_": "$ProxyAdmin",
+    "_data": "$EMPTY_BYTES"
+  },
+  "LynxMockTACoChildApplication": {
+    "_rootApplication": "$TACoApplication"
+  }
+}

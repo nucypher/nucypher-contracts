@@ -1,7 +1,7 @@
 {
-  "LynxRootApplication": {},
+  "LynxMockRootApplication": {},
   "LynxTACoChildApplication": {
-    "_rootApplication": "$LynxRootApplication"
+    "_rootApplication": "$LynxMockRootApplication"
   },
   "LynxRitualToken": {
     "_totalSupplyOfTokens": 10000000000000000000000000
