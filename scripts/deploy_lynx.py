@@ -11,8 +11,8 @@ from scripts.deployment import prepare_deployment
 from scripts.registry import registry_from_ape_deployments
 
 VERIFY = CURRENT_NETWORK not in LOCAL_BLOCKCHAIN_ENVIRONMENTS
-CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "lynx-alpha-13-params.json"
-REGISTRY_FILEPATH = ARTIFACTS_DIR / "lynx-alpha-13-registry.json"
+CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "lynx" / "lynx-alpha-13-params.json"
+REGISTRY_FILEPATH = ARTIFACTS_DIR / "lynx" / "lynx-alpha-13-registry.json"
 
 
 def main():
