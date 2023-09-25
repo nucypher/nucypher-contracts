@@ -191,6 +191,11 @@ contract LynxRootApplication is Ownable, ITACoChildToRoot {
     }
 }
 
+contract LynxMockRoot is Ownable, ITACoChildToRoot {
+    // solhint-disable-next-line no-empty-blocks
+    function confirmOperatorAddress(address _operator) external override {}
+}
+
 contract LynxTACoChildApplication is TACoChildApplication, Ownable {
     constructor(ITACoChildToRoot _rootApplication) TACoChildApplication(_rootApplication) {}
 
