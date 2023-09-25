@@ -27,7 +27,7 @@ def main():
         registry_filepath=REGISTRY_FILEPATH,
     )
 
-    reward_token = deployer.deploy(*params.get(project.LynxRitualToken), **params.get_kwargs())
+    reward_token = deployer.deploy(*params.get(project.LynxStakingToken), **params.get_kwargs())
 
     mock_threshold_staking = deployer.deploy(
         *params.get(project.ThresholdStakingForTACoApplicationMock), **params.get_kwargs()
