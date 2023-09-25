@@ -1,12 +1,12 @@
 {
-  "LynxRitualToken": {
+  "LynxStakingToken": {
     "_totalSupplyOfTokens": 10000000000000000000000000
   },
-  "ThresholdStakingForTACoApplicationMock": {},
+  "TestnetThresholdStaking": {},
   "ProxyAdmin": {},
   "TACoApplication": {
-    "_token": "$LynxRitualToken",
-    "_tStaking": "$ThresholdStakingForTACoApplicationMock",
+    "_token": "$LynxStakingToken",
+    "_tStaking": "$TestnetThresholdStaking",
     "_minimumAuthorization": 40000000000000000000000,
     "_minOperatorSeconds": 3600,
     "_rewardDuration": 604800,
