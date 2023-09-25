@@ -15,7 +15,7 @@ from web3.auto.gethdev import w3
 VARIABLE_PREFIX = "$"
 PROXY_DECLARATION_DELIMETER = ":"
 
-SPECIAL_VARIABLES = {"EMPTY_BYTES": b""}
+SPECIAL_VALUE_VARIABLES = {"EMPTY_BYTES": b""}
 
 PROXY_NAME = "TransparentUpgradeableProxy"
 
@@ -93,8 +93,8 @@ def _resolve_param(value: Any) -> Any:
     variable = value.strip(VARIABLE_PREFIX)
 
     # special values
-    if variable in SPECIAL_VARIABLES:
-        return SPECIAL_VARIABLES[variable]
+    if variable in SPECIAL_VALUE_VARIABLES:
+        return SPECIAL_VALUE_VARIABLES[variable]
 
     # proxied contract
     if _is_proxy_variable(variable):
@@ -143,7 +143,7 @@ def _validate_constructor_param(param: Any, contracts: List[str]) -> None:
         # check proxy target
         variable = target
 
-    if variable in SPECIAL_VARIABLES:
+    if variable in SPECIAL_VALUE_VARIABLES:
         return
 
     if variable in contracts:
