@@ -49,7 +49,7 @@ def main():
     )
 
     root_application = deployer.deploy(
-        *params.get(project.LynxRootApplication), **params.get_kwargs()
+        *params.get(project.LynxMockRootApplication), **params.get_kwargs()
     )
 
     child_application = deployer.deploy(
@@ -80,7 +80,7 @@ def main():
     ]
 
     registry_names = {
-        root_application.contract_type.name: "TACoApplication",
+        # TACoApplication will be available on Goerli (not on Mumbai) so no rename here
         child_application.contract_type.name: "TACoChildApplication",
     }
 

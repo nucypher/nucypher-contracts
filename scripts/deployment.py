@@ -8,18 +8,17 @@ from ape import project
 from ape.api import AccountAPI
 from ape.cli import get_user_selected_account
 from ape.contracts.base import ContractContainer
-from web3.auto.gethdev import w3
-
 from scripts.constants import NULL_ADDRESS
 from scripts.utils import check_etherscan_plugin, check_infura_plugin, check_registry_filepath
+from web3.auto.gethdev import w3
 
 VARIABLE_PREFIX = "$"
 
+SPECIAL_VARIABLES = {"EMPTY_BYTES": b""}
+
 
 def prepare_deployment(
-        params_filepath: Path,
-        registry_filepath: Path,
-        publish: bool = False
+    params_filepath: Path, registry_filepath: Path, publish: bool = False
 ) -> typing.Tuple[AccountAPI, "ApeDeploymentParameters"]:
     """
     Prepares the deployment by loading the deployment parameters
@@ -54,8 +53,12 @@ def _resolve_param(value: Any) -> Any:
     """Resolves a single parameter value."""
     if not _is_variable(value):
         return value  # literally a value
+
     variable = value.strip(VARIABLE_PREFIX)
-    contract_container = getattr(project, variable)
+    if variable in SPECIAL_VARIABLES:
+        return SPECIAL_VARIABLES[variable]
+
+    contract_container = _get_contract_container(variable)
     contract_instances = contract_container.deployments
     if not contract_instances:
         return NULL_ADDRESS
@@ -90,7 +93,7 @@ def _validate_constructor_param(param: Any, contracts: List[str]) -> None:
     if not _is_variable(param):
         return  # literally a value
     variable = param.strip(VARIABLE_PREFIX)
-    if variable not in contracts:
+    if (variable not in contracts) and (variable not in SPECIAL_VARIABLES):
         raise ConstructorParameters.Invalid(f"Variable {param} is not resolvable")
 
 
@@ -136,6 +139,30 @@ def _validate_constructor_abi_inputs(
             )
 
 
+def _get_dependency_contract_container(contract: str) -> ContractContainer:
+    for dependency_name, dependency_versions in project.dependencies.items():
+        if len(dependency_versions) > 1:
+            raise ValueError(f"Ambiguous {dependency_name} dependency for {contract}")
+        try:
+            dependency_api = list(dependency_versions.values())[0]
+            contract_container = getattr(dependency_api, contract)
+            return contract_container
+        except AttributeError:
+            continue
+
+    raise ValueError(f"No contract found for {contract}")
+
+
+def _get_contract_container(contract: str) -> ContractContainer:
+    try:
+        contract_container = getattr(project, contract)
+    except AttributeError:
+        # not in root project; check dependencies
+        contract_container = _get_dependency_contract_container(contract)
+
+    return contract_container
+
+
 def validate_constructor_parameters(config: typing.OrderedDict[str, Any]) -> None:
     """Validates the constructor parameters for all contracts in a single config."""
     available_contracts = list(config.keys())
@@ -145,7 +172,8 @@ def validate_constructor_parameters(config: typing.OrderedDict[str, Any]) -> Non
                 _validate_constructor_param_list(value, available_contracts)
             else:
                 _validate_constructor_param(value, available_contracts)
-        contract_container = getattr(project, contract)
+
+        contract_container = _get_contract_container(contract)
         _validate_constructor_abi_inputs(
             contract_name=contract,
             abi_inputs=contract_container.constructor.abi.inputs,
