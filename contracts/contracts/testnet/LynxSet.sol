@@ -29,7 +29,9 @@ contract LynxRootApplication is Ownable, ITACoChildToRoot {
     }
 
     function updateAuthorization(address _stakingProvider, uint96 _amount) external onlyOwner {
-        childApplication.updateAuthorization(_stakingProvider, _amount);
+        if (address(childApplication) != address(0)) {
+            childApplication.updateAuthorization(_stakingProvider, _amount);
+        }
     }
 
     function confirmOperatorAddress(address _operator) external override {
