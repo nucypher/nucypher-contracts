@@ -76,3 +76,9 @@ contract LynxRitualToken is ERC20("LynxRitualToken", "LRT") {
         _mint(msg.sender, _totalSupplyOfTokens);
     }
 }
+
+contract LynxStakingToken is ERC20("LynxStakingToken", "LST") {
+    constructor(uint256 _totalSupplyOfTokens) {
+        _mint(msg.sender, _totalSupplyOfTokens);
+    }
+}
