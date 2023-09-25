@@ -11,14 +11,16 @@ from scripts.deployment import prepare_deployment
 from scripts.registry import registry_from_ape_deployments
 
 VERIFY = CURRENT_NETWORK not in LOCAL_BLOCKCHAIN_ENVIRONMENTS
-CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "lynx" / "lynx-alpha-13-params.json"
-REGISTRY_FILEPATH = ARTIFACTS_DIR / "lynx" / "lynx-alpha-13-registry.json"
+CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "lynx" / "lynx-alpha-13-child-params.json"
+REGISTRY_FILEPATH = ARTIFACTS_DIR / "lynx" / "lynx-alpha-13-child-registry.json"
+
+OZ_DEPENDENCY = project.dependencies["openzeppelin"]["4.9.1"]
 
 
 def main():
     """
-    This script deploys the Lynx TACo Root Application,
-    Lynx TACo Child Application, Lynx Ritual Token, and Lynx Coordinator.
+    This script deploys the Mock Lynx TACo Root Application,
+    Proxied Lynx TACo Child Application, Lynx Ritual Token, and Lynx Coordinator.
 
     September 18, 2023, Goerli Deployment:
     ape run testnet deploy_lynx --network ethereum:goerli:<INFURA_URI>
@@ -49,16 +51,23 @@ def main():
     )
 
     root_application = deployer.deploy(
-        *params.get(project.LynxMockRootApplication), **params.get_kwargs()
+        *params.get(project.LynxMockTACoApplication), **params.get_kwargs()
     )
 
-    child_application = deployer.deploy(
-        *params.get(project.LynxTACoChildApplication), **params.get_kwargs()
+    proxy_admin = deployer.deploy(*params.get(OZ_DEPENDENCY.ProxyAdmin), **params.get_kwargs())
+
+    _ = deployer.deploy(*params.get(project.LynxTACoChildApplication), **params.get_kwargs())
+
+    proxy = deployer.deploy(
+        *params.get(OZ_DEPENDENCY.TransparentUpgradeableProxy), **params.get_kwargs()
     )
+
+    print("\nWrapping TACoChildApplication in proxy")
+    taco_child_application = project.LynxTACoChildApplication.at(proxy.address)
 
     print("\nSetting TACo Child application on TACo Root")
     root_application.setChildApplication(
-        child_application.address,
+        taco_child_application.address,
         sender=deployer,
     )
 
@@ -66,26 +75,22 @@ def main():
 
     coordinator = deployer.deploy(*params.get(project.Coordinator), **params.get_kwargs())
 
-    print("\nSetting Coordinator on TACo Child application")
-    child_application.setCoordinator(coordinator.address, sender=deployer)
+    print(f"\nInitialize TACoChildApplication proxy with Coordinator {coordinator.address}")
+    taco_child_application.initialize(coordinator.address, sender=deployer)
 
     global_allow_list = deployer.deploy(*params.get(project.GlobalAllowList), **params.get_kwargs())
 
     deployments = [
         root_application,
-        child_application,
+        proxy_admin,
+        taco_child_application,
         ritual_token,
         coordinator,
         global_allow_list,
     ]
 
-    registry_names = {
-        # TACoApplication will be available on Goerli (not on Mumbai) so no rename here
-        child_application.contract_type.name: "TACoChildApplication",
-    }
-
     output_filepath = registry_from_ape_deployments(
-        deployments=deployments, registry_names=registry_names, output_filepath=REGISTRY_FILEPATH
+        deployments=deployments, output_filepath=REGISTRY_FILEPATH
     )
     print(f"(i) Registry written to {output_filepath}!")
 
