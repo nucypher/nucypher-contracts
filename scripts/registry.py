@@ -55,7 +55,7 @@ def _get_entry(
     return entry
 
 
-def _read_registry(filepath: Path) -> List[RegistryEntry]:
+def read_registry(filepath: Path) -> List[RegistryEntry]:
     with open(filepath, "r") as registry_file:
         json_data = json.load(registry_file)
 
@@ -68,7 +68,7 @@ def _read_registry(filepath: Path) -> List[RegistryEntry]:
     return registry_entries
 
 
-def _write_registry(data: List[RegistryEntry], filepath: Path) -> Path:
+def write_registry(data: List[RegistryEntry], filepath: Path) -> Path:
     with open(filepath, "w") as registry_file:
         json_data = json.dumps(data, indent=4)
         registry_file.write(json_data)
@@ -123,7 +123,7 @@ def registry_from_ape_deployments(
         entry = _get_entry(contract_instance=contract_instance, registry_names=registry_names)
         registry_data.append(entry)
 
-    output_filepath = _write_registry(data=registry_data, filepath=output_filepath)
+    output_filepath = write_registry(data=registry_data, filepath=output_filepath)
 
     return output_filepath
 
@@ -137,8 +137,8 @@ def merge_registries(
     """Merges two nucypher-style contract registries created from ape deployments API."""
     check_registry_filepath(registry_filepath=output_filepath)
 
-    registry_1_entries = _read_registry(registry_1_filepath)
-    registry_2_entries = _read_registry(registry_2_filepath)
+    registry_1_entries = read_registry(registry_1_filepath)
+    registry_2_entries = read_registry(registry_2_filepath)
 
     deprecated_contracts = [] if deprecated_contracts is None else deprecated_contracts
 
@@ -183,7 +183,7 @@ def merge_registries(
     # registry 2 entries
     merged_entries.extend(registry_2_contracts_dict.values())
 
-    _write_registry(data=merged_entries, filepath=output_filepath)
+    write_registry(data=merged_entries, filepath=output_filepath)
     print(f"Merged registry output to {output_filepath}")
 
     return output_filepath

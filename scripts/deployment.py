@@ -52,7 +52,7 @@ def _is_proxy_variable(variable: str):
 
 def _resolve_proxy_address(variable) -> str:
     proxy, target = variable.split(PROXY_DECLARATION_DELIMETER)
-    target_contract_container = _get_contract_container(target)
+    target_contract_container = get_contract_container(target)
     target_contract_instance = _get_contract_instance(target_contract_container)
     if target_contract_instance == NULL_ADDRESS:
         # eager validation
@@ -100,7 +100,7 @@ def _resolve_param(value: Any) -> Any:
     if _is_proxy_variable(variable):
         return _resolve_proxy_address(variable)
 
-    contract_container = _get_contract_container(variable)
+    contract_container = get_contract_container(variable)
     contract_instance = _get_contract_instance(contract_container)
     if contract_instance == NULL_ADDRESS:
         return NULL_ADDRESS
@@ -208,7 +208,7 @@ def _get_dependency_contract_container(contract: str) -> ContractContainer:
     raise ValueError(f"No contract found for {contract}")
 
 
-def _get_contract_container(contract: str) -> ContractContainer:
+def get_contract_container(contract: str) -> ContractContainer:
     try:
         contract_container = getattr(project, contract)
     except AttributeError:
@@ -228,7 +228,7 @@ def validate_constructor_parameters(config: typing.OrderedDict[str, Any]) -> Non
             else:
                 _validate_constructor_param(value, available_contracts)
 
-        contract_container = _get_contract_container(contract)
+        contract_container = get_contract_container(contract)
         _validate_constructor_abi_inputs(
             contract_name=contract,
             abi_inputs=contract_container.constructor.abi.inputs,

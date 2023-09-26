@@ -1,19 +1,17 @@
-import json
-
-from ape import networks, project
-
+from ape import networks
 from scripts.constants import ARTIFACTS_DIR
+from scripts.deployment import get_contract_container
+from scripts.registry import read_registry
 
 REGISTRY_FILEPATH = ARTIFACTS_DIR / "lynx" / "lynx-alpha-13-child-registry.json"
 
-with open(REGISTRY_FILEPATH) as f:
-    registry = json.loads(f.read())
+registry_entries = read_registry(filepath=REGISTRY_FILEPATH)
 
 deployments = []
-for entry in registry:
-    contract_type = entry[0]
-    contract_container = getattr(project, contract_type)
-    contract_instance = contract_container.at(entry[2])
+for registry_entry in registry_entries:
+    contract_type = registry_entry.contract_name
+    contract_container = get_contract_container(contract_type)
+    contract_instance = contract_container.at(registry_entry.contract_address)
     deployments.append(contract_instance)
 
 etherscan = networks.provider.network.explorer
