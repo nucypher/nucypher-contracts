@@ -4,11 +4,10 @@ from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional
 
 from ape.contracts import ContractInstance
-from eth_typing import ChecksumAddress
-from eth_utils import to_checksum_address
-
 from deployment.params import get_contract_container
 from deployment.utils import check_registry_filepath
+from eth_typing import ChecksumAddress
+from eth_utils import to_checksum_address
 
 
 class RegistryEntry(NamedTuple):
@@ -191,12 +190,12 @@ def merge_registries(
     return output_filepath
 
 
-def contracts_from_registry(registry_filepath: Path):
-    registry_entries = read_registry(filepath=registry_filepath)
-    deployments = list()
+def contracts_from_registry(filepath: Path) -> Dict[str, ContractInstance]:
+    registry_entries = read_registry(filepath=filepath)
+    deployments = dict()
     for registry_entry in registry_entries:
         contract_type = registry_entry.contract_name
         contract_container = get_contract_container(contract_type)
         contract_instance = contract_container.at(registry_entry.contract_address)
-        deployments.append(contract_instance)
+        deployments[contract_type] = contract_instance
     return deployments

@@ -7,4 +7,4 @@ REGISTRY_FILEPATH = ARTIFACTS_DIR / "lynx" / "lynx-alpha-13-child-registry.json"
 
 def main():
     contracts = contracts_from_registry(REGISTRY_FILEPATH)
-    verify_contracts(contracts)
+    verify_contracts(list(contracts.values()))
