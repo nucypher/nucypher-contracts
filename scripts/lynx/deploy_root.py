@@ -1,20 +1,18 @@
 #!/usr/bin/python3
 
 from ape import networks, project
-from scripts.constants import (
+from deployment.constants import (
     ARTIFACTS_DIR,
     CONSTRUCTOR_PARAMS_DIR,
     CURRENT_NETWORK,
-    LOCAL_BLOCKCHAIN_ENVIRONMENTS,
+    LOCAL_BLOCKCHAIN_ENVIRONMENTS, OZ_DEPENDENCY,
 )
-from scripts.deployment import prepare_deployment
-from scripts.registry import registry_from_ape_deployments
+from deployment.utils import prepare_deployment
+from deployment.registry import registry_from_ape_deployments
 
 VERIFY = CURRENT_NETWORK not in LOCAL_BLOCKCHAIN_ENVIRONMENTS
 CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "lynx" / "lynx-alpha-13-root-params.json"
 REGISTRY_FILEPATH = ARTIFACTS_DIR / "lynx" / "lynx-alpha-13-root-registry.json"
-
-OZ_DEPENDENCY = project.dependencies["openzeppelin"]["4.9.1"]
 
 
 def main():

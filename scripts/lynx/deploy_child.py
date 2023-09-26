@@ -1,20 +1,18 @@
 #!/usr/bin/python3
 
 from ape import networks, project
-from scripts.constants import (
+from deployment.constants import (
     ARTIFACTS_DIR,
     CONSTRUCTOR_PARAMS_DIR,
     CURRENT_NETWORK,
-    LOCAL_BLOCKCHAIN_ENVIRONMENTS,
+    LOCAL_BLOCKCHAIN_ENVIRONMENTS, OZ_DEPENDENCY,
 )
-from scripts.deployment import prepare_deployment
-from scripts.registry import registry_from_ape_deployments
+from deployment.registry import registry_from_ape_deployments
+from deployment.utils import verify_contracts, prepare_deployment
 
 VERIFY = CURRENT_NETWORK not in LOCAL_BLOCKCHAIN_ENVIRONMENTS
 CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "lynx" / "lynx-alpha-13-child-params.json"
 REGISTRY_FILEPATH = ARTIFACTS_DIR / "lynx" / "lynx-alpha-13-child-registry.json"
-
-OZ_DEPENDENCY = project.dependencies["openzeppelin"]["4.9.1"]
 
 
 def main():
@@ -84,7 +82,4 @@ def main():
     print(f"(i) Registry written to {output_filepath}!")
 
     if VERIFY:
-        etherscan = networks.provider.network.explorer
-        for deployment in deployments:
-            print(f"(i) Verifying {deployment.contract_type.name}...")
-            etherscan.publish_contract(deployment.address)
+        verify_contracts(contracts=deployments)

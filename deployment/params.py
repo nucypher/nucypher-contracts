@@ -5,45 +5,17 @@ from pathlib import Path
 from typing import Any, List
 
 from ape import chain, project
-from ape.api import AccountAPI
-from ape.cli import get_user_selected_account
 from ape.contracts.base import ContractContainer, ContractInstance
-from scripts.constants import NULL_ADDRESS
-from scripts.utils import check_etherscan_plugin, check_infura_plugin, check_registry_filepath
 from web3.auto.gethdev import w3
 
-VARIABLE_PREFIX = "$"
-PROXY_DECLARATION_DELIMETER = ":"
-
-SPECIAL_VALUE_VARIABLES = {"EMPTY_BYTES": b""}
-
-PROXY_NAME = "TransparentUpgradeableProxy"
-
-
-def prepare_deployment(
-    params_filepath: Path, registry_filepath: Path, publish: bool = False
-) -> typing.Tuple[AccountAPI, "ApeDeploymentParameters"]:
-    """
-    Prepares the deployment by loading the deployment parameters
-    and checking the pre-deployment conditions.
-
-    NOTE: publish is False by default because we use customized artifact tracking
-    that is not compatible with the ape publish command.
-    """
-
-    # pre-deployment checks
-    check_registry_filepath(registry_filepath=registry_filepath)
-    check_etherscan_plugin()
-    check_infura_plugin()
-
-    # load (and implicitly validate) deployment parameters
-    constructor_parameters = ConstructorParameters.from_file(params_filepath)
-    deployment_parameters = ApeDeploymentParameters(constructor_parameters, publish)
-
-    # do this last so that the user can see any failed
-    # pre-deployment checks or validation errors.
-    deployer_account = get_user_selected_account()
-    return deployer_account, deployment_parameters
+from deployment.confirm import _confirm_resolution
+from deployment.constants import (
+    NULL_ADDRESS,
+    VARIABLE_PREFIX,
+    PROXY_DECLARATION_DELIMETER,
+    SPECIAL_VALUE_VARIABLES,
+    PROXY_NAME
+)
 
 
 def _is_proxy_variable(variable: str):
@@ -234,39 +206,6 @@ def validate_constructor_parameters(config: typing.OrderedDict[str, Any]) -> Non
             abi_inputs=contract_container.constructor.abi.inputs,
             parameters=parameters,
         )
-
-
-def _confirm_deployment(contract_name: str) -> None:
-    """Asks the user to confirm the deployment of a single contract."""
-    answer = input(f"Deploy {contract_name} Y/N? ")
-    if answer.lower().strip() == "n":
-        print("Aborting deployment!")
-        exit(-1)
-
-
-def _confirm_null_address() -> None:
-    answer = input("Null Address detected for deployment parameter; Continue? Y/N? ")
-    if answer.lower().strip() == "n":
-        print("Aborting deployment!")
-        exit(-1)
-
-
-def _confirm_resolution(resolved_params: OrderedDict, contract_name: str) -> None:
-    """Asks the user to confirm the resolved constructor parameters for a single contract."""
-    if len(resolved_params) == 0:
-        print(f"\n(i) No constructor parameters for {contract_name}")
-        _confirm_deployment(contract_name)
-        return
-
-    print(f"\nConstructor parameters for {contract_name}")
-    contains_null_address = False
-    for name, resolved_value in resolved_params.items():
-        print(f"\t{name}={resolved_value}")
-        if not contains_null_address:
-            contains_null_address = resolved_value == NULL_ADDRESS
-    _confirm_deployment(contract_name)
-    if contains_null_address:
-        _confirm_null_address()
 
 
 class ConstructorParameters:

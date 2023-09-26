@@ -1,5 +1,5 @@
-from scripts.constants import ARTIFACTS_DIR
-from scripts.registry import merge_registries
+from deployment.constants import ARTIFACTS_DIR
+from deployment.registry import merge_registries
 
 lynx_child_deployment_registry = ARTIFACTS_DIR / "lynx" / "lynx-alpha-13-child-registry.json"
 

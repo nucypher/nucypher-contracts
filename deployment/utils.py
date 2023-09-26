@@ -1,50 +1,23 @@
 import os
+import typing
 from pathlib import Path
+from typing import List
 
-from ape import accounts, project
-from web3 import Web3
+from ape import networks
+from ape.api import AccountAPI
+from ape.cli import get_user_selected_account
+from ape.contracts import ContractInstance
 
-from scripts.constants import (
+from deployment.constants import (
     CURRENT_NETWORK,
     ETHERSCAN_API_KEY_ENVVAR,
     LOCAL_BLOCKCHAIN_ENVIRONMENTS,
     WEB3_INFURA_API_KEY_ENVVAR
 )
-
-
-def deploy_mocks(deployer):
-    """This function should deploy nucypher_token and t_staking and return the
-    corresponding contract addresses"""
-    nucypher_token = project.NuCypherToken.deploy(1_000_000_000, sender=deployer)
-    t_staking_for_escrow = project.ThresholdStakingForStakingEscrowMock.deploy(sender=deployer)
-    t_staking_for_taco = project.ThresholdStakingForTACoApplicationMock.deploy(sender=deployer)
-    total_supply = Web3.to_wei(10_000_000_000, "ether")
-    t_token = project.TToken.deploy(total_supply, sender=deployer)
-    work_lock = project.WorkLockForStakingEscrowMock.deploy(nucypher_token, sender=deployer)
-    staking_escrow = project.StakingEscrow.deploy(
-        nucypher_token, work_lock, t_staking_for_escrow, sender=deployer
-    )
-    return (
-        nucypher_token,
-        t_staking_for_escrow,
-        t_staking_for_taco,
-        work_lock,
-        staking_escrow,
-        t_token,
-    )
-
-
-def get_account(_id):
-    if CURRENT_NETWORK not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
-        if _id is None:
-            raise ValueError("Must specify account id when deploying to production networks")
-        else:
-            return accounts.load(_id)
-
-    elif CURRENT_NETWORK in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
-        return accounts.test_accounts[0]
-    else:
-        return None
+from deployment.params import (
+    ApeDeploymentParameters,
+    ConstructorParameters
+)
 
 
 def check_registry_filepath(registry_filepath: Path) -> None:
@@ -91,3 +64,36 @@ def check_infura_plugin() -> None:
         raise ValueError(f"{WEB3_INFURA_API_KEY_ENVVAR} is not set.")
     if not len(api_key) == 32:
         raise ValueError(f"{WEB3_INFURA_API_KEY_ENVVAR} is not valid.")
+
+
+def verify_contracts(contracts: List[ContractInstance]) -> None:
+    explorer = networks.provider.network.explorer
+    for instance in contracts:
+        print(f"(i) Verifying {instance.contract_type.name}...")
+        explorer.publish_contract(instance.address)
+
+
+def prepare_deployment(
+    params_filepath: Path, registry_filepath: Path, publish: bool = False
+) -> typing.Tuple[AccountAPI, "ApeDeploymentParameters"]:
+    """
+    Prepares the deployment by loading the deployment parameters
+    and checking the pre-deployment conditions.
+
+    NOTE: publish is False by default because we use customized artifact tracking
+    that is not compatible with the ape publish command.
+    """
+
+    # pre-deployment checks
+    check_registry_filepath(registry_filepath=registry_filepath)
+    check_etherscan_plugin()
+    check_infura_plugin()
+
+    # load (and implicitly validate) deployment parameters
+    constructor_parameters = ConstructorParameters.from_file(params_filepath)
+    deployment_parameters = ApeDeploymentParameters(constructor_parameters, publish)
+
+    # do this last so that the user can see any failed
+    # pre-deployment checks or validation errors.
+    deployer_account = get_user_selected_account()
+    return deployer_account, deployment_parameters

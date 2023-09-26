@@ -1,7 +1,7 @@
 from ape import project
 from ape.cli import get_user_selected_account
-from scripts.constants import ARTIFACTS_DIR
-from scripts.registry import read_registry
+from deployment.constants import ARTIFACTS_DIR
+from deployment.registry import read_registry
 
 REGISTRY_FILEPATH = ARTIFACTS_DIR / "lynx" / "lynx-alpha-13-root-registry.json"
 
