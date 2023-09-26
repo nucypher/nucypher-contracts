@@ -21,6 +21,21 @@ interface WorkLockInterface {
 
 
 /**
+* @notice VendingMachine interface
+*/
+interface IVendingMachine {
+
+    function wrappedToken() external returns (IERC20);
+    function tToken() external returns (IERC20);
+    function wrap(uint256 amount) external;
+    function unwrap(uint256 amount) external;
+    function conversionToT(uint256 amount) external view returns (uint256 tAmount, uint256 wrappedRemainder);
+    function conversionFromT(uint256 amount) external view returns (uint256 wrappedAmount, uint256 tRemainder);
+    
+}
+
+
+/**
 * @title StakingEscrowStub
 * @notice Stub is used to deploy main StakingEscrow after all other contract and make some variables immutable
 * @dev |v1.1.0|
@@ -110,6 +125,13 @@ contract StakingEscrow is Upgradeable, IERC900History {
     * @param stakingProvider Staking provider address
     */
     event MergeRequested(address indexed staker, address indexed stakingProvider);
+    
+    /**
+    * @notice Signals that NU tokens were wrapped and topped up to the existing T stake
+    * @param staker Staker address
+    * @param value Amount wrapped (in NuNits)
+    */
+    event WrappedAndTopedUp(address indexed staker, uint256 value);
 
     struct StakerInfo {
         uint256 value;
@@ -145,6 +167,8 @@ contract StakingEscrow is Upgradeable, IERC900History {
     NuCypherToken public immutable token;
     WorkLockInterface public immutable workLock;
     IStaking public immutable tStaking;
+    IERC20 public immutable tToken;
+    IVendingMachine public immutable vendingMachine;
 
     uint128 private stub1; // former slot for previousPeriodSupply
     uint128 public currentPeriodSupply; // resulting token supply
@@ -168,21 +192,28 @@ contract StakingEscrow is Upgradeable, IERC900History {
     * @param _token NuCypher token contract
     * @param _workLock WorkLock contract. Zero address if there is no WorkLock
     * @param _tStaking T token staking contract
+    * @param _vendingMachine Nu vending machine
     */
     constructor(
         NuCypherToken _token,
         WorkLockInterface _workLock,
-        IStaking _tStaking
+        IStaking _tStaking,
+        IERC20 _tToken,
+        IVendingMachine _vendingMachine
     ) {
         require(_token.totalSupply() > 0 &&
             _tStaking.stakedNu(address(0)) == 0 &&
-            (address(_workLock) == address(0) || _workLock.token() == _token),
+            (address(_workLock) == address(0) || _workLock.token() == _token) &&
+            _vendingMachine.wrappedToken() == _token &&
+            _vendingMachine.tToken() == _tToken,
             "Input addresses must be deployed contracts"
         );
 
         token = _token;
         workLock = _workLock;
         tStaking = _tStaking;
+        tToken = _tToken;
+        vendingMachine = _vendingMachine;
     }
 
     /**
@@ -273,6 +304,7 @@ contract StakingEscrow is Upgradeable, IERC900History {
     function withdraw(uint256 _value) external onlyStaker {
         require(_value > 0, "Value must be specified");
         StakerInfo storage info = stakerInfo[msg.sender];
+        // TODO remove that line after 2 step of upgrading TokenStaking
         require(
             _value + tStaking.stakedNu(info.stakingProvider) <= info.value,
             "Not enough tokens unstaked in T staking contract"
@@ -285,6 +317,34 @@ contract StakingEscrow is Upgradeable, IERC900History {
 
         token.safeTransfer(msg.sender, _value);
         emit Withdrawn(msg.sender, _value);
+    }
+
+    /**
+    * @notice Wraps all tokens and top up stake in T staking contract
+    */
+    function wrapAndTopUp() external onlyStaker {
+        StakerInfo storage info = stakerInfo[msg.sender];
+        require(info.stakingProvider != address(0), "There is no stake in T staking contract");
+        require(
+            tStaking.stakedNu(info.stakingProvider) == 0,
+            "Not all tokens unstaked in T staking contract"
+        );
+        require(
+            getUnvestedTokens(msg.sender) == 0,
+            "Not all tokens released during vesting"
+        );
+
+        (uint256 tTokenAmount, uint256 remainder) = vendingMachine.conversionToT(
+            info.value
+        );
+
+        uint256 wrappedTokenAmount = info.value - remainder;
+        token.approve(address(vendingMachine), wrappedTokenAmount);
+        vendingMachine.wrap(wrappedTokenAmount);
+        tToken.approve(address(tStaking), tTokenAmount);
+        tStaking.topUp(info.stakingProvider, uint96(tTokenAmount));
+        info.value = remainder;
+        emit WrappedAndTopedUp(msg.sender, wrappedTokenAmount);
     }
 
     /**

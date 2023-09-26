@@ -23,6 +23,7 @@ VESTING_RELEASE_TIMESTAMP_SLOT = 9
 VESTING_RELEASE_RATE_SLOT = 10
 STAKING_PROVIDER_SLOT = 11
 ONE_HOUR = 60 * 60
+TOTAL_SUPPLY = Web3.to_wei(1_000_000_000, "ether")
 
 
 def test_staking_from_worklock(project, accounts, token, worklock, escrow):
@@ -432,3 +433,66 @@ def test_combined_vesting(accounts, token, worklock, escrow, chain):
 
     chain.pending_timestamp += 20 * 60
     assert escrow.getUnvestedTokens(staker) == 0
+
+
+def test_wrap(
+    accounts, token, worklock, threshold_staking, escrow, vending_machine, t_token, chain
+):
+    creator, staker, staking_provider, other_staker = accounts[0:4]
+
+    with ape.reverts():
+        escrow.wrapAndTopUp(sender=staker)
+
+    # Deposit some tokens
+    value = Web3.to_wei(15_000, "ether")
+    token.transfer(worklock.address, 10 * value, sender=creator)
+    worklock.depositFromWorkLock(staker, value, 0, sender=creator)
+
+    # Can't wrap without requesting merge
+    with ape.reverts():
+        escrow.wrapAndTopUp(sender=staker)
+
+    threshold_staking.requestMerge(staker, staking_provider, sender=creator)
+
+    with ape.reverts():
+        escrow.wrapAndTopUp(sender=staker)
+
+    threshold_staking.setStakedNu(staking_provider, 0, sender=creator)
+    now = chain.pending_timestamp
+    release_timestamp = now + ONE_HOUR
+    rate = value // ONE_HOUR
+    escrow.setupVesting([staker], [release_timestamp], [rate], sender=creator)
+
+    with ape.reverts():
+        escrow.wrapAndTopUp(sender=staker)
+
+    chain.pending_timestamp += ONE_HOUR
+
+    tx = escrow.wrapAndTopUp(sender=staker)
+    assert escrow.getAllTokens(staker) == 0
+    assert token.balanceOf(staker) == 0
+    assert token.balanceOf(escrow.address) == 0
+    assert token.balanceOf(vending_machine.address) == value
+    assert t_token.balanceOf(threshold_staking.address) == value
+    assert t_token.balanceOf(vending_machine.address) == TOTAL_SUPPLY - value
+
+    events = escrow.WrappedAndTopedUp.from_receipt(tx)
+    assert events == [escrow.WrappedAndTopedUp(staker=staker, value=value)]
+
+    # Wrap again but with remainder
+    other_value = Web3.to_wei(15_000, "ether") + 1
+    worklock.depositFromWorkLock(other_staker, other_value, 0, sender=creator)
+    threshold_staking.requestMerge(other_staker, other_staker, sender=creator)
+    threshold_staking.setStakedNu(other_staker, 0, sender=creator)
+
+    tx = escrow.wrapAndTopUp(sender=other_staker)
+    expected_value = value + other_value - 1
+    assert escrow.getAllTokens(other_staker) == 1
+    assert token.balanceOf(other_staker) == 0
+    assert token.balanceOf(escrow.address) == 1
+    assert token.balanceOf(vending_machine.address) == expected_value
+    assert t_token.balanceOf(threshold_staking.address) == expected_value
+    assert t_token.balanceOf(vending_machine.address) == TOTAL_SUPPLY - expected_value
+
+    events = escrow.WrappedAndTopedUp.from_receipt(tx)
+    assert events == [escrow.WrappedAndTopedUp(staker=other_staker, value=other_value - 1)]
