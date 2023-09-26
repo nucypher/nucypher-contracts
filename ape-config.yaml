@@ -5,8 +5,6 @@ plugins:
   - name: solidity
   - name: polygon
   - name: ape-etherscan
-    config:
-      api_key: ${ETHERSCAN_API_KEY}
 
 dependencies:
   - name: openzeppelin
