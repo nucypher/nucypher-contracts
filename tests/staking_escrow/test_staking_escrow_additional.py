@@ -20,17 +20,24 @@ from ape.utils import ZERO_ADDRESS
 from web3 import Web3
 
 
-def test_upgrading(accounts, token, project):
+def test_upgrading(accounts, token, t_token, vending_machine, project):
     creator = accounts[0]
     staker = accounts[1]
 
     # Initialize contract and staker
     worklock = creator.deploy(project.WorkLockForStakingEscrowMock, token.address)
-    threshold_staking = creator.deploy(project.ThresholdStakingForStakingEscrowMock)
+    threshold_staking = creator.deploy(
+        project.ThresholdStakingForStakingEscrowMock, t_token.address
+    )
 
     # Deploy contract
     contract_library_v1 = creator.deploy(
-        project.StakingEscrow, token.address, worklock.address, threshold_staking.address
+        project.StakingEscrow,
+        token.address,
+        worklock.address,
+        threshold_staking.address,
+        t_token.address,
+        vending_machine.address,
     )
     dispatcher = creator.deploy(project.Dispatcher, contract_library_v1.address)
 
@@ -43,7 +50,12 @@ def test_upgrading(accounts, token, project):
 
     # Deploy second version of the contract
     contract_library_v2 = creator.deploy(
-        project.StakingEscrowV2Mock, token.address, worklock.address, threshold_staking.address
+        project.StakingEscrowV2Mock,
+        token.address,
+        worklock.address,
+        threshold_staking.address,
+        t_token.address,
+        vending_machine.address,
     )
 
     contract = project.StakingEscrowV2Mock.at(dispatcher.address)
@@ -78,7 +90,12 @@ def test_upgrading(accounts, token, project):
 
     # Can't upgrade to the previous version or to the bad version
     contract_library_bad = creator.deploy(
-        project.StakingEscrowBad, token.address, worklock.address, threshold_staking.address
+        project.StakingEscrowBad,
+        token.address,
+        worklock.address,
+        threshold_staking.address,
+        t_token.address,
+        vending_machine.address,
     )
     with ape.reverts():
         dispatcher.upgrade(contract_library_v1.address, sender=creator)
