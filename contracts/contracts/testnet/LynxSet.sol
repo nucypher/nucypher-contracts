@@ -10,6 +10,11 @@ import "../coordination/ITACoChildToRoot.sol";
 import "../coordination/TACoChildApplication.sol";
 import "../TACoApplication.sol";
 
+//       [Goerli]                              <--------->             [Mumbai]
+//
+// TACoApplication <---> MockPolygonRoot |   <deployer_account>   | MockPolygonChild <--> TACoChildApplication
+//
+
 contract MockPolygonRoot is Ownable, ITACoChildToRoot, ITACoRootToChild {
     ITACoChildToRoot public rootApplication;
 
@@ -36,17 +41,6 @@ contract MockPolygonRoot is Ownable, ITACoChildToRoot, ITACoRootToChild {
     function updateAuthorization(address stakingProvider, uint96 amount) external {}
 }
 
-// TACoApplication <---> MockPolygonRoot |   <deployer_account>   | MockPolygonChild <--> TACoChildApplication
-//
-// Goerli                     <--------->          Mumbai ....
-// TestnetThresholdStaking
-//  - TACoApplication                              MockPolygonChild  <---> LynxTACoChildApplication
-//    - child = LynxMockTACoChildApplication
-//
-//
-// Registry:
-// ^ TACoApplication
-//                                                                                ^ TACoChildApplication
 contract MockPolygonChild is Ownable, ITACoChildToRoot, ITACoRootToChild {
     ITACoRootToChild public childApplication;
 
