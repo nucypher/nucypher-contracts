@@ -1,14 +1,15 @@
 #!/usr/bin/python3
 
-from ape import networks, project
+from ape import project
 from deployment.constants import (
     ARTIFACTS_DIR,
     CONSTRUCTOR_PARAMS_DIR,
     CURRENT_NETWORK,
-    LOCAL_BLOCKCHAIN_ENVIRONMENTS, OZ_DEPENDENCY,
+    LOCAL_BLOCKCHAIN_ENVIRONMENTS,
+    OZ_DEPENDENCY,
 )
-from deployment.utils import prepare_deployment
 from deployment.registry import registry_from_ape_deployments
+from deployment.utils import prepare_deployment, verify_contracts
 
 VERIFY = CURRENT_NETWORK not in LOCAL_BLOCKCHAIN_ENVIRONMENTS
 CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "lynx" / "lynx-alpha-13-root-params.json"
@@ -78,7 +79,4 @@ def main():
     print(f"(i) Registry written to {output_filepath}!")
 
     if VERIFY:
-        etherscan = networks.provider.network.explorer
-        for deployment in deployments:
-            print(f"(i) Verifying {deployment.contract_type.name}...")
-            etherscan.publish_contract(deployment.address)
+        verify_contracts(contracts=deployments)
