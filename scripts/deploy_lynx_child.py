@@ -42,14 +42,16 @@ def main():
 
     proxy_admin = deployer.deploy(*params.get(OZ_DEPENDENCY.ProxyAdmin), **params.get_kwargs())
 
-    taco_implementation = deployer.deploy(*params.get(project.LynxTACoChildApplication), **params.get_kwargs())
+    taco_implementation = deployer.deploy(
+        *params.get(project.LynxTACoChildApplication), **params.get_kwargs()
+    )
 
     proxy = deployer.deploy(
         *params.get(OZ_DEPENDENCY.TransparentUpgradeableProxy), **params.get_kwargs()
     )
 
     print("\nWrapping TACoChildApplication in proxy")
-    taco_child_application = project.LynxTACoChildApplication.at(proxy.address)
+    taco_child_application = project.TACoChildApplication.at(proxy.address)
 
     print("\nSetting TACo Child application on TACo Root")
     root_application.setChildApplication(
