@@ -1,18 +1,11 @@
 from ape import networks, project
 from ape.api import AccountAPI
 from ape.cli import get_user_selected_account
-from deployment.constants import ARTIFACTS_DIR
+from deployment.constants import ARTIFACTS_DIR, LYNX_NODES
 from deployment.registry import contracts_from_registry
 
 ROOT_REGISTRY_FILEPATH = ARTIFACTS_DIR / "lynx" / "lynx-alpha-13-root-registry.json"
 CHILD_REGISTRY_FILEPATH = ARTIFACTS_DIR / "lynx" / "lynx-alpha-13-child-registry.json"
-
-LYNX_NODES = {
-    # staking provider -> operator
-    "0xb15d5a4e2be34f4be154a1b08a94ab920ffd8a41": "0x890069745E9497C6f99Db68C4588deC5669F3d3E",
-    "0x210eeac07542f815ebb6fd6689637d8ca2689392": "0xf48F720A2Ed237c24F5A7686543D90596bb8D44D",
-    "0x48C8039c32F4c6f5cb206A5911C8Ae814929C16B": "0xce057adc39dcD1b3eA28661194E8963481CC48b2",
-}
 
 
 def configure_goerli_root(deployer_account: AccountAPI) -> int:
