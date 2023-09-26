@@ -10,8 +10,8 @@ import "../coordination/ITACoChildToRoot.sol";
 import "../coordination/TACoChildApplication.sol";
 import "../TACoApplication.sol";
 
-contract LynxMockTACoChildApplication is Ownable, ITACoChildToRoot {
-    ITACoChildToRoot public immutable rootApplication;
+contract MockPolygonRoot is Ownable, ITACoChildToRoot, ITACoRootToChild {
+    ITACoChildToRoot public rootApplication;
 
     constructor(ITACoChildToRoot _rootApplication) {
         require(
@@ -21,19 +21,33 @@ contract LynxMockTACoChildApplication is Ownable, ITACoChildToRoot {
         rootApplication = _rootApplication;
     }
 
+    function setRootApplication(ITACoChildToRoot application) external onlyOwner {
+        rootApplication = application;
+    }
+
     function confirmOperatorAddress(address operator) external override onlyOwner {
         rootApplication.confirmOperatorAddress(operator);
     }
+
+    // solhint-disable-next-line no-empty-blocks
+    function updateOperator(address stakingProvider, address operator) external {}
+
+    // solhint-disable-next-line no-empty-blocks
+    function updateAuthorization(address stakingProvider, uint96 amount) external {}
 }
 
-// Goerli                  <--------->     Mumbai ....
-// LynxTACoApplication                     LynxMockTACoApplication  <---> LynxTACoChildApplication
+// TACoApplication <---> MockPolygonRoot |   <deployer_account>   | MockPolygonChild <--> TACoChildApplication
+//
+// Goerli                     <--------->          Mumbai ....
+// TestnetThresholdStaking
+//  - TACoApplication                              MockPolygonChild  <---> LynxTACoChildApplication
+//    - child = LynxMockTACoChildApplication
 //
 //
 // Registry:
 // ^ TACoApplication
-//                                                                           ^ TACoChildApplication
-contract LynxMockTACoApplication is Ownable, ITACoChildToRoot, ITACoRootToChild {
+//                                                                                ^ TACoChildApplication
+contract MockPolygonChild is Ownable, ITACoChildToRoot, ITACoRootToChild {
     ITACoRootToChild public childApplication;
 
     function setChildApplication(ITACoRootToChild _childApplication) external onlyOwner {

@@ -18,7 +18,7 @@
     "admin_": "$ProxyAdmin",
     "_data": "$EMPTY_BYTES"
   },
-  "LynxMockTACoChildApplication": {
+  "MockPolygonRoot": {
     "_rootApplication": "$TransparentUpgradeableProxy:TACoApplication"
   }
 }

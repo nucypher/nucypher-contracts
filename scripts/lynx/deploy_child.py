@@ -5,10 +5,11 @@ from deployment.constants import (
     ARTIFACTS_DIR,
     CONSTRUCTOR_PARAMS_DIR,
     CURRENT_NETWORK,
-    LOCAL_BLOCKCHAIN_ENVIRONMENTS, OZ_DEPENDENCY,
+    LOCAL_BLOCKCHAIN_ENVIRONMENTS,
+    OZ_DEPENDENCY,
 )
 from deployment.registry import registry_from_ape_deployments
-from deployment.utils import verify_contracts, prepare_deployment
+from deployment.utils import prepare_deployment, verify_contracts
 
 VERIFY = CURRENT_NETWORK not in LOCAL_BLOCKCHAIN_ENVIRONMENTS
 CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "lynx" / "lynx-alpha-13-child-params.json"
@@ -34,8 +35,8 @@ def main():
         registry_filepath=REGISTRY_FILEPATH,
     )
 
-    root_application = deployer.deploy(
-        *params.get(project.LynxMockTACoApplication), **params.get_kwargs()
+    mock_polygon_child = deployer.deploy(
+        *params.get(project.MockPolygonChild), **params.get_kwargs()
     )
 
     proxy_admin = deployer.deploy(*params.get(OZ_DEPENDENCY.ProxyAdmin), **params.get_kwargs())
@@ -51,8 +52,10 @@ def main():
     print("\nWrapping TACoChildApplication in proxy")
     taco_child_application = project.TACoChildApplication.at(proxy.address)
 
-    print("\nSetting TACo Child application on TACo Root")
-    root_application.setChildApplication(
+    print(
+        f"\nSetting TACoChildApplication proxy ({taco_child_application.address}) as child application on MockPolygonChild ({mock_polygon_child.address})"
+    )
+    mock_polygon_child.setChildApplication(
         taco_child_application.address,
         sender=deployer,
     )
@@ -61,16 +64,18 @@ def main():
 
     coordinator = deployer.deploy(*params.get(project.Coordinator), **params.get_kwargs())
 
-    print(f"\nInitialize TACoChildApplication proxy with Coordinator {coordinator.address}")
+    print(
+        f"\nInitializing TACoChildApplication proxy ({taco_child_application.address}) with Coordinator ({coordinator.address})"
+    )
     taco_child_application.initialize(coordinator.address, sender=deployer)
 
     global_allow_list = deployer.deploy(*params.get(project.GlobalAllowList), **params.get_kwargs())
 
     deployments = [
-        root_application,
+        mock_polygon_child,
         proxy_admin,
-        taco_implementation,
-        taco_child_application,
+        taco_implementation,  # implementation (contract name is different than proxy contract)
+        taco_child_application,  # proxy
         ritual_token,
         coordinator,
         global_allow_list,

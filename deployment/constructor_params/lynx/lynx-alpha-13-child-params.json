@@ -1,8 +1,8 @@
 {
-  "LynxMockTACoApplication": {},
+  "MockPolygonChild": {},
   "ProxyAdmin": {},
   "LynxTACoChildApplication": {
-    "_rootApplication": "$LynxMockTACoApplication"
+    "_rootApplication": "$MockPolygonChild"
   },
   "TransparentUpgradeableProxy": {
     "_logic": "$LynxTACoChildApplication",

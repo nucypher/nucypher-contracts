@@ -51,26 +51,28 @@ def main():
     print("\nWrapping TACoApplication in proxy")
     taco_application = project.TACoApplication.at(proxy.address)
 
-    print("\nSetting TACoApplication on ThresholdStakingMock")
+    print(
+        f"\nSetting TACoApplication proxy ({taco_application.address}) on ThresholdStakingMock ({mock_threshold_staking.address})"
+    )
     mock_threshold_staking.setApplication(taco_application.address, sender=deployer)
 
-    print("\nInitialize TACoApplication proxy")
+    print("\nInitializing TACoApplication proxy")
     taco_application.initialize(sender=deployer)
 
-    mock_taco_child = deployer.deploy(
-        *params.get(project.LynxMockTACoChildApplication), **params.get_kwargs()
-    )
+    mock_polygon_root = deployer.deploy(*params.get(project.MockPolygonRoot), **params.get_kwargs())
 
-    print(f"\nSetting child application {mock_taco_child.address} on TACoApplication")
-    taco_application.setChildApplication(mock_taco_child.address, sender=deployer)
+    print(
+        f"\nSetting child application on TACoApplication proxy ({taco_application.address}) to MockPolygonChild ({mock_polygon_root.address})"
+    )
+    taco_application.setChildApplication(mock_polygon_root.address, sender=deployer)
 
     deployments = [
         reward_token,
-        proxy_admin,
         mock_threshold_staking,
-        proxy,
+        proxy_admin,
+        # proxy only (implementation has same contract name so not included)
         taco_application,
-        mock_taco_child,
+        mock_polygon_root,
     ]
 
     output_filepath = registry_from_ape_deployments(
