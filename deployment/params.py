@@ -334,5 +334,6 @@ class Deployer:
 
     @staticmethod
     def proxy(contract: ContractContainer, proxy_contract: ContractInstance) -> ContractInstance:
-        print(f"Wrapping {contract} in proxy at {proxy_contract.address}.")
+        print(f"Wrapping {contract.contract_type.name} in "
+              f"at {proxy_contract.contract_type.name}:{proxy_contract.address}.")
         return contract.at(proxy_contract.address)
