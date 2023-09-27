@@ -6,6 +6,7 @@ from typing import Any, List
 
 from ape import chain, project
 from ape.api import AccountAPI
+from ape.cli import get_user_selected_account
 from ape.contracts.base import (
     ContractContainer,
     ContractInstance
@@ -291,8 +292,10 @@ class Deployer:
 
     __DEPLOYER_ACCOUNT: AccountAPI = None
 
-    def __init__(self, account: AccountAPI, params_path: Path, publish: bool):
+    def __init__(self, params_path: Path, publish: bool, account: typing.Optional[AccountAPI] = None):
         self.constructor_parameters = ConstructorParameters.from_file(params_path)
+        if account is None:
+            account = get_user_selected_account()
         self._set_deployer(account)
         self.publish = publish
 
