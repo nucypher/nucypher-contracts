@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from ape import networks, project
+
 import deployment
 
 LOCAL_BLOCKCHAIN_ENVIRONMENTS = ["local"]
@@ -10,8 +11,9 @@ DEPLOYMENT_DIR = Path(deployment.__file__).parent
 CONSTRUCTOR_PARAMS_DIR = DEPLOYMENT_DIR / "constructor_params"
 ARTIFACTS_DIR = DEPLOYMENT_DIR / "artifacts"
 VARIABLE_PREFIX = "$"
-PROXY_DECLARATION_DELIMETER = ":"
-SPECIAL_VALUE_VARIABLES = {"EMPTY_BYTES": b""}
+SPECIAL_VARIABLE_DELIMITER = ":"
+HEX_PREFIX = "0x"
+BYTES_PREFIX = "bytes"
 PROXY_NAME = "TransparentUpgradeableProxy"
 OZ_DEPENDENCY = project.dependencies["openzeppelin"]["4.9.1"]
 

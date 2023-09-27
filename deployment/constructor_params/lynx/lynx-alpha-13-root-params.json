@@ -16,7 +16,7 @@
   "TransparentUpgradeableProxy": {
     "_logic": "$TACoApplication",
     "admin_": "$ProxyAdmin",
-    "_data": "$EMPTY_BYTES"
+    "_data": "$bytes:0x"
   },
   "MockPolygonRoot": {
     "_rootApplication": "$TransparentUpgradeableProxy:TACoApplication"

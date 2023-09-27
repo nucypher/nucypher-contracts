@@ -10,23 +10,36 @@ from ape.contracts.base import (
     ContractInstance
 )
 from ape.utils import ZERO_ADDRESS
+from eth_typing import ChecksumAddress
 from web3.auto.gethdev import w3
 
 from deployment.confirm import _confirm_resolution
 from deployment.constants import (
     VARIABLE_PREFIX,
-    PROXY_DECLARATION_DELIMETER,
+    SPECIAL_VARIABLE_DELIMITER,
     SPECIAL_VALUE_VARIABLES,
-    PROXY_NAME
+    PROXY_NAME, BYTES_PREFIX, HEX_PREFIX
 )
 
 
-def _is_proxy_variable(variable: str):
-    return PROXY_DECLARATION_DELIMETER in variable
+def _is_variable(param: Any) -> bool:
+    """Returns True if the param is a variable."""
+    result = isinstance(param, str) and param.startswith(VARIABLE_PREFIX)
+    return result
+
+
+def _is_proxy_variable(variable: str) -> bool:
+    """Returns True if the variable is a special proxy variable."""
+    return variable.startswith(PROXY_NAME + SPECIAL_VARIABLE_DELIMITER)
+
+
+def _is_bytes(variable: str) -> bool:
+    """Returns True if the variable is a special bytes value."""
+    return variable.startswith(BYTES_PREFIX + SPECIAL_VARIABLE_DELIMITER)
 
 
 def _resolve_proxy_address(variable) -> str:
-    proxy, target = variable.split(PROXY_DECLARATION_DELIMETER)
+    proxy, target = variable.split(SPECIAL_VARIABLE_DELIMITER)
     target_contract_container = get_contract_container(target)
     target_contract_instance = _get_contract_instance(target_contract_container)
     if target_contract_instance == ZERO_ADDRESS:
@@ -41,13 +54,16 @@ def _resolve_proxy_address(variable) -> str:
     raise ConstructorParameters.Invalid(f"Could not determine proxy for {variable}")
 
 
-def _is_variable(param: Any) -> bool:
-    """Returns True if the param is a variable."""
-    result = isinstance(param, str) and param.startswith(VARIABLE_PREFIX)
-    return result
+def _resolve_bytes(variable: str) -> bytes:
+    """Resolves a special bytes value."""
+    _prefix, value = variable.split(SPECIAL_VARIABLE_DELIMITER)
+    if not value.startswith(HEX_PREFIX):
+        raise ConstructorParameters.Invalid(f"Invalid bytes value {variable}")
+    value = bytes.fromhex(value[2:])
+    return value
 
 
-def _get_contract_instance(contract_container: ContractContainer) -> ContractInstance:
+def _get_contract_instance(contract_container: ContractContainer) -> typing.Union[ContractInstance, ChecksumAddress]:
     contract_instances = contract_container.deployments
     if not contract_instances:
         return ZERO_ADDRESS
@@ -67,11 +83,9 @@ def _resolve_param(value: Any) -> Any:
 
     variable = value.strip(VARIABLE_PREFIX)
 
-    # special values
-    if variable in SPECIAL_VALUE_VARIABLES:
-        return SPECIAL_VALUE_VARIABLES[variable]
+    if _is_bytes(variable):
+        return _resolve_bytes(variable)
 
-    # proxied contract
     if _is_proxy_variable(variable):
         return _resolve_proxy_address(variable)
 
@@ -107,12 +121,12 @@ def _validate_constructor_param(param: Any, contracts: List[str]) -> None:
     variable = param.strip(VARIABLE_PREFIX)
 
     if _is_proxy_variable(variable):
-        proxy, target = variable.split(PROXY_DECLARATION_DELIMETER)
+        proxy, target = variable.split(SPECIAL_VARIABLE_DELIMITER)
 
         if proxy != PROXY_NAME:
             raise ConstructorParameters.Invalid(
                 f"Ambiguous proxy variable {param}; only {PROXY_NAME} "
-                f"allowed before '{PROXY_DECLARATION_DELIMETER}'"
+                f"allowed before '{SPECIAL_VARIABLE_DELIMITER}'"
             )
 
         # check proxy target
