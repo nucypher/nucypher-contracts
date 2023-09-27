@@ -5,12 +5,15 @@ from pathlib import Path
 from typing import Any, List
 
 from ape import chain, project
-from ape.contracts.base import ContractContainer, ContractInstance
+from ape.contracts.base import (
+    ContractContainer,
+    ContractInstance
+)
+from ape.utils import ZERO_ADDRESS
 from web3.auto.gethdev import w3
 
 from deployment.confirm import _confirm_resolution
 from deployment.constants import (
-    NULL_ADDRESS,
     VARIABLE_PREFIX,
     PROXY_DECLARATION_DELIMETER,
     SPECIAL_VALUE_VARIABLES,
@@ -26,9 +29,9 @@ def _resolve_proxy_address(variable) -> str:
     proxy, target = variable.split(PROXY_DECLARATION_DELIMETER)
     target_contract_container = get_contract_container(target)
     target_contract_instance = _get_contract_instance(target_contract_container)
-    if target_contract_instance == NULL_ADDRESS:
+    if target_contract_instance == ZERO_ADDRESS:
         # eager validation
-        return NULL_ADDRESS
+        return ZERO_ADDRESS
 
     local_proxies = chain.contracts._local_proxies
     for proxy_address, proxy_info in local_proxies.items():
@@ -47,7 +50,7 @@ def _is_variable(param: Any) -> bool:
 def _get_contract_instance(contract_container: ContractContainer) -> ContractInstance:
     contract_instances = contract_container.deployments
     if not contract_instances:
-        return NULL_ADDRESS
+        return ZERO_ADDRESS
     if len(contract_instances) != 1:
         raise ConstructorParameters.Invalid(
             f"Variable {contract_container.contract_type.name} is ambiguous - "
@@ -74,8 +77,8 @@ def _resolve_param(value: Any) -> Any:
 
     contract_container = get_contract_container(variable)
     contract_instance = _get_contract_instance(contract_container)
-    if contract_instance == NULL_ADDRESS:
-        return NULL_ADDRESS
+    if contract_instance == ZERO_ADDRESS:
+        return ZERO_ADDRESS
 
     return contract_instance.address
 
