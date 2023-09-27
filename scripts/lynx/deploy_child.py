@@ -30,46 +30,34 @@ def main():
     eth-ape                   0.6.20
     """
 
-    deployer, params = prepare_deployment(
+    deployer = prepare_deployment(
         params_filepath=CONSTRUCTOR_PARAMS_FILEPATH,
         registry_filepath=REGISTRY_FILEPATH,
     )
 
-    mock_polygon_child = deployer.deploy(
-        *params.get(project.MockPolygonChild), **params.get_kwargs()
-    )
-
-    proxy_admin = deployer.deploy(*params.get(OZ_DEPENDENCY.ProxyAdmin), **params.get_kwargs())
-
-    taco_implementation = deployer.deploy(
-        *params.get(project.LynxTACoChildApplication), **params.get_kwargs()
-    )
-
-    proxy = deployer.deploy(
-        *params.get(OZ_DEPENDENCY.TransparentUpgradeableProxy), **params.get_kwargs()
-    )
+    mock_polygon_child = deployer.deploy(project.MockPolygonChild)
+    proxy_admin = deployer.deploy(OZ_DEPENDENCY.ProxyAdmin)
+    taco_implementation = deployer.deploy(project.LynxTACoChildApplication)
+    proxy = deployer.deploy(OZ_DEPENDENCY.TransparentUpgradeableProxy)
 
     print("\nWrapping TACoChildApplication in proxy")
     taco_child_application = project.TACoChildApplication.at(proxy.address)
 
-    print(
-        f"\nSetting TACoChildApplication proxy ({taco_child_application.address}) as child application on MockPolygonChild ({mock_polygon_child.address})"
-    )
+    print(f"\nSetting TACoChildApplication proxy ({taco_child_application.address})"
+          f" as child application on MockPolygonChild ({mock_polygon_child.address})")
     mock_polygon_child.setChildApplication(
         taco_child_application.address,
-        sender=deployer,
+        sender=deployer.get_account(),
     )
 
-    ritual_token = deployer.deploy(*params.get(project.LynxRitualToken), **params.get_kwargs())
+    ritual_token = deployer.deploy(project.LynxRitualToken)
+    coordinator = deployer.deploy(project.Coordinator)
 
-    coordinator = deployer.deploy(*params.get(project.Coordinator), **params.get_kwargs())
+    print(f"\nInitializing TACoChildApplication proxy ({taco_child_application.address}) "
+          f"with Coordinator ({coordinator.address})")
+    taco_child_application.initialize(coordinator.address, sender=deployer.get_account())
 
-    print(
-        f"\nInitializing TACoChildApplication proxy ({taco_child_application.address}) with Coordinator ({coordinator.address})"
-    )
-    taco_child_application.initialize(coordinator.address, sender=deployer)
-
-    global_allow_list = deployer.deploy(*params.get(project.GlobalAllowList), **params.get_kwargs())
+    global_allow_list = deployer.deploy(project.GlobalAllowList)
 
     deployments = [
         mock_polygon_child,

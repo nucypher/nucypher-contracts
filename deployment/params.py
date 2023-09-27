@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, List
 
 from ape import chain, project
+from ape.api import AccountAPI
 from ape.contracts.base import (
     ContractContainer,
     ContractInstance
@@ -93,9 +94,12 @@ def _get_contract_instance(contract_container: ContractContainer) -> typing.Unio
     return contract_instance
 
 
-def _resolve_deployer(variable: str) -> str:
-    breakpoint()
-    assert False
+def _resolve_deployer() -> str:
+    deployer_account = Deployer.get_account()
+    if deployer_account is None:
+        return ZERO_ADDRESS
+    else:
+        return deployer_account.address
 
 
 def _resolve_contract_address(variable: str) -> str:
@@ -113,7 +117,7 @@ def _resolve_special_variable(variable: str) -> Any:
     elif _is_proxy_variable(variable):
         result = _resolve_proxy_address(variable)
     elif _is_deployer(variable):
-        result = _resolve_deployer(variable)
+        result = _resolve_deployer()
     else:
         raise ValueError(f"Invalid special variable {variable}")
     return result
@@ -279,21 +283,43 @@ class ConstructorParameters:
         return result
 
 
-class ApeDeploymentParameters:
-    """Represents ape deployment parameters for a set of contracts."""
+class Deployer:
+    """
+    Represents ape an ape deployment account plus
+    deployment parameters for a set of contracts.
+    """
 
-    def __init__(self, constructor_parameters: ConstructorParameters, publish: bool):
+    __DEPLOYER_ACCOUNT: AccountAPI = None
+
+    def __init__(self, deployer: AccountAPI, constructor_parameters: ConstructorParameters, publish: bool):
         self.constructor_parameters = constructor_parameters
         self.publish = publish
+        self._set_deployer(deployer)
 
-    def get_kwargs(self) -> typing.Dict[str, Any]:
+    @classmethod
+    def get_account(cls) -> AccountAPI:
+        """Returns the deployer account."""
+        return cls.__DEPLOYER_ACCOUNT
+
+    @classmethod
+    def _set_deployer(cls, deployer: AccountAPI) -> None:
+        """Sets the deployer account."""
+        cls.__DEPLOYER_ACCOUNT = deployer
+
+    def _get_kwargs(self) -> typing.Dict[str, Any]:
         """Returns the deployment kwargs."""
         return {"publish": self.publish}
 
-    def get(self, container: ContractContainer) -> List[Any]:
+    def _get_args(self, container: ContractContainer) -> List[Any]:
         """Resolves the deployment parameters for a single contract."""
         contract_name = container.contract_type.name
         resolved_constructor_params = self.constructor_parameters.resolve(contract_name)
         _confirm_resolution(resolved_constructor_params, contract_name)
         deployment_params = [container, *resolved_constructor_params.values()]
         return deployment_params
+
+    def deploy(self, container: ContractContainer) -> ContractInstance:
+        deployer_account = self.get_account()
+        args, kwargs = self._get_args(container), self._get_kwargs()
+        instance = deployer_account.deploy(*args, **kwargs)
+        return instance

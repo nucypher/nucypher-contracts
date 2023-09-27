@@ -29,41 +29,31 @@ def main():
     eth-ape                   0.6.20
     """
 
-    deployer, params = prepare_deployment(
+    deployer = prepare_deployment(
         params_filepath=CONSTRUCTOR_PARAMS_FILEPATH,
         registry_filepath=REGISTRY_FILEPATH,
     )
 
-    reward_token = deployer.deploy(*params.get(project.LynxStakingToken), **params.get_kwargs())
-
-    mock_threshold_staking = deployer.deploy(
-        *params.get(project.TestnetThresholdStaking), **params.get_kwargs()
-    )
-
-    proxy_admin = deployer.deploy(*params.get(OZ_DEPENDENCY.ProxyAdmin), **params.get_kwargs())
-
-    _ = deployer.deploy(*params.get(project.TACoApplication), **params.get_kwargs())
-
-    proxy = deployer.deploy(
-        *params.get(OZ_DEPENDENCY.TransparentUpgradeableProxy), **params.get_kwargs()
-    )
+    reward_token = deployer.deploy(project.LynxStakingToken)
+    mock_threshold_staking = deployer.deploy(project.TestnetThresholdStaking)
+    proxy_admin = deployer.deploy(OZ_DEPENDENCY.ProxyAdmin)
+    _ = deployer.deploy(project.TACoApplication)
+    proxy = deployer.deploy(OZ_DEPENDENCY.TransparentUpgradeableProxy)
 
     print("\nWrapping TACoApplication in proxy")
     taco_application = project.TACoApplication.at(proxy.address)
 
-    print(
-        f"\nSetting TACoApplication proxy ({taco_application.address}) on ThresholdStakingMock ({mock_threshold_staking.address})"
-    )
-    mock_threshold_staking.setApplication(taco_application.address, sender=deployer)
+    print(f"\nSetting TACoApplication proxy ({taco_application.address}) on "
+          f"ThresholdStakingMock ({mock_threshold_staking.address})")
+    mock_threshold_staking.setApplication(taco_application.address, sender=deployer.get_account())
 
     print("\nInitializing TACoApplication proxy")
-    taco_application.initialize(sender=deployer)
+    taco_application.initialize(sender=deployer.get_account())
 
-    mock_polygon_root = deployer.deploy(*params.get(project.MockPolygonRoot), **params.get_kwargs())
+    mock_polygon_root = deployer.deploy(project.MockPolygonRoot)
 
-    print(
-        f"\nSetting child application on TACoApplication proxy ({taco_application.address}) to MockPolygonChild ({mock_polygon_root.address})"
-    )
+    print(f"\nSetting child application on TACoApplication proxy "
+          f"({taco_application.address}) to MockPolygonChild ({mock_polygon_root.address})")
     taco_application.setChildApplication(mock_polygon_root.address, sender=deployer)
 
     deployments = [
