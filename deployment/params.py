@@ -326,3 +326,13 @@ class Deployer:
         args, kwargs = self._get_args(container), self._get_kwargs()
         instance = deployer_account.deploy(*args, **kwargs)
         return instance
+
+    def transact(self, method, *args):
+        print(f"Transacting {method} with \n\t{args}")
+        result = method(*args, sender=self.get_account())
+        return result
+
+    @staticmethod
+    def proxy(contract: ContractContainer, proxy_contract: ContractInstance) -> ContractInstance:
+        print(f"Wrapping {contract} in proxy at {proxy_contract.address}.")
+        return contract.at(proxy_contract.address)

@@ -39,24 +39,11 @@ def main():
     proxy_admin = deployer.deploy(OZ_DEPENDENCY.ProxyAdmin)
     taco_implementation = deployer.deploy(project.LynxTACoChildApplication)
     proxy = deployer.deploy(OZ_DEPENDENCY.TransparentUpgradeableProxy)
-
-    print("\nWrapping TACoChildApplication in proxy")
-    taco_child_application = project.TACoChildApplication.at(proxy.address)
-
-    print(f"\nSetting TACoChildApplication proxy ({taco_child_application.address})"
-          f" as child application on MockPolygonChild ({mock_polygon_child.address})")
-    mock_polygon_child.setChildApplication(
-        taco_child_application.address,
-        sender=deployer.get_account(),
-    )
-
+    taco_child_application = deployer.proxy(project.TACoChildApplication, proxy)
+    deployer.transact(mock_polygon_child.setChildApplication, taco_child_application.address)
     ritual_token = deployer.deploy(project.LynxRitualToken)
     coordinator = deployer.deploy(project.Coordinator)
-
-    print(f"\nInitializing TACoChildApplication proxy ({taco_child_application.address}) "
-          f"with Coordinator ({coordinator.address})")
-    taco_child_application.initialize(coordinator.address, sender=deployer.get_account())
-
+    deployer.transact(taco_child_application.initialize, coordinator.address)
     global_allow_list = deployer.deploy(project.GlobalAllowList)
 
     deployments = [

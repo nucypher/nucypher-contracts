@@ -39,22 +39,11 @@ def main():
     proxy_admin = deployer.deploy(OZ_DEPENDENCY.ProxyAdmin)
     _ = deployer.deploy(project.TACoApplication)
     proxy = deployer.deploy(OZ_DEPENDENCY.TransparentUpgradeableProxy)
-
-    print("\nWrapping TACoApplication in proxy")
-    taco_application = project.TACoApplication.at(proxy.address)
-
-    print(f"\nSetting TACoApplication proxy ({taco_application.address}) on "
-          f"ThresholdStakingMock ({mock_threshold_staking.address})")
-    mock_threshold_staking.setApplication(taco_application.address, sender=deployer.get_account())
-
-    print("\nInitializing TACoApplication proxy")
-    taco_application.initialize(sender=deployer.get_account())
-
+    taco_application = deployer.proxy(project.TACoApplication, proxy)
+    deployer.transact(mock_threshold_staking.setApplication, taco_application.address)
+    deployer.transact(taco_application.initialize)
     mock_polygon_root = deployer.deploy(project.MockPolygonRoot)
-
-    print(f"\nSetting child application on TACoApplication proxy "
-          f"({taco_application.address}) to MockPolygonChild ({mock_polygon_root.address})")
-    taco_application.setChildApplication(mock_polygon_root.address, sender=deployer)
+    deployer.transact(taco_application.setChildApplication, mock_polygon_root.address)
 
     deployments = [
         reward_token,
