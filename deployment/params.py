@@ -7,20 +7,9 @@ from typing import Any, List
 from ape import chain, project
 from ape.api import AccountAPI, ReceiptAPI
 from ape.cli import get_user_selected_account
-from ape.contracts.base import (
-    ContractContainer,
-    ContractInstance,
-    ContractTransactionHandler
-)
+from ape.contracts.base import ContractContainer, ContractInstance, ContractTransactionHandler
 from ape.utils import ZERO_ADDRESS
-from eth_typing import ChecksumAddress
-from ethpm_types import MethodABI
-from web3.auto.gethdev import w3
-
-from deployment.confirm import (
-    _confirm_resolution,
-    _continue
-)
+from deployment.confirm import _confirm_resolution, _continue
 from deployment.constants import (
     BYTES_PREFIX,
     DEPLOYER_INDICATOR,
@@ -29,6 +18,9 @@ from deployment.constants import (
     SPECIAL_VARIABLE_DELIMITER,
     VARIABLE_PREFIX,
 )
+from eth_typing import ChecksumAddress
+from ethpm_types import MethodABI
+from web3.auto.gethdev import w3
 
 
 def _is_variable(param: Any) -> bool:
@@ -308,10 +300,42 @@ class ConstructorParameters:
         return result
 
 
-class Deployer:
+class Transactor:
     """
-    Represents ape an ape deployment account plus
-    deployment parameters for a set of contracts.
+    Represents an ape account plus validated/annotated transaction execution.
+    """
+
+    def __init__(self, account: typing.Optional[AccountAPI] = None):
+        if account is None:
+            self._account = get_user_selected_account()
+
+    def get_account(self) -> AccountAPI:
+        """Returns the transactor account."""
+        return self._account
+
+    def transact(self, method: ContractTransactionHandler, *args) -> ReceiptAPI:
+        abi = _get_function_abi(method=method, args=args)
+        named_args = _validate_transaction_args(args=args, abi=abi)
+        base_message = (
+            f"\nTransacting {method.contract.contract_type.name}"
+            f"[{method.contract.address[:10]}].{method}"
+        )
+        if named_args:
+            pretty_args = "\n\t".join(f"{k}={v}" for k, v in named_args.items())
+            message = f"{base_message} with arguments:\n\t{pretty_args}"
+        else:
+            message = f"{base_message} with no arguments"
+        print(message)
+        _continue()
+
+        result = method(*args, sender=self._account)
+        return result
+
+
+class Deployer(Transactor):
+    """
+    Represents an ape account plus
+    deployment parameters for a set of contracts, plus validated/annotated execution.
     """
 
     __DEPLOYER_ACCOUNT: AccountAPI = None
@@ -319,10 +343,9 @@ class Deployer:
     def __init__(
         self, params_path: Path, publish: bool, account: typing.Optional[AccountAPI] = None
     ):
+        super().__init__(account)
         self.constructor_parameters = ConstructorParameters.from_file(params_path)
-        if account is None:
-            account = get_user_selected_account()
-        self._set_deployer(account)
+        self._set_deployer(self._account)
         self.publish = publish
 
     @classmethod
@@ -353,24 +376,10 @@ class Deployer:
         instance = deployer_account.deploy(*args, **kwargs)
         return instance
 
-    def transact(self, method: ContractTransactionHandler, *args) -> ReceiptAPI:
-        abi = _get_function_abi(method=method, args=args)
-        named_args = _validate_transaction_args(args=args, abi=abi)
-        base_message = f"Transacting {method.contract.contract_type.name}[{method.contract.address[:10]}].{method}"
-        if named_args:
-            pretty_args = "\n\t".join(f"{k}={v}" for k, v in named_args.items())
-            message = f"{base_message} with arguments:\n\t{pretty_args}"
-        else:
-            message = f"{base_message} with no arguments"
-        print(message)
-        _continue()
-        result = method(*args, sender=self.get_account())
-        return result
-
     @staticmethod
     def proxy(contract: ContractContainer, proxy_contract: ContractInstance) -> ContractInstance:
         print(
-            f"Wrapping {contract.contract_type.name} in "
+            f"\nWrapping {contract.contract_type.name} in "
             f"at {proxy_contract.contract_type.name}:{proxy_contract.address}."
         )
         return contract.at(proxy_contract.address)
