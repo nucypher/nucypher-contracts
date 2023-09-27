@@ -7,7 +7,7 @@
   "TransparentUpgradeableProxy": {
     "_logic": "$LynxTACoChildApplication",
     "admin_": "$ProxyAdmin",
-    "_data": "$EMPTY_BYTES"
+    "_data": "$bytes:0x"
   },
   "LynxRitualToken": {
     "_totalSupplyOfTokens": 10000000000000000000000000
@@ -16,12 +16,12 @@
     "_application": "$TransparentUpgradeableProxy:LynxTACoChildApplication",
     "_timeout": 3600,
     "_maxDkgSize": 4,
-    "_admin": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600",
+    "_admin": "$deployer",
     "_currency": "$LynxRitualToken",
     "_feeRatePerSecond": 1
   },
   "GlobalAllowList": {
     "_coordinator": "$Coordinator",
-    "_admin": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
+    "_admin": "$deployer"
   }
 }
