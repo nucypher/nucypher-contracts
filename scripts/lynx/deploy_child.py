@@ -1,6 +1,8 @@
 #!/usr/bin/python3
 
-from ape import networks, project
+from ape import project
+from ape.cli import get_user_selected_account
+
 from deployment.constants import (
     ARTIFACTS_DIR,
     CONSTRUCTOR_PARAMS_DIR,
@@ -30,9 +32,11 @@ def main():
     eth-ape                   0.6.20
     """
 
-    deployer = prepare_deployment(
-        params_filepath=CONSTRUCTOR_PARAMS_FILEPATH,
-        registry_filepath=REGISTRY_FILEPATH,
+    prepare_deployment(registry_filepath=REGISTRY_FILEPATH)
+    deployer = Deployer(
+        account=get_user_selected_account(),
+        params_path=CONSTRUCTOR_PARAMS_FILEPATH,
+        publish=VERIFY,
     )
 
     mock_polygon_child = deployer.deploy(project.MockPolygonChild)

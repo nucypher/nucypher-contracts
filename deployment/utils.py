@@ -74,24 +74,7 @@ def verify_contracts(contracts: List[ContractInstance]) -> None:
         explorer.publish_contract(instance.address)
 
 
-def prepare_deployment(
-    params_filepath: Path, registry_filepath: Path, publish: bool = False
-) -> "Deployer":
-    """
-    Prepares the deployment by loading the deployment parameters
-    and checking the pre-deployment conditions.
-
-    NOTE: publish is False by default because we use customized artifact tracking
-    that is not compatible with the ape publish command.
-    """
+def prepare_deployment(registry_filepath: Path) -> None:
     check_registry_filepath(registry_filepath=registry_filepath)
     check_etherscan_plugin()
     check_infura_plugin()
-    constructor_parameters = ConstructorParameters.from_file(params_filepath)
-    deployer_account = get_user_selected_account()
-    deployment_parameters = Deployer(
-        deployer=deployer_account,
-        constructor_parameters=constructor_parameters,
-        publish=publish,
-    )
-    return deployment_parameters

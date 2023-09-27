@@ -291,10 +291,10 @@ class Deployer:
 
     __DEPLOYER_ACCOUNT: AccountAPI = None
 
-    def __init__(self, deployer: AccountAPI, constructor_parameters: ConstructorParameters, publish: bool):
-        self.constructor_parameters = constructor_parameters
+    def __init__(self, account: AccountAPI, params_path: Path, publish: bool):
+        self.constructor_parameters = ConstructorParameters.from_file(params_path)
+        self._set_deployer(account)
         self.publish = publish
-        self._set_deployer(deployer)
 
     @classmethod
     def get_account(cls) -> AccountAPI:
