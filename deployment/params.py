@@ -5,25 +5,21 @@ from pathlib import Path
 from typing import Any, List
 
 from ape import chain, project
-from ape.api import AccountAPI
+from ape.api import AccountAPI, ReceiptAPI
 from ape.cli import get_user_selected_account
-from ape.contracts.base import (
-    ContractContainer,
-    ContractInstance
-)
+from ape.contracts.base import ContractContainer, ContractInstance
 from ape.utils import ZERO_ADDRESS
-from eth_typing import ChecksumAddress
-from web3.auto.gethdev import w3
-
 from deployment.confirm import _confirm_resolution
 from deployment.constants import (
-    VARIABLE_PREFIX,
-    SPECIAL_VARIABLE_DELIMITER,
-    PROXY_NAME,
     BYTES_PREFIX,
+    DEPLOYER_INDICATOR,
     HEX_PREFIX,
-    DEPLOYER_INDICATOR
+    PROXY_NAME,
+    SPECIAL_VARIABLE_DELIMITER,
+    VARIABLE_PREFIX,
 )
+from eth_typing import ChecksumAddress
+from web3.auto.gethdev import w3
 
 
 def _is_variable(param: Any) -> bool:
@@ -34,11 +30,7 @@ def _is_variable(param: Any) -> bool:
 
 def _is_special_variable(variable: str) -> bool:
     """Returns True if the variable is a special variable."""
-    rules = [
-        _is_bytes(variable),
-        _is_proxy_variable(variable),
-        _is_deployer(variable)
-    ]
+    rules = [_is_bytes(variable), _is_proxy_variable(variable), _is_deployer(variable)]
     return any(rules)
 
 
@@ -82,7 +74,9 @@ def _resolve_bytes(variable: str) -> bytes:
     return value
 
 
-def _get_contract_instance(contract_container: ContractContainer) -> typing.Union[ContractInstance, ChecksumAddress]:
+def _get_contract_instance(
+    contract_container: ContractContainer,
+) -> typing.Union[ContractInstance, ChecksumAddress]:
     contract_instances = contract_container.deployments
     if not contract_instances:
         return ZERO_ADDRESS
@@ -292,7 +286,9 @@ class Deployer:
 
     __DEPLOYER_ACCOUNT: AccountAPI = None
 
-    def __init__(self, params_path: Path, publish: bool, account: typing.Optional[AccountAPI] = None):
+    def __init__(
+        self, params_path: Path, publish: bool, account: typing.Optional[AccountAPI] = None
+    ):
         self.constructor_parameters = ConstructorParameters.from_file(params_path)
         if account is None:
             account = get_user_selected_account()
@@ -327,13 +323,18 @@ class Deployer:
         instance = deployer_account.deploy(*args, **kwargs)
         return instance
 
-    def transact(self, method, *args):
-        print(f"Transacting {method} with \n\t{args}")
-        result = method(*args, sender=self.get_account())
+    def transact(self, contract: ContractInstance, method: str, *args) -> ReceiptAPI:
+        print(
+            f"Transacting '{method}' on {contract.contract_type.name} "
+            f"({contract.address}) with args\n\t{args}"
+        )
+        result = contract.invoke_transaction(method, *args, sender=self.get_account())
         return result
 
     @staticmethod
     def proxy(contract: ContractContainer, proxy_contract: ContractInstance) -> ContractInstance:
-        print(f"Wrapping {contract.contract_type.name} in "
-              f"at {proxy_contract.contract_type.name}:{proxy_contract.address}.")
+        print(
+            f"Wrapping {contract.contract_type.name} in "
+            f"at {proxy_contract.contract_type.name}:{proxy_contract.address}."
+        )
         return contract.at(proxy_contract.address)

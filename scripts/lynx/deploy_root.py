@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
 from ape import project
-
 from deployment.constants import (
     ARTIFACTS_DIR,
     CONSTRUCTOR_PARAMS_DIR,
@@ -11,7 +10,7 @@ from deployment.constants import (
 )
 from deployment.params import Deployer
 from deployment.registry import registry_from_ape_deployments
-from deployment.utils import verify_contracts, check_deployment_ready
+from deployment.utils import check_deployment_ready, verify_contracts
 
 VERIFY = CURRENT_NETWORK not in LOCAL_BLOCKCHAIN_ENVIRONMENTS
 CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "lynx" / "lynx-alpha-13-root-params.json"
@@ -35,15 +34,22 @@ def main():
     deployer = Deployer(params_path=CONSTRUCTOR_PARAMS_FILEPATH, publish=VERIFY)
 
     reward_token = deployer.deploy(project.LynxStakingToken)
+
     mock_threshold_staking = deployer.deploy(project.TestnetThresholdStaking)
+
     proxy_admin = deployer.deploy(OZ_DEPENDENCY.ProxyAdmin)
+
     _ = deployer.deploy(project.TACoApplication)
+
     proxy = deployer.deploy(OZ_DEPENDENCY.TransparentUpgradeableProxy)
     taco_application = deployer.proxy(project.TACoApplication, proxy)
-    deployer.transact(mock_threshold_staking.setApplication, taco_application.address)
-    deployer.transact(taco_application.initialize)
+
+    deployer.transact(mock_threshold_staking, "setApplication", taco_application.address)
+
+    deployer.transact(taco_application, "initialize")
+
     mock_polygon_root = deployer.deploy(project.MockPolygonRoot)
-    deployer.transact(taco_application.setChildApplication, mock_polygon_root.address)
+    deployer.transact(taco_application, "setChildApplication", mock_polygon_root.address)
 
     deployments = [
         reward_token,

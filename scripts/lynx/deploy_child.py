@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
 from ape import project
-
 from deployment.constants import (
     ARTIFACTS_DIR,
     CONSTRUCTOR_PARAMS_DIR,
@@ -11,7 +10,7 @@ from deployment.constants import (
 )
 from deployment.params import Deployer
 from deployment.registry import registry_from_ape_deployments
-from deployment.utils import verify_contracts, check_deployment_ready
+from deployment.utils import check_deployment_ready, verify_contracts
 
 VERIFY = CURRENT_NETWORK not in LOCAL_BLOCKCHAIN_ENVIRONMENTS
 CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "lynx" / "lynx-alpha-13-child-params.json"
@@ -36,14 +35,22 @@ def main():
     deployer = Deployer(params_path=CONSTRUCTOR_PARAMS_FILEPATH, publish=VERIFY)
 
     mock_polygon_child = deployer.deploy(project.MockPolygonChild)
+
     proxy_admin = deployer.deploy(OZ_DEPENDENCY.ProxyAdmin)
+
     taco_implementation = deployer.deploy(project.LynxTACoChildApplication)
+
     proxy = deployer.deploy(OZ_DEPENDENCY.TransparentUpgradeableProxy)
     taco_child_application = deployer.proxy(project.TACoChildApplication, proxy)
-    deployer.transact(mock_polygon_child.setChildApplication, taco_child_application.address)
+
+    deployer.transact(mock_polygon_child, "setChildApplication", taco_child_application.address)
+
     ritual_token = deployer.deploy(project.LynxRitualToken)
+
     coordinator = deployer.deploy(project.Coordinator)
-    deployer.transact(taco_child_application.initialize, coordinator.address)
+
+    deployer.transact(taco_child_application, "initialize", coordinator.address)
+
     global_allow_list = deployer.deploy(project.GlobalAllowList)
 
     deployments = [
