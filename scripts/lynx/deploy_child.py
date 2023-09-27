@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 from ape import project
+
 from deployment.constants import (
     ARTIFACTS_DIR,
     CONSTRUCTOR_PARAMS_DIR,
@@ -43,13 +44,13 @@ def main():
     proxy = deployer.deploy(OZ_DEPENDENCY.TransparentUpgradeableProxy)
     taco_child_application = deployer.proxy(project.TACoChildApplication, proxy)
 
-    deployer.transact(mock_polygon_child, "setChildApplication", taco_child_application.address)
+    deployer.transact(mock_polygon_child.setChildApplication, taco_child_application.address)
 
     ritual_token = deployer.deploy(project.LynxRitualToken)
 
     coordinator = deployer.deploy(project.Coordinator)
 
-    deployer.transact(taco_child_application, "initialize", coordinator.address)
+    deployer.transact(taco_child_application.initialize, coordinator.address)
 
     global_allow_list = deployer.deploy(project.GlobalAllowList)
 

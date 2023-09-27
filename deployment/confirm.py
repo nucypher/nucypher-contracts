@@ -11,6 +11,14 @@ def _confirm_deployment(contract_name: str) -> None:
         exit(-1)
 
 
+def _continue() -> None:
+    """Asks the user to continue."""
+    answer = input(f"Continue Y/N? ")
+    if answer.lower().strip() == "n":
+        print("Aborting deployment!")
+        exit(-1)
+
+
 def _confirm_zero_address() -> None:
     answer = input("Zero Address detected for deployment parameter; Continue? Y/N? ")
     if answer.lower().strip() == "n":

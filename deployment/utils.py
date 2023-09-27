@@ -3,17 +3,12 @@ from pathlib import Path
 from typing import List
 
 from ape import networks
-from ape.cli import get_user_selected_account
 from ape.contracts import ContractInstance
 from ape_etherscan.utils import API_KEY_ENV_KEY_MAP
 
 from deployment.constants import (
     CURRENT_NETWORK,
     LOCAL_BLOCKCHAIN_ENVIRONMENTS
-)
-from deployment.params import (
-    Deployer,
-    ConstructorParameters
 )
 
 

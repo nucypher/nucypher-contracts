@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 from ape import project
+
 from deployment.constants import (
     ARTIFACTS_DIR,
     CONSTRUCTOR_PARAMS_DIR,
@@ -44,12 +45,12 @@ def main():
     proxy = deployer.deploy(OZ_DEPENDENCY.TransparentUpgradeableProxy)
     taco_application = deployer.proxy(project.TACoApplication, proxy)
 
-    deployer.transact(mock_threshold_staking, "setApplication", taco_application.address)
+    deployer.transact(mock_threshold_staking.setApplication, taco_application.address)
 
-    deployer.transact(taco_application, "initialize")
+    deployer.transact(taco_application.initialize)
 
     mock_polygon_root = deployer.deploy(project.MockPolygonRoot)
-    deployer.transact(taco_application, "setChildApplication", mock_polygon_root.address)
+    deployer.transact(taco_application.setChildApplication, mock_polygon_root.address)
 
     deployments = [
         reward_token,

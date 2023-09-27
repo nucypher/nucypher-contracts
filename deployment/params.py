@@ -7,9 +7,20 @@ from typing import Any, List
 from ape import chain, project
 from ape.api import AccountAPI, ReceiptAPI
 from ape.cli import get_user_selected_account
-from ape.contracts.base import ContractContainer, ContractInstance
+from ape.contracts.base import (
+    ContractContainer,
+    ContractInstance,
+    ContractTransactionHandler
+)
 from ape.utils import ZERO_ADDRESS
-from deployment.confirm import _confirm_resolution
+from eth_typing import ChecksumAddress
+from ethpm_types import MethodABI
+from web3.auto.gethdev import w3
+
+from deployment.confirm import (
+    _confirm_resolution,
+    _continue
+)
 from deployment.constants import (
     BYTES_PREFIX,
     DEPLOYER_INDICATOR,
@@ -18,8 +29,6 @@ from deployment.constants import (
     SPECIAL_VARIABLE_DELIMITER,
     VARIABLE_PREFIX,
 )
-from eth_typing import ChecksumAddress
-from web3.auto.gethdev import w3
 
 
 def _is_variable(param: Any) -> bool:
@@ -237,6 +246,27 @@ def get_contract_container(contract: str) -> ContractContainer:
     return contract_container
 
 
+def _get_function_abi(method: ContractTransactionHandler, args) -> MethodABI:
+    """Returns the function ABI for a contract function with a given number of arguments."""
+    for abi in method.abis:
+        if len(abi.inputs) == len(args):
+            return abi
+    else:
+        raise ValueError(f"Could not find ABI for {method} with {len(args)} args")
+
+
+def _validate_transaction_args(args: typing.Tuple[Any, ...], abi) -> typing.Dict[str, Any]:
+    """Validates the transaction arguments against the function ABI."""
+    named_args = dict()
+    for arg, abi_input in zip(args, abi.inputs):
+        if not w3.is_encodable(abi_input.type, arg):
+            raise ValueError(
+                f"Argument '{arg}' of type '{type(arg)}' is not encodable as '{abi_input.type}'"
+            )
+        named_args[abi_input.name] = arg
+    return named_args
+
+
 def validate_constructor_parameters(config: typing.OrderedDict[str, Any]) -> None:
     """Validates the constructor parameters for all contracts in a single config."""
     available_contracts = list(config.keys())
@@ -323,12 +353,18 @@ class Deployer:
         instance = deployer_account.deploy(*args, **kwargs)
         return instance
 
-    def transact(self, contract: ContractInstance, method: str, *args) -> ReceiptAPI:
-        print(
-            f"Transacting '{method}' on {contract.contract_type.name} "
-            f"({contract.address}) with args\n\t{args}"
-        )
-        result = contract.invoke_transaction(method, *args, sender=self.get_account())
+    def transact(self, method: ContractTransactionHandler, *args) -> ReceiptAPI:
+        abi = _get_function_abi(method=method, args=args)
+        named_args = _validate_transaction_args(args=args, abi=abi)
+        base_message = f"Transacting {method.contract.contract_type.name}[{method.contract.address[:10]}].{method}"
+        if named_args:
+            pretty_args = "\n\t".join(f"{k}={v}" for k, v in named_args.items())
+            message = f"{base_message} with arguments:\n\t{pretty_args}"
+        else:
+            message = f"{base_message} with no arguments"
+        print(message)
+        _continue()
+        result = method(*args, sender=self.get_account())
         return result
 
     @staticmethod

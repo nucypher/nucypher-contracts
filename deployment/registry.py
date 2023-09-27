@@ -4,10 +4,11 @@ from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional
 
 from ape.contracts import ContractInstance
-from deployment.params import get_contract_container
-from deployment.utils import check_registry_filepath
 from eth_typing import ChecksumAddress
 from eth_utils import to_checksum_address
+
+from deployment.params import get_contract_container
+from deployment.utils import check_registry_filepath
 
 
 class RegistryEntry(NamedTuple):
