@@ -13,6 +13,7 @@ VARIABLE_PREFIX = "$"
 SPECIAL_VARIABLE_DELIMITER = ":"
 HEX_PREFIX = "0x"
 BYTES_PREFIX = "bytes"
+DEPLOYER_INDICATOR = "deployer"
 PROXY_NAME = "TransparentUpgradeableProxy"
 OZ_DEPENDENCY = project.dependencies["openzeppelin"]["4.9.1"]
 

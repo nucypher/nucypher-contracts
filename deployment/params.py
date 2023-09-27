@@ -17,8 +17,10 @@ from deployment.confirm import _confirm_resolution
 from deployment.constants import (
     VARIABLE_PREFIX,
     SPECIAL_VARIABLE_DELIMITER,
-    SPECIAL_VALUE_VARIABLES,
-    PROXY_NAME, BYTES_PREFIX, HEX_PREFIX
+    PROXY_NAME,
+    BYTES_PREFIX,
+    HEX_PREFIX,
+    DEPLOYER_INDICATOR
 )
 
 
@@ -26,6 +28,16 @@ def _is_variable(param: Any) -> bool:
     """Returns True if the param is a variable."""
     result = isinstance(param, str) and param.startswith(VARIABLE_PREFIX)
     return result
+
+
+def _is_special_variable(variable: str) -> bool:
+    """Returns True if the variable is a special variable."""
+    rules = [
+        _is_bytes(variable),
+        _is_proxy_variable(variable),
+        _is_deployer(variable)
+    ]
+    return any(rules)
 
 
 def _is_proxy_variable(variable: str) -> bool:
@@ -36,6 +48,11 @@ def _is_proxy_variable(variable: str) -> bool:
 def _is_bytes(variable: str) -> bool:
     """Returns True if the variable is a special bytes value."""
     return variable.startswith(BYTES_PREFIX + SPECIAL_VARIABLE_DELIMITER)
+
+
+def _is_deployer(variable: str) -> bool:
+    """Returns True if the variable is a special deployer variable."""
+    return variable == DEPLOYER_INDICATOR
 
 
 def _resolve_proxy_address(variable) -> str:
@@ -76,25 +93,42 @@ def _get_contract_instance(contract_container: ContractContainer) -> typing.Unio
     return contract_instance
 
 
-def _resolve_param(value: Any) -> Any:
-    """Resolves a single parameter value."""
-    if not _is_variable(value):
-        return value  # literally a value
+def _resolve_deployer(variable: str) -> str:
+    breakpoint()
+    assert False
 
-    variable = value.strip(VARIABLE_PREFIX)
 
-    if _is_bytes(variable):
-        return _resolve_bytes(variable)
-
-    if _is_proxy_variable(variable):
-        return _resolve_proxy_address(variable)
-
+def _resolve_contract_address(variable: str) -> str:
+    """Resolves a contract address."""
     contract_container = get_contract_container(variable)
     contract_instance = _get_contract_instance(contract_container)
     if contract_instance == ZERO_ADDRESS:
         return ZERO_ADDRESS
-
     return contract_instance.address
+
+
+def _resolve_special_variable(variable: str) -> Any:
+    if _is_bytes(variable):
+        result = _resolve_bytes(variable)
+    elif _is_proxy_variable(variable):
+        result = _resolve_proxy_address(variable)
+    elif _is_deployer(variable):
+        result = _resolve_deployer(variable)
+    else:
+        raise ValueError(f"Invalid special variable {variable}")
+    return result
+
+
+def _resolve_param(value: Any) -> Any:
+    """Resolves a single parameter value."""
+    if not _is_variable(value):
+        return value  # literally a value
+    variable = value.strip(VARIABLE_PREFIX)
+    if _is_special_variable(variable):
+        result = _resolve_special_variable(variable)
+    else:
+        result = _resolve_contract_address(variable)
+    return result
 
 
 def _resolve_list(value: List[Any]) -> List[Any]:
@@ -122,18 +156,15 @@ def _validate_constructor_param(param: Any, contracts: List[str]) -> None:
 
     if _is_proxy_variable(variable):
         proxy, target = variable.split(SPECIAL_VARIABLE_DELIMITER)
-
         if proxy != PROXY_NAME:
             raise ConstructorParameters.Invalid(
                 f"Ambiguous proxy variable {param}; only {PROXY_NAME} "
                 f"allowed before '{SPECIAL_VARIABLE_DELIMITER}'"
             )
+        variable = target  # check proxy target
 
-        # check proxy target
-        variable = target
-
-    if variable in SPECIAL_VALUE_VARIABLES:
-        return
+    if _is_special_variable(variable):
+        return  # special variables are always marked as valid
 
     if variable in contracts:
         return
