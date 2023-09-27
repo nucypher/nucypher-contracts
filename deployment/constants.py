@@ -5,7 +5,6 @@ from ape import networks, project
 import deployment
 
 LOCAL_BLOCKCHAIN_ENVIRONMENTS = ["local"]
-PRODUCTION_ENVIRONMENTS = ["mainnet", "polygon-main"]
 CURRENT_NETWORK = networks.network.name
 DEPLOYMENT_DIR = Path(deployment.__file__).parent
 CONSTRUCTOR_PARAMS_DIR = DEPLOYMENT_DIR / "constructor_params"
