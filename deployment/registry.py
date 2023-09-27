@@ -125,7 +125,7 @@ def registry_from_ape_deployments(
         registry_data.append(entry)
 
     output_filepath = write_registry(data=registry_data, filepath=output_filepath)
-
+    print(f"(i) Registry written to {output_filepath}!")
     return output_filepath
 
 

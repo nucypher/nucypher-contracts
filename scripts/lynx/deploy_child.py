@@ -56,10 +56,6 @@ def main():
         global_allow_list,
     ]
 
-    output_filepath = registry_from_ape_deployments(
-        deployments=deployments, output_filepath=REGISTRY_FILEPATH
-    )
-    print(f"(i) Registry written to {output_filepath}!")
-
+    registry_from_ape_deployments(deployments=deployments, output_filepath=REGISTRY_FILEPATH)
     if VERIFY:
         verify_contracts(contracts=deployments)
