@@ -9,8 +9,9 @@ from deployment.constants import (
     LOCAL_BLOCKCHAIN_ENVIRONMENTS,
     OZ_DEPENDENCY,
 )
+from deployment.params import Deployer
 from deployment.registry import registry_from_ape_deployments
-from deployment.utils import prepare_deployment, verify_contracts
+from deployment.utils import verify_contracts, check_deployment_ready
 
 VERIFY = CURRENT_NETWORK not in LOCAL_BLOCKCHAIN_ENVIRONMENTS
 CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "lynx" / "lynx-alpha-13-child-params.json"
@@ -31,12 +32,8 @@ def main():
     eth-ape                   0.6.20
     """
 
-    prepare_deployment(registry_filepath=REGISTRY_FILEPATH)
-    deployer = Deployer(
-        account=get_user_selected_account(),
-        params_path=CONSTRUCTOR_PARAMS_FILEPATH,
-        publish=VERIFY,
-    )
+    check_deployment_ready(registry_filepath=REGISTRY_FILEPATH)
+    deployer = Deployer(params_path=CONSTRUCTOR_PARAMS_FILEPATH, publish=VERIFY)
 
     mock_polygon_child = deployer.deploy(project.MockPolygonChild)
     proxy_admin = deployer.deploy(OZ_DEPENDENCY.ProxyAdmin)

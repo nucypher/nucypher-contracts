@@ -74,7 +74,11 @@ def verify_contracts(contracts: List[ContractInstance]) -> None:
         explorer.publish_contract(instance.address)
 
 
-def prepare_deployment(registry_filepath: Path) -> None:
-    check_registry_filepath(registry_filepath=registry_filepath)
+def check_plugins() -> None:
     check_etherscan_plugin()
     check_infura_plugin()
+
+
+def check_deployment_ready(registry_filepath: Path) -> None:
+    check_plugins()
+    check_registry_filepath(registry_filepath=registry_filepath)
