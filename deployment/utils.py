@@ -7,12 +7,11 @@ from ape import networks
 from ape.api import AccountAPI
 from ape.cli import get_user_selected_account
 from ape.contracts import ContractInstance
+from ape_etherscan.utils import API_KEY_ENV_KEY_MAP
 
 from deployment.constants import (
     CURRENT_NETWORK,
-    ETHERSCAN_API_KEY_ENVVAR,
-    LOCAL_BLOCKCHAIN_ENVIRONMENTS,
-    WEB3_INFURA_API_KEY_ENVVAR
+    LOCAL_BLOCKCHAIN_ENVIRONMENTS
 )
 from deployment.params import (
     ApeDeploymentParameters,
@@ -32,38 +31,42 @@ def check_registry_filepath(registry_filepath: Path) -> None:
 
 
 def check_etherscan_plugin() -> None:
-    """Checks that the ape-etherscan plugin is installed and that the ETHERSCAN_API_KEY is set."""
+    """
+    Checks that the ape-etherscan plugin is installed and that
+    the appropriate API key environment variable is set.
+    """
     if CURRENT_NETWORK in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
         # unnecessary for local deployment
         return
-
     try:
         import ape_etherscan  # noqa: F401
     except ImportError:
         raise ImportError("Please install the ape-etherscan plugin to use this script.")
-
-    api_key = os.environ.get(ETHERSCAN_API_KEY_ENVVAR)
+    ecosystem_name = networks.provider.network.ecosystem.name
+    explorer_envvar = API_KEY_ENV_KEY_MAP.get(ecosystem_name)
+    api_key = os.environ.get(explorer_envvar)
     if not api_key:
-        raise ValueError(f"{ETHERSCAN_API_KEY_ENVVAR} is not set.")
-    if not len(api_key) == 34:
-        raise ValueError(f"{ETHERSCAN_API_KEY_ENVVAR} is not valid.")
+        raise ValueError(f"{explorer_envvar} is not set.")
 
 
 def check_infura_plugin() -> None:
     """Checks that the ape-infura plugin is installed."""
     if CURRENT_NETWORK in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
-        # unnecessary for local deployment
-        return
-
+        return  # unnecessary for local deployment
     try:
         import ape_infura  # noqa: F401
+        from ape_infura.provider import _ENVIRONMENT_VARIABLE_NAMES  # noqa: F401
     except ImportError:
         raise ImportError("Please install the ape-infura plugin to use this script.")
-    api_key = os.environ.get(WEB3_INFURA_API_KEY_ENVVAR)
-    if not api_key:
-        raise ValueError(f"{WEB3_INFURA_API_KEY_ENVVAR} is not set.")
-    if not len(api_key) == 32:
-        raise ValueError(f"{WEB3_INFURA_API_KEY_ENVVAR} is not valid.")
+    for envvar in _ENVIRONMENT_VARIABLE_NAMES:
+        api_key = os.environ.get(envvar)
+        if api_key:
+            break
+    else:
+        raise ValueError(
+            f"No Infura API key found in "
+            f"environment variables: {', '.join(_ENVIRONMENT_VARIABLE_NAMES)}"
+        )
 
 
 def verify_contracts(contracts: List[ContractInstance]) -> None:
