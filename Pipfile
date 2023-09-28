@@ -15,6 +15,7 @@ isort = "*"
 nucypher-core = "*"
 pre-commit = "*"
 tox = "*"
+ape-hardhat = "*"
 
 [dev-packages]
 

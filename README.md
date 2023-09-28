@@ -108,3 +108,8 @@ https://docs.npmjs.com/about-semantic-versioning
 
 But with some changes: while the major version is 0, we always bump patch version instead of minor
 version.
+
+## Gas benchmarks
+```
+$ ape test --network ethereum:local:hardhat tests/test_gas_report.py
+```
