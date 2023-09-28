@@ -7,9 +7,11 @@ name = "pypi"
 black = "*"
 coincurve = "*"
 cryptography = "*"
-eth-ape = "*"
-# TODO eventually change to official release, issue #82, once fix is available
+eth-ape = "<=0.6.19"  # there is a bug in 0.6.20 that causes `ape test` to fail
 ape-solidity = ">=0.6.5"
+ape-etherscan = "*"
+ape-polygon = "*"
+ape-infura = "*"
 flake8 = "*"
 isort = "*"
 nucypher-core = "*"

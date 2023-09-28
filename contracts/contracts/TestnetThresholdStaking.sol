@@ -27,6 +27,14 @@ contract TestnetThresholdStaking is Ownable {
         return 0;
     }
 
+    function authorizationIncreased(
+        address _stakingProvider,
+        uint96 _fromAmount,
+        uint96 _toAmount
+    ) external onlyOwner {
+        application.authorizationIncreased(_stakingProvider, _fromAmount, _toAmount);
+    }
+
     function setRoles(
         address _stakingProvider,
         address _owner,
