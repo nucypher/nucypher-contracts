@@ -55,11 +55,12 @@ def _get_entry(
 ) -> ContractEntry:
     contract_abi = _get_abi(contract_instance)
     contract_name = _get_name(contract_instance=contract_instance, registry_names=registry_names)
-    entry = RegistryEntry(
-        contract_name=contract_name,
-        contract_version="v0.0.0",
-        contract_address=to_checksum_address(contract_instance.address),
-        contract_abi=contract_abi,
+    chain_id = contract_instance.chain_manager.chain_id
+    entry = ContractEntry(
+        chain_id=chain_id,
+        name=contract_name,
+        address=to_checksum_address(contract_instance.address),
+        abi=contract_abi
     )
     return entry
 
@@ -68,11 +69,15 @@ def read_registry(filepath: Path) -> List[ContractEntry]:
     with open(filepath, "r") as file:
         data = json.load(file)
     registry_entries = list()
-    # convert to registry entry
-    for json_entry in json_data:
-        registry_entry = RegistryEntry(*json_entry)
-        registry_entries.append(registry_entry)
-
+    for chain_id, entries in data.items():
+        for contract_name, artifacts in entries.items():
+            registry_entry = ContractEntry(
+                chain_id=int(chain_id),
+                name=contract_name,
+                address=artifacts["address"],
+                abi=artifacts["abi"]
+            )
+            registry_entries.append(registry_entry)
     return registry_entries
 
 
@@ -91,13 +96,13 @@ class ConflictResolution(Enum):
 def _select_conflict_resolution(
     registry_1_entry, registry_1_filepath, registry_2_entry, registry_2_filepath
 ) -> ConflictResolution:
-    print(f"\n! Conflict detected for {registry_1_entry.contract_name}:")
+    print(f"\n! Conflict detected for {registry_1_entry.name}:")
     print(
-        f"[1]: {registry_1_entry.contract_name} at {registry_1_entry.contract_address} "
+        f"[1]: {registry_1_entry.name} at {registry_1_entry.address} "
         f"for {registry_1_filepath}"
     )
     print(
-        f"[2]: {registry_2_entry.contract_name} at {registry_2_entry.contract_address} "
+        f"[2]: {registry_2_entry.name} at {registry_2_entry.address} "
         f"for {registry_2_filepath}"
     )
     print("[A]: Abort merge")
@@ -120,16 +125,19 @@ def _select_conflict_resolution(
 def registry_from_ape_deployments(
     deployments: List[ContractInstance],
     output_filepath: Path,
-    registry_names: Optional[Dict[str, str]] = None,
+    registry_names: Optional[Dict[ContractName, ContractName]] = None,
 ) -> Path:
     """Creates a nucypher-style contract registry from ape deployments API."""
 
     registry_names = registry_names or dict()
-    registry_data = list()
+    registry_data = defaultdict(dict)
 
     for contract_instance in deployments:
         entry = _get_entry(contract_instance=contract_instance, registry_names=registry_names)
-        registry_data.append(entry)
+        registry_data[entry.chain_id][entry.name] = {
+            "address": entry.address,
+            "abi": entry.abi
+        }
 
     output_filepath = write_registry(data=registry_data, filepath=output_filepath)
     print(f"(i) Registry written to {output_filepath}!")
