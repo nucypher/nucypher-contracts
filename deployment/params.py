@@ -265,6 +265,9 @@ def validate_constructor_parameters(config: typing.OrderedDict[str, Any]) -> Non
     """Validates the constructor parameters for all contracts in a single config."""
     available_contracts = list(config.keys())
     for contract, parameters in config.items():
+        if not isinstance(parameters, dict):
+            # this can happen if the yml file is malformed
+            raise ValueError(f"Malformed constructor parameter config for {contract}.")
         for name, value in parameters.items():
             if isinstance(value, list):
                 _validate_constructor_param_list(value, available_contracts)
@@ -276,7 +279,25 @@ def validate_constructor_parameters(config: typing.OrderedDict[str, Any]) -> Non
             contract_name=contract,
             abi_inputs=contract_container.constructor.abi.inputs,
             parameters=parameters,
-        )
+    )
+
+
+def _get_contracts_config(config: typing.Dict) -> OrderedDict:
+    """Returns the contracts config from a constructor parameters file."""
+    try:
+        contracts = config['contracts']
+    except KeyError:
+        raise ValueError(f"Constructor parameters file missing 'contracts' field.")
+    result = OrderedDict()
+    for contract in contracts:
+        if isinstance(contract, str):
+            contract = {contract: OrderedDict()}
+        elif isinstance(contract, dict):
+            contract = OrderedDict(contract)
+        else:
+            raise ValueError(f"Malformed constructor parameters YAML.")
+        result.update(contract)
+    return result
 
 
 class ConstructorParameters:
