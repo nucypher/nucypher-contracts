@@ -1,0 +1,27 @@
+deployment:
+  name: lynx-root
+  chain_id: 5
+
+artifacts:
+    dir: ./deployment/artifacts/
+    file: lynx.json
+
+contracts:
+  - LynxStakingToken:
+      _totalSupplyOfTokens: 10000000000000000000000000
+  - TestnetThresholdStaking
+  - ProxyAdmin
+  - TACoApplication:
+      _token: $LynxStakingToken
+      _tStaking: $TestnetThresholdStaking
+      _minimumAuthorization: 40000000000000000000000
+      _minOperatorSeconds: 3600
+      _rewardDuration: 604800
+      _deauthorizationDuration: 5184000
+      _commitmentDurationOptions: [15724800, 31449600]
+  - TransparentUpgradeableProxy:
+      _logic: $TACoApplication
+      admin_: $ProxyAdmin
+      _data: $bytes:0x
+  - MockPolygonRoot:
+      _rootApplication: $TransparentUpgradeableProxy:TACoApplication
