@@ -51,7 +51,7 @@ def _get_name(
 
 
 def _get_entry(
-    contract_instance: ContractInstance, registry_names: Dict[ContractInstance, ContractName]
+    contract_instance: ContractInstance, registry_names: Dict[ContractName, ContractName]
 ) -> ContractEntry:
     contract_abi = _get_abi(contract_instance)
     contract_name = _get_name(contract_instance=contract_instance, registry_names=registry_names)
