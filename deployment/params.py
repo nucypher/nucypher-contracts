@@ -1,14 +1,19 @@
-import json
 import typing
 from collections import OrderedDict
 from pathlib import Path
 from typing import Any, List
 
+import yaml
 from ape import chain, project
 from ape.api import AccountAPI, ReceiptAPI
 from ape.cli import get_user_selected_account
 from ape.contracts.base import ContractContainer, ContractInstance, ContractTransactionHandler
 from ape.utils import ZERO_ADDRESS
+from eth_typing import ChecksumAddress
+from ethpm_types import MethodABI
+from web3.auto.gethdev import w3
+from yaml import Loader
+
 from deployment.confirm import _confirm_resolution, _continue
 from deployment.constants import (
     BYTES_PREFIX,
@@ -18,9 +23,6 @@ from deployment.constants import (
     SPECIAL_VARIABLE_DELIMITER,
     VARIABLE_PREFIX,
 )
-from eth_typing import ChecksumAddress
-from ethpm_types import MethodABI
-from web3.auto.gethdev import w3
 
 
 def _is_variable(param: Any) -> bool:
@@ -196,8 +198,8 @@ def _validate_constructor_abi_inputs(
         # validate name
         if abi_input.name != name:
             raise ConstructorParameters.Invalid(
-                f"Constructor parameter name '{name}' at position {position} does not "
-                f"match the expected ABI name '{abi_input.name}'"
+                f"{contract_name} constructor parameter '{name}' at position {position} does not "
+                f"match the expected ABI name '{abi_input.name}'."
             )
 
         # validate value type
