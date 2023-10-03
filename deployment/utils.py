@@ -1,26 +1,48 @@
+import json
 import os
 from pathlib import Path
-from typing import List
+from typing import List, Dict
 
+import yaml
 from ape import networks
 from ape.contracts import ContractInstance
 from ape_etherscan.utils import API_KEY_ENV_KEY_MAP
 
 from deployment.constants import (
     CURRENT_NETWORK,
-    LOCAL_BLOCKCHAIN_ENVIRONMENTS
+    LOCAL_BLOCKCHAIN_ENVIRONMENTS, ARTIFACTS_DIR
 )
 
 
-def check_registry_filepath(registry_filepath: Path) -> None:
-    """
-    Checks that the registry_filepath does not exist,
-    and that its parent directory does exist.
-    """
-    if registry_filepath.exists():
-        raise FileExistsError(f"Registry file already exists at {registry_filepath}")
-    if not registry_filepath.parent.exists():
-        raise FileNotFoundError(f"Parent directory of {registry_filepath} does not exist.")
+def _load_yaml(filepath: Path) -> dict:
+    """Loads a YAML file."""
+    with open(filepath, "r") as file:
+        return yaml.safe_load(file)
+
+
+def _load_json(filepath: Path) -> dict:
+    """Loads a JSON file."""
+    with open(filepath, "r") as file:
+        return json.load(file)
+
+
+def get_artifact_filepath(config: Dict) -> Path:
+    """Returns the filepath of the artifact file."""
+    artifact_config = config.get("artifacts", {})
+    artifact_dir = Path(artifact_config.get("dir", ARTIFACTS_DIR))
+    return artifact_dir / artifact_config.get("filename")
+
+
+def check_artifact(config: Dict, filepath: Path) -> None:
+    """Checks that the deployment has not already been published."""
+    chain_id = config.get("chain_id")
+    if not chain_id:
+        raise ValueError("chain_id is not set in params file.")
+    if not filepath.exists():
+        return
+    artifact = _load_json(filepath)
+    if chain_id in artifact:
+        raise ValueError(f"Deployment is already published for chain_id {chain_id}.")
 
 
 def check_etherscan_plugin() -> None:
@@ -74,6 +96,10 @@ def check_plugins() -> None:
     check_infura_plugin()
 
 
-def check_deployment_ready(registry_filepath: Path) -> None:
+def prepare_deployment(params_filepath: Path) -> Path:
+    """Checks that the deployment is ready to be executed."""
     check_plugins()
-    check_registry_filepath(registry_filepath=registry_filepath)
+    config = _load_yaml(params_filepath)
+    artifact_filepath = get_artifact_filepath(config)
+    check_artifact(config=config, filepath=artifact_filepath)
+    return artifact_filepath

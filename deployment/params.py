@@ -3,7 +3,6 @@ from collections import OrderedDict
 from pathlib import Path
 from typing import Any, List
 
-import yaml
 from ape import chain, project
 from ape.api import AccountAPI, ReceiptAPI
 from ape.cli import get_user_selected_account
@@ -12,7 +11,6 @@ from ape.utils import ZERO_ADDRESS
 from eth_typing import ChecksumAddress
 from ethpm_types import MethodABI
 from web3.auto.gethdev import w3
-from yaml import Loader
 
 from deployment.confirm import _confirm_resolution, _continue
 from deployment.constants import (
@@ -23,6 +21,8 @@ from deployment.constants import (
     SPECIAL_VARIABLE_DELIMITER,
     VARIABLE_PREFIX,
 )
+from deployment.registry import registry_from_ape_deployments
+from deployment.utils import _load_yaml, prepare_deployment, verify_contracts
 
 
 def _is_variable(param: Any) -> bool:
@@ -313,8 +313,7 @@ class ConstructorParameters:
     @classmethod
     def from_file(cls, filepath: Path) -> "ConstructorParameters":
         """Loads the constructor parameters from a JSON file."""
-        with open(filepath, "r") as params_file:
-            config = yaml.load(params_file, Loader=Loader)
+        config = _load_yaml(filepath)
         contracts_config = _get_contracts_config(config)
         return cls(contracts_config)
 
@@ -365,12 +364,13 @@ class Deployer(Transactor):
     __DEPLOYER_ACCOUNT: AccountAPI = None
 
     def __init__(
-        self, params_path: Path, publish: bool, account: typing.Optional[AccountAPI] = None
+        self, params_path: Path, verify: bool, account: typing.Optional[AccountAPI] = None
     ):
         super().__init__(account)
         self.constructor_parameters = ConstructorParameters.from_file(params_path)
+        self.registry_filepath = prepare_deployment(params_filepath=params_path)
         self._set_deployer(self._account)
-        self.publish = publish
+        self.verify = verify
 
     @classmethod
     def get_account(cls) -> AccountAPI:
@@ -407,3 +407,14 @@ class Deployer(Transactor):
             f"at {proxy_contract.contract_type.name}:{proxy_contract.address}."
         )
         return contract.at(proxy_contract.address)
+
+    def publish(self, deployments: List[ContractInstance]) -> None:
+        """
+        Publishes the deployments to the registry and optionally to block explorers.
+        """
+        registry_from_ape_deployments(
+            deployments=deployments,
+            output_filepath=self.registry_filepath,
+        )
+        if self.verify:
+            verify_contracts(contracts=deployments)
