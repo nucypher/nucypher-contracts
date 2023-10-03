@@ -293,8 +293,9 @@ class ConstructorParameters:
     def from_file(cls, filepath: Path) -> "ConstructorParameters":
         """Loads the constructor parameters from a JSON file."""
         with open(filepath, "r") as params_file:
-            config = OrderedDict(json.load(params_file))
-        return cls(config)
+            config = yaml.load(params_file, Loader=Loader)
+        contracts_config = _get_contracts_config(config)
+        return cls(contracts_config)
 
     def resolve(self, contract_name: str) -> OrderedDict:
         """Resolves the constructor parameters for a single contract."""
