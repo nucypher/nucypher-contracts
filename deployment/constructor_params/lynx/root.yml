@@ -4,7 +4,7 @@ deployment:
 
 artifacts:
     dir: ./deployment/artifacts/
-    file: lynx.json
+    filename: lynx.json
 
 contracts:
   - LynxStakingToken:

@@ -4,8 +4,8 @@ from pathlib import Path
 from typing import List, Dict
 
 import yaml
-from ape import networks
-from ape.contracts import ContractInstance
+from ape import networks, project
+from ape.contracts import ContractInstance, ContractContainer
 from ape_etherscan.utils import API_KEY_ENV_KEY_MAP
 
 from deployment.constants import (
@@ -30,12 +30,18 @@ def get_artifact_filepath(config: Dict) -> Path:
     """Returns the filepath of the artifact file."""
     artifact_config = config.get("artifacts", {})
     artifact_dir = Path(artifact_config.get("dir", ARTIFACTS_DIR))
-    return artifact_dir / artifact_config.get("filename")
+    filename = artifact_config.get("filename")
+    if not filename:
+        raise ValueError("artifact filename is not set in params file.")
+    return artifact_dir / filename
 
 
 def check_artifact(config: Dict, filepath: Path) -> None:
     """Checks that the deployment has not already been published."""
-    chain_id = config.get("chain_id")
+    deployment = config.get("deployment")
+    if not deployment:
+        raise ValueError("deployment is not set in params file.")
+    chain_id = deployment.get("chain_id")
     if not chain_id:
         raise ValueError("chain_id is not set in params file.")
     if not filepath.exists():
@@ -103,3 +109,27 @@ def prepare_deployment(params_filepath: Path) -> Path:
     artifact_filepath = get_artifact_filepath(config)
     check_artifact(config=config, filepath=artifact_filepath)
     return artifact_filepath
+
+
+def _get_dependency_contract_container(contract: str) -> ContractContainer:
+    for dependency_name, dependency_versions in project.dependencies.items():
+        if len(dependency_versions) > 1:
+            raise ValueError(f"Ambiguous {dependency_name} dependency for {contract}")
+        try:
+            dependency_api = list(dependency_versions.values())[0]
+            contract_container = getattr(dependency_api, contract)
+            return contract_container
+        except AttributeError:
+            continue
+
+    raise ValueError(f"No contract found for {contract}")
+
+
+def get_contract_container(contract: str) -> ContractContainer:
+    try:
+        contract_container = getattr(project, contract)
+    except AttributeError:
+        # not in root project; check dependencies
+        contract_container = _get_dependency_contract_container(contract)
+
+    return contract_container

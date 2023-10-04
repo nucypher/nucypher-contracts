@@ -10,8 +10,7 @@ from eth_typing import ChecksumAddress
 from eth_utils import to_checksum_address
 from web3.types import ABI
 
-from deployment.params import get_contract_container
-from deployment.utils import check_artifact
+from deployment.utils import check_artifact, get_contract_container
 
 ChainId = int
 ContractName = str

@@ -27,7 +27,7 @@ def main():
     eth-ape                   0.6.20
     """
 
-    deployer = Deployer(params_path=CONSTRUCTOR_PARAMS_FILEPATH, publish=VERIFY)
+    deployer = Deployer(params_path=CONSTRUCTOR_PARAMS_FILEPATH, verify=VERIFY)
 
     reward_token = deployer.deploy(project.LynxStakingToken)
 

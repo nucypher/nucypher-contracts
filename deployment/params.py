@@ -3,7 +3,7 @@ from collections import OrderedDict
 from pathlib import Path
 from typing import Any, List
 
-from ape import chain, project
+from ape import chain
 from ape.api import AccountAPI, ReceiptAPI
 from ape.cli import get_user_selected_account
 from ape.contracts.base import ContractContainer, ContractInstance, ContractTransactionHandler
@@ -22,7 +22,7 @@ from deployment.constants import (
     VARIABLE_PREFIX,
 )
 from deployment.registry import registry_from_ape_deployments
-from deployment.utils import _load_yaml, prepare_deployment, verify_contracts
+from deployment.utils import _load_yaml, prepare_deployment, verify_contracts, get_contract_container
 
 
 def _is_variable(param: Any) -> bool:
@@ -216,30 +216,6 @@ def _validate_constructor_abi_inputs(
             )
 
 
-def _get_dependency_contract_container(contract: str) -> ContractContainer:
-    for dependency_name, dependency_versions in project.dependencies.items():
-        if len(dependency_versions) > 1:
-            raise ValueError(f"Ambiguous {dependency_name} dependency for {contract}")
-        try:
-            dependency_api = list(dependency_versions.values())[0]
-            contract_container = getattr(dependency_api, contract)
-            return contract_container
-        except AttributeError:
-            continue
-
-    raise ValueError(f"No contract found for {contract}")
-
-
-def get_contract_container(contract: str) -> ContractContainer:
-    try:
-        contract_container = getattr(project, contract)
-    except AttributeError:
-        # not in root project; check dependencies
-        contract_container = _get_dependency_contract_container(contract)
-
-    return contract_container
-
-
 def _get_function_abi(method: ContractTransactionHandler, args) -> MethodABI:
     """Returns the function ABI for a contract function with a given number of arguments."""
     for abi in method.abis:
@@ -384,7 +360,7 @@ class Deployer(Transactor):
 
     def _get_kwargs(self) -> typing.Dict[str, Any]:
         """Returns the deployment kwargs."""
-        return {"publish": self.publish}
+        return {"publish": self.verify}
 
     def _get_args(self, container: ContractContainer) -> List[Any]:
         """Resolves the deployment parameters for a single contract."""
