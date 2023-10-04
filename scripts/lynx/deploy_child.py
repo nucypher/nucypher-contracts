@@ -28,7 +28,10 @@ def main():
     eth-ape                   0.6.20
     """
 
-    deployer = Deployer(params_path=CONSTRUCTOR_PARAMS_FILEPATH, verify=VERIFY)
+    deployer = Deployer.from_yaml(
+        filepath=CONSTRUCTOR_PARAMS_FILEPATH,
+        verify=VERIFY
+    )
 
     mock_polygon_child = deployer.deploy(project.MockPolygonChild)
 
@@ -59,4 +62,4 @@ def main():
         global_allow_list,
     ]
 
-    deployer.publish(deployments=deployments)
+    deployer.finalize(deployments=deployments)

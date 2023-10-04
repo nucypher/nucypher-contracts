@@ -10,7 +10,7 @@ from eth_typing import ChecksumAddress
 from eth_utils import to_checksum_address
 from web3.types import ABI
 
-from deployment.utils import check_artifact, get_contract_container
+from deployment.utils import validate_config, get_contract_container
 
 ChainId = int
 ContractName = str
@@ -180,7 +180,7 @@ def merge_registries(
         deprecated_contracts: Optional[List[ContractName]] = None,
 ) -> Path:
     """Merges two nucypher-style contract registries created from ape deployments API."""
-    check_artifact(registry_filepath=output_filepath)
+    validate_config(registry_filepath=output_filepath)
 
     # If no deprecated contracts are specified, use an empty list
     deprecated_contracts = deprecated_contracts or []

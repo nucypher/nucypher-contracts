@@ -3,7 +3,7 @@ from collections import OrderedDict
 from pathlib import Path
 from typing import Any, List
 
-from ape import chain
+from ape import chain, networks
 from ape.api import AccountAPI, ReceiptAPI
 from ape.cli import get_user_selected_account
 from ape.contracts.base import ContractContainer, ContractInstance, ContractTransactionHandler
@@ -22,7 +22,14 @@ from deployment.constants import (
     VARIABLE_PREFIX,
 )
 from deployment.registry import registry_from_ape_deployments
-from deployment.utils import _load_yaml, prepare_deployment, verify_contracts, get_contract_container
+from deployment.utils import (
+    _load_yaml,
+    verify_contracts,
+    get_contract_container,
+    check_plugins,
+    get_artifact_filepath,
+    validate_config
+)
 
 
 def _is_variable(param: Any) -> bool:
@@ -239,6 +246,7 @@ def _validate_transaction_args(args: typing.Tuple[Any, ...], abi) -> typing.Dict
 
 def validate_constructor_parameters(config: typing.OrderedDict[str, Any]) -> None:
     """Validates the constructor parameters for all contracts in a single config."""
+    print("Validating constructor parameters...")
     available_contracts = list(config.keys())
     for contract, parameters in config.items():
         if not isinstance(parameters, dict):
@@ -287,9 +295,8 @@ class ConstructorParameters:
         self.parameters = parameters
 
     @classmethod
-    def from_file(cls, filepath: Path) -> "ConstructorParameters":
+    def from_config(cls, config: typing.Dict) -> "ConstructorParameters":
         """Loads the constructor parameters from a JSON file."""
-        config = _load_yaml(filepath)
         contracts_config = _get_contracts_config(config)
         return cls(contracts_config)
 
@@ -340,13 +347,26 @@ class Deployer(Transactor):
     __DEPLOYER_ACCOUNT: AccountAPI = None
 
     def __init__(
-        self, params_path: Path, verify: bool, account: typing.Optional[AccountAPI] = None
+            self,
+            config: typing.Dict,
+            path: Path,
+            verify: bool,
+            account: typing.Optional[AccountAPI] = None
     ):
+        check_plugins()
+        self.path = path
+        self.config = config
+        self.registry_filepath = validate_config(config=self.config)
+        self.constructor_parameters = ConstructorParameters.from_config(self.config)
         super().__init__(account)
-        self.constructor_parameters = ConstructorParameters.from_file(params_path)
-        self.registry_filepath = prepare_deployment(params_filepath=params_path)
-        self._set_deployer(self._account)
+        self._set_account(self._account)
         self.verify = verify
+        self._confirm_start()
+
+    @classmethod
+    def from_yaml(cls, filepath: Path, *args, **kwargs) -> "Deployer":
+        config = _load_yaml(filepath)
+        return cls(config=config, path=filepath, *args, **kwargs)
 
     @classmethod
     def get_account(cls) -> AccountAPI:
@@ -354,7 +374,7 @@ class Deployer(Transactor):
         return cls.__DEPLOYER_ACCOUNT
 
     @classmethod
-    def _set_deployer(cls, deployer: AccountAPI) -> None:
+    def _set_account(cls, deployer: AccountAPI) -> None:
         """Sets the deployer account."""
         cls.__DEPLOYER_ACCOUNT = deployer
 
@@ -384,7 +404,7 @@ class Deployer(Transactor):
         )
         return contract.at(proxy_contract.address)
 
-    def publish(self, deployments: List[ContractInstance]) -> None:
+    def finalize(self, deployments: List[ContractInstance]) -> None:
         """
         Publishes the deployments to the registry and optionally to block explorers.
         """
@@ -394,3 +414,18 @@ class Deployer(Transactor):
         )
         if self.verify:
             verify_contracts(contracts=deployments)
+
+    def _confirm_start(self) -> None:
+        """Confirms the start of the deployment."""
+        print(
+            f"Account: {self.get_account().address}",
+            f"Config: {self.path}",
+            f"Registry: {self.registry_filepath}",
+            f"Verify: {self.verify}",
+            f"Ecosystem: {networks.provider.network.ecosystem.name}",
+            f"Network: {networks.provider.network.name}",
+            f"Chain ID: {networks.provider.network.chain_id}",
+            f"Gas Price: {networks.provider.gas_price}",
+            sep="\n"
+        )
+        _continue()

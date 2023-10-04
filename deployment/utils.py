@@ -36,19 +36,39 @@ def get_artifact_filepath(config: Dict) -> Path:
     return artifact_dir / filename
 
 
-def check_artifact(config: Dict, filepath: Path) -> None:
-    """Checks that the deployment has not already been published."""
+def validate_config(config: Dict) -> Path:
+    """
+    Checks that the deployment has not already been published for
+    the chain_id specified in the params file.
+    """
+    print("Validating parameters YAML...")
+
     deployment = config.get("deployment")
     if not deployment:
         raise ValueError("deployment is not set in params file.")
-    chain_id = deployment.get("chain_id")
-    if not chain_id:
+
+    config_chain_id = deployment.get("chain_id")
+    if not config_chain_id:
         raise ValueError("chain_id is not set in params file.")
-    if not filepath.exists():
-        return
-    artifact = _load_json(filepath)
-    if chain_id in artifact:
-        raise ValueError(f"Deployment is already published for chain_id {chain_id}.")
+
+    config_chain_id = int(config_chain_id)  # Convert chain_id to int here after ensuring it is not None
+    chain_mismatch = config_chain_id != networks.provider.network.chain_id
+    live_deployment = CURRENT_NETWORK not in LOCAL_BLOCKCHAIN_ENVIRONMENTS
+    if chain_mismatch and live_deployment:
+        raise ValueError(
+            f"chain_id in params file ({config_chain_id}) does not match "
+            f"chain_id of current network ({networks.provider.network.chain_id})."
+        )
+
+    registry_filepath = get_artifact_filepath(config=config)
+    if not registry_filepath.exists():
+        return registry_filepath
+
+    registry_chain_ids = map(int, _load_json(registry_filepath).keys())
+    if config_chain_id in registry_chain_ids:
+        raise ValueError(f"Deployment is already published for chain_id {config_chain_id}.")
+
+    return registry_filepath
 
 
 def check_etherscan_plugin() -> None:
@@ -98,17 +118,9 @@ def verify_contracts(contracts: List[ContractInstance]) -> None:
 
 
 def check_plugins() -> None:
+    print("Checking plugins...")
     check_etherscan_plugin()
     check_infura_plugin()
-
-
-def prepare_deployment(params_filepath: Path) -> Path:
-    """Checks that the deployment is ready to be executed."""
-    check_plugins()
-    config = _load_yaml(params_filepath)
-    artifact_filepath = get_artifact_filepath(config)
-    check_artifact(config=config, filepath=artifact_filepath)
-    return artifact_filepath
 
 
 def _get_dependency_contract_container(contract: str) -> ContractContainer:

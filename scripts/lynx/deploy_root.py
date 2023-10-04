@@ -27,7 +27,10 @@ def main():
     eth-ape                   0.6.20
     """
 
-    deployer = Deployer(params_path=CONSTRUCTOR_PARAMS_FILEPATH, verify=VERIFY)
+    deployer = Deployer.from_yaml(
+        filepath=CONSTRUCTOR_PARAMS_FILEPATH,
+        verify=VERIFY
+    )
 
     reward_token = deployer.deploy(project.LynxStakingToken)
 
@@ -56,4 +59,4 @@ def main():
         mock_polygon_root,
     ]
 
-    deployer.publish(deployments=deployments)
+    deployer.finalize(deployments=deployments)
