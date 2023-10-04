@@ -15,8 +15,6 @@ from deployment.utils import check_registry_filepath
 
 ChainId = int
 ContractName = str
-ContractArtifacts = Dict[ContractName, Union[ChecksumAddress, ABI]]
-RegistryData = Dict[ChainId, ContractArtifacts]
 
 
 class ContractEntry(NamedTuple):
@@ -65,6 +63,21 @@ def _get_entry(
     return entry
 
 
+def _get_entries(
+        contract_instances: List[ContractInstance],
+        registry_names: Dict[ContractName, ContractName]
+) -> List[ContractEntry]:
+    """Returns a list of contract entries from a list of contract instances."""
+    entries = list()
+    for contract_instance in contract_instances:
+        entry = _get_entry(
+            contract_instance=contract_instance,
+            registry_names=registry_names
+        )
+        entries.append(entry)
+    return entries
+
+
 def read_registry(filepath: Path) -> List[ContractEntry]:
     with open(filepath, "r") as file:
         data = json.load(file)
@@ -81,7 +94,13 @@ def read_registry(filepath: Path) -> List[ContractEntry]:
     return registry_entries
 
 
-def write_registry(data: RegistryData, filepath: Path) -> Path:
+def write_registry(entries: List[ContractEntry], filepath: Path) -> Path:
+    data = defaultdict(dict)
+    for entry in entries:
+        data[entry.chain_id][entry.name] = {
+            "address": entry.address,
+            "abi": entry.abi
+        }
     with open(filepath, "w") as file:
         data = json.dumps(data, indent=4)
         file.write(data)
@@ -128,18 +147,9 @@ def registry_from_ape_deployments(
     registry_names: Optional[Dict[ContractName, ContractName]] = None,
 ) -> Path:
     """Creates a nucypher-style contract registry from ape deployments API."""
-
     registry_names = registry_names or dict()
-    registry_data = defaultdict(dict)
-
-    for contract_instance in deployments:
-        entry = _get_entry(contract_instance=contract_instance, registry_names=registry_names)
-        registry_data[entry.chain_id][entry.name] = {
-            "address": entry.address,
-            "abi": entry.abi
-        }
-
-    output_filepath = write_registry(data=registry_data, filepath=output_filepath)
+    entries = _get_entries(contract_instances=deployments, registry_names=registry_names)
+    output_filepath = write_registry(entries=entries, filepath=output_filepath)
     print(f"(i) Registry written to {output_filepath}!")
     return output_filepath
 
@@ -162,7 +172,7 @@ def merge_registries(
     reg1 = {e.name: e for e in read_registry(registry_1_filepath) if e.name not in deprecated_contracts}
     reg2 = {e.name: e for e in read_registry(registry_2_filepath) if e.name not in deprecated_contracts}
 
-    merged = defaultdict(dict)
+    merged: List[ContractEntry] = list()
 
     # Iterate over all unique contract names across both registries
     for name in set(reg1) | set(reg2):
@@ -182,14 +192,11 @@ def merge_registries(
         else:
             selected_entry = entry
 
-        # Merge the selected entry into the merged registry
-        merged[selected_entry.chain_id][name] = {
-            "address": selected_entry.address,
-            "abi": selected_entry.abi
-        }
+        # commit the selected entry
+        merged.append(selected_entry)
 
     # Write the merged registry to the specified output file path
-    write_registry(data=merged, filepath=output_filepath)
+    write_registry(entries=merged, filepath=output_filepath)
     print(f"Merged registry output to {output_filepath}")
     return output_filepath
 
