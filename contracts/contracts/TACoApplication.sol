@@ -343,6 +343,7 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
     function pushReward(uint96 _reward) external updateReward(address(0)) {
         require(msg.sender == rewardDistributor, "Only distributor can push rewards");
         require(_reward > 0, "Reward must be specified");
+        require(authorizedOverall > 0, "No active staking providers");
         if (block.timestamp >= periodFinish) {
             rewardRateDecimals = (uint256(_reward) * 1e18) / rewardDuration;
         } else {
