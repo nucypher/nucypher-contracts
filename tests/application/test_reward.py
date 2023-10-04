@@ -57,42 +57,10 @@ def test_push_reward(
     # Push reward without staking providers
     token.transfer(distributor, 10 * reward_portion, sender=creator)
     token.approve(taco_application.address, 10 * reward_portion, sender=distributor)
-    tx = taco_application.pushReward(reward_portion, sender=distributor)
-    timestamp = chain.pending_timestamp - 1
-    assert taco_application.rewardRateDecimals() == reward_portion * 10**18 // reward_duration
-    assert taco_application.lastUpdateTime() == timestamp
-    assert taco_application.periodFinish() == (timestamp + reward_duration)
-    assert token.balanceOf(taco_application.address) == reward_portion
-    assert token.balanceOf(distributor) == 9 * reward_portion
-    assert taco_application.lastTimeRewardApplicable() == timestamp
-    assert taco_application.rewardPerTokenStored() == 0
-    assert taco_application.rewardPerToken() == 0
-    assert taco_application.availableRewards(staking_provider_1) == 0
-
-    events = taco_application.RewardAdded.from_receipt(tx)
-    assert events == [taco_application.RewardAdded(reward=reward_portion)]
-
-    # Wait some time and push reward again (without staking providers)
-    chain.pending_timestamp += reward_duration // 2 - 1
-    tx = taco_application.pushReward(reward_portion, sender=distributor)
-    timestamp = chain.pending_timestamp - 1
-    expected_reward_rate = (reward_portion + reward_portion // 2) * 10**18 // reward_duration
-    # Could be some error during calculations
-    assert abs(taco_application.rewardRateDecimals() - expected_reward_rate) <= ERROR
-    assert taco_application.lastUpdateTime() == timestamp
-    assert taco_application.periodFinish() == (timestamp + reward_duration)
-    assert token.balanceOf(taco_application.address) == 2 * reward_portion
-    assert token.balanceOf(distributor) == 8 * reward_portion
-    assert taco_application.lastTimeRewardApplicable() == timestamp
-    assert taco_application.rewardPerTokenStored() == 0
-    assert taco_application.rewardPerToken() == 0
-    assert taco_application.availableRewards(staking_provider_1) == 0
-
-    events = taco_application.RewardAdded.from_receipt(tx)
-    assert events == [taco_application.RewardAdded(reward=reward_portion)]
+    with ape.reverts():
+        taco_application.pushReward(reward_portion, sender=distributor)
 
     # Wait, add one staking provider and push reward again
-    chain.pending_timestamp += reward_duration
     threshold_staking.authorizationIncreased(staking_provider_1, 0, value, sender=creator)
     taco_application.bondOperator(staking_provider_1, staking_provider_1, sender=staking_provider_1)
     child_application.confirmOperatorAddress(staking_provider_1, sender=staking_provider_1)
@@ -102,8 +70,8 @@ def test_push_reward(
     assert taco_application.rewardRateDecimals() == reward_portion * 10**18 // reward_duration
     assert taco_application.lastUpdateTime() == timestamp
     assert taco_application.periodFinish() == (timestamp + reward_duration)
-    assert token.balanceOf(taco_application.address) == 3 * reward_portion
-    assert token.balanceOf(distributor) == 7 * reward_portion
+    assert token.balanceOf(taco_application.address) == reward_portion
+    assert token.balanceOf(distributor) == 9 * reward_portion
     assert taco_application.lastTimeRewardApplicable() == timestamp
     assert taco_application.rewardPerTokenStored() == 0
     assert taco_application.rewardPerToken() == 0
@@ -136,8 +104,8 @@ def test_push_reward(
     assert taco_application.rewardRateDecimals() == reward_portion * 10**18 // reward_duration
     assert taco_application.lastUpdateTime() == timestamp
     assert taco_application.periodFinish() == (timestamp + reward_duration)
-    assert token.balanceOf(taco_application.address) == 4 * reward_portion
-    assert token.balanceOf(distributor) == 6 * reward_portion
+    assert token.balanceOf(taco_application.address) == 2 * reward_portion
+    assert token.balanceOf(distributor) == 8 * reward_portion
     assert taco_application.lastTimeRewardApplicable() == timestamp
     assert taco_application.rewardPerTokenStored() == reward_per_token
     assert taco_application.rewardPerToken() == reward_per_token
