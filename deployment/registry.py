@@ -17,7 +17,7 @@ ChainId = int
 ContractName = str
 
 
-class ContractEntry(NamedTuple):
+class RegistryEntry(NamedTuple):
     """Represents a single entry in a nucypher-style contract registry."""
     chain_id: ChainId
     name: ContractName
@@ -50,11 +50,11 @@ def _get_name(
 
 def _get_entry(
     contract_instance: ContractInstance, registry_names: Dict[ContractName, ContractName]
-) -> ContractEntry:
+) -> RegistryEntry:
     contract_abi = _get_abi(contract_instance)
     contract_name = _get_name(contract_instance=contract_instance, registry_names=registry_names)
     chain_id = contract_instance.chain_manager.chain_id
-    entry = ContractEntry(
+    entry = RegistryEntry(
         chain_id=chain_id,
         name=contract_name,
         address=to_checksum_address(contract_instance.address),
@@ -66,7 +66,7 @@ def _get_entry(
 def _get_entries(
         contract_instances: List[ContractInstance],
         registry_names: Dict[ContractName, ContractName]
-) -> List[ContractEntry]:
+) -> List[RegistryEntry]:
     """Returns a list of contract entries from a list of contract instances."""
     entries = list()
     for contract_instance in contract_instances:
@@ -78,13 +78,13 @@ def _get_entries(
     return entries
 
 
-def read_registry(filepath: Path) -> List[ContractEntry]:
+def read_registry(filepath: Path) -> List[RegistryEntry]:
     with open(filepath, "r") as file:
         data = json.load(file)
     registry_entries = list()
     for chain_id, entries in data.items():
         for contract_name, artifacts in entries.items():
-            registry_entry = ContractEntry(
+            registry_entry = RegistryEntry(
                 chain_id=int(chain_id),
                 name=contract_name,
                 address=artifacts["address"],
@@ -94,7 +94,7 @@ def read_registry(filepath: Path) -> List[ContractEntry]:
     return registry_entries
 
 
-def write_registry(entries: List[ContractEntry], filepath: Path) -> Path:
+def write_registry(entries: List[RegistryEntry], filepath: Path) -> Path:
     data = defaultdict(dict)
     for entry in entries:
         data[entry.chain_id][entry.name] = {
@@ -172,7 +172,7 @@ def merge_registries(
     reg1 = {e.name: e for e in read_registry(registry_1_filepath) if e.name not in deprecated_contracts}
     reg2 = {e.name: e for e in read_registry(registry_2_filepath) if e.name not in deprecated_contracts}
 
-    merged: List[ContractEntry] = list()
+    merged: List[RegistryEntry] = list()
 
     # Iterate over all unique contract names across both registries
     for name in set(reg1) | set(reg2):
