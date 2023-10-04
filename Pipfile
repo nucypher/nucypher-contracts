@@ -17,6 +17,7 @@ isort = "*"
 nucypher-core = "*"
 pre-commit = "*"
 tox = "*"
+pyyaml = "*"
 
 [dev-packages]
 
