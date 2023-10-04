@@ -175,22 +175,20 @@ def merge_registries(
     merged: List[RegistryEntry] = list()
 
     # Iterate over all unique contract names across both registries
-    for name in set(reg1) | set(reg2):
-        entry = reg1.get(name) or reg2.get(name)
-        conflict_entry = reg2.get(name) if name in reg1 else None
-        conflict = conflict_entry and (entry.chain_id == conflict_entry.chain_id)
+    conflicts, contracts = set(reg1) & set(reg2), set(reg1) | set(reg2)
+    for name in contracts:
+        entry_1, entry_2 = reg1.get(name), reg2.get(name)
+        conflict = name in conflicts and entry_1.chain_id == entry_2.chain_id
         if conflict:
             resolution = _select_conflict_resolution(
-                registry_1_entry=entry,
-                registry_2_entry=conflict_entry,
+                registry_1_entry=entry_1,
+                registry_2_entry=entry_2,
                 registry_1_filepath=registry_1_filepath,
                 registry_2_filepath=registry_2_filepath
             )
-
-            # Choose the entry based on the resolution strategy
-            selected_entry = entry if resolution == ConflictResolution.USE_1 else conflict_entry
+            selected_entry = entry_1 if resolution == ConflictResolution.USE_1 else entry_2
         else:
-            selected_entry = entry
+            selected_entry = entry_1 or entry_2
 
         # commit the selected entry
         merged.append(selected_entry)
