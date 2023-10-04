@@ -1,36 +1,41 @@
 import json
+from collections import defaultdict
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, NamedTuple, Optional
+from typing import Dict, List, NamedTuple, Optional, Union
 
 from ape.contracts import ContractInstance
 from eth_typing import ChecksumAddress
 from eth_utils import to_checksum_address
+from web3.types import ABI
 
 from deployment.params import get_contract_container
 from deployment.utils import check_registry_filepath
 
 
+ChainId = int
+ContractName = str
+
+
 class RegistryEntry(NamedTuple):
     """Represents a single entry in a nucypher-style contract registry."""
+    chain_id: ChainId
+    name: ContractName
+    address: ChecksumAddress
+    abi: ABI
 
-    contract_name: str
-    contract_version: str  # TODO: remove version from registry
-    contract_address: ChecksumAddress
-    contract_abi: List[Dict]
 
-
-def _get_abi(contract_instance: ContractInstance) -> List[Dict]:
+def _get_abi(contract_instance: ContractInstance) -> ABI:
     """Returns the ABI of a contract instance."""
-    contract_abi = []
+    contract_abi = list()
     for entry in contract_instance.contract_type.abi:
         contract_abi.append(entry.dict())
     return contract_abi
 
 
 def _get_name(
-    contract_instance: ContractInstance, registry_names: Dict[ContractInstance, str]
-) -> str:
+    contract_instance: ContractInstance, registry_names: Dict[ContractName, ContractName]
+) -> ContractName:
     """
     Returns the optionally remapped registry name of a contract instance.
     If the contract instance is not remapped, the real contract name is returned.
@@ -44,36 +49,61 @@ def _get_name(
 
 
 def _get_entry(
-    contract_instance: ContractInstance, registry_names: Dict[ContractInstance, str]
+    contract_instance: ContractInstance, registry_names: Dict[ContractName, ContractName]
 ) -> RegistryEntry:
     contract_abi = _get_abi(contract_instance)
     contract_name = _get_name(contract_instance=contract_instance, registry_names=registry_names)
+    chain_id = contract_instance.chain_manager.chain_id
     entry = RegistryEntry(
-        contract_name=contract_name,
-        contract_version="v0.0.0",
-        contract_address=to_checksum_address(contract_instance.address),
-        contract_abi=contract_abi,
+        chain_id=chain_id,
+        name=contract_name,
+        address=to_checksum_address(contract_instance.address),
+        abi=contract_abi
     )
     return entry
 
 
+def _get_entries(
+        contract_instances: List[ContractInstance],
+        registry_names: Dict[ContractName, ContractName]
+) -> List[RegistryEntry]:
+    """Returns a list of contract entries from a list of contract instances."""
+    entries = list()
+    for contract_instance in contract_instances:
+        entry = _get_entry(
+            contract_instance=contract_instance,
+            registry_names=registry_names
+        )
+        entries.append(entry)
+    return entries
+
+
 def read_registry(filepath: Path) -> List[RegistryEntry]:
-    with open(filepath, "r") as registry_file:
-        json_data = json.load(registry_file)
-
+    with open(filepath, "r") as file:
+        data = json.load(file)
     registry_entries = list()
-    # convert to registry entry
-    for json_entry in json_data:
-        registry_entry = RegistryEntry(*json_entry)
-        registry_entries.append(registry_entry)
-
+    for chain_id, entries in data.items():
+        for contract_name, artifacts in entries.items():
+            registry_entry = RegistryEntry(
+                chain_id=int(chain_id),
+                name=contract_name,
+                address=artifacts["address"],
+                abi=artifacts["abi"]
+            )
+            registry_entries.append(registry_entry)
     return registry_entries
 
 
-def write_registry(data: List[RegistryEntry], filepath: Path) -> Path:
-    with open(filepath, "w") as registry_file:
-        json_data = json.dumps(data, indent=4)
-        registry_file.write(json_data)
+def write_registry(entries: List[RegistryEntry], filepath: Path) -> Path:
+    data = defaultdict(dict)
+    for entry in entries:
+        data[entry.chain_id][entry.name] = {
+            "address": entry.address,
+            "abi": entry.abi
+        }
+    with open(filepath, "w") as file:
+        data = json.dumps(data, indent=4)
+        file.write(data)
     return filepath
 
 
@@ -85,13 +115,13 @@ class ConflictResolution(Enum):
 def _select_conflict_resolution(
     registry_1_entry, registry_1_filepath, registry_2_entry, registry_2_filepath
 ) -> ConflictResolution:
-    print(f"\n! Conflict detected for {registry_1_entry.contract_name}:")
+    print(f"\n! Conflict detected for {registry_1_entry.name}:")
     print(
-        f"[1]: {registry_1_entry.contract_name} at {registry_1_entry.contract_address} "
+        f"[1]: {registry_1_entry.name} at {registry_1_entry.address} "
         f"for {registry_1_filepath}"
     )
     print(
-        f"[2]: {registry_2_entry.contract_name} at {registry_2_entry.contract_address} "
+        f"[2]: {registry_2_entry.name} at {registry_2_entry.address} "
         f"for {registry_2_filepath}"
     )
     print("[A]: Abort merge")
@@ -114,89 +144,68 @@ def _select_conflict_resolution(
 def registry_from_ape_deployments(
     deployments: List[ContractInstance],
     output_filepath: Path,
-    registry_names: Optional[Dict[str, str]] = None,
+    registry_names: Optional[Dict[ContractName, ContractName]] = None,
 ) -> Path:
     """Creates a nucypher-style contract registry from ape deployments API."""
-
     registry_names = registry_names or dict()
-    registry_data = list()
-
-    for contract_instance in deployments:
-        entry = _get_entry(contract_instance=contract_instance, registry_names=registry_names)
-        registry_data.append(entry)
-
-    output_filepath = write_registry(data=registry_data, filepath=output_filepath)
+    entries = _get_entries(contract_instances=deployments, registry_names=registry_names)
+    output_filepath = write_registry(entries=entries, filepath=output_filepath)
     print(f"(i) Registry written to {output_filepath}!")
     return output_filepath
 
 
 def merge_registries(
-    registry_1_filepath: Path,
-    registry_2_filepath: Path,
-    output_filepath: Path,
-    deprecated_contracts: Optional[List[str]] = None,
+        registry_1_filepath: Path,
+        registry_2_filepath: Path,
+        output_filepath: Path,
+        deprecated_contracts: Optional[List[ContractName]] = None,
 ) -> Path:
-    """Merges two nucypher-style contract registries created from ape deployments API."""
+    """Merges two nucypher-style contract registries into a single registry."""
+
+    # Ensure the output file path is valid
     check_registry_filepath(registry_filepath=output_filepath)
 
-    registry_1_entries = read_registry(registry_1_filepath)
-    registry_2_entries = read_registry(registry_2_filepath)
+    # If no deprecated contracts are specified, use an empty list
+    deprecated_contracts = deprecated_contracts or []
 
-    deprecated_contracts = [] if deprecated_contracts is None else deprecated_contracts
+    # Read the registries, excluding deprecated contracts
+    reg1 = {e.name: e for e in read_registry(registry_1_filepath) if e.name not in deprecated_contracts}
+    reg2 = {e.name: e for e in read_registry(registry_2_filepath) if e.name not in deprecated_contracts}
 
-    # obtain dictionary of contract name -> registry entry
-    # exclude any deprecated contracts
-    registry_1_contracts_dict = {
-        entry.contract_name: entry
-        for entry in registry_1_entries
-        if entry.contract_name not in deprecated_contracts
-    }
-    registry_2_contracts_dict = {
-        entry.contract_name: entry
-        for entry in registry_2_entries
-        if entry.contract_name not in deprecated_contracts
-    }
+    merged: List[RegistryEntry] = list()
 
-    merged_entries = []
-
-    # registry 1 entries
-    registry_1_contract_names = list(registry_1_contracts_dict.keys())
-    for contract_name in registry_1_contract_names:
-        registry_1_entry = registry_1_contracts_dict[contract_name]
-        if contract_name in registry_2_contracts_dict:
-            # conflict found
-            registry_2_entry = registry_2_contracts_dict[contract_name]
-            result = _select_conflict_resolution(
-                registry_1_entry, registry_1_filepath, registry_2_entry, registry_2_filepath
+    # Iterate over all unique contract names across both registries
+    conflicts, contracts = set(reg1) & set(reg2), set(reg1) | set(reg2)
+    for name in contracts:
+        entry_1, entry_2 = reg1.get(name), reg2.get(name)
+        conflict = name in conflicts and entry_1.chain_id == entry_2.chain_id
+        if conflict:
+            resolution = _select_conflict_resolution(
+                registry_1_entry=entry_1,
+                registry_2_entry=entry_2,
+                registry_1_filepath=registry_1_filepath,
+                registry_2_filepath=registry_2_filepath
             )
-            if result == ConflictResolution.USE_1:
-                merged_entries.append(registry_1_entry)
-            else:
-                # USE_2
-                merged_entries.append(registry_2_entry)
+            selected_entry = entry_1 if resolution == ConflictResolution.USE_1 else entry_2
+        else:
+            selected_entry = entry_1 or entry_2
 
-            # ensure registry_2 entry not repeated
-            # either usurped by registry_entry_1 OR already added to combined list
-            del registry_2_contracts_dict[contract_name]
-            continue
+        # commit the selected entry
+        merged.append(selected_entry)
 
-        merged_entries.append(registry_1_entry)
-
-    # registry 2 entries
-    merged_entries.extend(registry_2_contracts_dict.values())
-
-    write_registry(data=merged_entries, filepath=output_filepath)
+    # Write the merged registry to the specified output file path
+    write_registry(entries=merged, filepath=output_filepath)
     print(f"Merged registry output to {output_filepath}")
-
     return output_filepath
 
 
 def contracts_from_registry(filepath: Path) -> Dict[str, ContractInstance]:
+    """Returns a dictionary of contract instances from a nucypher-style contract registry."""
     registry_entries = read_registry(filepath=filepath)
     deployments = dict()
     for registry_entry in registry_entries:
-        contract_type = registry_entry.contract_name
+        contract_type = registry_entry.name
         contract_container = get_contract_container(contract_type)
-        contract_instance = contract_container.at(registry_entry.contract_address)
+        contract_instance = contract_container.at(registry_entry.address)
         deployments[contract_type] = contract_instance
     return deployments
