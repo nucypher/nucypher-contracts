@@ -23,6 +23,9 @@ class RegistryEntry(NamedTuple):
     name: ContractName
     address: ChecksumAddress
     abi: ABI
+    tx_hash: str
+    block_number: int
+    deployer: str
 
 
 def _get_abi(contract_instance: ContractInstance) -> ABI:
@@ -53,12 +56,15 @@ def _get_entry(
 ) -> RegistryEntry:
     contract_abi = _get_abi(contract_instance)
     contract_name = _get_name(contract_instance=contract_instance, registry_names=registry_names)
-    chain_id = contract_instance.chain_manager.chain_id
+    receipt = contract_instance.receipt
     entry = RegistryEntry(
-        chain_id=chain_id,
         name=contract_name,
         address=to_checksum_address(contract_instance.address),
-        abi=contract_abi
+        abi=contract_abi,
+        chain_id=receipt.chain_id,
+        tx_hash=receipt.txn_hash,
+        block_number=receipt.block_number,
+        deployer=receipt.transaction.sender
     )
     return entry
 
@@ -87,8 +93,11 @@ def read_registry(filepath: Path) -> List[RegistryEntry]:
             registry_entry = RegistryEntry(
                 chain_id=int(chain_id),
                 name=contract_name,
-                address=artifacts["address"],
-                abi=artifacts["abi"]
+                address=artifacts['address'],
+                abi=artifacts['abi'],
+                tx_hash=artifacts['tx_hash'],
+                block_number=artifacts['block_number'],
+                deployer=artifacts['deployer']
             )
             registry_entries.append(registry_entry)
     return registry_entries
@@ -99,7 +108,10 @@ def write_registry(entries: List[RegistryEntry], filepath: Path) -> Path:
     for entry in entries:
         data[entry.chain_id][entry.name] = {
             "address": entry.address,
-            "abi": entry.abi
+            "abi": entry.abi,
+            "tx_hash": entry.tx_hash,
+            "block_number": entry.block_number,
+            "deployer": entry.deployer,
         }
     with open(filepath, "w") as file:
         data = json.dumps(data, indent=4)
