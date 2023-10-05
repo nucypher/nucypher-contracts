@@ -1,3 +1,6 @@
+#!/usr/bin/python3
+
+
 from ape import project
 from deployment.constants import ARTIFACTS_DIR, LYNX_NODES
 from deployment.params import Transactor
