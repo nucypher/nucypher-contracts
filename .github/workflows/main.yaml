@@ -33,12 +33,12 @@ jobs:
           cache: "npm"
       - run: npm install -g ganache
 
-      - name: Setup Python 3.8
+      - name: Setup Python 3.11
         uses: actions/setup-python@v3
         with:
           cache: "pip"
-          python-version: "3.8"
-      - run: pip install -e . -r requirements.txt
+          python-version: "3.11"
+      - run: pip install . -r requirements.txt
 
       - name: Run Tests
         run: ape test
