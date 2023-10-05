@@ -10,7 +10,7 @@ from eth_typing import ChecksumAddress
 from eth_utils import to_checksum_address
 from web3.types import ABI
 
-from deployment.utils import validate_config, get_contract_container
+from deployment.utils import validate_config, get_contract_container, _load_json
 
 ChainId = int
 ContractName = str
@@ -105,9 +105,9 @@ def read_registry(filepath: Path) -> List[RegistryEntry]:
 def write_registry(entries: List[RegistryEntry], filepath: Path) -> Path:
     """Writes a nucypher-style contract registry to a file."""
 
-    parent = filepath.parent
-    if not parent.exists():
-        os.makedirs(parent)
+    if not entries:
+        print("No entries provided.")
+        return filepath
 
     data = defaultdict(dict)
     for entry in entries:
@@ -119,9 +119,26 @@ def write_registry(entries: List[RegistryEntry], filepath: Path) -> Path:
             "deployer": entry.deployer,
         }
 
+    # Create the parent directory if it does not exist
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+
+    # If the file already exists, attempt to merge the data, if not create a new file
+    if filepath.exists():
+        print(f"Updating existing registry at {filepath}.")
+        existing_data = _load_json(filepath)
+
+        if any(chain_id in existing_data for chain_id in data):
+            filepath = filepath.with_suffix('.unmerged.json')
+            print("Cannot merge registries with overlapping chain IDs.\n"
+                  f"Writing to {filepath} to avoid overwriting existing data.")
+        else:
+            existing_data.update(data)
+            data = existing_data
+    else:
+        print(f"Creating new registry at {filepath}.")
+
     with open(filepath, "w") as file:
-        data = json.dumps(data, indent=4)
-        file.write(data)
+        json.dump(data, file, indent=4)
 
     return filepath
 
