@@ -1,14 +1,19 @@
-import json
 import typing
 from collections import OrderedDict
 from pathlib import Path
 from typing import Any, List
 
+import yaml
 from ape import chain, project
 from ape.api import AccountAPI, ReceiptAPI
 from ape.cli import get_user_selected_account
 from ape.contracts.base import ContractContainer, ContractInstance, ContractTransactionHandler
 from ape.utils import ZERO_ADDRESS
+from eth_typing import ChecksumAddress
+from ethpm_types import MethodABI
+from web3.auto.gethdev import w3
+from yaml import Loader
+
 from deployment.confirm import _confirm_resolution, _continue
 from deployment.constants import (
     BYTES_PREFIX,
@@ -18,9 +23,6 @@ from deployment.constants import (
     SPECIAL_VARIABLE_DELIMITER,
     VARIABLE_PREFIX,
 )
-from eth_typing import ChecksumAddress
-from ethpm_types import MethodABI
-from web3.auto.gethdev import w3
 
 
 def _is_variable(param: Any) -> bool:
@@ -196,8 +198,8 @@ def _validate_constructor_abi_inputs(
         # validate name
         if abi_input.name != name:
             raise ConstructorParameters.Invalid(
-                f"Constructor parameter name '{name}' at position {position} does not "
-                f"match the expected ABI name '{abi_input.name}'"
+                f"{contract_name} constructor parameter '{name}' at position {position} does not "
+                f"match the expected ABI name '{abi_input.name}'."
             )
 
         # validate value type
@@ -263,6 +265,9 @@ def validate_constructor_parameters(config: typing.OrderedDict[str, Any]) -> Non
     """Validates the constructor parameters for all contracts in a single config."""
     available_contracts = list(config.keys())
     for contract, parameters in config.items():
+        if not isinstance(parameters, dict):
+            # this can happen if the yml file is malformed
+            raise ValueError(f"Malformed constructor parameter config for {contract}.")
         for name, value in parameters.items():
             if isinstance(value, list):
                 _validate_constructor_param_list(value, available_contracts)
@@ -274,7 +279,25 @@ def validate_constructor_parameters(config: typing.OrderedDict[str, Any]) -> Non
             contract_name=contract,
             abi_inputs=contract_container.constructor.abi.inputs,
             parameters=parameters,
-        )
+    )
+
+
+def _get_contracts_config(config: typing.Dict) -> OrderedDict:
+    """Returns the contracts config from a constructor parameters file."""
+    try:
+        contracts = config['contracts']
+    except KeyError:
+        raise ValueError(f"Constructor parameters file missing 'contracts' field.")
+    result = OrderedDict()
+    for contract in contracts:
+        if isinstance(contract, str):
+            contract = {contract: OrderedDict()}
+        elif isinstance(contract, dict):
+            contract = OrderedDict(contract)
+        else:
+            raise ValueError(f"Malformed constructor parameters YAML.")
+        result.update(contract)
+    return result
 
 
 class ConstructorParameters:
@@ -291,8 +314,9 @@ class ConstructorParameters:
     def from_file(cls, filepath: Path) -> "ConstructorParameters":
         """Loads the constructor parameters from a JSON file."""
         with open(filepath, "r") as params_file:
-            config = OrderedDict(json.load(params_file))
-        return cls(config)
+            config = yaml.load(params_file, Loader=Loader)
+        contracts_config = _get_contracts_config(config)
+        return cls(contracts_config)
 
     def resolve(self, contract_name: str) -> OrderedDict:
         """Resolves the constructor parameters for a single contract."""
