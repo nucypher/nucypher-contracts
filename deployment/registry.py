@@ -1,17 +1,16 @@
 import json
+import os
 from collections import defaultdict
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, NamedTuple, Optional, Union
+from typing import Dict, List, NamedTuple, Optional
 
 from ape.contracts import ContractInstance
 from eth_typing import ChecksumAddress
 from eth_utils import to_checksum_address
 from web3.types import ABI
 
-from deployment.params import get_contract_container
-from deployment.utils import check_registry_filepath
-
+from deployment.utils import validate_config, get_contract_container, _load_json
 
 ChainId = int
 ContractName = str
@@ -104,6 +103,12 @@ def read_registry(filepath: Path) -> List[RegistryEntry]:
 
 
 def write_registry(entries: List[RegistryEntry], filepath: Path) -> Path:
+    """Writes a nucypher-style contract registry to a file."""
+
+    if not entries:
+        print("No entries provided.")
+        return filepath
+
     data = defaultdict(dict)
     for entry in entries:
         data[entry.chain_id][entry.name] = {
@@ -113,9 +118,28 @@ def write_registry(entries: List[RegistryEntry], filepath: Path) -> Path:
             "block_number": entry.block_number,
             "deployer": entry.deployer,
         }
+
+    # Create the parent directory if it does not exist
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+
+    # If the file already exists, attempt to merge the data, if not create a new file
+    if filepath.exists():
+        print(f"Updating existing registry at {filepath}.")
+        existing_data = _load_json(filepath)
+
+        if any(chain_id in existing_data for chain_id in data):
+            filepath = filepath.with_suffix('.unmerged.json')
+            print("Cannot merge registries with overlapping chain IDs.\n"
+                  f"Writing to {filepath} to avoid overwriting existing data.")
+        else:
+            existing_data.update(data)
+            data = existing_data
+    else:
+        print(f"Creating new registry at {filepath}.")
+
     with open(filepath, "w") as file:
-        data = json.dumps(data, indent=4)
-        file.write(data)
+        json.dump(data, file, indent=4)
+
     return filepath
 
 
@@ -172,10 +196,8 @@ def merge_registries(
         output_filepath: Path,
         deprecated_contracts: Optional[List[ContractName]] = None,
 ) -> Path:
-    """Merges two nucypher-style contract registries into a single registry."""
-
-    # Ensure the output file path is valid
-    check_registry_filepath(registry_filepath=output_filepath)
+    """Merges two nucypher-style contract registries created from ape deployments API."""
+    validate_config(registry_filepath=output_filepath)
 
     # If no deprecated contracts are specified, use an empty list
     deprecated_contracts = deprecated_contracts or []

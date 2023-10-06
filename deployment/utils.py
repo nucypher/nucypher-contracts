@@ -1,26 +1,74 @@
+import json
 import os
 from pathlib import Path
-from typing import List
+from typing import List, Dict
 
-from ape import networks
-from ape.contracts import ContractInstance
+import yaml
+from ape import networks, project
+from ape.contracts import ContractInstance, ContractContainer
 from ape_etherscan.utils import API_KEY_ENV_KEY_MAP
 
 from deployment.constants import (
     CURRENT_NETWORK,
-    LOCAL_BLOCKCHAIN_ENVIRONMENTS
+    LOCAL_BLOCKCHAIN_ENVIRONMENTS, ARTIFACTS_DIR
 )
 
 
-def check_registry_filepath(registry_filepath: Path) -> None:
+def _load_yaml(filepath: Path) -> dict:
+    """Loads a YAML file."""
+    with open(filepath, "r") as file:
+        return yaml.safe_load(file)
+
+
+def _load_json(filepath: Path) -> dict:
+    """Loads a JSON file."""
+    with open(filepath, "r") as file:
+        return json.load(file)
+
+
+def get_artifact_filepath(config: Dict) -> Path:
+    """Returns the filepath of the artifact file."""
+    artifact_config = config.get("artifacts", {})
+    artifact_dir = Path(artifact_config.get("dir", ARTIFACTS_DIR))
+    filename = artifact_config.get("filename")
+    if not filename:
+        raise ValueError("artifact filename is not set in params file.")
+    return artifact_dir / filename
+
+
+def validate_config(config: Dict) -> Path:
     """
-    Checks that the registry_filepath does not exist,
-    and that its parent directory does exist.
+    Checks that the deployment has not already been published for
+    the chain_id specified in the params file.
     """
-    if registry_filepath.exists():
-        raise FileExistsError(f"Registry file already exists at {registry_filepath}")
-    if not registry_filepath.parent.exists():
-        raise FileNotFoundError(f"Parent directory of {registry_filepath} does not exist.")
+    print("Validating parameters YAML...")
+
+    deployment = config.get("deployment")
+    if not deployment:
+        raise ValueError("deployment is not set in params file.")
+
+    config_chain_id = deployment.get("chain_id")
+    if not config_chain_id:
+        raise ValueError("chain_id is not set in params file.")
+
+    config_chain_id = int(config_chain_id)  # Convert chain_id to int here after ensuring it is not None
+    chain_mismatch = config_chain_id != networks.provider.network.chain_id
+    live_deployment = CURRENT_NETWORK not in LOCAL_BLOCKCHAIN_ENVIRONMENTS
+    if chain_mismatch and live_deployment:
+        raise ValueError(
+            f"chain_id in params file ({config_chain_id}) does not match "
+            f"chain_id of current network ({networks.provider.network.chain_id})."
+        )
+
+    registry_filepath = get_artifact_filepath(config=config)
+    if not registry_filepath.exists():
+        return registry_filepath
+
+    registry_chain_ids = map(int, _load_json(registry_filepath).keys())
+    if config_chain_id in registry_chain_ids:
+        raise ValueError(f"Deployment is already published for chain_id {config_chain_id}.")
+
+    return registry_filepath
 
 
 def check_etherscan_plugin() -> None:
@@ -70,10 +118,30 @@ def verify_contracts(contracts: List[ContractInstance]) -> None:
 
 
 def check_plugins() -> None:
+    print("Checking plugins...")
     check_etherscan_plugin()
     check_infura_plugin()
 
 
-def check_deployment_ready(registry_filepath: Path) -> None:
-    check_plugins()
-    check_registry_filepath(registry_filepath=registry_filepath)
+def _get_dependency_contract_container(contract: str) -> ContractContainer:
+    for dependency_name, dependency_versions in project.dependencies.items():
+        if len(dependency_versions) > 1:
+            raise ValueError(f"Ambiguous {dependency_name} dependency for {contract}")
+        try:
+            dependency_api = list(dependency_versions.values())[0]
+            contract_container = getattr(dependency_api, contract)
+            return contract_container
+        except AttributeError:
+            continue
+
+    raise ValueError(f"No contract found for {contract}")
+
+
+def get_contract_container(contract: str) -> ContractContainer:
+    try:
+        contract_container = getattr(project, contract)
+    except AttributeError:
+        # not in root project; check dependencies
+        contract_container = _get_dependency_contract_container(contract)
+
+    return contract_container

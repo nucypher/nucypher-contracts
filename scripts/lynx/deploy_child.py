@@ -3,19 +3,15 @@
 from ape import project
 
 from deployment.constants import (
-    ARTIFACTS_DIR,
     CONSTRUCTOR_PARAMS_DIR,
     CURRENT_NETWORK,
     LOCAL_BLOCKCHAIN_ENVIRONMENTS,
     OZ_DEPENDENCY,
 )
 from deployment.params import Deployer
-from deployment.registry import registry_from_ape_deployments
-from deployment.utils import check_deployment_ready, verify_contracts
 
 VERIFY = CURRENT_NETWORK not in LOCAL_BLOCKCHAIN_ENVIRONMENTS
 CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "lynx" / "child.yml"
-REGISTRY_FILEPATH = ARTIFACTS_DIR / "lynx" / "lynx-alpha-13-child-registry.json"
 
 
 def main():
@@ -32,8 +28,10 @@ def main():
     eth-ape                   0.6.20
     """
 
-    check_deployment_ready(registry_filepath=REGISTRY_FILEPATH)
-    deployer = Deployer(params_path=CONSTRUCTOR_PARAMS_FILEPATH, publish=VERIFY)
+    deployer = Deployer.from_yaml(
+        filepath=CONSTRUCTOR_PARAMS_FILEPATH,
+        verify=VERIFY
+    )
 
     mock_polygon_child = deployer.deploy(project.MockPolygonChild)
 
@@ -64,6 +62,4 @@ def main():
         global_allow_list,
     ]
 
-    registry_from_ape_deployments(deployments=deployments, output_filepath=REGISTRY_FILEPATH)
-    if VERIFY:
-        verify_contracts(contracts=deployments)
+    deployer.finalize(deployments=deployments)
