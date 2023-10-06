@@ -36,39 +36,97 @@ In future, we may need to set the following:
 This project uses [tox](https://tox.readthedocs.io/en/latest/) to standardize the local and remote testing environments.
 Note that `tox` will install the dependencies from `requirements.txt` automatically and run a linter (`black`); if that is not desirable, you can just run `py.test`.
 
-## Deploy to Production and Test
-In order to deploy to **production** you will need to have configured ape with the mainnet account you wish to use:
+## Deploy to Production
+
+##### 1. Setup Deployment Parameters
+
+Configurations for the deployments are in `deployments/constructor_params/<domain>/<filename>.yaml`.
+
+Here is an example deployment configuration YAML file, but you can also find a full
+examples in `deployments/constructor_params/lynx/`:
+
+```yaml
+deployment:
+  name: example
+  chain_id: <chain_id>
+
+artifacts:
+    dir: ./deployment/artifacts/
+    filename: example.json
+
+contracts:
+  - MyToken:
+      _totalSupplyOfTokens: 10000000000000000000000000
+  - MyContractWithNoParameters
+  - MyContractWithParameters:
+      _token: $MyToken
+      _number_parameter: 123456
+      _list_parameter: [123456, 789012]
 ```
-$ ape accounts new <id>
+
+##### 2. Create Deployment Script
+
+Deployment scripts are located in `scripts/<domain>/<name>.py`. 
+Here is a simple example deployment script, but you can also find a full example in `scripts/lynx/deploy_root.py`:
+
+```python
+#!/usr/bin/python3
+
+from ape import project
+
+from deployment.constants import (
+    CONSTRUCTOR_PARAMS_DIR,
+    CURRENT_NETWORK,
+    LOCAL_BLOCKCHAIN_ENVIRONMENTS,
+)
+from deployment.params import Deployer
+
+VERIFY = CURRENT_NETWORK not in LOCAL_BLOCKCHAIN_ENVIRONMENTS
+CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "my-domain" / "example.yml"
+
+
+def main():
+    deployer = Deployer.from_yaml(filepath=CONSTRUCTOR_PARAMS_FILEPATH, verify=VERIFY)
+    token = deployer.deploy(project.MyToken)
+    my_contract_with_no_parameters = deployer.deploy(project.MyContractWithNoParameters)
+    my_contract_with_parameters = deployer.deploy(project.MyContractWithParameters)
+    deployments = [
+        token,
+        my_contract_with_no_parameters,
+        my_contract_with_parameters,
+    ]
+    deployer.finalize(deployments=deployments)
+```
+
+##### 3. Setup Deployment Account (production only)
+
+In order to deploy to **production** you will need to import an account into ape:
+```
+$ ape accounts import <id>
 ```
 You will be asked to input the private key, and to choose a password. The account will then be available as `<id>`.
 
-Then run the deployment scripts:
+Then you can check the account was imported correctly:
+```
+$ ape accounts list
+```
+
+##### 4. Deploy
+
+Clear your ape database before deploying to production to avoid conflicts with upgradeable proxies.  
+Please note that this will delete all ape deployment artifacts, so make sure you have a 
+backup of artifacts from other projects before running this command.
+
+```
+$ rm -r ~/.ape/ethereum
+```
+
+Next, Run deployment scripts:
 ```bash
-$ ape run scripts/deploy_subscription_manager.py main <id> --network polygon
-$ ape run scripts/deploy_staking_escrow.py main <id> --network ethereum:rinkeby
-```
 
-Configurations for the deployments are in `ape-config.yaml`.
-For example, `StakingEscrow.sol` requires Nu token Contract, T Staking Contract, and Worklock Contract.
-These are defined by:
-```yaml
-deployments:
-  ethereum:
-    local:
-      - nu_token_supply: 1_000_000_000
-        pre_min_authorization: 40000000000000000000000
-```
-
-
-To deploy to a local ganache development environment:
-```
-$ ape run scripts/deploy_subscription_manager.py --network ethereum:local
-```
-
-The networks used here are standard ape networks, you can see the full list with:
-```
-$ ape networks list
+$ ape run <domain> <script_name> --network ethereum:local:test
+$ ape run <domain> <script_name> --network polygon:mumbai:infura
+$ ape run <domain> <script_name>  --network ethereum:goerli:infura
 ```
 
 ## NPM publishing process
