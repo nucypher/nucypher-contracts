@@ -1,13 +1,12 @@
 {
   "name": "@nucypher/nucypher-contracts",
-  "version": "0.3.0",
+  "version": "0.5.0",
   "license": "AGPL-3.0-or-later",
-  "description": "NuCypher Network Smart Contracts",
+  "description": "Threshold Access Control (TACo) Smart Contracts",
   "author": "NuCypher",
   "files": [
     "/contracts/**/*.sol",
-    "/build/contracts/*.json",
-    "/artifacts/*.json",
+    "/deployment/artifacts/*.json",
     "!/contracts/test/**/*"
   ]
 }
