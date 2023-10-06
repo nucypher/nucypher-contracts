@@ -1,0 +1,29 @@
+deployment:
+  name: tapir-child
+  chain_id: 80001
+
+artifacts:
+    dir: ./deployment/artifacts/
+    filename: tapir.json
+
+contracts:
+    - MockPolygonChild
+    - ProxyAdmin
+    - TapirTACoChildApplication:
+        _rootApplication: $MockPolygonChild
+    - TransparentUpgradeableProxy:
+        _logic: $TapirTACoChildApplication
+        admin_: $ProxyAdmin
+        _data: $bytes:0x
+    - TapirRitualToken:
+        _totalSupplyOfTokens: 10000000000000000000000000
+    - Coordinator:
+        _application: $TransparentUpgradeableProxy:TapirTACoChildApplication
+        _timeout: 3600
+        _maxDkgSize: 32
+        _admin: $deployer
+        _currency: $TapirRitualToken
+        _feeRatePerSecond: 1
+    - GlobalAllowList:
+        _coordinator: $Coordinator
+        _admin: $deployer
