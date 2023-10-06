@@ -16,6 +16,7 @@ from deployment.utils import _load_json
 
 def get_creation_info(api_key: str, chain_id: int, contract_address: ChecksumAddress) -> tuple:
     networks = {
+        1: ("", "etherscan.io"),
         5: ("-goerli", "etherscan.io"),
         80001: ("-testnet", "polygonscan.com")
     }
@@ -80,4 +81,49 @@ def convert_legacy_registry(
         )
         new_registry_entries.append(new_registry_entry)
     write_registry(entries=new_registry_entries, filepath=output_filepath)
+    print(f"Converted legacy registry to {output_filepath}")
+
+
+def convert_legacy_npm_artifacts(
+        directory: Path,
+        chain_id: ChainId,
+        output_filepath: Path
+) -> None:
+    if output_filepath.exists():
+        raise FileExistsError(f"Registry already exists at {output_filepath}")
+
+    if not directory.exists():
+        raise FileNotFoundError(f"Directory not found at {directory}")
+
+    api_key = os.environ.get("ETHERSCAN_API_KEY")
+    if not api_key:
+        raise ValueError("Please set the ETHERSCAN_API_KEY environment variable.")
+
+    entries = list()
+    for filepath in directory.glob("*.json"):
+        data = _load_json(filepath=filepath)
+
+        name = filepath.name.replace(".json", "")
+        abi = data['abi']
+        address = data['address']
+
+        tx_hash, block_number, deployer = get_creation_info(
+            api_key=api_key,
+            chain_id=chain_id,
+            contract_address=address
+        )
+
+        entry = RegistryEntry(
+            chain_id=chain_id,
+            name=name,
+            address=address,
+            abi=abi,
+            tx_hash=tx_hash,
+            block_number=block_number,
+            deployer=deployer
+        )
+
+        entries.append(entry)
+
+    write_registry(entries=entries, filepath=output_filepath)
     print(f"Converted legacy registry to {output_filepath}")
