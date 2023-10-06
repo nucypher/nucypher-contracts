@@ -6,7 +6,7 @@
   "author": "NuCypher",
   "files": [
     "/contracts/**/*.sol",
-    "/depoloyment/artifacts/*.json",
+    "/deployment/artifacts/*.json",
     "!/contracts/test/**/*"
   ]
 }
