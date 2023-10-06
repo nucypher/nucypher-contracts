@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 from deployment.constants import ARTIFACTS_DIR
 from deployment.registry import merge_registries
 
