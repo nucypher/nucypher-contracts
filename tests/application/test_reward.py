@@ -21,11 +21,13 @@ from web3 import Web3
 
 REWARDS_SLOT = 6
 REWARDS_PAID_SLOT = 7
-ERROR = 1e5
+ERROR = 4
 MIN_AUTHORIZATION = Web3.to_wei(40_000, "ether")
 MIN_OPERATOR_SECONDS = 24 * 60 * 60
 REWARD_DURATION = 60 * 60 * 24 * 7  # one week in seconds
 DEAUTHORIZATION_DURATION = 60 * 60 * 24 * 60  # 60 days in seconds
+FLOATING_POINT_DIVISOR = 10**22
+REWARD_PORTION = MIN_AUTHORIZATION * 10**3
 
 
 def test_push_reward(
@@ -33,7 +35,7 @@ def test_push_reward(
 ):
     creator, distributor, staking_provider_1, staking_provider_2, *everyone_else = accounts[0:]
     min_authorization = MIN_AUTHORIZATION
-    reward_portion = min_authorization
+    reward_portion = 10 * REWARD_PORTION
     reward_duration = REWARD_DURATION
     value = int(1.5 * min_authorization)
 
@@ -55,8 +57,8 @@ def test_push_reward(
         taco_application.pushReward(0, sender=distributor)
 
     # Push reward without staking providers
-    token.transfer(distributor, 10 * reward_portion, sender=creator)
-    token.approve(taco_application.address, 10 * reward_portion, sender=distributor)
+    token.transfer(distributor, 2 * reward_portion, sender=creator)
+    token.approve(taco_application.address, 2 * reward_portion, sender=distributor)
     with ape.reverts():
         taco_application.pushReward(reward_portion, sender=distributor)
 
@@ -67,11 +69,14 @@ def test_push_reward(
 
     tx = taco_application.pushReward(reward_portion, sender=distributor)
     timestamp = chain.pending_timestamp - 1
-    assert taco_application.rewardRateDecimals() == reward_portion * 10**18 // reward_duration
+    assert (
+        taco_application.rewardRateDecimals()
+        == reward_portion * FLOATING_POINT_DIVISOR // reward_duration
+    )
     assert taco_application.lastUpdateTime() == timestamp
     assert taco_application.periodFinish() == (timestamp + reward_duration)
     assert token.balanceOf(taco_application.address) == reward_portion
-    assert token.balanceOf(distributor) == 9 * reward_portion
+    assert token.balanceOf(distributor) == reward_portion
     assert taco_application.lastTimeRewardApplicable() == timestamp
     assert taco_application.rewardPerTokenStored() == 0
     assert taco_application.rewardPerToken() == 0
@@ -83,14 +88,14 @@ def test_push_reward(
     # Wait some time and check reward for staking provider
     chain.pending_timestamp += reward_duration // 2
     assert taco_application.rewardPerTokenStored() == 0
-    expected_reward_per_token = int(reward_portion * 1e18) // value // 2
-    assert abs(taco_application.rewardPerToken() - expected_reward_per_token) < ERROR
+    expected_reward_per_token = int(reward_portion * FLOATING_POINT_DIVISOR) // value // 2
+    assert abs(taco_application.rewardPerToken() - expected_reward_per_token) <= ERROR
     expected_reward = reward_portion // 2
-    assert abs(taco_application.availableRewards(staking_provider_1) - expected_reward) < ERROR
+    assert abs(taco_application.availableRewards(staking_provider_1) - expected_reward) <= ERROR
 
     chain.pending_timestamp += reward_duration // 2
     assert taco_application.rewardPerTokenStored() == 0
-    expected_reward_per_token = int(reward_portion * 1e18) // value
+    expected_reward_per_token = int(reward_portion * FLOATING_POINT_DIVISOR) // value
     reward_per_token = taco_application.rewardPerToken()
     assert abs(reward_per_token - expected_reward_per_token) <= 100
     expected_reward = reward_portion
@@ -101,11 +106,14 @@ def test_push_reward(
     threshold_staking.authorizationIncreased(staking_provider_2, 0, value, sender=creator)
     tx = taco_application.pushReward(reward_portion, sender=distributor)
     timestamp = chain.pending_timestamp - 1
-    assert taco_application.rewardRateDecimals() == reward_portion * 10**18 // reward_duration
+    assert (
+        taco_application.rewardRateDecimals()
+        == reward_portion * FLOATING_POINT_DIVISOR // reward_duration
+    )
     assert taco_application.lastUpdateTime() == timestamp
     assert taco_application.periodFinish() == (timestamp + reward_duration)
     assert token.balanceOf(taco_application.address) == 2 * reward_portion
-    assert token.balanceOf(distributor) == 8 * reward_portion
+    assert token.balanceOf(distributor) == 0
     assert taco_application.lastTimeRewardApplicable() == timestamp
     assert taco_application.rewardPerTokenStored() == reward_per_token
     assert taco_application.rewardPerToken() == reward_per_token
@@ -118,7 +126,7 @@ def test_push_reward(
     chain.pending_timestamp += reward_duration
     assert (
         abs(taco_application.availableRewards(staking_provider_1) - (reward + reward_portion))
-        < ERROR
+        <= ERROR
     )
     assert taco_application.availableRewards(staking_provider_2) == 0
 
@@ -128,7 +136,7 @@ def test_update_reward(
 ):
     creator, distributor, staking_provider_1, staking_provider_2, *everyone_else = accounts[0:]
     min_authorization = MIN_AUTHORIZATION
-    reward_portion = min_authorization
+    reward_portion = REWARD_PORTION
     reward_duration = REWARD_DURATION
     deauthorization_duration = DEAUTHORIZATION_DURATION
     min_operator_seconds = MIN_OPERATOR_SECONDS
@@ -193,8 +201,8 @@ def test_update_reward(
     child_application.confirmOperatorAddress(staking_provider_1, sender=staking_provider_1)
 
     taco_application.setRewardDistributor(distributor, sender=creator)
-    token.transfer(distributor, 100 * reward_portion, sender=creator)
-    token.approve(taco_application.address, 100 * reward_portion, sender=distributor)
+    token.transfer(distributor, 13 * reward_portion, sender=creator)
+    token.approve(taco_application.address, 13 * reward_portion, sender=distributor)
     taco_application.pushReward(2 * reward_portion, sender=distributor)
     assert taco_application.rewardPerTokenStored() == 0
     assert taco_application.rewardPerToken() == 0
@@ -314,7 +322,7 @@ def test_withdraw(accounts, token, threshold_staking, taco_application, child_ap
         *everyone_else,
     ) = accounts[0:]
     min_authorization = MIN_AUTHORIZATION
-    reward_portion = min_authorization
+    reward_portion = REWARD_PORTION
     reward_duration = REWARD_DURATION
     min_operator_seconds = MIN_OPERATOR_SECONDS
     value = int(1.5 * min_authorization)
@@ -334,8 +342,8 @@ def test_withdraw(accounts, token, threshold_staking, taco_application, child_ap
         taco_application.withdrawRewards(staking_provider, sender=beneficiary)
 
     taco_application.setRewardDistributor(distributor, sender=creator)
-    token.transfer(distributor, 100 * reward_portion, sender=creator)
-    token.approve(taco_application.address, 100 * reward_portion, sender=distributor)
+    token.transfer(distributor, 5 * reward_portion, sender=creator)
+    token.approve(taco_application.address, 5 * reward_portion, sender=distributor)
     taco_application.pushReward(reward_portion, sender=distributor)
     assert taco_application.rewardPerTokenStored() == 0
     assert taco_application.rewardPerToken() == 0
