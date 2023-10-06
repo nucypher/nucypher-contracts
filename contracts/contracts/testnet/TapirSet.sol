@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import "../coordination/TACoChildApplication.sol";
 
-
 contract TapirTACoChildApplication is TACoChildApplication, Ownable {
     constructor(ITACoChildToRoot _rootApplication) TACoChildApplication(_rootApplication) {}
 
