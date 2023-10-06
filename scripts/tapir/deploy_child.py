@@ -10,7 +10,7 @@ from deployment.constants import (
 )
 from deployment.params import Deployer
 
-VERIFY = CURRENT_NETWORK not in LOCAL_BLOCKCHAIN_ENVIRONMENTS
+VERIFY = False
 CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "tapir" / "child.yml"
 
 
