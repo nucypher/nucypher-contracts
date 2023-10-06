@@ -4,9 +4,10 @@ Contracts from the [main NuCypher codebase](https://github.com/nucypher/nucypher
 
 ## Structure
 
-* `artifacts`: ABI and address of deployed contracts
+* `deployment`: Deployment utilities
+* `deployment/artifacts`: ABI and address of deployed contracts
 * `contracts`: Source code for contracts
-* `scripts`: Deployment scripts
+* `scripts`: Deployment and utilities scripts
 * `tests`: Contract tests
 
 ## Installation
@@ -25,7 +26,8 @@ pre-commit install
 
 In future, we may need to set the following:
 
-* `ETHERSCAN_TOKEN`: Etherscan [API token](https://etherscan.io/apis), required to query source files from Etherscan.
+* `ETHERSCAN_API_KEY`: Etherscan [API token](https://etherscan.io/apis), required to query source files from Etherscan.
+* `POLYGONSCAN_API_KEY`: Polygonscan [API token](https://polygonscan.com/apis), required to query source files from Polygonscan.
 * `GITHUB_TOKEN`: Github [personal access token](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line#creating-a-token), required by [py-solc-x](https://github.com/iamdefinitelyahuman/py-solc-x) when querying installable solc versions.
 * `WEB3_INFURA_PROJECT_ID`: Infura project ID, required for connecting to Infura hosted nodes.
 
@@ -34,39 +36,97 @@ In future, we may need to set the following:
 This project uses [tox](https://tox.readthedocs.io/en/latest/) to standardize the local and remote testing environments.
 Note that `tox` will install the dependencies from `requirements.txt` automatically and run a linter (`black`); if that is not desirable, you can just run `py.test`.
 
-## Deploy to Production and Test
-In order to deploy to **production** you will need to have configured ape with the mainnet account you wish to use:
+## Deploy to Production
+
+##### 1. Setup Deployment Parameters
+
+Configurations for the deployments are in `deployments/constructor_params/<domain>/<filename>.yaml`.
+
+Here is an example deployment configuration YAML file, but you can also find a full
+examples in `deployments/constructor_params/lynx/`:
+
+```yaml
+deployment:
+  name: example
+  chain_id: <chain_id>
+
+artifacts:
+    dir: ./deployment/artifacts/
+    filename: example.json
+
+contracts:
+  - MyToken:
+      _totalSupplyOfTokens: 10000000000000000000000000
+  - MyContractWithNoParameters
+  - MyContractWithParameters:
+      _token: $MyToken
+      _number_parameter: 123456
+      _list_parameter: [123456, 789012]
 ```
-$ ape accounts new <id>
+
+##### 2. Create Deployment Script
+
+Deployment scripts are located in `scripts/<domain>/<name>.py`. 
+Here is a simple example deployment script, but you can also find a full example in `scripts/lynx/deploy_root.py`:
+
+```python
+#!/usr/bin/python3
+
+from ape import project
+
+from deployment.constants import (
+    CONSTRUCTOR_PARAMS_DIR,
+    CURRENT_NETWORK,
+    LOCAL_BLOCKCHAIN_ENVIRONMENTS,
+)
+from deployment.params import Deployer
+
+VERIFY = CURRENT_NETWORK not in LOCAL_BLOCKCHAIN_ENVIRONMENTS
+CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "my-domain" / "example.yml"
+
+
+def main():
+    deployer = Deployer.from_yaml(filepath=CONSTRUCTOR_PARAMS_FILEPATH, verify=VERIFY)
+    token = deployer.deploy(project.MyToken)
+    my_contract_with_no_parameters = deployer.deploy(project.MyContractWithNoParameters)
+    my_contract_with_parameters = deployer.deploy(project.MyContractWithParameters)
+    deployments = [
+        token,
+        my_contract_with_no_parameters,
+        my_contract_with_parameters,
+    ]
+    deployer.finalize(deployments=deployments)
+```
+
+##### 3. Setup Deployment Account (production only)
+
+In order to deploy to **production** you will need to import an account into ape:
+```
+$ ape accounts import <id>
 ```
 You will be asked to input the private key, and to choose a password. The account will then be available as `<id>`.
 
-Then run the deployment scripts:
+Then you can check the account was imported correctly:
+```
+$ ape accounts list
+```
+
+##### 4. Deploy
+
+Clear your ape database before deploying to production to avoid conflicts with upgradeable proxies.  
+Please note that this will delete all ape deployment artifacts, so make sure you have a 
+backup of artifacts from other projects before running this command.
+
+```
+$ rm -r ~/.ape/ethereum
+```
+
+Next, Run deployment scripts:
 ```bash
-$ ape run scripts/deploy_subscription_manager.py main <id> --network polygon
-$ ape run scripts/deploy_staking_escrow.py main <id> --network ethereum:rinkeby
-```
 
-Configurations for the deployments are in `ape-config.yaml`.
-For example, `StakingEscrow.sol` requires Nu token Contract, T Staking Contract, and Worklock Contract.
-These are defined by:
-```yaml
-deployments:
-  ethereum:
-    local:
-      - nu_token_supply: 1_000_000_000
-        pre_min_authorization: 40000000000000000000000
-```
-
-
-To deploy to a local ganache development environment:
-```
-$ ape run scripts/deploy_subscription_manager.py --network ethereum:local
-```
-
-The networks used here are standard ape networks, you can see the full list with:
-```
-$ ape networks list
+$ ape run <domain> <script_name> --network ethereum:local:test
+$ ape run <domain> <script_name> --network polygon:mumbai:infura
+$ ape run <domain> <script_name>  --network ethereum:goerli:infura
 ```
 
 ## NPM publishing process
@@ -75,26 +135,11 @@ For interoperability, we keep an NPM package with information of deployed smart 
 
 The NPM package can be found in https://www.npmjs.com/package/@nucypher/nucypher-contracts and the process to update it is as follows:
 
-1. Download the last version of the package in a separate folder. Testnet versions end in
-`-<testnet>` (e.g., `-goerli`).
+1. Run the deployment scripts.
 
-```bash
-  $ npm i @nucypher/nucypher-contracts@x.y.z[-<testnet>]
-```
-2. Copy the `artifacts` folder and paste it into the nucypher-contracts local repository. Only the
-files that we want to be uploaded must be kept.
+2. Change the `version` field of the `package.json`. See “Versioning” section.
 
-3. Add the artifacts (`abi` and `address`) and the source code of the smart contract.
-
-4. Leave only the artifacts/contracts of the Ethereum network were the contract to be added is
-deployed (mainnet, Ropsten...).
-
-5. Change the `version` field of the `package.json`. See “Versioning” section.
-
-> If you are uploading testnet contracts, add `<testnet_name>` to the semantic version. For
-> example: "version": "0.3.0-ropsten"
-
-6. Publish the new version:
+3. Publish the new version:
 
 ```bash
   $ npm publish
