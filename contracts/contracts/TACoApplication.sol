@@ -455,8 +455,6 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
         emit AuthorizationInvoluntaryDecreased(_stakingProvider, _fromAmount, _toAmount);
 
         if (info.authorized == 0) {
-            _stakingProviderFromOperator[info.operator] = address(0);
-            info.operator = address(0);
             _releaseOperator(_stakingProvider);
         }
         _updateAuthorization(_stakingProvider, info);
@@ -518,11 +516,8 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
         info.authorized = toAmount;
         info.deauthorizing = 0;
         info.endDeauthorization = 0;
-        info.endCommitment = 0;
 
         if (info.authorized == 0) {
-            _stakingProviderFromOperator[info.operator] = address(0);
-            info.operator = address(0);
             _releaseOperator(_stakingProvider);
         }
         _updateAuthorization(_stakingProvider, info);
@@ -550,8 +545,6 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
         }
 
         if (info.authorized == 0) {
-            _stakingProviderFromOperator[info.operator] = address(0);
-            info.operator = address(0);
             _releaseOperator(_stakingProvider);
         }
         _updateAuthorization(_stakingProvider, info);
@@ -776,7 +769,12 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
      * @notice Resets operator confirmation
      */
     function _releaseOperator(address _stakingProvider) internal {
-        stakingProviderInfo[_stakingProvider].operatorConfirmed = false;
+        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
+        _stakingProviderFromOperator[info.operator] = address(0);
+        info.operator = address(0);
+        info.operatorConfirmed = false;
+        info.endDeauthorization = 0;
+        info.endCommitment = 0;
         if (address(childApplication) != address(0)) {
             childApplication.updateOperator(_stakingProvider, address(0));
         }
