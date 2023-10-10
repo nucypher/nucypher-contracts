@@ -1,5 +1,4 @@
 import json
-import os
 from collections import defaultdict
 from enum import Enum
 from pathlib import Path
@@ -10,7 +9,7 @@ from eth_typing import ChecksumAddress
 from eth_utils import to_checksum_address
 from web3.types import ABI
 
-from deployment.utils import validate_config, get_contract_container, _load_json
+from deployment.utils import _load_json, get_contract_container, validate_config
 
 ChainId = int
 ContractName = str

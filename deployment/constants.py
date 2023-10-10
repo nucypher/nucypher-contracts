@@ -1,11 +1,9 @@
 from pathlib import Path
 
-from ape import networks, project
+from ape import project
 
 import deployment
 
-LOCAL_BLOCKCHAIN_ENVIRONMENTS = ["local"]
-CURRENT_NETWORK = networks.network.name
 DEPLOYMENT_DIR = Path(deployment.__file__).parent
 CONSTRUCTOR_PARAMS_DIR = DEPLOYMENT_DIR / "constructor_params"
 ARTIFACTS_DIR = DEPLOYMENT_DIR / "artifacts"

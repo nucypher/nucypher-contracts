@@ -9,9 +9,9 @@ from ape.contracts import ContractInstance, ContractContainer
 from ape_etherscan.utils import API_KEY_ENV_KEY_MAP
 
 from deployment.constants import (
-    CURRENT_NETWORK,
-    LOCAL_BLOCKCHAIN_ENVIRONMENTS, ARTIFACTS_DIR
+    ARTIFACTS_DIR
 )
+from deployment.networks import is_local_network
 
 
 def _load_yaml(filepath: Path) -> dict:
@@ -53,7 +53,7 @@ def validate_config(config: Dict) -> Path:
 
     config_chain_id = int(config_chain_id)  # Convert chain_id to int here after ensuring it is not None
     chain_mismatch = config_chain_id != networks.provider.network.chain_id
-    live_deployment = CURRENT_NETWORK not in LOCAL_BLOCKCHAIN_ENVIRONMENTS
+    live_deployment = not is_local_network()
     if chain_mismatch and live_deployment:
         raise ValueError(
             f"chain_id in params file ({config_chain_id}) does not match "
@@ -76,7 +76,7 @@ def check_etherscan_plugin() -> None:
     Checks that the ape-etherscan plugin is installed and that
     the appropriate API key environment variable is set.
     """
-    if CURRENT_NETWORK in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
+    if is_local_network():
         # unnecessary for local deployment
         return
     try:
@@ -92,7 +92,7 @@ def check_etherscan_plugin() -> None:
 
 def check_infura_plugin() -> None:
     """Checks that the ape-infura plugin is installed."""
-    if CURRENT_NETWORK in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
+    if is_local_network():
         return  # unnecessary for local deployment
     try:
         import ape_infura  # noqa: F401
