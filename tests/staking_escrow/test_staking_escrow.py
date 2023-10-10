@@ -476,8 +476,8 @@ def test_wrap(
     assert t_token.balanceOf(threshold_staking.address) == value
     assert t_token.balanceOf(vending_machine.address) == TOTAL_SUPPLY - value
 
-    events = escrow.WrappedAndTopedUp.from_receipt(tx)
-    assert events == [escrow.WrappedAndTopedUp(staker=staker, value=value)]
+    events = escrow.WrappedAndToppedUp.from_receipt(tx)
+    assert events == [escrow.WrappedAndToppedUp(staker=staker, value=value)]
 
     # Wrap again but with remainder
     other_value = Web3.to_wei(15_000, "ether") + 1
@@ -494,5 +494,5 @@ def test_wrap(
     assert t_token.balanceOf(threshold_staking.address) == expected_value
     assert t_token.balanceOf(vending_machine.address) == TOTAL_SUPPLY - expected_value
 
-    events = escrow.WrappedAndTopedUp.from_receipt(tx)
-    assert events == [escrow.WrappedAndTopedUp(staker=other_staker, value=other_value - 1)]
+    events = escrow.WrappedAndToppedUp.from_receipt(tx)
+    assert events == [escrow.WrappedAndToppedUp(staker=other_staker, value=other_value - 1)]

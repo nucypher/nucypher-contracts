@@ -131,7 +131,7 @@ contract StakingEscrow is Upgradeable, IERC900History {
     * @param staker Staker address
     * @param value Amount wrapped (in NuNits)
     */
-    event WrappedAndTopedUp(address indexed staker, uint256 value);
+    event WrappedAndToppedUp(address indexed staker, uint256 value);
 
     struct StakerInfo {
         uint256 value;
@@ -344,7 +344,7 @@ contract StakingEscrow is Upgradeable, IERC900History {
         tToken.approve(address(tStaking), tTokenAmount);
         tStaking.topUp(info.stakingProvider, uint96(tTokenAmount));
         info.value = remainder;
-        emit WrappedAndTopedUp(msg.sender, wrappedTokenAmount);
+        emit WrappedAndToppedUp(msg.sender, wrappedTokenAmount);
     }
 
     /**

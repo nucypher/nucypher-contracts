@@ -10,7 +10,6 @@ interface IEncryptionAuthorizer {
     ) external view returns (bool);
 }
 
-
 contract OpenAccessAuthorizer is IEncryptionAuthorizer {
     function isAuthorized(
         uint32,
