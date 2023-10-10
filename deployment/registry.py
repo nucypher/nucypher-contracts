@@ -5,11 +5,10 @@ from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional
 
 from ape.contracts import ContractInstance
+from deployment.utils import _load_json, get_contract_container
 from eth_typing import ChecksumAddress
 from eth_utils import to_checksum_address
 from web3.types import ABI
-
-from deployment.utils import _load_json, get_contract_container, validate_config
 
 ChainId = int
 ContractName = str
@@ -17,6 +16,7 @@ ContractName = str
 
 class RegistryEntry(NamedTuple):
     """Represents a single entry in a nucypher-style contract registry."""
+
     chain_id: ChainId
     name: ContractName
     address: ChecksumAddress
@@ -62,22 +62,18 @@ def _get_entry(
         chain_id=receipt.chain_id,
         tx_hash=receipt.txn_hash,
         block_number=receipt.block_number,
-        deployer=receipt.transaction.sender
+        deployer=receipt.transaction.sender,
     )
     return entry
 
 
 def _get_entries(
-        contract_instances: List[ContractInstance],
-        registry_names: Dict[ContractName, ContractName]
+    contract_instances: List[ContractInstance], registry_names: Dict[ContractName, ContractName]
 ) -> List[RegistryEntry]:
     """Returns a list of contract entries from a list of contract instances."""
     entries = list()
     for contract_instance in contract_instances:
-        entry = _get_entry(
-            contract_instance=contract_instance,
-            registry_names=registry_names
-        )
+        entry = _get_entry(contract_instance=contract_instance, registry_names=registry_names)
         entries.append(entry)
     return entries
 
@@ -91,11 +87,11 @@ def read_registry(filepath: Path) -> List[RegistryEntry]:
             registry_entry = RegistryEntry(
                 chain_id=int(chain_id),
                 name=contract_name,
-                address=artifacts['address'],
-                abi=artifacts['abi'],
-                tx_hash=artifacts['tx_hash'],
-                block_number=artifacts['block_number'],
-                deployer=artifacts['deployer']
+                address=artifacts["address"],
+                abi=artifacts["abi"],
+                tx_hash=artifacts["tx_hash"],
+                block_number=artifacts["block_number"],
+                deployer=artifacts["deployer"],
             )
             registry_entries.append(registry_entry)
     return registry_entries
@@ -127,9 +123,11 @@ def write_registry(entries: List[RegistryEntry], filepath: Path) -> Path:
         existing_data = _load_json(filepath)
 
         if any(chain_id in existing_data for chain_id in data):
-            filepath = filepath.with_suffix('.unmerged.json')
-            print("Cannot merge registries with overlapping chain IDs.\n"
-                  f"Writing to {filepath} to avoid overwriting existing data.")
+            filepath = filepath.with_suffix(".unmerged.json")
+            print(
+                "Cannot merge registries with overlapping chain IDs.\n"
+                f"Writing to {filepath} to avoid overwriting existing data."
+            )
         else:
             existing_data.update(data)
             data = existing_data
@@ -152,12 +150,10 @@ def _select_conflict_resolution(
 ) -> ConflictResolution:
     print(f"\n! Conflict detected for {registry_1_entry.name}:")
     print(
-        f"[1]: {registry_1_entry.name} at {registry_1_entry.address} "
-        f"for {registry_1_filepath}"
+        f"[1]: {registry_1_entry.name} at {registry_1_entry.address} " f"for {registry_1_filepath}"
     )
     print(
-        f"[2]: {registry_2_entry.name} at {registry_2_entry.address} "
-        f"for {registry_2_filepath}"
+        f"[2]: {registry_2_entry.name} at {registry_2_entry.address} " f"for {registry_2_filepath}"
     )
     print("[A]: Abort merge")
 
@@ -190,20 +186,22 @@ def registry_from_ape_deployments(
 
 
 def merge_registries(
-        registry_1_filepath: Path,
-        registry_2_filepath: Path,
-        output_filepath: Path,
-        deprecated_contracts: Optional[List[ContractName]] = None,
+    registry_1_filepath: Path,
+    registry_2_filepath: Path,
+    output_filepath: Path,
+    deprecated_contracts: Optional[List[ContractName]] = None,
 ) -> Path:
     """Merges two nucypher-style contract registries created from ape deployments API."""
-    validate_config(registry_filepath=output_filepath)
-
     # If no deprecated contracts are specified, use an empty list
     deprecated_contracts = deprecated_contracts or []
 
     # Read the registries, excluding deprecated contracts
-    reg1 = {e.name: e for e in read_registry(registry_1_filepath) if e.name not in deprecated_contracts}
-    reg2 = {e.name: e for e in read_registry(registry_2_filepath) if e.name not in deprecated_contracts}
+    reg1 = {
+        e.name: e for e in read_registry(registry_1_filepath) if e.name not in deprecated_contracts
+    }
+    reg2 = {
+        e.name: e for e in read_registry(registry_2_filepath) if e.name not in deprecated_contracts
+    }
 
     merged: List[RegistryEntry] = list()
 
@@ -217,7 +215,7 @@ def merge_registries(
                 registry_1_entry=entry_1,
                 registry_2_entry=entry_2,
                 registry_1_filepath=registry_1_filepath,
-                registry_2_filepath=registry_2_filepath
+                registry_2_filepath=registry_2_filepath,
             )
             selected_entry = entry_1 if resolution == ConflictResolution.USE_1 else entry_2
         else:
