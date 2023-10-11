@@ -24,6 +24,8 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
     ITACoChildToRoot public immutable rootApplication;
     address public coordinator;
 
+    uint96 public immutable minimumAuthorization;
+
     mapping(address => StakingProviderInfo) public stakingProviderInfo;
     mapping(address => address) public stakingProviderFromOperator;
 
@@ -35,12 +37,14 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         _;
     }
 
-    constructor(ITACoChildToRoot _rootApplication) {
+    constructor(ITACoChildToRoot _rootApplication, uint96 _minimumAuthorization) {
         require(
             address(_rootApplication) != address(0),
             "Address for root application must be specified"
         );
+        require(_minimumAuthorization > 0, "Minimum authorization must be specified");
         rootApplication = _rootApplication;
+        minimumAuthorization = _minimumAuthorization;
         _disableInitializers();
     }
 
@@ -105,7 +109,10 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         require(msg.sender == coordinator, "Only Coordinator allowed to confirm operator");
         address stakingProvider = stakingProviderFromOperator[_operator];
         StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
-        require(info.authorized > 0, "No stake associated with the operator");
+        require(
+            info.authorized >= minimumAuthorization,
+            "Authorization must be greater than minimum"
+        );
         // TODO maybe allow second confirmation, just do not send root call?
         require(!info.operatorConfirmed, "Can't confirm same operator twice");
         info.operatorConfirmed = true;
@@ -117,7 +124,10 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
 contract TestnetTACoChildApplication is AccessControlUpgradeable, TACoChildApplication {
     bytes32 public constant UPDATE_ROLE = keccak256("UPDATE_ROLE");
 
-    constructor(ITACoChildToRoot _rootApplication) TACoChildApplication(_rootApplication) {}
+    constructor(
+        ITACoChildToRoot _rootApplication,
+        uint96 _minimumAuthorization
+    ) TACoChildApplication(_rootApplication, _minimumAuthorization) {}
 
     function initialize(address _coordinator, address[] memory updaters) external initializer {
         coordinator = _coordinator;

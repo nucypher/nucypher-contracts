@@ -207,7 +207,9 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
         );
         // This require is only to check potential overflow for 10% reward
         require(
-            (totalSupply / 10) * FLOATING_POINT_DIVISOR <= type(uint160).max,
+            (totalSupply / 10) * FLOATING_POINT_DIVISOR <= type(uint160).max &&
+                _minimumAuthorization >= 10 ** 18 &&
+                _rewardDuration >= 1 days,
             "Potential overflow"
         );
         rewardDuration = _rewardDuration;

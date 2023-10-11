@@ -67,7 +67,10 @@ contract MockPolygonChild is Ownable, ITACoChildToRoot, ITACoRootToChild {
 }
 
 contract LynxTACoChildApplication is TACoChildApplication, Ownable {
-    constructor(ITACoChildToRoot _rootApplication) TACoChildApplication(_rootApplication) {}
+    constructor(
+        ITACoChildToRoot _rootApplication,
+        uint96 _minimumAuthorization
+    ) TACoChildApplication(_rootApplication, _minimumAuthorization) {}
 
     function setCoordinator(address _coordinator) external onlyOwner {
         require(_coordinator != address(0), "Coordinator must be specified");
