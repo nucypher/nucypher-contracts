@@ -13,7 +13,10 @@ contract PolygonRoot is FxBaseRootTunnel {
         address _rootApplication,
         address _fxChildTunnel
     ) FxBaseRootTunnel(_checkpointManager, _fxRoot) {
-        require(_rootApplication != address(0), "Wrong input parameters");
+        require(
+            _rootApplication != address(0) && _fxChildTunnel != address(0),
+            "Wrong input parameters"
+        );
         rootApplication = _rootApplication;
         fxChildTunnel = _fxChildTunnel;
     }
