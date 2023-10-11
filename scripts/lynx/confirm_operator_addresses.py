@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 
 
-from ape import project
+from ape import networks, project
 from deployment.constants import ARTIFACTS_DIR, LYNX_NODES
 from deployment.params import Transactor
 from deployment.registry import contracts_from_registry
 from deployment.utils import check_plugins
 
-ROOT_REGISTRY_FILEPATH = ARTIFACTS_DIR / "lynx" / "lynx-alpha-13-root-registry.json"
+LYNX_REGISTRY_FILEPATH = ARTIFACTS_DIR / "lynx.json"
 
 
 def main():
@@ -18,7 +18,9 @@ def main():
     """
     check_plugins()
     transactor = Transactor()
-    deployments = contracts_from_registry(filepath=ROOT_REGISTRY_FILEPATH)
+    deployments = contracts_from_registry(
+        filepath=LYNX_REGISTRY_FILEPATH, chain_id=networks.active_provider.chain_id
+    )
     mock_polygon_root = deployments[project.MockPolygonRoot.contract_type.name]
     for _, operator in LYNX_NODES.items():
         transactor.transact(mock_polygon_root.confirmOperatorAddress, operator)

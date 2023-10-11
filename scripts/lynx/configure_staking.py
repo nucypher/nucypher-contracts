@@ -7,17 +7,18 @@ from deployment.params import Transactor
 from deployment.registry import contracts_from_registry
 from deployment.utils import check_plugins
 
-ROOT_REGISTRY_FILEPATH = ARTIFACTS_DIR / "lynx" / "lynx-alpha-13-root-registry.json"
-CHILD_REGISTRY_FILEPATH = ARTIFACTS_DIR / "lynx" / "lynx-alpha-13-child-registry.json"
+LYNX_REGISTRY_FILEPATH = ARTIFACTS_DIR / "lynx.json"
 
 
 def configure_goerli_root(transactor: Transactor) -> int:
     """Configures ThresholdStaking and TACoApplication on Goerli."""
-    deployments = contracts_from_registry(filepath=ROOT_REGISTRY_FILEPATH)
-
     # Set up lynx stakes on Goerli
     eth_network = networks.ethereum.goerli
     with eth_network.use_provider("infura"):
+        deployments = contracts_from_registry(
+            filepath=LYNX_REGISTRY_FILEPATH, chain_id=eth_network.chain_id
+        )
+
         taco_application_contract = deployments[project.TACoApplication.contract_type.name]
         threshold_staking_contract = deployments[project.TestnetThresholdStaking.contract_type.name]
 
@@ -47,11 +48,13 @@ def configure_goerli_root(transactor: Transactor) -> int:
 
 def configure_mumbai_root(transactor: Transactor, stake_size: int):
     """Configures MockTACoApplication on Mumbai."""
-    deployments = contracts_from_registry(filepath=CHILD_REGISTRY_FILEPATH)
-
     # Set up lynx stakes on Mumbai
     poly_network = networks.polygon.mumbai
     with poly_network.use_provider("infura"):
+        deployments = contracts_from_registry(
+            filepath=LYNX_REGISTRY_FILEPATH, chain_id=poly_network.chain_id
+        )
+
         mock_taco_application_contract = deployments[project.MockPolygonChild.contract_type.name]
 
         for staking_provider, operator in LYNX_NODES.items():

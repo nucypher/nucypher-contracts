@@ -11,11 +11,13 @@ TAPIR_REGISTRY_FILEPATH = ARTIFACTS_DIR / "tapir.json"
 
 def configure_sepolia_root(transactor: Transactor) -> int:
     """Configures ThresholdStaking and TACoApplication on Sepolia."""
-    deployments = contracts_from_registry(filepath=TAPIR_REGISTRY_FILEPATH)
-
     # Set up Tapir stakes on Sepolia
     eth_network = networks.ethereum.sepolia
     with eth_network.use_provider("infura"):
+        deployments = contracts_from_registry(
+            filepath=TAPIR_REGISTRY_FILEPATH, chain_id=eth_network.chain_id
+        )
+
         taco_application_contract = deployments[project.TACoApplication.contract_type.name]
         threshold_staking_contract = deployments[project.TestnetThresholdStaking.contract_type.name]
 
@@ -45,11 +47,13 @@ def configure_sepolia_root(transactor: Transactor) -> int:
 
 def configure_mumbai_root(transactor: Transactor, stake_size: int):
     """Configures MockTACoApplication on Mumbai."""
-    deployments = contracts_from_registry(filepath=TAPIR_REGISTRY_FILEPATH)
-
     # Set up Tapir stakes on Mumbai
     poly_network = networks.polygon.mumbai
     with poly_network.use_provider("infura"):
+        deployments = contracts_from_registry(
+            filepath=TAPIR_REGISTRY_FILEPATH, chain_id=poly_network.chain_id
+        )
+
         mock_taco_application_contract = deployments[project.MockPolygonChild.contract_type.name]
 
         for staking_provider, operator in TAPIR_NODES.items():

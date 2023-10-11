@@ -9,13 +9,13 @@ from deployment.registry import merge_registries
 @click.option(
     "--registry-1",
     help="Filepath to registry file 1",
-    type=click.Path(dir_okay=False, path_type=Path),
+    type=click.Path(dir_okay=False, exists=True, path_type=Path),
     required=True,
 )
 @click.option(
     "--registry-2",
     help="Filepath to registry file 2",
-    type=click.Path(dir_okay=False, path_type=Path),
+    type=click.Path(dir_okay=False, exists=True, path_type=Path),
     required=True,
 )
 @click.option(

@@ -230,11 +230,13 @@ def merge_registries(
     return output_filepath
 
 
-def contracts_from_registry(filepath: Path) -> Dict[str, ContractInstance]:
+def contracts_from_registry(filepath: Path, chain_id: ChainId) -> Dict[str, ContractInstance]:
     """Returns a dictionary of contract instances from a nucypher-style contract registry."""
     registry_entries = read_registry(filepath=filepath)
     deployments = dict()
     for registry_entry in registry_entries:
+        if registry_entry.chain_id != chain_id:
+            continue
         contract_type = registry_entry.name
         contract_container = get_contract_container(contract_type)
         contract_instance = contract_container.at(registry_entry.address)
