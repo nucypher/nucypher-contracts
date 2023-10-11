@@ -76,20 +76,22 @@ from ape import project
 
 from deployment.constants import (
     CONSTRUCTOR_PARAMS_DIR,
-    CURRENT_NETWORK,
-    LOCAL_BLOCKCHAIN_ENVIRONMENTS,
 )
+from deployment.networks import is_local_network
 from deployment.params import Deployer
 
-VERIFY = CURRENT_NETWORK not in LOCAL_BLOCKCHAIN_ENVIRONMENTS
+VERIFY = not is_local_network()
 CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "my-domain" / "example.yml"
 
 
 def main():
-    deployer = Deployer.from_yaml(filepath=CONSTRUCTOR_PARAMS_FILEPATH, verify=VERIFY)
+    deployer = Deployer.from_yaml(filepath=CONSTRUCTOR_PARAMS_FILEPATH,
+                                  verify=VERIFY)
     token = deployer.deploy(project.MyToken)
-    my_contract_with_no_parameters = deployer.deploy(project.MyContractWithNoParameters)
-    my_contract_with_parameters = deployer.deploy(project.MyContractWithParameters)
+    my_contract_with_no_parameters = deployer.deploy(
+        project.MyContractWithNoParameters)
+    my_contract_with_parameters = deployer.deploy(
+        project.MyContractWithParameters)
     deployments = [
         token,
         my_contract_with_no_parameters,

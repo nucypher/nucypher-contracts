@@ -8,10 +8,6 @@ from ape.api import AccountAPI, ReceiptAPI
 from ape.cli import get_user_selected_account
 from ape.contracts.base import ContractContainer, ContractInstance, ContractTransactionHandler
 from ape.utils import ZERO_ADDRESS
-from eth_typing import ChecksumAddress
-from ethpm_types import MethodABI
-from web3.auto.gethdev import w3
-
 from deployment.confirm import _confirm_resolution, _continue
 from deployment.constants import (
     BYTES_PREFIX,
@@ -24,12 +20,14 @@ from deployment.constants import (
 from deployment.registry import registry_from_ape_deployments
 from deployment.utils import (
     _load_yaml,
-    verify_contracts,
-    get_contract_container,
     check_plugins,
-    get_artifact_filepath,
-    validate_config
+    get_contract_container,
+    validate_config,
+    verify_contracts,
 )
+from eth_typing import ChecksumAddress
+from ethpm_types import MethodABI
+from web3.auto.gethdev import w3
 
 
 def _is_variable(param: Any) -> bool:
@@ -263,15 +261,15 @@ def validate_constructor_parameters(config: typing.OrderedDict[str, Any]) -> Non
             contract_name=contract,
             abi_inputs=contract_container.constructor.abi.inputs,
             parameters=parameters,
-    )
+        )
 
 
 def _get_contracts_config(config: typing.Dict) -> OrderedDict:
     """Returns the contracts config from a constructor parameters file."""
     try:
-        contracts = config['contracts']
+        contracts = config["contracts"]
     except KeyError:
-        raise ValueError(f"Constructor parameters file missing 'contracts' field.")
+        raise ValueError("Constructor parameters file missing 'contracts' field.")
     result = OrderedDict()
     for contract in contracts:
         if isinstance(contract, str):
@@ -279,7 +277,7 @@ def _get_contracts_config(config: typing.Dict) -> OrderedDict:
         elif isinstance(contract, dict):
             contract = OrderedDict(contract)
         else:
-            raise ValueError(f"Malformed constructor parameters YAML.")
+            raise ValueError("Malformed constructor parameters YAML.")
         result.update(contract)
     return result
 
@@ -314,6 +312,8 @@ class Transactor:
     def __init__(self, account: typing.Optional[AccountAPI] = None):
         if account is None:
             self._account = get_user_selected_account()
+        else:
+            self._account = account
 
     def get_account(self) -> AccountAPI:
         """Returns the transactor account."""
@@ -347,11 +347,11 @@ class Deployer(Transactor):
     __DEPLOYER_ACCOUNT: AccountAPI = None
 
     def __init__(
-            self,
-            config: typing.Dict,
-            path: Path,
-            verify: bool,
-            account: typing.Optional[AccountAPI] = None
+        self,
+        config: typing.Dict,
+        path: Path,
+        verify: bool,
+        account: typing.Optional[AccountAPI] = None,
     ):
         check_plugins()
         self.path = path
@@ -426,6 +426,6 @@ class Deployer(Transactor):
             f"Network: {networks.provider.network.name}",
             f"Chain ID: {networks.provider.network.chain_id}",
             f"Gas Price: {networks.provider.gas_price}",
-            sep="\n"
+            sep="\n",
         )
         _continue()

@@ -4,13 +4,11 @@ from ape import project
 
 from deployment.constants import (
     CONSTRUCTOR_PARAMS_DIR,
-    CURRENT_NETWORK,
-    LOCAL_BLOCKCHAIN_ENVIRONMENTS,
     OZ_DEPENDENCY,
 )
 from deployment.params import Deployer
 
-VERIFY = CURRENT_NETWORK not in LOCAL_BLOCKCHAIN_ENVIRONMENTS
+VERIFY = False
 CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "lynx" / "child.yml"
 
 

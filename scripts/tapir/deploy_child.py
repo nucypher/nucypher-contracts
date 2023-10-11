@@ -4,8 +4,6 @@ from ape import project
 
 from deployment.constants import (
     CONSTRUCTOR_PARAMS_DIR,
-    CURRENT_NETWORK,
-    LOCAL_BLOCKCHAIN_ENVIRONMENTS,
     OZ_DEPENDENCY,
 )
 from deployment.params import Deployer
