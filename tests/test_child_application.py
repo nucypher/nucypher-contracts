@@ -103,6 +103,7 @@ def test_update_operator(accounts, root_application, child_application):
     assert child_application.stakingProviderFromOperator(operator_2) == ZERO_ADDRESS
     assert child_application.stakingProviderInfo(staking_provider_1)[OPERATOR_SLOT] == ZERO_ADDRESS
     assert not child_application.stakingProviderInfo(operator_2)[CONFIRMATION_SLOT]
+    assert child_application.stakingProviderFromOperator(ZERO_ADDRESS) == ZERO_ADDRESS
 
     assert tx.events == [
         child_application.OperatorUpdated(stakingProvider=staking_provider_1, operator=ZERO_ADDRESS)

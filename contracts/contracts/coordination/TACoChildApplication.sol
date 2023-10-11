@@ -83,16 +83,20 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
         address oldOperator = info.operator;
 
-        if (stakingProvider != address(0) && operator != oldOperator) {
-            info.operator = operator;
-            // Update operator to provider mapping
-            stakingProviderFromOperator[oldOperator] = address(0);
-            stakingProviderFromOperator[operator] = stakingProvider;
-            info.operatorConfirmed = false;
-            // TODO placeholder to notify Coordinator
-
-            emit OperatorUpdated(stakingProvider, operator);
+        if (stakingProvider == address(0) || operator == oldOperator) {
+            return;
         }
+
+        info.operator = operator;
+        // Update operator to provider mapping
+        stakingProviderFromOperator[oldOperator] = address(0);
+        if (operator != address(0)) {
+            stakingProviderFromOperator[operator] = stakingProvider;
+        }
+        info.operatorConfirmed = false;
+        // TODO placeholder to notify Coordinator
+
+        emit OperatorUpdated(stakingProvider, operator);
     }
 
     function _updateAuthorization(address stakingProvider, uint96 amount) internal {
