@@ -205,12 +205,12 @@ def merge_registries(
     for e in read_registry(registry_1_filepath):
         if e.name in deprecated_contracts:
             continue
-        reg1[str(e.chain_id)][e.name] = e
+        reg1[e.chain_id][e.name] = e
 
     for e in read_registry(registry_2_filepath):
         if e.name in deprecated_contracts:
             continue
-        reg2[str(e.chain_id)][e.name] = e
+        reg2[e.chain_id][e.name] = e
 
     merged: List[RegistryEntry] = list()
 
@@ -218,7 +218,7 @@ def merge_registries(
     all_chains = set(reg1) | set(reg2)
     common_chains = set(reg1) & set(reg2)
     for chain in all_chains:
-        reg1_chain_entries, reg2_chain_entries = reg1.get(str(chain), {}), reg2.get(str(chain), {})
+        reg1_chain_entries, reg2_chain_entries = reg1.get(chain, {}), reg2.get(chain, {})
         if chain in common_chains:
             # check for conflicting contracts
             all_contracts = set(reg1_chain_entries) | set(reg2_chain_entries)
