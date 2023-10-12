@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import "@threshold/contracts/staking/IApplication.sol";
 import "@threshold/contracts/staking/IStaking.sol";
@@ -270,10 +271,8 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
      * @notice Set contract for multi-chain interactions
      */
     function setChildApplication(ITACoRootToChild _childApplication) external onlyOwner {
-        require(
-            address(_childApplication) != address(childApplication),
-            "New address must not be equal to the current one"
-        );
+        require(address(childApplication) == address(0), "Child application is already set");
+        require(Address.isContract(address(_childApplication)), "Child app must be contract");
         childApplication = _childApplication;
     }
 
@@ -736,9 +735,7 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
         emit OperatorBonded(_stakingProvider, _operator, previousOperator, block.timestamp);
 
         info.operatorConfirmed = false;
-        if (address(childApplication) != address(0)) {
-            childApplication.updateOperator(_stakingProvider, _operator);
-        }
+        childApplication.updateOperator(_stakingProvider, _operator);
     }
 
     /**
@@ -777,9 +774,7 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
         info.operatorConfirmed = false;
         info.endDeauthorization = 0;
         info.endCommitment = 0;
-        if (address(childApplication) != address(0)) {
-            childApplication.updateOperator(_stakingProvider, address(0));
-        }
+        childApplication.updateOperator(_stakingProvider, address(0));
     }
 
     /**
@@ -789,11 +784,9 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
         address _stakingProvider,
         StakingProviderInfo storage _info
     ) internal {
-        if (address(childApplication) != address(0)) {
-            // TODO send both authorized and eligible amounts in case of slashing from child app
-            uint96 eligibleAmount = getEligibleAmount(_info);
-            childApplication.updateAuthorization(_stakingProvider, eligibleAmount);
-        }
+        // TODO send both authorized and eligible amounts in case of slashing from child app
+        uint96 eligibleAmount = getEligibleAmount(_info);
+        childApplication.updateAuthorization(_stakingProvider, eligibleAmount);
     }
 
     //-------------------------Slashing-------------------------
