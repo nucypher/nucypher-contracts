@@ -579,7 +579,7 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
     /**
      * @notice Returns staking provider for specified operator
      */
-    function stakingProviderFromOperator(address _operator) public view returns (address) {
+    function stakingProviderFromOperator(address _operator) external view returns (address) {
         return _stakingProviderFromOperator[_operator];
     }
 
@@ -588,14 +588,14 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
      */
     function getOperatorFromStakingProvider(
         address _stakingProvider
-    ) public view returns (address) {
+    ) external view returns (address) {
         return stakingProviderInfo[_stakingProvider].operator;
     }
 
     /**
      * @notice Get all tokens delegated to the staking provider
      */
-    function authorizedStake(address _stakingProvider) public view returns (uint96) {
+    function authorizedStake(address _stakingProvider) external view returns (uint96) {
         return stakingProviderInfo[_stakingProvider].authorized;
     }
 
