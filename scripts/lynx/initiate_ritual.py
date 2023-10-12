@@ -12,7 +12,10 @@ ONE_DAY = 60 * 60 * 24
 
 
 def main():
-    #
+    """
+    Run this command with ape:
+    ape run lynx initiate_ritual --network polygon:mumbai:<polygon-mumbai rpc endpoint>|infura
+    """
     check_plugins()
     transactor = Transactor()
 
