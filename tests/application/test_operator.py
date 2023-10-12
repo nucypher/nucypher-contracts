@@ -333,9 +333,6 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     assert all_locked == 0
     assert len(staking_providers) == 0
 
-    # Reset xchain contract before next bonding
-    taco_application.setChildApplication(ZERO_ADDRESS, sender=creator)
-
     # Unbond and rebond oeprator
     taco_application.bondOperator(staking_provider_3, ZERO_ADDRESS, sender=staking_provider_3)
     taco_application.bondOperator(staking_provider_3, operator2, sender=staking_provider_3)
