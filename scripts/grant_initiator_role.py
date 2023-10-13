@@ -32,3 +32,7 @@ def cli(network, account, registry_filepath):
         initiator_role_hash,
         transactor.get_account().address,  # <- new initiator
     )
+
+
+if __name__ == "__main__":
+    cli()
