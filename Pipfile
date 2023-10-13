@@ -18,6 +18,7 @@ nucypher-core = "*"
 pre-commit = "*"
 tox = "*"
 pyyaml = "*"
+bump2version = "*"
 
 [dev-packages]
 
