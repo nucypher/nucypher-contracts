@@ -1,16 +1,13 @@
 import json
 import os
 from pathlib import Path
-from typing import List, Dict
+from typing import Dict, List
 
 import yaml
 from ape import networks, project
-from ape.contracts import ContractInstance, ContractContainer
+from ape.contracts import ContractContainer, ContractInstance
 from ape_etherscan.utils import API_KEY_ENV_KEY_MAP
-
-from deployment.constants import (
-    ARTIFACTS_DIR
-)
+from deployment.constants import ARTIFACTS_DIR
 from deployment.networks import is_local_network
 
 
@@ -51,7 +48,9 @@ def validate_config(config: Dict) -> Path:
     if not config_chain_id:
         raise ValueError("chain_id is not set in params file.")
 
-    config_chain_id = int(config_chain_id)  # Convert chain_id to int here after ensuring it is not None
+    config_chain_id = int(
+        config_chain_id
+    )  # Convert chain_id to int here after ensuring it is not None
     chain_mismatch = config_chain_id != networks.provider.network.chain_id
     live_deployment = not is_local_network()
     if chain_mismatch and live_deployment:
@@ -145,3 +144,11 @@ def get_contract_container(contract: str) -> ContractContainer:
         contract_container = _get_dependency_contract_container(contract)
 
     return contract_container
+
+
+def registry_filepath_from_domain(domain: str) -> Path:
+    p = ARTIFACTS_DIR / f"{domain}.json"
+    if not p.exists():
+        raise ValueError(f"No registry found for domain '{domain}'")
+
+    return p
