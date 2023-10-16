@@ -1,6 +1,7 @@
 import click
 from ape import networks
 from ape.cli import NetworkBoundCommand, network_option
+from deployment.constants import SUPPORTED_TACO_DOMAINS
 from deployment.registry import contracts_from_registry
 from deployment.utils import registry_filepath_from_domain, verify_contracts
 
@@ -11,7 +12,7 @@ from deployment.utils import registry_filepath_from_domain, verify_contracts
     "--domain",
     "-d",
     help="TACo domain",
-    type=click.STRING,
+    type=click.Choice(SUPPORTED_TACO_DOMAINS),
     required=True,
 )
 def cli(network, domain):

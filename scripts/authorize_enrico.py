@@ -3,6 +3,7 @@
 import click
 from ape import project
 from ape.cli import NetworkBoundCommand, account_option, network_option
+from deployment.constants import SUPPORTED_TACO_DOMAINS
 from deployment.params import Transactor
 from deployment.registry import contracts_from_registry
 from deployment.utils import check_plugins, registry_filepath_from_domain
@@ -16,7 +17,7 @@ from eth_utils import to_checksum_address
     "--domain",
     "-d",
     help="TACo domain",
-    type=click.STRING,
+    type=click.Choice(SUPPORTED_TACO_DOMAINS),
     required=True,
 )
 @click.option(
