@@ -1,8 +1,7 @@
 from pathlib import Path
 
-from ape import project
-
 import deployment
+from ape import project
 
 DEPLOYMENT_DIR = Path(deployment.__file__).parent
 CONSTRUCTOR_PARAMS_DIR = DEPLOYMENT_DIR / "constructor_params"
@@ -14,6 +13,16 @@ BYTES_PREFIX = "bytes"
 DEPLOYER_INDICATOR = "deployer"
 PROXY_NAME = "TransparentUpgradeableProxy"
 OZ_DEPENDENCY = project.dependencies["openzeppelin"]["4.9.1"]
+
+#
+# Domains
+#
+LYNX = "lynx"
+TAPIR = "tapir"
+MAINNET = "mainnet"
+
+SUPPORTED_TACO_DOMAINS = [LYNX, TAPIR, MAINNET]
+
 
 LYNX_NODES = {
     # staking provider -> operator
