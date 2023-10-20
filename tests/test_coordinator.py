@@ -37,8 +37,8 @@ def gen_public_key():
 
 
 def access_control_error_message(address, role=None):
-    role = Web3.to_hex(role or b"\x00" * 32)
-    return f"AccessControl: account {address.lower()} is missing role {role}"
+    role = role or b"\x00" * 32
+    return f"account={address}, neededRole={role}"
 
 
 @pytest.fixture(scope="module")
@@ -113,7 +113,9 @@ def test_initial_parameters(coordinator):
     assert coordinator.numberOfRituals() == 0
 
 
-def test_invalid_initiate_ritual(coordinator, nodes, accounts, initiator, global_allow_list):
+def test_invalid_initiate_ritual(
+    project, coordinator, nodes, accounts, initiator, global_allow_list
+):
     with ape.reverts("Sender can't initiate ritual"):
         sender = accounts[3]
         coordinator.initiateRitual(
@@ -142,7 +144,7 @@ def test_invalid_initiate_ritual(coordinator, nodes, accounts, initiator, global
             nodes[1:] + [nodes[0]], initiator, DURATION, global_allow_list.address, sender=initiator
         )
 
-    with ape.reverts("ERC20: insufficient allowance"):
+    with ape.reverts(project.NuCypherToken.ERC20InsufficientAllowance):
         # Sender didn't approve enough tokens
         coordinator.initiateRitual(
             nodes, initiator, DURATION, global_allow_list.address, sender=initiator

@@ -19,6 +19,8 @@ contract TestnetThresholdStaking is Ownable {
 
     mapping(address => StakingProviderInfo) public stakingProviderInfo;
 
+    constructor() Ownable(msg.sender) {}
+
     function setApplication(IApplication _application) external onlyOwner {
         application = _application;
     }

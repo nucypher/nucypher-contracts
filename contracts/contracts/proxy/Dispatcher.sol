@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 
 
 import "./Upgradeable.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 
 
 /**
@@ -21,7 +20,6 @@ interface ERCProxy {
 * Client should use ABI of real contract and address of this contract
 */
 contract Dispatcher is Upgradeable, ERCProxy {
-    using Address for address;
 
     event Upgraded(address indexed from, address indexed to, address owner);
     event RolledBack(address indexed from, address indexed to, address owner);
@@ -40,7 +38,7 @@ contract Dispatcher is Upgradeable, ERCProxy {
     * @param _target Target contract address
     */
     constructor(address _target) upgrading {
-        require(_target.isContract());
+        require(_target.code.length > 0);
         // Checks that target contract inherits Dispatcher state
         verifyState(_target);
         // `verifyState` must work with its contract
@@ -71,12 +69,12 @@ contract Dispatcher is Upgradeable, ERCProxy {
     * @param _target New target contract address
     */
     function upgrade(address _target) public onlyOwner upgrading {
-        require(_target.isContract());
+        require(_target.code.length > 0);
         // Checks that target contract has "correct" (as much as possible) state layout
         verifyState(_target);
         //`verifyState` must work with its contract
         verifyUpgradeableState(_target, _target);
-        if (target.isContract()) {
+        if (target.code.length > 0) {
             verifyUpgradeableState(target, _target);
         }
         previousTarget = target;
@@ -90,12 +88,12 @@ contract Dispatcher is Upgradeable, ERCProxy {
     * @dev Test storage carefully before upgrade again after rollback
     */
     function rollback() public onlyOwner upgrading {
-        require(previousTarget.isContract());
+        require(previousTarget.code.length > 0);
         emit RolledBack(target, previousTarget, msg.sender);
         // should be always true because layout previousTarget -> target was already checked
         // but `verifyState` is not 100% accurate so check again
         verifyState(previousTarget);
-        if (target.isContract()) {
+        if (target.code.length > 0) {
             verifyUpgradeableState(previousTarget, target);
         }
         target = previousTarget;
@@ -136,7 +134,7 @@ contract Dispatcher is Upgradeable, ERCProxy {
     * @dev Receive function sends empty request to the target contract
     */
     receive() external payable {
-        assert(target.isContract());
+        assert(target.code.length > 0);
         // execute receive function from target contract using storage of the dispatcher
         (bool callSuccess,) = target.delegatecall("");
         if (!callSuccess) {
@@ -148,7 +146,7 @@ contract Dispatcher is Upgradeable, ERCProxy {
     * @dev Fallback function sends all requests to the target contract
     */
     fallback() external payable {
-        assert(target.isContract());
+        assert(target.code.length > 0);
         // execute requested function from target contract using storage of the dispatcher
         (bool callSuccess,) = target.delegatecall(msg.data);
         if (callSuccess) {

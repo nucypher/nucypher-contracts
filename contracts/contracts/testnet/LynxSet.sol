@@ -18,7 +18,7 @@ import "../TACoApplication.sol";
 contract MockPolygonRoot is Ownable, ITACoChildToRoot, ITACoRootToChild {
     ITACoChildToRoot public rootApplication;
 
-    constructor(ITACoChildToRoot _rootApplication) {
+    constructor(ITACoChildToRoot _rootApplication) Ownable(msg.sender) {
         require(
             address(_rootApplication) != address(0),
             "Address for root application must be specified"
@@ -43,6 +43,8 @@ contract MockPolygonRoot is Ownable, ITACoChildToRoot, ITACoRootToChild {
 
 contract MockPolygonChild is Ownable, ITACoChildToRoot, ITACoRootToChild {
     ITACoRootToChild public childApplication;
+
+    constructor() Ownable(msg.sender) {}
 
     function setChildApplication(ITACoRootToChild _childApplication) external onlyOwner {
         childApplication = _childApplication;
@@ -70,7 +72,7 @@ contract LynxTACoChildApplication is TACoChildApplication, Ownable {
     constructor(
         ITACoChildToRoot _rootApplication,
         uint96 _minimumAuthorization
-    ) TACoChildApplication(_rootApplication, _minimumAuthorization) {}
+    ) TACoChildApplication(_rootApplication, _minimumAuthorization) Ownable(msg.sender) {}
 
     function setCoordinator(address _coordinator) external onlyOwner {
         require(_coordinator != address(0), "Coordinator must be specified");

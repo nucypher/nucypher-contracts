@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract PolygonChild is FxBaseChildTunnel, Ownable {
     address public childApplication;
 
-    constructor(address _fxChild) FxBaseChildTunnel(_fxChild) {}
+    constructor(address _fxChild) FxBaseChildTunnel(_fxChild) Ownable(msg.sender) {}
 
     function _processMessageFromRoot(
         uint256 /* stateId */,

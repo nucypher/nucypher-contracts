@@ -17,7 +17,6 @@ along with nucypher.  If not, see <https://www.gnu.org/licenses/>.
 
 
 import pytest
-from ape import project
 from web3 import Web3
 
 MIN_AUTHORIZATION = Web3.to_wei(40_000, "ether")
@@ -31,8 +30,6 @@ TOTAL_SUPPLY = Web3.to_wei(1_000_000_000, "ether")  # TODO NU(1_000_000_000, 'NU
 COMMITMENT_DURATION_1 = 182 * 60 * 24 * 60  # 182 days in seconds
 COMMITMENT_DURATION_2 = 2 * COMMITMENT_DURATION_1  # 365 days in seconds
 COMMITMENT_DURATION_3 = 3 * COMMITMENT_DURATION_1  # 365 days in seconds
-
-DEPENDENCY = project.dependencies["openzeppelin"]["4.9.1"]
 
 
 @pytest.fixture()
@@ -69,7 +66,7 @@ def encode_function_data(initializer=None, *args):
 
 
 @pytest.fixture()
-def taco_application(project, creator, token, threshold_staking):
+def taco_application(project, creator, token, threshold_staking, oz_dependency):
     contract = creator.deploy(
         project.TACoApplication,
         token.address,
@@ -81,9 +78,9 @@ def taco_application(project, creator, token, threshold_staking):
         [COMMITMENT_DURATION_1, COMMITMENT_DURATION_2, COMMITMENT_DURATION_3],
     )
 
-    proxy_admin = DEPENDENCY.ProxyAdmin.deploy(sender=creator)
+    proxy_admin = oz_dependency.ProxyAdmin.deploy(creator, sender=creator)
     encoded_initializer_function = encode_function_data()
-    proxy = DEPENDENCY.TransparentUpgradeableProxy.deploy(
+    proxy = oz_dependency.TransparentUpgradeableProxy.deploy(
         contract.address,
         proxy_admin.address,
         encoded_initializer_function,
