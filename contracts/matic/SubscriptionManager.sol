@@ -41,9 +41,9 @@ contract SubscriptionManager is Initializable, AccessControlUpgradeable {
 
     function initialize(uint256 _feeRate) public initializer {
         _setFeeRate(_feeRate);
-        _setupRole(SET_RATE_ROLE, msg.sender);
-        _setupRole(WITHDRAW_ROLE, msg.sender);
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(SET_RATE_ROLE, msg.sender);
+        _grantRole(WITHDRAW_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     function getPolicyCost(

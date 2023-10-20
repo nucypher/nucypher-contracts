@@ -16,11 +16,8 @@ along with nucypher.  If not, see <https://www.gnu.org/licenses/>.
 """
 import ape
 import pytest
-from ape import project
 from ape.utils import ZERO_ADDRESS
 from web3 import Web3
-
-DEPENDENCY = project.dependencies["openzeppelin"]["4.9.1"]
 
 OPERATOR_SLOT = 0
 CONFIRMATION_SLOT = 1
@@ -35,13 +32,13 @@ def root_application(project, creator):
 
 
 @pytest.fixture()
-def child_application(project, creator, root_application):
+def child_application(project, creator, root_application, oz_dependency):
     contract = project.TACoChildApplication.deploy(
         root_application.address, MIN_AUTHORIZATION, sender=creator
     )
 
-    proxy_admin = DEPENDENCY.ProxyAdmin.deploy(sender=creator)
-    proxy = DEPENDENCY.TransparentUpgradeableProxy.deploy(
+    proxy_admin = oz_dependency.ProxyAdmin.deploy(creator, sender=creator)
+    proxy = oz_dependency.TransparentUpgradeableProxy.deploy(
         contract.address,
         proxy_admin.address,
         b"",

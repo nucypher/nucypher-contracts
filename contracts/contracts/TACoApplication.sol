@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import "@threshold/contracts/staking/IApplication.sol";
 import "@threshold/contracts/staking/IStaking.sol";
@@ -264,7 +263,7 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
      * @notice Initialize function for using with OpenZeppelin proxy
      */
     function initialize() external initializer {
-        __Ownable_init();
+        __Ownable_init(msg.sender);
     }
 
     /**
@@ -272,7 +271,7 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
      */
     function setChildApplication(ITACoRootToChild _childApplication) external onlyOwner {
         require(address(childApplication) == address(0), "Child application is already set");
-        require(Address.isContract(address(_childApplication)), "Child app must be contract");
+        require(address(_childApplication).code.length > 0, "Child app must be contract");
         childApplication = _childApplication;
     }
 

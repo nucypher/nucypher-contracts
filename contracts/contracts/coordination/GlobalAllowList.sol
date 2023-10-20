@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 pragma solidity ^0.8.0;
-import "@openzeppelin/contracts/access/AccessControlDefaultAdminRules.sol";
+import "@openzeppelin/contracts/access/extensions/AccessControlDefaultAdminRules.sol";
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "./IEncryptionAuthorizer.sol";
 import "./Coordinator.sol";
 
 contract GlobalAllowList is AccessControlDefaultAdminRules, IEncryptionAuthorizer {
+    using MessageHashUtils for bytes32;
     using ECDSA for bytes32;
 
     Coordinator public coordinator;
