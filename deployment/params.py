@@ -259,9 +259,10 @@ class ConstructorParameters:
     class Invalid(Exception):
         """Raised when the constructor parameters are invalid"""
 
-    def __init__(self, parameters: OrderedDict):
+    def __init__(self, parameters: OrderedDict, constants: dict = None):
         validate_constructor_parameters(parameters)
         self.parameters = parameters
+        self.constants = constants or dict()
 
     @classmethod
     def from_config(cls, config: typing.Dict) -> "ConstructorParameters":
@@ -275,7 +276,8 @@ class ConstructorParameters:
             else:
                 raise ValueError("Malformed constructor parameters YAML.")
             contracts_config.update(contract)
-        return cls(contracts_config)
+
+        return cls(parameters=contracts_config, constants=config.get("constants"))
 
     def resolve(self, contract_name: str) -> OrderedDict:
         """Resolves the constructor parameters for a single contract."""
