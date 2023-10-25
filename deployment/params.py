@@ -38,8 +38,8 @@ def _is_variable(param: Any) -> bool:
 
 def _is_special_variable(variable: str) -> bool:
     """Returns True if the variable is a special variable."""
-    rules = [_is_bytes(variable), _is_proxy_variable(variable), _is_deployer(variable)]
-    return any(rules)
+    rules = [_is_bytes, _is_proxy_variable, _is_deployer, _is_constant]
+    return any(rule(variable) for rule in rules)
 
 
 def _is_proxy_variable(variable: str) -> bool:
@@ -55,6 +55,11 @@ def _is_bytes(variable: str) -> bool:
 def _is_deployer(variable: str) -> bool:
     """Returns True if the variable is a special deployer variable."""
     return variable == DEPLOYER_INDICATOR
+
+
+def _is_constant(variable: str) -> bool:
+    """Returns True if the variable is a deployment constant."""
+    return variable.isupper()
 
 
 def _resolve_proxy_address(variable) -> str:
@@ -265,10 +270,18 @@ class ConstructorParameters:
             result = _resolve_proxy_address(variable)
         elif _is_deployer(variable):
             result = _resolve_deployer()
+        elif _is_constant(variable):
+            result = self._resolve_constant(variable)
         else:
             raise ValueError(f"Invalid special variable {variable}")
         return result
-
+    
+    def _resolve_constant(self, name: str) -> Any:
+        try:
+            value = self.constants[name]
+            return value
+        except KeyError:
+            raise ValueError(f"Constant '{name}' not found in deployment file.")
 
     def _resolve_param(self, value: Any) -> Any:
         """Resolves a single parameter value."""
