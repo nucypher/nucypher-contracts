@@ -14,7 +14,7 @@ contracts:
   - TransparentUpgradeableProxy:
       _logic: $LynxTACoChildApplication
       initialOwner: $deployer
-      _data: $bytes:0x
+      _data: 0x
   - LynxRitualToken:
       _totalSupplyOfTokens: 10000000000000000000000000
   - Coordinator:
