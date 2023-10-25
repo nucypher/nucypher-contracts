@@ -78,6 +78,7 @@ def _resolve_proxy_address(variable) -> str:
     raise ConstructorParameters.Invalid(f"Could not determine proxy for {variable}")
 
 
+# TODO: Maybe not needed after all?
 def _resolve_bytes(variable: str) -> bytes:
     """Resolves a special bytes value."""
     _prefix, value = variable.split(SPECIAL_VARIABLE_DELIMITER)
@@ -110,72 +111,6 @@ def _resolve_deployer() -> str:
         return deployer_account.address
 
 
-def _validate_constructor_param(param: Any, contracts: List[str]) -> None:
-    """Validates a single constructor parameter."""
-    if not _is_variable(param):
-        return  # literally a value
-    variable = param.strip(VARIABLE_PREFIX)
-
-    if _is_proxy_variable(variable):
-        proxy, target = variable.split(SPECIAL_VARIABLE_DELIMITER)
-        if proxy != PROXY_NAME:
-            raise ConstructorParameters.Invalid(
-                f"Ambiguous proxy variable {param}; only {PROXY_NAME} "
-                f"allowed before '{SPECIAL_VARIABLE_DELIMITER}'"
-            )
-        variable = target  # check proxy target
-
-    if _is_special_variable(variable):
-        return  # special variables are always marked as valid
-
-    if variable in contracts:
-        return
-
-    raise ConstructorParameters.Invalid(f"Variable {param} is not resolvable")
-
-
-def _validate_constructor_param_list(params: List[Any], contracts: List[str]) -> None:
-    """Validates a list of constructor parameters."""
-    for param in params:
-        _validate_constructor_param(param, contracts)
-
-
-def _validate_constructor_abi_inputs(
-    contract_name: str, abi_inputs: List[Any], parameters: OrderedDict
-) -> None:
-    """Validates the constructor parameters against the constructor ABI."""
-    if len(parameters) != len(abi_inputs):
-        raise ConstructorParameters.Invalid(
-            f"Constructor parameters length mismatch - "
-            f"{contract_name} ABI requires {len(abi_inputs)}, Got {len(parameters)}."
-        )
-    if not abi_inputs:
-        return  # no constructor parameters
-
-    codex = enumerate(zip(abi_inputs, parameters.items()), start=0)
-    for position, (abi_input, resolved_input) in codex:
-        name, value = resolved_input
-        # validate name
-        if abi_input.name != name:
-            raise ConstructorParameters.Invalid(
-                f"{contract_name} constructor parameter '{name}' at position {position} does not "
-                f"match the expected ABI name '{abi_input.name}'."
-            )
-
-        # validate value type
-        value_to_validate = value
-        if _is_variable(value):
-            if isinstance(value, list):
-                value_to_validate = _resolve_list(value)
-            else:
-                value_to_validate = _resolve_param(value)
-        if not w3.is_encodable(abi_input.type, value_to_validate):
-            raise ConstructorParameters.Invalid(
-                f"Constructor param name '{name}' at position {position} has a value '{value}' "
-                f"whose type does not match expected ABI type '{abi_input.type}'"
-            )
-
-
 def _get_function_abi(method: ContractTransactionHandler, args) -> MethodABI:
     """Returns the function ABI for a contract function with a given number of arguments."""
     for abi in method.abis:
@@ -197,28 +132,6 @@ def _validate_transaction_args(args: typing.Tuple[Any, ...], abi) -> typing.Dict
     return named_args
 
 
-def validate_constructor_parameters(config: typing.OrderedDict[str, Any]) -> None:
-    """Validates the constructor parameters for all contracts in a single config."""
-    print("Validating constructor parameters...")
-    available_contracts = list(config.keys())
-    for contract, parameters in config.items():
-        if not isinstance(parameters, dict):
-            # this can happen if the yml file is malformed
-            raise ValueError(f"Malformed constructor parameter config for {contract}.")
-        for name, value in parameters.items():
-            if isinstance(value, list):
-                _validate_constructor_param_list(value, available_contracts)
-            else:
-                _validate_constructor_param(value, available_contracts)
-
-        contract_container = get_contract_container(contract)
-        _validate_constructor_abi_inputs(
-            contract_name=contract,
-            abi_inputs=contract_container.constructor.abi.inputs,
-            parameters=parameters,
-        )
-
-
 class ConstructorParameters:
     """Represents the constructor parameters for a set of contracts."""
 
@@ -226,9 +139,9 @@ class ConstructorParameters:
         """Raised when the constructor parameters are invalid"""
 
     def __init__(self, parameters: OrderedDict, constants: dict = None):
-        validate_constructor_parameters(parameters)
         self.parameters = parameters
         self.constants = constants or dict()
+        self.validate_constructor_parameters()
 
     @classmethod
     def from_config(cls, config: typing.Dict) -> "ConstructorParameters":
@@ -299,6 +212,87 @@ class ConstructorParameters:
         params = [self._resolve_param(v) for v in value]
         return params
     
+    def validate_constructor_parameters(self) -> None:
+        """Validates the constructor parameters for all contracts in a single config."""
+        print("Validating constructor parameters...")
+        config = self.parameters
+        available_contracts = list(config.keys())
+        for contract, parameters in config.items():
+            if not isinstance(parameters, dict):
+                # this can happen if the yml file is malformed
+                raise ValueError(f"Malformed constructor parameter config for {contract}.")
+            for name, value in parameters.items():
+                if isinstance(value, list):
+                    for v in value:
+                        self._validate_constructor_param(v, available_contracts)    
+                else:
+                    self._validate_constructor_param(value, available_contracts)
+
+            contract_container = get_contract_container(contract)
+            self._validate_constructor_abi_inputs(
+                contract_name=contract,
+                abi_inputs=contract_container.constructor.abi.inputs,
+                parameters=parameters,
+            )
+        
+    def _validate_constructor_param(self, param: Any, contracts: List[str]) -> None:
+        """Validates a single constructor parameter."""
+        if not _is_variable(param):
+            return  # literally a value
+        variable = param.strip(VARIABLE_PREFIX)
+
+        if _is_proxy_variable(variable):
+            proxy, target = variable.split(SPECIAL_VARIABLE_DELIMITER)
+            if proxy != PROXY_NAME:
+                raise ConstructorParameters.Invalid(
+                    f"Ambiguous proxy variable {param}; only {PROXY_NAME} "
+                    f"allowed before '{SPECIAL_VARIABLE_DELIMITER}'"
+                )
+            variable = target  # check proxy target
+
+        if _is_special_variable(variable):
+            return  # special variables are always marked as valid
+
+        if variable in contracts:
+            return
+
+        raise ConstructorParameters.Invalid(f"Variable {param} is not resolvable")
+    
+    def _validate_constructor_abi_inputs(
+        self, contract_name: str, abi_inputs: List[Any], parameters: OrderedDict
+    ) -> None:
+        """Validates the constructor parameters against the constructor ABI."""
+        if len(parameters) != len(abi_inputs):
+            raise ConstructorParameters.Invalid(
+                f"Constructor parameters length mismatch - "
+                f"{contract_name} ABI requires {len(abi_inputs)}, Got {len(parameters)}."
+            )
+        if not abi_inputs:
+            return  # no constructor parameters
+
+        codex = enumerate(zip(abi_inputs, parameters.items()), start=0)
+        for position, (abi_input, resolved_input) in codex:
+            name, value = resolved_input
+            # validate name
+            if abi_input.name != name:
+                raise ConstructorParameters.Invalid(
+                    f"{contract_name} constructor parameter '{name}' at position {position} does not "
+                    f"match the expected ABI name '{abi_input.name}'."
+                )
+
+            # validate value type
+            value_to_validate = value
+            if _is_variable(value):
+                if isinstance(value, list):
+                    value_to_validate = self._resolve_list(value)
+                else:
+                    value_to_validate = self._resolve_param(value)
+            if not w3.is_encodable(abi_input.type, value_to_validate):
+                raise ConstructorParameters.Invalid(
+                    f"Constructor param name '{name}' at position {position} has a value '{value}' "
+                    f"whose type does not match expected ABI type '{abi_input.type}'"
+                )
+
 
 class Transactor:
     """
