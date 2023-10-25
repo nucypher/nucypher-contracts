@@ -144,17 +144,6 @@ def _resolve_list(value: List[Any]) -> List[Any]:
     return params
 
 
-def _resolve_parameters(parameters: OrderedDict) -> OrderedDict:
-    """Resolves a dictionary of parameter values for a single contract"""
-    resolved_params = OrderedDict()
-    for name, value in parameters.items():
-        if isinstance(value, list):
-            resolved_params[name] = _resolve_list(value)
-        else:
-            resolved_params[name] = _resolve_param(value)
-    return resolved_params
-
-
 def _validate_constructor_param(param: Any, contracts: List[str]) -> None:
     """Validates a single constructor parameter."""
     if not _is_variable(param):
@@ -264,24 +253,6 @@ def validate_constructor_parameters(config: typing.OrderedDict[str, Any]) -> Non
         )
 
 
-def _get_contracts_config(config: typing.Dict) -> OrderedDict:
-    """Returns the contracts config from a constructor parameters file."""
-    try:
-        contracts = config["contracts"]
-    except KeyError:
-        raise ValueError("Constructor parameters file missing 'contracts' field.")
-    result = OrderedDict()
-    for contract in contracts:
-        if isinstance(contract, str):
-            contract = {contract: OrderedDict()}
-        elif isinstance(contract, dict):
-            contract = OrderedDict(contract)
-        else:
-            raise ValueError("Malformed constructor parameters YAML.")
-        result.update(contract)
-    return result
-
-
 class ConstructorParameters:
     """Represents the constructor parameters for a set of contracts."""
 
@@ -295,14 +266,26 @@ class ConstructorParameters:
     @classmethod
     def from_config(cls, config: typing.Dict) -> "ConstructorParameters":
         """Loads the constructor parameters from a JSON file."""
-        contracts_config = _get_contracts_config(config)
+        contracts_config = OrderedDict()
+        for contract in config["contracts"]:
+            if isinstance(contract, str):
+                contract = {contract: OrderedDict()}
+            elif isinstance(contract, dict):
+                contract = OrderedDict(contract)
+            else:
+                raise ValueError("Malformed constructor parameters YAML.")
+            contracts_config.update(contract)
         return cls(contracts_config)
 
     def resolve(self, contract_name: str) -> OrderedDict:
         """Resolves the constructor parameters for a single contract."""
-        result = _resolve_parameters(self.parameters[contract_name])
-        return result
-
+        resolved_params = OrderedDict()
+        for name, value in self.parameters[contract_name].items():
+            if isinstance(value, list):
+                resolved_params[name] = _resolve_list(value)
+            else:
+                resolved_params[name] = _resolve_param(value)
+        return resolved_params
 
 class Transactor:
     """
