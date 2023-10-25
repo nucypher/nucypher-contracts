@@ -12,7 +12,7 @@ dependencies:
     version: 5.0.0
     config_override:
       solidity:
-        version: 0.8.20
+        version: 0.8.22
         evm_version: paris
   - name: openzeppelin-upgradeable
     github: OpenZeppelin/openzeppelin-contracts-upgradeable
@@ -25,7 +25,7 @@ dependencies:
     version: 1.2.1
 
 solidity:
-  version: 0.8.20
+  version: 0.8.22
   evm_version: paris
   import_remapping:
     - "@openzeppelin/contracts=openzeppelin/v5.0.0"
