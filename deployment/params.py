@@ -105,45 +105,6 @@ def _resolve_deployer() -> str:
         return deployer_account.address
 
 
-def _resolve_contract_address(variable: str) -> str:
-    """Resolves a contract address."""
-    contract_container = get_contract_container(variable)
-    contract_instance = _get_contract_instance(contract_container)
-    if contract_instance == ZERO_ADDRESS:
-        return ZERO_ADDRESS
-    return contract_instance.address
-
-
-def _resolve_special_variable(variable: str) -> Any:
-    if _is_bytes(variable):
-        result = _resolve_bytes(variable)
-    elif _is_proxy_variable(variable):
-        result = _resolve_proxy_address(variable)
-    elif _is_deployer(variable):
-        result = _resolve_deployer()
-    else:
-        raise ValueError(f"Invalid special variable {variable}")
-    return result
-
-
-def _resolve_param(value: Any) -> Any:
-    """Resolves a single parameter value."""
-    if not _is_variable(value):
-        return value  # literally a value
-    variable = value.strip(VARIABLE_PREFIX)
-    if _is_special_variable(variable):
-        result = _resolve_special_variable(variable)
-    else:
-        result = _resolve_contract_address(variable)
-    return result
-
-
-def _resolve_list(value: List[Any]) -> List[Any]:
-    """Resolves a list of parameter values."""
-    params = [_resolve_param(v) for v in value]
-    return params
-
-
 def _validate_constructor_param(param: Any, contracts: List[str]) -> None:
     """Validates a single constructor parameter."""
     if not _is_variable(param):
@@ -284,10 +245,47 @@ class ConstructorParameters:
         resolved_params = OrderedDict()
         for name, value in self.parameters[contract_name].items():
             if isinstance(value, list):
-                resolved_params[name] = _resolve_list(value)
+                resolved_params[name] = self._resolve_list(value)
             else:
-                resolved_params[name] = _resolve_param(value)
+                resolved_params[name] = self._resolve_param(value)
         return resolved_params
+    
+    def _resolve_contract_address(self, variable: str) -> str:
+        """Resolves a contract address."""
+        contract_container = get_contract_container(variable)
+        contract_instance = _get_contract_instance(contract_container)
+        if contract_instance == ZERO_ADDRESS:
+            return ZERO_ADDRESS
+        return contract_instance.address
+
+    def _resolve_special_variable(self, variable: str) -> Any:
+        if _is_bytes(variable):
+            result = _resolve_bytes(variable)
+        elif _is_proxy_variable(variable):
+            result = _resolve_proxy_address(variable)
+        elif _is_deployer(variable):
+            result = _resolve_deployer()
+        else:
+            raise ValueError(f"Invalid special variable {variable}")
+        return result
+
+
+    def _resolve_param(self, value: Any) -> Any:
+        """Resolves a single parameter value."""
+        if not _is_variable(value):
+            return value  # literally a value
+        variable = value.strip(VARIABLE_PREFIX)
+        if _is_special_variable(variable):
+            result = self._resolve_special_variable(variable)
+        else:
+            result = self._resolve_contract_address(variable)
+        return result
+
+    def _resolve_list(self, value: List[Any]) -> List[Any]:
+        """Resolves a list of parameter values."""
+        params = [self._resolve_param(v) for v in value]
+        return params
+    
 
 class Transactor:
     """
