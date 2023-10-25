@@ -162,10 +162,7 @@ class ConstructorParameters:
         """Resolves the constructor parameters for a single contract."""
         resolved_params = OrderedDict()
         for name, value in self.parameters[contract_name].items():
-            if isinstance(value, list):
-                resolved_params[name] = self._resolve_list(value)
-            else:
-                resolved_params[name] = self._resolve_param(value)
+            resolved_params[name] = self._resolve_param(value)
         return resolved_params
     
     def _resolve_contract_address(self, variable: str) -> str:
@@ -197,7 +194,9 @@ class ConstructorParameters:
             raise ValueError(f"Constant '{name}' not found in deployment file.")
 
     def _resolve_param(self, value: Any) -> Any:
-        """Resolves a single parameter value."""
+        """Resolves a single parameter value or a list of parameter values."""
+        if isinstance(value, list):
+            return [self._resolve_param(v) for v in value]
         if not _is_variable(value):
             return value  # literally a value
         variable = value.strip(VARIABLE_PREFIX)
@@ -206,11 +205,6 @@ class ConstructorParameters:
         else:
             result = self._resolve_contract_address(variable)
         return result
-
-    def _resolve_list(self, value: List[Any]) -> List[Any]:
-        """Resolves a list of parameter values."""
-        params = [self._resolve_param(v) for v in value]
-        return params
     
     def validate_constructor_parameters(self) -> None:
         """Validates the constructor parameters for all contracts in a single config."""
@@ -221,12 +215,8 @@ class ConstructorParameters:
             if not isinstance(parameters, dict):
                 # this can happen if the yml file is malformed
                 raise ValueError(f"Malformed constructor parameter config for {contract}.")
-            for name, value in parameters.items():
-                if isinstance(value, list):
-                    for v in value:
-                        self._validate_constructor_param(v, available_contracts)    
-                else:
-                    self._validate_constructor_param(value, available_contracts)
+            for value in parameters.values():
+                self._validate_constructor_param(value, available_contracts)
 
             contract_container = get_contract_container(contract)
             self._validate_constructor_abi_inputs(
@@ -236,7 +226,12 @@ class ConstructorParameters:
             )
         
     def _validate_constructor_param(self, param: Any, contracts: List[str]) -> None:
-        """Validates a single constructor parameter."""
+        """Validates a single constructor parameter or a list of parameters."""
+        if isinstance(param, list):
+            for p in param:
+                self._validate_constructor_param(p, contracts)
+            return
+        
         if not _is_variable(param):
             return  # literally a value
         variable = param.strip(VARIABLE_PREFIX)
@@ -283,10 +278,7 @@ class ConstructorParameters:
             # validate value type
             value_to_validate = value
             if _is_variable(value):
-                if isinstance(value, list):
-                    value_to_validate = self._resolve_list(value)
-                else:
-                    value_to_validate = self._resolve_param(value)
+                value_to_validate = self._resolve_param(value)
             if not w3.is_encodable(abi_input.type, value_to_validate):
                 raise ConstructorParameters.Invalid(
                     f"Constructor param name '{name}' at position {position} has a value '{value}' "
