@@ -47,6 +47,10 @@ def validate_config(config: Dict) -> Path:
     config_chain_id = deployment.get("chain_id")
     if not config_chain_id:
         raise ValueError("chain_id is not set in params file.")
+    
+    contracts = config.get("contracts")
+    if not contracts:
+        raise ValueError("Constructor parameters file missing 'contracts' field.")
 
     config_chain_id = int(
         config_chain_id
