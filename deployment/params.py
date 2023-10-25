@@ -78,16 +78,6 @@ def _resolve_proxy_address(variable) -> str:
     raise ConstructorParameters.Invalid(f"Could not determine proxy for {variable}")
 
 
-# TODO: Maybe not needed after all?
-def _resolve_bytes(variable: str) -> bytes:
-    """Resolves a special bytes value."""
-    _prefix, value = variable.split(SPECIAL_VARIABLE_DELIMITER)
-    if not value.startswith(HEX_PREFIX):
-        raise ConstructorParameters.Invalid(f"Invalid bytes value {variable}")
-    value = bytes.fromhex(value[2:])
-    return value
-
-
 def _get_contract_instance(
     contract_container: ContractContainer,
 ) -> typing.Union[ContractInstance, ChecksumAddress]:
@@ -174,9 +164,7 @@ class ConstructorParameters:
         return contract_instance.address
 
     def _resolve_special_variable(self, variable: str) -> Any:
-        if _is_bytes(variable):
-            result = _resolve_bytes(variable)
-        elif _is_proxy_variable(variable):
+        if _is_proxy_variable(variable):
             result = _resolve_proxy_address(variable)
         elif _is_deployer(variable):
             result = _resolve_deployer()

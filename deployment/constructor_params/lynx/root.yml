@@ -21,6 +21,6 @@ contracts:
   - TransparentUpgradeableProxy:
       _logic: $TACoApplication
       initialOwner: $deployer
-      _data: $bytes:0x
+      _data: 0x
   - MockPolygonRoot:
       _rootApplication: $TransparentUpgradeableProxy:TACoApplication
