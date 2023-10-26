@@ -27,7 +27,15 @@ from deployment.utils import check_plugins, registry_filepath_from_domain
     default=86400,
     show_default=True,
 )
-def cli(domain, duration, network, account):
+@click.option(
+    "--access-controller",
+    "-a",
+    help="global allow list or open access authorizer.",
+    type=str,
+    choices=["GlobalAllowList", "OpenAccessAuthorizer"],
+    required=True,
+)
+def cli(domain, duration, network, account, access_controller):
     check_plugins()
     print(f"Using network: {network}")
     print(f"Using domain: {domain}")
@@ -48,12 +56,12 @@ def cli(domain, duration, network, account):
     deployments = contracts_from_registry(filepath=registry_filepath, chain_id=chain_id)
     coordinator = deployments[project.Coordinator.contract_type.name]
 
-    global_allow_list = deployments[project.GlobalAllowList.contract_type.name]
+    access_controller = deployments[getattr(project, access_controller).contract_type.name]
     authority = transactor.get_account().address
 
     while True:
         transactor.transact(
-            coordinator.initiateRitual, providers, authority, duration, global_allow_list.address
+            coordinator.initiateRitual, providers, authority, duration, access_controller.address
         )
         if not input("Another? [y/n] ").lower().startswith("y"):
             break
