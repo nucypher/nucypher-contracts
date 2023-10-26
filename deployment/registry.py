@@ -106,7 +106,7 @@ def write_registry(entries: List[RegistryEntry], filepath: Path) -> Path:
 
     data = defaultdict(dict)
     for entry in entries:
-        data[entry.chain_id][entry.name] = {
+        data[str(entry.chain_id)][entry.name] = {
             "address": entry.address,
             "abi": entry.abi,
             "tx_hash": entry.tx_hash,
