@@ -84,19 +84,26 @@ def erc20(project, initiator):
 
 
 @pytest.fixture()
-def coordinator(project, deployer, application, erc20, initiator):
+def coordinator(project, deployer, application, erc20, initiator, oz_dependency):
     admin = deployer
     contract = project.Coordinator.deploy(
         application.address,
-        TIMEOUT,
-        MAX_DKG_SIZE,
-        admin,
         erc20.address,
         FEE_RATE,
         sender=deployer,
     )
-    contract.grantRole(contract.INITIATOR_ROLE(), initiator, sender=admin)
-    return contract
+
+    encoded_initializer_function = contract.initialize.encode_input(TIMEOUT, MAX_DKG_SIZE, admin)
+    proxy = oz_dependency.TransparentUpgradeableProxy.deploy(
+        contract.address,
+        deployer,
+        encoded_initializer_function,
+        sender=deployer,
+    )
+    proxy_contract = project.Coordinator.at(proxy.address)
+
+    proxy_contract.grantRole(contract.INITIATOR_ROLE(), initiator, sender=admin)
+    return proxy_contract
 
 
 @pytest.fixture()
