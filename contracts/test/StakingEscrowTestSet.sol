@@ -6,6 +6,18 @@ pragma solidity ^0.8.0;
 import "../contracts/StakingEscrow.sol";
 import "../contracts/NuCypherToken.sol";
 import "@threshold/contracts/staking/IStaking.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+
+/**
+ * @notice Contract for testing the application contract
+ */
+contract TToken is ERC20("T", "T") {
+    constructor(uint256 _totalSupplyOfTokens) {
+        _mint(msg.sender, _totalSupplyOfTokens);
+    }
+}
+
 
 /**
 * @notice Enhanced version of StakingEscrow to use in tests
@@ -15,12 +27,16 @@ contract EnhancedStakingEscrow is StakingEscrow {
     constructor(
         NuCypherToken _token,
         WorkLockInterface _workLock,
-        IStaking _tStaking
+        IStaking _tStaking,
+        IERC20 _tToken,
+        IVendingMachine _vendingMachine
     )
         StakingEscrow(
             _token,
             _workLock,
-            _tStaking
+            _tStaking,
+            _tToken,
+            _vendingMachine
         )
     {
     }
@@ -43,12 +59,16 @@ contract StakingEscrowBad is StakingEscrow {
     constructor(
         NuCypherToken _token,
         WorkLockInterface _workLock,
-        IStaking _tStaking
+        IStaking _tStaking,
+        IERC20 _tToken,
+        IVendingMachine _vendingMachine
     )
         StakingEscrow(
             _token,
             _workLock,
-            _tStaking
+            _tStaking,
+            _tToken,
+            _vendingMachine
         )
     {
     }
@@ -68,12 +88,16 @@ contract StakingEscrowV2Mock is StakingEscrow {
     constructor(
         NuCypherToken _token,
         WorkLockInterface _workLock,
-        IStaking _tStaking
+        IStaking _tStaking,
+        IERC20 _tToken,
+        IVendingMachine _vendingMachine
     )
         StakingEscrow(
             _token,
             _workLock,
-            _tStaking
+            _tStaking,
+            _tToken,
+            _vendingMachine
         )
     {
         valueToCheck = 2;
@@ -128,6 +152,7 @@ contract WorkLockForStakingEscrowMock {
 */
 contract ThresholdStakingForStakingEscrowMock {
 
+    IERC20 public immutable tToken;
     StakingEscrow public escrow;
 
     struct StakingProviderInfo {
@@ -136,6 +161,10 @@ contract ThresholdStakingForStakingEscrowMock {
     }
 
     mapping(address => StakingProviderInfo) public stakingProviders;
+
+    constructor(IERC20 _tToken) {
+        tToken = _tToken;
+    }
 
     function setStakingEscrow(StakingEscrow _escrow) external {
         escrow = _escrow;
@@ -185,4 +214,68 @@ contract ThresholdStakingForStakingEscrowMock {
         require(_minStaked <= stakingProviders[_stakingProvider].staked);
         stakingProviders[_stakingProvider].minStaked = _minStaked;
     }
+    
+    function topUp(address _stakingProvider, uint96 _amount) external {
+        stakingProviders[_stakingProvider].staked += _amount;
+        tToken.transferFrom(msg.sender, address(this), _amount);
+    }
+}
+
+
+contract VendingMachineForStakingEscrowMock {
+    using SafeERC20 for IERC20;
+
+    uint256 public constant WRAPPED_TOKEN_CONVERSION_PRECISION = 3;
+    uint256 public constant FLOATING_POINT_DIVISOR =
+        10**(18 - WRAPPED_TOKEN_CONVERSION_PRECISION);
+
+
+    IERC20 public immutable wrappedToken;
+    IERC20 public immutable tToken;
+
+
+    constructor(
+        IERC20 _wrappedToken,
+        IERC20 _tToken
+    ) {
+        wrappedToken = _wrappedToken;
+        tToken = _tToken;
+    }
+
+    function wrap(uint256 amount) external {
+        (uint256 tTokenAmount, uint256 remainder) = conversionToT(
+            amount
+        );
+        amount -= remainder;
+
+        wrappedToken.safeTransferFrom(
+            msg.sender,
+            address(this),
+            amount
+        );
+        tToken.safeTransfer(msg.sender, tTokenAmount);
+    }
+
+    function unwrap(uint256 amount) external {
+        (uint256 wrappedTokenAmount, uint256 remainder) = conversionFromT(
+            amount
+        );
+        amount -= remainder;
+
+        tToken.safeTransferFrom(msg.sender, address(this), amount);
+        wrappedToken.safeTransfer(msg.sender, wrappedTokenAmount);
+    }
+
+    function conversionToT(uint256 amount) public view returns (uint256 tAmount, uint256 wrappedRemainder) {
+        wrappedRemainder = amount % FLOATING_POINT_DIVISOR;
+        uint256 convertibleAmount = amount - wrappedRemainder;
+        tAmount = convertibleAmount;
+    }
+
+    function conversionFromT(uint256 amount) public view returns (uint256 wrappedAmount, uint256 tRemainder) {
+        tRemainder = amount % FLOATING_POINT_DIVISOR;
+        uint256 convertibleAmount = amount - tRemainder;
+        wrappedAmount = convertibleAmount;
+    }
+    
 }
