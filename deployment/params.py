@@ -230,11 +230,11 @@ def _get_function_abi(method: ContractTransactionHandler, args) -> MethodABI:
         raise ValueError(f"Could not find ABI for {method} with {len(args)} args")
 
 
-def validate_constructor_parameters(config) -> None:
+def validate_constructor_parameters(contracts, constants) -> None:
     """Validates the constructor parameters for all contracts in a single config."""
     print("Validating constructor parameters...")
-    available_contracts = list(config.keys())
-    for contract, parameters in config.items():
+    available_contracts = list(contracts.keys())
+    for contract, parameters in contracts.items():
         if not isinstance(parameters, dict):
             # this can happen if the yml file is malformed
             raise ValueError(f"Malformed constructor parameter config for {contract}.")
@@ -246,7 +246,7 @@ def validate_constructor_parameters(config) -> None:
             contract_name=contract,
             abi_inputs=contract_container.constructor.abi.inputs,
             parameters=parameters,
-            constants=config.get("constants"),
+            constants=constants,
         )
 
 
@@ -259,7 +259,7 @@ class ConstructorParameters:
     def __init__(self, parameters: OrderedDict, constants: dict = None):
         self.parameters = parameters
         self.constants = constants or dict()
-        validate_constructor_parameters(parameters)
+        validate_constructor_parameters(parameters, constants)
 
     @classmethod
     def from_config(cls, config: typing.Dict) -> "ConstructorParameters":
