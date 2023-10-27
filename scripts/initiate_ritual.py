@@ -31,8 +31,7 @@ from deployment.utils import check_plugins, registry_filepath_from_domain
     "--access-controller",
     "-a",
     help="global allow list or open access authorizer.",
-    type=str,
-    choices=["GlobalAllowList", "OpenAccessAuthorizer"],
+    type=click.Choice(["GlobalAllowList", "OpenAccessAuthorizer"]),
     required=True,
 )
 def cli(domain, duration, network, account, access_controller):
