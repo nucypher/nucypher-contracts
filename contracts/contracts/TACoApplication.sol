@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import "@threshold/contracts/staking/IApplication.sol";
 import "@threshold/contracts/staking/IStaking.sol";
@@ -143,9 +144,12 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
         uint96 deauthorizing; // TODO real usage only in getActiveStakingProviders, maybe remove?
         uint64 endDeauthorization;
         uint96 tReward;
-        uint96 rewardPerTokenPaid;
+        uint160 rewardPerTokenPaid;
         uint64 endCommitment;
     }
+
+    uint256 public constant REWARD_PER_TOKEN_MULTIPLIER = 10 ** 4;
+    uint256 internal constant FLOATING_POINT_DIVISOR = REWARD_PER_TOKEN_MULTIPLIER * 10 ** 18;
 
     uint96 public immutable minimumAuthorization;
     uint256 public immutable minOperatorSeconds;
@@ -171,7 +175,7 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
     uint256 public periodFinish;
     uint256 public rewardRateDecimals;
     uint256 public lastUpdateTime;
-    uint96 public rewardPerTokenStored;
+    uint160 public rewardPerTokenStored;
     uint96 public authorizedOverall;
 
     /**
@@ -193,13 +197,21 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
         uint256 _deauthorizationDuration,
         uint64[] memory _commitmentDurationOptions
     ) {
+        uint256 totalSupply = _token.totalSupply();
         require(
             _rewardDuration != 0 &&
                 _tStaking.authorizedStake(address(this), address(this)) == 0 &&
-                _token.totalSupply() > 0 &&
+                totalSupply > 0 &&
                 _commitmentDurationOptions.length >= 1 &&
                 _commitmentDurationOptions.length <= 4,
             "Wrong input parameters"
+        );
+        // This require is only to check potential overflow for 10% reward
+        require(
+            (totalSupply / 10) * FLOATING_POINT_DIVISOR <= type(uint160).max &&
+                _minimumAuthorization >= 10 ** 18 &&
+                _rewardDuration >= 1 days,
+            "Potential overflow"
         );
         rewardDuration = _rewardDuration;
         deauthorizationDuration = _deauthorizationDuration;
@@ -259,10 +271,8 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
      * @notice Set contract for multi-chain interactions
      */
     function setChildApplication(ITACoRootToChild _childApplication) external onlyOwner {
-        require(
-            address(_childApplication) != address(childApplication),
-            "New address must not be equal to the current one"
-        );
+        require(address(childApplication) == address(0), "Child application is already set");
+        require(Address.isContract(address(_childApplication)), "Child app must be contract");
         childApplication = _childApplication;
     }
 
@@ -309,16 +319,16 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
     }
 
     /**
-     * @notice Returns current value of reward per token
+     * @notice Returns current value of reward per token * multiplier
      */
-    function rewardPerToken() public view returns (uint96) {
+    function rewardPerToken() public view returns (uint160) {
         if (authorizedOverall == 0) {
             return rewardPerTokenStored;
         }
         uint256 result = rewardPerTokenStored +
             ((lastTimeRewardApplicable() - lastUpdateTime) * rewardRateDecimals) /
             authorizedOverall;
-        return result.toUint96();
+        return result.toUint160();
     }
 
     /**
@@ -331,7 +341,7 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
             return info.tReward;
         }
         uint256 result = (uint256(info.authorized) * (rewardPerToken() - info.rewardPerTokenPaid)) /
-            1e18 +
+            FLOATING_POINT_DIVISOR +
             info.tReward;
         return result.toUint96();
     }
@@ -343,12 +353,15 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
     function pushReward(uint96 _reward) external updateReward(address(0)) {
         require(msg.sender == rewardDistributor, "Only distributor can push rewards");
         require(_reward > 0, "Reward must be specified");
+        require(authorizedOverall > 0, "No active staking providers");
         if (block.timestamp >= periodFinish) {
-            rewardRateDecimals = (uint256(_reward) * 1e18) / rewardDuration;
+            rewardRateDecimals = (uint256(_reward) * FLOATING_POINT_DIVISOR) / rewardDuration;
         } else {
             uint256 remaining = periodFinish - block.timestamp;
             uint256 leftover = remaining * rewardRateDecimals;
-            rewardRateDecimals = (uint256(_reward) * 1e18 + leftover) / rewardDuration;
+            rewardRateDecimals =
+                (uint256(_reward) * FLOATING_POINT_DIVISOR + leftover) /
+                rewardDuration;
         }
         lastUpdateTime = block.timestamp;
         periodFinish = block.timestamp + rewardDuration;
@@ -443,8 +456,6 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
         emit AuthorizationInvoluntaryDecreased(_stakingProvider, _fromAmount, _toAmount);
 
         if (info.authorized == 0) {
-            _stakingProviderFromOperator[info.operator] = address(0);
-            info.operator = address(0);
             _releaseOperator(_stakingProvider);
         }
         _updateAuthorization(_stakingProvider, info);
@@ -506,11 +517,8 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
         info.authorized = toAmount;
         info.deauthorizing = 0;
         info.endDeauthorization = 0;
-        info.endCommitment = 0;
 
         if (info.authorized == 0) {
-            _stakingProviderFromOperator[info.operator] = address(0);
-            info.operator = address(0);
             _releaseOperator(_stakingProvider);
         }
         _updateAuthorization(_stakingProvider, info);
@@ -538,8 +546,6 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
         }
 
         if (info.authorized == 0) {
-            _stakingProviderFromOperator[info.operator] = address(0);
-            info.operator = address(0);
             _releaseOperator(_stakingProvider);
         }
         _updateAuthorization(_stakingProvider, info);
@@ -573,7 +579,7 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
     /**
      * @notice Returns staking provider for specified operator
      */
-    function stakingProviderFromOperator(address _operator) public view returns (address) {
+    function stakingProviderFromOperator(address _operator) external view returns (address) {
         return _stakingProviderFromOperator[_operator];
     }
 
@@ -582,14 +588,14 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
      */
     function getOperatorFromStakingProvider(
         address _stakingProvider
-    ) public view returns (address) {
+    ) external view returns (address) {
         return stakingProviderInfo[_stakingProvider].operator;
     }
 
     /**
      * @notice Get all tokens delegated to the staking provider
      */
-    function authorizedStake(address _stakingProvider) public view returns (uint96) {
+    function authorizedStake(address _stakingProvider) external view returns (uint96) {
         return stakingProviderInfo[_stakingProvider].authorized;
     }
 
@@ -729,9 +735,7 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
         emit OperatorBonded(_stakingProvider, _operator, previousOperator, block.timestamp);
 
         info.operatorConfirmed = false;
-        if (address(childApplication) != address(0)) {
-            childApplication.updateOperator(_stakingProvider, _operator);
-        }
+        childApplication.updateOperator(_stakingProvider, _operator);
     }
 
     /**
@@ -764,10 +768,13 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
      * @notice Resets operator confirmation
      */
     function _releaseOperator(address _stakingProvider) internal {
-        stakingProviderInfo[_stakingProvider].operatorConfirmed = false;
-        if (address(childApplication) != address(0)) {
-            childApplication.updateOperator(_stakingProvider, address(0));
-        }
+        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
+        _stakingProviderFromOperator[info.operator] = address(0);
+        info.operator = address(0);
+        info.operatorConfirmed = false;
+        info.endDeauthorization = 0;
+        info.endCommitment = 0;
+        childApplication.updateOperator(_stakingProvider, address(0));
     }
 
     /**
@@ -777,11 +784,9 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
         address _stakingProvider,
         StakingProviderInfo storage _info
     ) internal {
-        if (address(childApplication) != address(0)) {
-            // TODO send both authorized and eligible amounts in case of slashing from child app
-            uint96 eligibleAmount = getEligibleAmount(_info);
-            childApplication.updateAuthorization(_stakingProvider, eligibleAmount);
-        }
+        // TODO send both authorized and eligible amounts in case of slashing from child app
+        uint96 eligibleAmount = getEligibleAmount(_info);
+        childApplication.updateAuthorization(_stakingProvider, eligibleAmount);
     }
 
     //-------------------------Slashing-------------------------

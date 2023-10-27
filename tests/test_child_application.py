@@ -25,6 +25,8 @@ DEPENDENCY = project.dependencies["openzeppelin"]["4.9.1"]
 OPERATOR_SLOT = 0
 CONFIRMATION_SLOT = 1
 
+MIN_AUTHORIZATION = Web3.to_wei(40_000, "ether")
+
 
 @pytest.fixture()
 def root_application(project, creator):
@@ -34,7 +36,9 @@ def root_application(project, creator):
 
 @pytest.fixture()
 def child_application(project, creator, root_application):
-    contract = project.TACoChildApplication.deploy(root_application.address, sender=creator)
+    contract = project.TACoChildApplication.deploy(
+        root_application.address, MIN_AUTHORIZATION, sender=creator
+    )
 
     proxy_admin = DEPENDENCY.ProxyAdmin.deploy(sender=creator)
     proxy = DEPENDENCY.TransparentUpgradeableProxy.deploy(
@@ -99,6 +103,7 @@ def test_update_operator(accounts, root_application, child_application):
     assert child_application.stakingProviderFromOperator(operator_2) == ZERO_ADDRESS
     assert child_application.stakingProviderInfo(staking_provider_1)[OPERATOR_SLOT] == ZERO_ADDRESS
     assert not child_application.stakingProviderInfo(operator_2)[CONFIRMATION_SLOT]
+    assert child_application.stakingProviderFromOperator(ZERO_ADDRESS) == ZERO_ADDRESS
 
     assert tx.events == [
         child_application.OperatorUpdated(stakingProvider=staking_provider_1, operator=ZERO_ADDRESS)
@@ -161,7 +166,7 @@ def test_confirm_address(accounts, root_application, child_application, coordina
         child_application.confirmOperatorAddress(operator, sender=creator)
 
     # Can't confirm operator address without bonding with staking provider
-    with ape.reverts("No stake associated with the operator"):
+    with ape.reverts("Authorization must be greater than minimum"):
         coordinator.confirmOperatorAddress(operator, sender=creator)
 
     # First bonding of operator
@@ -171,7 +176,12 @@ def test_confirm_address(accounts, root_application, child_application, coordina
     assert not child_application.stakingProviderInfo(staking_provider)[CONFIRMATION_SLOT]
 
     # Can't confirm operator address without authorized amount
-    with ape.reverts("No stake associated with the operator"):
+    with ape.reverts("Authorization must be greater than minimum"):
+        coordinator.confirmOperatorAddress(operator, sender=creator)
+
+    # Can't confirm operator address with too low amount
+    root_application.updateAuthorization(staking_provider, MIN_AUTHORIZATION - 1, sender=creator)
+    with ape.reverts("Authorization must be greater than minimum"):
         coordinator.confirmOperatorAddress(operator, sender=creator)
 
     # Confirm operator address

@@ -20,6 +20,11 @@ contract PolygonChild is FxBaseChildTunnel, Ownable {
         require(success, "Child tx failed");
     }
 
+    function setFxRootTunnel(address _fxRootTunnel) external override onlyOwner {
+        require(fxRootTunnel == address(0x0), "FxBaseChildTunnel: ROOT_TUNNEL_ALREADY_SET");
+        fxRootTunnel = _fxRootTunnel;
+    }
+
     function setChildApplication(address _childApplication) public onlyOwner {
         childApplication = _childApplication;
     }
