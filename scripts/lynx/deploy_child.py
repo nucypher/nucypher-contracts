@@ -26,8 +26,6 @@ def main():
 
     mock_polygon_child = deployer.deploy(project.MockPolygonChild)
 
-    proxy_admin = deployer.deploy(OZ_DEPENDENCY.ProxyAdmin, deployer)
-
     taco_implementation = deployer.deploy(project.LynxTACoChildApplication)
 
     proxy = deployer.deploy(OZ_DEPENDENCY.TransparentUpgradeableProxy)
@@ -45,7 +43,6 @@ def main():
 
     deployments = [
         mock_polygon_child,
-        proxy_admin,
         taco_implementation,  # implementation (contract name is different than proxy contract)
         taco_child_application,  # proxy
         ritual_token,

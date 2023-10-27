@@ -27,8 +27,6 @@ def main():
 
     mock_threshold_staking = deployer.deploy(project.TestnetThresholdStaking)
 
-    proxy_admin = deployer.deploy(OZ_DEPENDENCY.ProxyAdmin, deployer)
-
     _ = deployer.deploy(project.TACoApplication)
 
     proxy = deployer.deploy(OZ_DEPENDENCY.TransparentUpgradeableProxy)
@@ -44,8 +42,6 @@ def main():
     deployments = [
         reward_token,
         mock_threshold_staking,
-        proxy_admin,
-        # proxy only (implementation has same contract name so not included)
         taco_application,
         mock_polygon_root,
     ]
