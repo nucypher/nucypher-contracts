@@ -8,13 +8,12 @@ artifacts:
 
 contracts:
   - MockPolygonChild
-  - ProxyAdmin
   - LynxTACoChildApplication:
       _rootApplication: $MockPolygonChild
       _minimumAuthorization: 40000000000000000000000
   - TransparentUpgradeableProxy:
       _logic: $LynxTACoChildApplication
-      admin_: $ProxyAdmin
+      initialOwner: $deployer
       _data: $bytes:0x
   - LynxRitualToken:
       _totalSupplyOfTokens: 10000000000000000000000000
