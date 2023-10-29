@@ -78,11 +78,10 @@ def taco_application(project, creator, token, threshold_staking, oz_dependency):
         [COMMITMENT_DURATION_1, COMMITMENT_DURATION_2, COMMITMENT_DURATION_3],
     )
 
-    proxy_admin = oz_dependency.ProxyAdmin.deploy(creator, sender=creator)
     encoded_initializer_function = encode_function_data()
     proxy = oz_dependency.TransparentUpgradeableProxy.deploy(
         contract.address,
-        proxy_admin.address,
+        creator,
         encoded_initializer_function,
         sender=creator,
     )

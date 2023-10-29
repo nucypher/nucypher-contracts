@@ -37,10 +37,9 @@ def child_application(project, creator, root_application, oz_dependency):
         root_application.address, MIN_AUTHORIZATION, sender=creator
     )
 
-    proxy_admin = oz_dependency.ProxyAdmin.deploy(creator, sender=creator)
     proxy = oz_dependency.TransparentUpgradeableProxy.deploy(
         contract.address,
-        proxy_admin.address,
+        creator,
         b"",
         sender=creator,
     )
