@@ -6,23 +6,18 @@ INITIAL_FEE_RATE = Web3.to_wei(1, "gwei")
 
 
 @pytest.fixture(scope="module")
-def proxy_admin(accounts, oz_dependency):
-    deployer = accounts[0]
-    return deployer.deploy(oz_dependency.ProxyAdmin, deployer)
-
-
-@pytest.fixture(scope="module")
 def subscription_manager_logic(project, accounts):
     return project.SubscriptionManager.deploy(sender=accounts[0])
 
 
 @pytest.fixture(scope="module")
-def transparent_proxy(proxy_admin, subscription_manager_logic, accounts, oz_dependency):
+def transparent_proxy(subscription_manager_logic, accounts, oz_dependency):
+    deployer = accounts[0]
     calldata = subscription_manager_logic.initialize.encode_input(INITIAL_FEE_RATE)
-    return accounts[0].deploy(
+    return deployer.deploy(
         oz_dependency.TransparentUpgradeableProxy,
         subscription_manager_logic.address,
-        proxy_admin.address,
+        deployer,
         calldata,
     )
 
