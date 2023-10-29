@@ -147,7 +147,7 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
         uint64 endCommitment;
     }
 
-    uint256 public constant REWARD_PER_TOKEN_MULTIPLIER = 10 ** 4;
+    uint256 public constant REWARD_PER_TOKEN_MULTIPLIER = 10 ** 3;
     uint256 internal constant FLOATING_POINT_DIVISOR = REWARD_PER_TOKEN_MULTIPLIER * 10 ** 18;
 
     uint96 public immutable minimumAuthorization;
