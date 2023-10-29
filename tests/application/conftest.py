@@ -22,11 +22,10 @@ from web3 import Web3
 MIN_AUTHORIZATION = Web3.to_wei(40_000, "ether")
 
 MIN_OPERATOR_SECONDS = 24 * 60 * 60
-TOTAL_SUPPLY = Web3.to_wei(10_000_000_000, "ether")
+TOTAL_SUPPLY = Web3.to_wei(11_000_000_000, "ether")
 
 REWARD_DURATION = 60 * 60 * 24 * 7  # one week in seconds
 DEAUTHORIZATION_DURATION = 60 * 60 * 24 * 60  # 60 days in seconds
-TOTAL_SUPPLY = Web3.to_wei(1_000_000_000, "ether")  # TODO NU(1_000_000_000, 'NU').to_units()
 COMMITMENT_DURATION_1 = 182 * 60 * 24 * 60  # 182 days in seconds
 COMMITMENT_DURATION_2 = 2 * COMMITMENT_DURATION_1  # 365 days in seconds
 COMMITMENT_DURATION_3 = 3 * COMMITMENT_DURATION_1  # 365 days in seconds
