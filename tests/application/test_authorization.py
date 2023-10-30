@@ -28,6 +28,13 @@ MIN_AUTHORIZATION = Web3.to_wei(40_000, "ether")
 DEAUTHORIZATION_DURATION = 60 * 60 * 24 * 60  # 60 days in seconds
 
 
+def test_authorization_parameters(taco_application):
+    parameters = taco_application.authorizationParameters()
+    assert parameters[0] == MIN_AUTHORIZATION
+    assert parameters[1] == DEAUTHORIZATION_DURATION
+    assert parameters[2] == DEAUTHORIZATION_DURATION
+
+
 def test_authorization_increase(accounts, threshold_staking, taco_application, child_application):
     """
     Tests for authorization method: authorizationIncreased

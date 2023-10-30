@@ -96,7 +96,9 @@ def test_approve_and_call(project, accounts):
     assert 100 == token.allowance(creator, account1)
 
     # Decrease value
-    token.decreaseAllowance(account1, 60, sender=creator)
+    token.approve(account1, 0, sender=creator)
+    token.approve(account1, 40, sender=creator)
     assert 40 == token.allowance(creator, account1)
-    token.increaseAllowance(account1, 10, sender=creator)
+    token.approve(account1, 0, sender=creator)
+    token.approve(account1, 50, sender=creator)
     assert 50 == token.allowance(creator, account1)

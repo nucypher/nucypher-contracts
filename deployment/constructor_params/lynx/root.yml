@@ -4,13 +4,12 @@ deployment:
 
 artifacts:
     dir: ./deployment/artifacts/
-    filename: lynx.json
+    filename: test.json
 
 contracts:
   - LynxStakingToken:
       _totalSupplyOfTokens: 10000000000000000000000000
   - TestnetThresholdStaking
-  - ProxyAdmin
   - TACoApplication:
       _token: $LynxStakingToken
       _tStaking: $TestnetThresholdStaking
@@ -21,7 +20,7 @@ contracts:
       _commitmentDurationOptions: [15724800, 31449600]
   - TransparentUpgradeableProxy:
       _logic: $TACoApplication
-      admin_: $ProxyAdmin
+      initialOwner: $deployer
       _data: $bytes:0x
   - MockPolygonRoot:
       _rootApplication: $TransparentUpgradeableProxy:TACoApplication

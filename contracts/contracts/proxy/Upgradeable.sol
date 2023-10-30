@@ -45,6 +45,8 @@ abstract contract Upgradeable is Ownable {
     uint8 constant UPGRADE_FALSE = 1;
     uint8 constant UPGRADE_TRUE = 2;
 
+    constructor() Ownable(msg.sender) {}
+
     /**
     * @dev Checks that function executed while upgrading
     * Recommended to add to `verifyState` and `finishUpgrade` methods

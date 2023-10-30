@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import "@threshold/contracts/staking/IApplication.sol";
 import "@threshold/contracts/staking/IStaking.sol";
@@ -148,7 +147,7 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
         uint64 endCommitment;
     }
 
-    uint256 public constant REWARD_PER_TOKEN_MULTIPLIER = 10 ** 4;
+    uint256 public constant REWARD_PER_TOKEN_MULTIPLIER = 10 ** 3;
     uint256 internal constant FLOATING_POINT_DIVISOR = REWARD_PER_TOKEN_MULTIPLIER * 10 ** 18;
 
     uint96 public immutable minimumAuthorization;
@@ -264,7 +263,7 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
      * @notice Initialize function for using with OpenZeppelin proxy
      */
     function initialize() external initializer {
-        __Ownable_init();
+        __Ownable_init(msg.sender);
     }
 
     /**
@@ -272,7 +271,7 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
      */
     function setChildApplication(ITACoRootToChild _childApplication) external onlyOwner {
         require(address(childApplication) == address(0), "Child application is already set");
-        require(Address.isContract(address(_childApplication)), "Child app must be contract");
+        require(address(_childApplication).code.length > 0, "Child app must be contract");
         childApplication = _childApplication;
     }
 
@@ -285,6 +284,39 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
             "New address must not be equal to the current one"
         );
         adjudicator = _adjudicator;
+    }
+
+    /// @notice Returns authorization-related parameters of the application.
+    /// @dev The minimum authorization is also returned by `minimumAuthorization()`
+    ///      function, as a requirement of `IApplication` interface.
+    /// @return _minimumAuthorization The minimum authorization amount required
+    ///         so that operator can participate in the application.
+    /// @return authorizationDecreaseDelay Delay in seconds that needs to pass
+    ///         between the time authorization decrease is requested and the
+    ///         time that request gets approved. Protects against free-riders
+    ///         earning rewards and not being active in the network.
+    /// @return authorizationDecreaseChangePeriod Authorization decrease change
+    ///        period in seconds. It is the time, before authorization decrease
+    ///        delay end, during which the pending authorization decrease
+    ///        request can be overwritten.
+    ///        If set to 0, pending authorization decrease request can not be
+    ///        overwritten until the entire `authorizationDecreaseDelay` ends.
+    ///        If set to value equal `authorizationDecreaseDelay`, request can
+    ///        always be overwritten.
+    function authorizationParameters()
+        external
+        view
+        returns (
+            uint96 _minimumAuthorization,
+            uint64 authorizationDecreaseDelay,
+            uint64 authorizationDecreaseChangePeriod
+        )
+    {
+        return (
+            minimumAuthorization,
+            uint64(deauthorizationDuration),
+            uint64(deauthorizationDuration)
+        );
     }
 
     //------------------------Reward------------------------------

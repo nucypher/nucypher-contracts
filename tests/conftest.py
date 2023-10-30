@@ -1,5 +1,10 @@
 import pytest
-from ape import convert
+from ape import convert, project
+
+
+@pytest.fixture(scope="session")
+def oz_dependency():
+    return project.dependencies["openzeppelin"]["5.0.0"]
 
 
 @pytest.fixture

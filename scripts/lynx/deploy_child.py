@@ -1,11 +1,7 @@
 #!/usr/bin/python3
 
 from ape import project
-
-from deployment.constants import (
-    CONSTRUCTOR_PARAMS_DIR,
-    OZ_DEPENDENCY,
-)
+from deployment.constants import CONSTRUCTOR_PARAMS_DIR, OZ_DEPENDENCY
 from deployment.params import Deployer
 
 VERIFY = False
@@ -26,14 +22,9 @@ def main():
     eth-ape                   0.6.20
     """
 
-    deployer = Deployer.from_yaml(
-        filepath=CONSTRUCTOR_PARAMS_FILEPATH,
-        verify=VERIFY
-    )
+    deployer = Deployer.from_yaml(filepath=CONSTRUCTOR_PARAMS_FILEPATH, verify=VERIFY)
 
     mock_polygon_child = deployer.deploy(project.MockPolygonChild)
-
-    proxy_admin = deployer.deploy(OZ_DEPENDENCY.ProxyAdmin)
 
     taco_implementation = deployer.deploy(project.LynxTACoChildApplication)
 
@@ -52,7 +43,6 @@ def main():
 
     deployments = [
         mock_polygon_child,
-        proxy_admin,
         taco_implementation,  # implementation (contract name is different than proxy contract)
         taco_child_application,  # proxy
         ritual_token,

@@ -1,11 +1,7 @@
 #!/usr/bin/python3
 
 from ape import project
-
-from deployment.constants import (
-    CONSTRUCTOR_PARAMS_DIR,
-    OZ_DEPENDENCY,
-)
+from deployment.constants import CONSTRUCTOR_PARAMS_DIR, OZ_DEPENDENCY
 from deployment.params import Deployer
 
 VERIFY = False
@@ -25,16 +21,11 @@ def main():
     eth-ape                   0.6.20
     """
 
-    deployer = Deployer.from_yaml(
-        filepath=CONSTRUCTOR_PARAMS_FILEPATH,
-        verify=VERIFY
-    )
+    deployer = Deployer.from_yaml(filepath=CONSTRUCTOR_PARAMS_FILEPATH, verify=VERIFY)
 
     reward_token = deployer.deploy(project.LynxStakingToken)
 
     mock_threshold_staking = deployer.deploy(project.TestnetThresholdStaking)
-
-    proxy_admin = deployer.deploy(OZ_DEPENDENCY.ProxyAdmin)
 
     _ = deployer.deploy(project.TACoApplication)
 
@@ -51,8 +42,6 @@ def main():
     deployments = [
         reward_token,
         mock_threshold_staking,
-        proxy_admin,
-        # proxy only (implementation has same contract name so not included)
         taco_application,
         mock_polygon_root,
     ]
