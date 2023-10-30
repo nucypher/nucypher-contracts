@@ -1,49 +1,46 @@
-import lynxRegistryJson from "../deployment/artifacts/lynx.json";
-import mainnetRegistryJson from "../deployment/artifacts/mainnet.json";
-import tapirRegistryJson from "../deployment/artifacts/tapir.json";
+import lynxRegistryJson from '../deployment/artifacts/lynx.json';
+import mainnetRegistryJson from '../deployment/artifacts/mainnet.json';
+import tapirRegistryJson from '../deployment/artifacts/tapir.json';
 
+export type Abi = unknown
 
-export type Abi = unknown;
-
-export type DeployedContract = {
+export interface DeployedContract {
   address: string;
   abi: Abi;
-};
+}
 
 // Only expose contracts that are used in the SDK
 export const contractNames = [
-  "Coordinator",
-  "GlobalAllowList",
-  "SubscriptionManager"
+  'Coordinator',
+  'GlobalAllowList',
+  'SubscriptionManager',
 ] as const;
 
-export type ContractName = (typeof contractNames)[number];
+export type ContractName = (typeof contractNames)[number]
 
-export type Contract = {
+export interface Contract {
   name: ContractName;
   abi: Abi;
-};
+}
 
-export type ContractRegistry = {
-  [chainId: string]: Record<string, DeployedContract>;
-};
+export type ContractRegistry = Record<string, Record<string, DeployedContract>>
 
 export const domainRegistry: Record<string, ContractRegistry> = {
   lynx: lynxRegistryJson,
   tapir: tapirRegistryJson,
-  mainnet: mainnetRegistryJson
+  mainnet: mainnetRegistryJson,
 };
 
-export type Domain = "mainnet" | "oryx" | "tapir" | "lynx";
+export type Domain = 'mainnet' | 'oryx' | 'tapir' | 'lynx'
 
-export type ChainId = 1 | 5 | 137 | 80001;
+export type ChainId = 1 | 5 | 137 | 80001
 
-export type ChecksumAddress = `0x${string}`;
+export type ChecksumAddress = `0x${string}`
 
 export const getContract = (
   domain: Domain,
   chainId: ChainId,
-  contract: ContractName
+  contract: ContractName,
 ): ChecksumAddress => {
   const registry = domainRegistry[domain];
   if (!registry) {

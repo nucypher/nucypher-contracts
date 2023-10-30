@@ -29,7 +29,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 18.x
           cache: "npm"
       - run: npm install
 
@@ -52,11 +52,18 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install npm deps
-        run: npm install
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+          cache: "npm"
+      - run: npm install
 
       - name: Solidity Lint
-        run: solhint 'contracts/**/*.sol'
+        run: npm run solhint
+
+      - name: TypeScript Lint
+        run: npm run lint
 
       - name: Python Lint
         uses: cclauss/GitHub-Action-for-pylint@0.7.0
