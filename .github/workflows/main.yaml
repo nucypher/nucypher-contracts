@@ -52,11 +52,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install Solhint and Prettier
-        run: npm install -g solhint solhint-plugin-prettier prettier
-
-      - name: Install Solidity plugin for Prettier
-        run: npm install prettier-plugin-solidity
+      - name: Install npm deps
+        run: npm install
 
       - name: Solidity Lint
         run: solhint 'contracts/**/*.sol'
