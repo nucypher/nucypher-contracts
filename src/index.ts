@@ -38,9 +38,9 @@ export type ChainId = 1 | 5 | 137 | 80001
 export type ChecksumAddress = `0x${string}`
 
 export const getContract = (
-  domain: Domain,
-  chainId: ChainId,
-  contract: ContractName,
+  domain: Domain | string,
+  chainId: ChainId | number,
+  contract: ContractName | string,
 ): ChecksumAddress => {
   const registry = domainRegistry[domain];
   if (!registry) {
