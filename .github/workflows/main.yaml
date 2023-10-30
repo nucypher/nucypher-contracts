@@ -31,7 +31,7 @@ jobs:
         with:
           node-version: 16.x
           cache: "npm"
-      - run: npm install -g ganache
+      - run: npm install
 
       - name: Setup Python 3.11
         uses: actions/setup-python@v3
@@ -40,8 +40,11 @@ jobs:
           python-version: "3.11"
       - run: pip install . -r requirements.txt
 
-      - name: Run Tests
+      - name: Run Ape Tests
         run: ape test
+
+      - name: Run TS Tests
+        run: npm run test
 
   linting:
     runs-on: ubuntu-latest

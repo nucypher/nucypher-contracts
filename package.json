@@ -7,6 +7,20 @@
   "files": [
     "/contracts/**/*.sol",
     "/deployment/artifacts/*.json",
-    "!/contracts/test/**/*"
-  ]
+    "!/contracts/test/**/*",
+    "dist"
+  ],
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "ganache": "^7.9.1",
+    "tsc": "^2.0.4",
+    "typescript": "^5.2.2",
+    "vitest": "^0.34.6"
+  }
 }
