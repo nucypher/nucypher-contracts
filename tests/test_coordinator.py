@@ -108,9 +108,7 @@ def coordinator(project, deployer, application, erc20, initiator, oz_dependency)
 
 @pytest.fixture()
 def global_allow_list(project, deployer, coordinator):
-    contract = project.GlobalAllowList.deploy(
-        coordinator.address, deployer, sender=deployer  # admin
-    )
+    contract = project.GlobalAllowList.deploy(coordinator.address, sender=deployer)
     return contract
 
 
@@ -385,11 +383,6 @@ def test_authorize_using_global_allow_list(
         nodes=nodes,
         allow_logic=global_allow_list,
     )
-
-    with ape.reverts(access_control_error_message(initiator.address, role=0)):
-        global_allow_list.setCoordinator(coordinator.address, sender=initiator)
-
-    global_allow_list.setCoordinator(coordinator.address, sender=deployer)
 
     # This block mocks the signature of a threshold decryption request
     w3 = Web3()

@@ -1,24 +1,24 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 pragma solidity ^0.8.0;
-import "@openzeppelin/contracts/access/extensions/AccessControlDefaultAdminRules.sol";
+
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "./IEncryptionAuthorizer.sol";
 import "./Coordinator.sol";
 
-contract GlobalAllowList is AccessControlDefaultAdminRules, IEncryptionAuthorizer {
+contract GlobalAllowList is IEncryptionAuthorizer {
     using MessageHashUtils for bytes32;
     using ECDSA for bytes32;
 
-    Coordinator public coordinator;
+    Coordinator public immutable coordinator;
+
     mapping(bytes32 => bool) internal authorizations;
 
-    constructor(
-        Coordinator _coordinator,
-        address _admin
-    ) AccessControlDefaultAdminRules(0, _admin) {
-        setCoordinator(_coordinator);
+    constructor(Coordinator _coordinator) {
+        require(address(_coordinator) != address(0), "Coordinator cannot be zero address");
+        require(_coordinator.numberOfRituals() >= 0, "Invalid coordinator");
+        coordinator = _coordinator;
     }
 
     modifier onlyAuthority(uint32 ritualId) {
@@ -27,12 +27,6 @@ contract GlobalAllowList is AccessControlDefaultAdminRules, IEncryptionAuthorize
             "Only ritual authority is permitted"
         );
         _;
-    }
-
-    function setCoordinator(Coordinator _coordinator) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(address(_coordinator) != address(0), "Coordinator cannot be zero address");
-        require(_coordinator.numberOfRituals() >= 0, "Invalid coordinator");
-        coordinator = _coordinator;
     }
 
     function lookupKey(uint32 ritualId, address encryptor) internal pure returns (bytes32) {
