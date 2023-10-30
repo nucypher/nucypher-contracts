@@ -27,6 +27,7 @@ contract PolygonChild is FxBaseChildTunnel, Ownable {
 
     function setChildApplication(address _childApplication) public onlyOwner {
         childApplication = _childApplication;
+        renounceOwnership();
     }
 
     fallback() external {
