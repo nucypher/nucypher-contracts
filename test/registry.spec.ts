@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { type ContractName, type Domain, getContract } from '../src';
+import { ChainId, type ContractName, type Domain, getContract } from '../src';
 
 const testCases: Array<[ string, number, ContractName ]> = [
   [ 'lynx', 80001, 'Coordinator' ],
@@ -15,7 +15,7 @@ describe('registry', () => {
   for (const testCase of testCases) {
     const [ domain, chainId, contract ] = testCase;
     it(`should for domain ${domain}, chainId ${chainId}, contract ${contract}`, () => {
-      const contractAddress = getContract(domain as Domain, chainId, contract);
+      const contractAddress = getContract(domain as Domain, chainId as ChainId, contract);
       expect(contractAddress).toBeDefined();
     });
   }
