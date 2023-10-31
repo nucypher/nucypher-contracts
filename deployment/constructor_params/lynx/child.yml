@@ -14,21 +14,23 @@ constants:
 contracts:
   - MockPolygonChild
   - LynxTACoChildApplication:
-      _rootApplication: $MockPolygonChild
-      _minimumAuthorization: $FORTY_THOUSAND_TOKENS_IN_WEI_UNITS
-  - TransparentUpgradeableProxy:
-      _logic: $LynxTACoChildApplication
-      initialOwner: $deployer
-      _data: 0x
+      proxy:
+        wrap_container: TACoChildApplication
+      constructor:
+        _rootApplication: $MockPolygonChild
+        _minimumAuthorization: $FORTY_THOUSAND_TOKENS_IN_WEI_UNITS
   - LynxRitualToken:
-      _totalSupplyOfTokens: $TEN_MILLION_TOKENS_IN_WEI_UNITS
+      constructor:
+        _totalSupplyOfTokens: $TEN_MILLION_TOKENS_IN_WEI_UNITS
   - Coordinator:
-      _application: $TransparentUpgradeableProxy:LynxTACoChildApplication
-      _timeout: $ONE_HOUR_IN_SECONDS
-      _maxDkgSize: 4
-      _admin: $deployer
-      _currency: $LynxRitualToken
-      _feeRatePerSecond: 1
+      constructor:
+        _application: $proxy:LynxTACoChildApplication
+        _timeout: $ONE_HOUR_IN_SECONDS
+        _maxDkgSize: 4
+        _admin: $deployer
+        _currency: $LynxRitualToken
+        _feeRatePerSecond: 1
   - GlobalAllowList:
-      _coordinator: $Coordinator
-      _admin: $deployer
+      constructor:
+        _coordinator: $Coordinator
+        _admin: $deployer
