@@ -4,7 +4,7 @@ deployment:
 
 artifacts:
     dir: ./deployment/artifacts/
-    filename: test.json
+    filename: lynx.json
 
 constants:
    IN_SECONDS_1_HOUR: 3600
