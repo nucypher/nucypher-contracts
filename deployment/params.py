@@ -307,6 +307,9 @@ class ProxyParameters:
 
     CONTAINER_PROPERTY = "wrap_container"
 
+    class Invalid(Exception):
+        """Raised when the constructor parameters are invalid"""
+
     class ProxyInfo(typing.NamedTuple):
         container_name: typing.Union[None, str]
         constructor_params: OrderedDict
@@ -369,6 +372,12 @@ class ProxyParameters:
         constructor_data = cls._default_proxy_parameters(contract_name)
         if CONTRACT_CONSTRUCTOR_KEY in proxy_data:
             for name, value in proxy_data[CONTRACT_CONSTRUCTOR_KEY].items():
+                if name == "_logic":
+                    raise cls.Invalid(
+                        "'_logic' parameter cannot be specified: it is implicitly "
+                        "the contract being proxied"
+                    )
+
                 constructor_data.update({name: value})
 
         proxy_info = cls.ProxyInfo(container_name=container, constructor_params=constructor_data)
