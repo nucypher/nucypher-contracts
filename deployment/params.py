@@ -332,20 +332,7 @@ class ProxyParameters:
             if CONTRACT_PROXY_KEY not in contract_data:
                 continue
 
-            proxy_data = contract_data[CONTRACT_PROXY_KEY] or dict()
-            container = None
-            if cls.CONTAINER_PROPERTY in proxy_data:
-                container = proxy_data[cls.CONTAINER_PROPERTY]
-
-            constructor_data = cls._default_proxy_parameters(contract_name)
-            if CONTRACT_CONSTRUCTOR_KEY in proxy_data:
-                for name, value in proxy_data[CONTRACT_CONSTRUCTOR_KEY].items():
-                    constructor_data.update({name: value})
-
-            proxy_info = cls.ProxyInfo(
-                container_name=container, constructor_params=constructor_data
-            )
-
+            proxy_info = cls._generate_proxy_info(contract_data, contract_name)
             contracts_proxy_info.update({contract_name: proxy_info})
 
         return cls(contracts_proxy_info=contracts_proxy_info, constants=config.get("constants"))
@@ -370,6 +357,22 @@ class ProxyParameters:
             resolved_params[name] = _resolve_param(value, constants=self.constants)
 
         return contract_container, resolved_params
+
+    @classmethod
+    def _generate_proxy_info(cls, contract_data, contract_name) -> ProxyInfo:
+        proxy_data = contract_data[CONTRACT_PROXY_KEY] or dict()
+
+        container = None
+        if cls.CONTAINER_PROPERTY in proxy_data:
+            container = proxy_data[cls.CONTAINER_PROPERTY]
+
+        constructor_data = cls._default_proxy_parameters(contract_name)
+        if CONTRACT_CONSTRUCTOR_KEY in proxy_data:
+            for name, value in proxy_data[CONTRACT_CONSTRUCTOR_KEY].items():
+                constructor_data.update({name: value})
+
+        proxy_info = cls.ProxyInfo(container_name=container, constructor_params=constructor_data)
+        return proxy_info
 
     @classmethod
     def _default_proxy_parameters(cls, contract_name: str) -> OrderedDict:
