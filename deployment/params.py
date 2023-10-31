@@ -214,9 +214,7 @@ def _validate_constructor_abi_inputs(
             )
 
         # validate value type
-        value_to_validate = value
-        if _is_variable(value):
-            value_to_validate = _resolve_param(value, constants=constants)
+        value_to_validate = _resolve_param(value, constants=constants)
         if not w3.is_encodable(abi_input.type, value_to_validate):
             raise ConstructorParameters.Invalid(
                 f"Constructor param name '{name}' at position {position} has a value '{value}' "
