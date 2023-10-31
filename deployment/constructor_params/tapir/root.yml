@@ -6,21 +6,30 @@ artifacts:
     dir: ./deployment/artifacts/
     filename: tapir.json
 
+constants:
+   IN_SECONDS_1_HOUR: 3600
+   IN_SECONDS_7_DAYS: 604800
+   IN_SECONDS_60_DAYS: 5184000
+   IN_SECONDS_182_DAYS: 15724800
+   IN_SECONDS_364_DAYS: 31449600
+   FORTY_THOUSAND_TOKENS_IN_WEI_UNITS: 40000000000000000000000  
+   TEN_MILLION_TOKENS_IN_WEI_UNITS: 10000000000000000000000000
+
 contracts:
   - TapirStakingToken:
-      _totalSupplyOfTokens: 10000000000000000000000000
+      _totalSupplyOfTokens: $TEN_MILLION_TOKENS_IN_WEI_UNITS
   - TestnetThresholdStaking
   - TACoApplication:
       _token: $TapirStakingToken
       _tStaking: $TestnetThresholdStaking
-      _minimumAuthorization: 40000000000000000000000
-      _minOperatorSeconds: 3600
-      _rewardDuration: 604800
-      _deauthorizationDuration: 5184000
-      _commitmentDurationOptions: [15724800, 31449600]
+      _minimumAuthorization: $FORTY_THOUSAND_TOKENS_IN_WEI_UNITS
+      _minOperatorSeconds: $IN_SECONDS_1_HOUR
+      _rewardDuration: $IN_SECONDS_7_DAYS
+      _deauthorizationDuration: $IN_SECONDS_60_DAYS
+      _commitmentDurationOptions: [$IN_SECONDS_182_DAYS, $IN_SECONDS_364_DAYS]
   - TransparentUpgradeableProxy:
       _logic: $TACoApplication
       initialOwner: $deployer
-      _data: $bytes:0x
+      _data: 0x
   - MockPolygonRoot:
       _rootApplication: $TransparentUpgradeableProxy:TACoApplication

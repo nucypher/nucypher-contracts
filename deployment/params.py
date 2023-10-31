@@ -8,11 +8,13 @@ from ape.api import AccountAPI, ReceiptAPI
 from ape.cli import get_user_selected_account
 from ape.contracts.base import ContractContainer, ContractInstance, ContractTransactionHandler
 from ape.utils import ZERO_ADDRESS
+from eth_typing import ChecksumAddress
+from web3.auto.gethdev import w3
+
 from deployment.confirm import _confirm_resolution, _continue
 from deployment.constants import (
     BYTES_PREFIX,
     DEPLOYER_INDICATOR,
-    HEX_PREFIX,
     PROXY_NAME,
     SPECIAL_VARIABLE_DELIMITER,
     VARIABLE_PREFIX,
@@ -25,9 +27,6 @@ from deployment.utils import (
     validate_config,
     verify_contracts,
 )
-from eth_typing import ChecksumAddress
-from ethpm_types import MethodABI
-from web3.auto.gethdev import w3
 
 
 def _is_variable(param: Any) -> bool:
@@ -38,8 +37,8 @@ def _is_variable(param: Any) -> bool:
 
 def _is_special_variable(variable: str) -> bool:
     """Returns True if the variable is a special variable."""
-    rules = [_is_bytes(variable), _is_proxy_variable(variable), _is_deployer(variable)]
-    return any(rules)
+    rules = [_is_bytes, _is_proxy_variable, _is_deployer, _is_constant]
+    return any(rule(variable) for rule in rules)
 
 
 def _is_proxy_variable(variable: str) -> bool:
@@ -57,8 +56,13 @@ def _is_deployer(variable: str) -> bool:
     return variable == DEPLOYER_INDICATOR
 
 
+def _is_constant(variable: str) -> bool:
+    """Returns True if the variable is a deployment constant."""
+    return variable.isupper()
+
+
 def _resolve_proxy_address(variable) -> str:
-    proxy, target = variable.split(SPECIAL_VARIABLE_DELIMITER)
+    _, target = variable.split(SPECIAL_VARIABLE_DELIMITER)
     target_contract_container = get_contract_container(target)
     target_contract_instance = _get_contract_instance(target_contract_container)
     if target_contract_instance == ZERO_ADDRESS:
@@ -73,17 +77,8 @@ def _resolve_proxy_address(variable) -> str:
     raise ConstructorParameters.Invalid(f"Could not determine proxy for {variable}")
 
 
-def _resolve_bytes(variable: str) -> bytes:
-    """Resolves a special bytes value."""
-    _prefix, value = variable.split(SPECIAL_VARIABLE_DELIMITER)
-    if not value.startswith(HEX_PREFIX):
-        raise ConstructorParameters.Invalid(f"Invalid bytes value {variable}")
-    value = bytes.fromhex(value[2:])
-    return value
-
-
 def _get_contract_instance(
-    contract_container: ContractContainer,
+        contract_container: ContractContainer,
 ) -> typing.Union[ContractInstance, ChecksumAddress]:
     contract_instances = contract_container.deployments
     if not contract_instances:
@@ -101,8 +96,24 @@ def _resolve_deployer() -> str:
     deployer_account = Deployer.get_account()
     if deployer_account is None:
         return ZERO_ADDRESS
-    else:
-        return deployer_account.address
+    return deployer_account.address
+
+
+def _validate_transaction_args(
+        method: ContractTransactionHandler,
+        args: typing.Tuple[Any, ...]
+) -> typing.Dict[str, Any]:
+    """Validates the transaction arguments against the function ABI."""
+    expected_length_abis = [abi for abi in method.abis if len(abi.inputs) == len(args)]
+    for abi in expected_length_abis:
+        named_args = {}
+        for arg, abi_input in zip(args, abi.inputs):
+            if not w3.is_encodable(abi_input.type, arg):
+                break
+            named_args[abi_input.name] = arg
+        else:
+            return named_args
+    raise ValueError(f"Could not find ABI for {method} with {len(args)} args and given types")
 
 
 def _resolve_contract_address(variable: str) -> str:
@@ -114,49 +125,47 @@ def _resolve_contract_address(variable: str) -> str:
     return contract_instance.address
 
 
-def _resolve_special_variable(variable: str) -> Any:
-    if _is_bytes(variable):
-        result = _resolve_bytes(variable)
-    elif _is_proxy_variable(variable):
+def _resolve_special_variable(variable: str, constants) -> Any:
+    if _is_proxy_variable(variable):
         result = _resolve_proxy_address(variable)
     elif _is_deployer(variable):
         result = _resolve_deployer()
+    elif _is_constant(variable):
+        result = _resolve_constant(variable, constants=constants)
     else:
         raise ValueError(f"Invalid special variable {variable}")
     return result
 
 
-def _resolve_param(value: Any) -> Any:
-    """Resolves a single parameter value."""
+def _resolve_param(value: Any, constants) -> Any:
+    """Resolves a single parameter value or a list of parameter values."""
+    if isinstance(value, list):
+        return [_resolve_param(v, constants) for v in value]
     if not _is_variable(value):
         return value  # literally a value
     variable = value.strip(VARIABLE_PREFIX)
     if _is_special_variable(variable):
-        result = _resolve_special_variable(variable)
+        result = _resolve_special_variable(variable, constants=constants)
     else:
         result = _resolve_contract_address(variable)
     return result
 
 
-def _resolve_list(value: List[Any]) -> List[Any]:
-    """Resolves a list of parameter values."""
-    params = [_resolve_param(v) for v in value]
-    return params
-
-
-def _resolve_parameters(parameters: OrderedDict) -> OrderedDict:
-    """Resolves a dictionary of parameter values for a single contract"""
-    resolved_params = OrderedDict()
-    for name, value in parameters.items():
-        if isinstance(value, list):
-            resolved_params[name] = _resolve_list(value)
-        else:
-            resolved_params[name] = _resolve_param(value)
-    return resolved_params
+def _resolve_constant(name: str, constants: typing.Dict[str, Any]) -> Any:
+    try:
+        value = constants[name]
+        return value
+    except KeyError:
+        raise ValueError(f"Constant '{name}' not found in deployment file.")
 
 
 def _validate_constructor_param(param: Any, contracts: List[str]) -> None:
-    """Validates a single constructor parameter."""
+    """Validates a single constructor parameter or a list of parameters."""
+    if isinstance(param, list):
+        for p in param:
+            _validate_constructor_param(p, contracts)
+        return
+
     if not _is_variable(param):
         return  # literally a value
     variable = param.strip(VARIABLE_PREFIX)
@@ -179,14 +188,11 @@ def _validate_constructor_param(param: Any, contracts: List[str]) -> None:
     raise ConstructorParameters.Invalid(f"Variable {param} is not resolvable")
 
 
-def _validate_constructor_param_list(params: List[Any], contracts: List[str]) -> None:
-    """Validates a list of constructor parameters."""
-    for param in params:
-        _validate_constructor_param(param, contracts)
-
-
 def _validate_constructor_abi_inputs(
-    contract_name: str, abi_inputs: List[Any], parameters: OrderedDict
+        contract_name: str,
+        abi_inputs: List[Any],
+        parameters: OrderedDict,
+        constants: typing.Dict[str, Any]
 ) -> None:
     """Validates the constructor parameters against the constructor ABI."""
     if len(parameters) != len(abi_inputs):
@@ -208,12 +214,7 @@ def _validate_constructor_abi_inputs(
             )
 
         # validate value type
-        value_to_validate = value
-        if _is_variable(value):
-            if isinstance(value, list):
-                value_to_validate = _resolve_list(value)
-            else:
-                value_to_validate = _resolve_param(value)
+        value_to_validate = _resolve_param(value, constants=constants)
         if not w3.is_encodable(abi_input.type, value_to_validate):
             raise ConstructorParameters.Invalid(
                 f"Constructor param name '{name}' at position {position} has a value '{value}' "
@@ -221,65 +222,24 @@ def _validate_constructor_abi_inputs(
             )
 
 
-def _get_function_abi(method: ContractTransactionHandler, args) -> MethodABI:
-    """Returns the function ABI for a contract function with a given number of arguments."""
-    for abi in method.abis:
-        if len(abi.inputs) == len(args):
-            return abi
-    else:
-        raise ValueError(f"Could not find ABI for {method} with {len(args)} args")
-
-
-def _validate_transaction_args(args: typing.Tuple[Any, ...], abi) -> typing.Dict[str, Any]:
-    """Validates the transaction arguments against the function ABI."""
-    named_args = dict()
-    for arg, abi_input in zip(args, abi.inputs):
-        if not w3.is_encodable(abi_input.type, arg):
-            raise ValueError(
-                f"Argument '{arg}' of type '{type(arg)}' is not encodable as '{abi_input.type}'"
-            )
-        named_args[abi_input.name] = arg
-    return named_args
-
-
-def validate_constructor_parameters(config: typing.OrderedDict[str, Any]) -> None:
+def validate_constructor_parameters(contracts, constants) -> None:
     """Validates the constructor parameters for all contracts in a single config."""
     print("Validating constructor parameters...")
-    available_contracts = list(config.keys())
-    for contract, parameters in config.items():
+    available_contracts = list(contracts.keys())
+    for contract, parameters in contracts.items():
         if not isinstance(parameters, dict):
             # this can happen if the yml file is malformed
             raise ValueError(f"Malformed constructor parameter config for {contract}.")
-        for name, value in parameters.items():
-            if isinstance(value, list):
-                _validate_constructor_param_list(value, available_contracts)
-            else:
-                _validate_constructor_param(value, available_contracts)
+        for value in parameters.values():
+            _validate_constructor_param(value, available_contracts)
 
         contract_container = get_contract_container(contract)
         _validate_constructor_abi_inputs(
             contract_name=contract,
             abi_inputs=contract_container.constructor.abi.inputs,
             parameters=parameters,
+            constants=constants,
         )
-
-
-def _get_contracts_config(config: typing.Dict) -> OrderedDict:
-    """Returns the contracts config from a constructor parameters file."""
-    try:
-        contracts = config["contracts"]
-    except KeyError:
-        raise ValueError("Constructor parameters file missing 'contracts' field.")
-    result = OrderedDict()
-    for contract in contracts:
-        if isinstance(contract, str):
-            contract = {contract: OrderedDict()}
-        elif isinstance(contract, dict):
-            contract = OrderedDict(contract)
-        else:
-            raise ValueError("Malformed constructor parameters YAML.")
-        result.update(contract)
-    return result
 
 
 class ConstructorParameters:
@@ -288,20 +248,32 @@ class ConstructorParameters:
     class Invalid(Exception):
         """Raised when the constructor parameters are invalid"""
 
-    def __init__(self, parameters: OrderedDict):
-        validate_constructor_parameters(parameters)
+    def __init__(self, parameters: OrderedDict, constants: dict = None):
         self.parameters = parameters
+        self.constants = constants or {}
+        validate_constructor_parameters(parameters, constants)
 
     @classmethod
     def from_config(cls, config: typing.Dict) -> "ConstructorParameters":
         """Loads the constructor parameters from a JSON file."""
-        contracts_config = _get_contracts_config(config)
-        return cls(contracts_config)
+        contracts_config = OrderedDict()
+        for contract in config["contracts"]:
+            if isinstance(contract, str):
+                contract = {contract: OrderedDict()}
+            elif isinstance(contract, dict):
+                contract = OrderedDict(contract)
+            else:
+                raise ValueError("Malformed constructor parameters YAML.")
+            contracts_config.update(contract)
+
+        return cls(parameters=contracts_config, constants=config.get("constants"))
 
     def resolve(self, contract_name: str) -> OrderedDict:
         """Resolves the constructor parameters for a single contract."""
-        result = _resolve_parameters(self.parameters[contract_name])
-        return result
+        resolved_params = OrderedDict()
+        for name, value in self.parameters[contract_name].items():
+            resolved_params[name] = _resolve_param(value, constants=self.constants)
+        return resolved_params
 
 
 class Transactor:
@@ -320,8 +292,7 @@ class Transactor:
         return self._account
 
     def transact(self, method: ContractTransactionHandler, *args) -> ReceiptAPI:
-        abi = _get_function_abi(method=method, args=args)
-        named_args = _validate_transaction_args(args=args, abi=abi)
+        named_args = _validate_transaction_args(method=method, args=args)
         base_message = (
             f"\nTransacting {method.contract.contract_type.name}"
             f"[{method.contract.address[:10]}].{method}"
@@ -347,11 +318,11 @@ class Deployer(Transactor):
     __DEPLOYER_ACCOUNT: AccountAPI = None
 
     def __init__(
-        self,
-        config: typing.Dict,
-        path: Path,
-        verify: bool,
-        account: typing.Optional[AccountAPI] = None,
+            self,
+            config: typing.Dict,
+            path: Path,
+            verify: bool,
+            account: typing.Optional[AccountAPI] = None,
     ):
         check_plugins()
         self.path = path
