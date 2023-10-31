@@ -99,16 +99,21 @@ def _resolve_deployer() -> str:
     return deployer_account.address
 
 
-def _validate_transaction_args(args: typing.Tuple[Any, ...], abi) -> typing.Dict[str, Any]:
+def _validate_transaction_args(
+        method: ContractTransactionHandler,
+        args: typing.Tuple[Any, ...]
+) -> typing.Dict[str, Any]:
     """Validates the transaction arguments against the function ABI."""
-    named_args = dict()
-    for arg, abi_input in zip(args, abi.inputs):
-        if not w3.is_encodable(abi_input.type, arg):
-            raise ValueError(
-                f"Argument '{arg}' of type '{type(arg)}' is not encodable as '{abi_input.type}'"
-            )
-        named_args[abi_input.name] = arg
-    return named_args
+    expected_length_abis = [abi for abi in method.abis if len(abi.inputs) == len(args)]
+    for abi in expected_length_abis:
+        named_args = {}
+        for arg, abi_input in zip(args, abi.inputs):
+            if not w3.is_encodable(abi_input.type, arg):
+                break
+            named_args[abi_input.name] = arg
+        else:
+            return named_args
+    raise ValueError(f"Could not find ABI for {method} with {len(args)} args and given types")
 
 
 def _resolve_contract_address(variable: str) -> str:
@@ -219,15 +224,6 @@ def _validate_constructor_abi_inputs(
             )
 
 
-def _get_function_abi(method: ContractTransactionHandler, args) -> MethodABI:
-    """Returns the function ABI for a contract function with a given number of arguments."""
-    for abi in method.abis:
-        if len(abi.inputs) == len(args):
-            return abi
-    else:
-        raise ValueError(f"Could not find ABI for {method} with {len(args)} args")
-
-
 def validate_constructor_parameters(contracts, constants) -> None:
     """Validates the constructor parameters for all contracts in a single config."""
     print("Validating constructor parameters...")
@@ -298,8 +294,7 @@ class Transactor:
         return self._account
 
     def transact(self, method: ContractTransactionHandler, *args) -> ReceiptAPI:
-        abi = _get_function_abi(method=method, args=args)
-        named_args = _validate_transaction_args(args=args, abi=abi)
+        named_args = _validate_transaction_args(method=method, args=args)
         base_message = (
             f"\nTransacting {method.contract.contract_type.name}"
             f"[{method.contract.address[:10]}].{method}"
