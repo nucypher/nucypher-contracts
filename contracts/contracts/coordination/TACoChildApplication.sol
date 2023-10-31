@@ -19,6 +19,7 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         bool operatorConfirmed;
         uint96 authorized;
         // TODO: what about undelegations etc?
+        uint256 index; // index in stakingProviders array + 1
     }
 
     ITACoChildToRoot public immutable rootApplication;
@@ -27,6 +28,7 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
     uint96 public immutable minimumAuthorization;
 
     mapping(address => StakingProviderInfo) public stakingProviderInfo;
+    address[] public stakingProviders;
     mapping(address => address) public stakingProviderFromOperator;
 
     /**
@@ -87,6 +89,11 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
             return;
         }
 
+        if (info.index == 0) {
+            stakingProviders.push(stakingProvider);
+            info.index = stakingProviders.length;
+        }
+
         info.operator = operator;
         // Update operator to provider mapping
         stakingProviderFromOperator[oldOperator] = address(0);
@@ -122,6 +129,56 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         info.operatorConfirmed = true;
         emit OperatorConfirmed(stakingProvider, _operator);
         rootApplication.confirmOperatorAddress(_operator);
+    }
+
+    /**
+     * @notice Return the length of the array of staking providers
+     */
+    function getStakingProvidersLength() external view returns (uint256) {
+        return stakingProviders.length;
+    }
+
+    /**
+     * @notice Get the value of authorized tokens for active providers as well as providers and their authorized tokens
+     * @param _startIndex Start index for looking in providers array
+     * @param _maxStakingProviders Max providers for looking, if set 0 then all will be used
+     * @return allAuthorizedTokens Sum of authorized tokens for active providers
+     * @return activeStakingProviders Array of providers and their authorized tokens.
+     * Providers addresses stored as uint256
+     * @dev Note that activeStakingProviders[0] is an array of uint256, but you want addresses.
+     * Careful when used directly!
+     */
+    function getActiveStakingProviders(
+        uint256 _startIndex,
+        uint256 _maxStakingProviders
+    )
+        external
+        view
+        returns (uint256 allAuthorizedTokens, uint256[2][] memory activeStakingProviders)
+    {
+        uint256 endIndex = stakingProviders.length;
+        require(_startIndex < endIndex, "Wrong start index");
+        if (_maxStakingProviders != 0 && _startIndex + _maxStakingProviders < endIndex) {
+            endIndex = _startIndex + _maxStakingProviders;
+        }
+        activeStakingProviders = new uint256[2][](endIndex - _startIndex);
+        allAuthorizedTokens = 0;
+
+        uint256 resultIndex = 0;
+        for (uint256 i = _startIndex; i < endIndex; i++) {
+            address stakingProvider = stakingProviders[i];
+            StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
+            uint256 eligibleAmount = info.authorized;
+            if (eligibleAmount < minimumAuthorization || !info.operatorConfirmed) {
+                continue;
+            }
+            activeStakingProviders[resultIndex][0] = uint256(uint160(stakingProvider));
+            activeStakingProviders[resultIndex++][1] = eligibleAmount;
+            allAuthorizedTokens += eligibleAmount;
+        }
+        assembly {
+            mstore(activeStakingProviders, resultIndex)
+        }
     }
 }
 
