@@ -9,7 +9,6 @@ from ape.cli import get_user_selected_account
 from ape.contracts.base import ContractContainer, ContractInstance, ContractTransactionHandler
 from ape.utils import ZERO_ADDRESS
 from eth_typing import ChecksumAddress
-from ethpm_types import MethodABI
 from web3.auto.gethdev import w3
 
 from deployment.confirm import _confirm_resolution, _continue
@@ -63,7 +62,7 @@ def _is_constant(variable: str) -> bool:
 
 
 def _resolve_proxy_address(variable) -> str:
-    proxy, target = variable.split(SPECIAL_VARIABLE_DELIMITER)
+    _, target = variable.split(SPECIAL_VARIABLE_DELIMITER)
     target_contract_container = get_contract_container(target)
     target_contract_instance = _get_contract_instance(target_contract_container)
     if target_contract_instance == ZERO_ADDRESS:
@@ -97,8 +96,7 @@ def _resolve_deployer() -> str:
     deployer_account = Deployer.get_account()
     if deployer_account is None:
         return ZERO_ADDRESS
-    else:
-        return deployer_account.address
+    return deployer_account.address
 
 
 def _validate_transaction_args(args: typing.Tuple[Any, ...], abi) -> typing.Dict[str, Any]:
@@ -258,7 +256,7 @@ class ConstructorParameters:
 
     def __init__(self, parameters: OrderedDict, constants: dict = None):
         self.parameters = parameters
-        self.constants = constants or dict()
+        self.constants = constants or {}
         validate_constructor_parameters(parameters, constants)
 
     @classmethod
