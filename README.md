@@ -9,6 +9,7 @@ Contracts from the [main NuCypher codebase](https://github.com/nucypher/nucypher
 * `contracts`: Source code for contracts
 * `scripts`: Deployment and utilities scripts
 * `tests`: Contract tests
+* `src`: NPM package sources
 
 ## Installation
 
@@ -33,8 +34,24 @@ In future, we may need to set the following:
 
 ## Running the Tests
 
+### Python Tests
+
 This project uses [tox](https://tox.readthedocs.io/en/latest/) to standardize the local and remote testing environments.
 Note that `tox` will install the dependencies from `requirements.txt` automatically and run a linter (`black`); if that is not desirable, you can just run `py.test`.
+
+### TypeScript Tests
+
+To run the TypeScript tests, you will need to install the dependencies:
+
+```bash
+$ npm install
+```
+
+Then you can run the tests:
+
+```bash
+$ npm test
+```
 
 ## Deploy to Production
 

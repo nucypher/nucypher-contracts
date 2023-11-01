@@ -1,12 +1,38 @@
 {
   "name": "@nucypher/nucypher-contracts",
-  "version": "7.0.0-rc.1",
+  "version": "7.0.0-rc.2",
   "license": "AGPL-3.0-or-later",
   "description": "Threshold Access Control (TACo) Smart Contracts",
   "author": "NuCypher",
   "files": [
     "/contracts/**/*.sol",
     "/deployment/artifacts/*.json",
-    "!/contracts/test/**/*"
-  ]
+    "!/contracts/test/**/*",
+    "dist"
+  ],
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
+    "test": "vitest run",
+    "solhint": "solhint 'contracts/**/*.sol'",
+    "lint": "eslint src test --ext .ts",
+    "lint:fix": "eslint src test --ext .ts --fix"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^6.9.0",
+    "eslint": "^8.52.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-import": "^2.29.0",
+    "eslint-plugin-n": "^16.2.0",
+    "eslint-plugin-promise": "^6.1.1",
+    "ganache": "^7.9.1",
+    "prettier": "^2.8.8",
+    "prettier-plugin-solidity": "^1.1.3",
+    "solhint": "^4.0.0",
+    "solhint-plugin-prettier": "^0.0.5",
+    "typescript": "^5.2.2",
+    "vitest": "^0.34.6"
+  }
 }
