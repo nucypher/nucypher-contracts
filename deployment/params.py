@@ -239,6 +239,9 @@ class ConstructorParameters:
             if isinstance(contract_info, str):
                 contract_constructor_params = {contract_info: OrderedDict()}
             elif isinstance(contract_info, dict):
+                if len(contract_info) != 1:
+                    raise ValueError("Malformed constructor parameters YAML.")
+
                 contract_name = list(contract_info.keys())[0]  # only one entry
                 contract_data = contract_info[contract_name]
                 parameter_values = OrderedDict()
@@ -305,7 +308,7 @@ class ProxyParameters:
             if isinstance(contract_info, str):
                 continue
 
-            if not isinstance(contract_info, dict):
+            if not isinstance(contract_info, dict) or len(contract_info) != 1:
                 raise ValueError("Malformed constructor parameters YAML.")
 
             contract_name = list(contract_info.keys())[0]  # only one entry
@@ -461,7 +464,9 @@ class Deployer(Transactor):
             contract_type_container, resolved_proxy_params = self.proxy_parameters.resolve(
                 contract_name=contract_name
             )
-            instance = self._deploy_proxy(contract_name, contract_type_container, resolved_proxy_params)
+            instance = self._deploy_proxy(
+                contract_name, contract_type_container, resolved_proxy_params
+            )
 
         return instance
 
