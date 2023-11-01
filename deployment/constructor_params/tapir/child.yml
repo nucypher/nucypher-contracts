@@ -15,7 +15,7 @@ contracts:
   - MockPolygonChild
   - TapirTACoChildApplication:
       proxy:
-        wrap_container: TACoChildApplication
+        contract_type: TACoChildApplication
       constructor:
         _rootApplication: $MockPolygonChild
         _minimumAuthorization: $FORTY_THOUSAND_TOKENS_IN_WEI_UNITS
