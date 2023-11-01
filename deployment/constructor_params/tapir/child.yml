@@ -14,21 +14,23 @@ constants:
 contracts:
   - MockPolygonChild
   - TapirTACoChildApplication:
-      _rootApplication: $MockPolygonChild
-      _minimumAuthorization: $FORTY_THOUSAND_TOKENS_IN_WEI_UNITS
-  - TransparentUpgradeableProxy:
-      _logic: $TapirTACoChildApplication
-      initialOwner: $deployer
-      _data: 0x
+      proxy:
+        wrap_container: TACoChildApplication
+      constructor:
+        _rootApplication: $MockPolygonChild
+        _minimumAuthorization: $FORTY_THOUSAND_TOKENS_IN_WEI_UNITS
   - TapirRitualToken:
-      _totalSupplyOfTokens: $TEN_MILLION_TOKENS_IN_WEI_UNITS
+      constructor:
+        _totalSupplyOfTokens: $TEN_MILLION_TOKENS_IN_WEI_UNITS
   - Coordinator:
-      _application: $TransparentUpgradeableProxy:TapirTACoChildApplication
-      _timeout: $ONE_HOUR_IN_SECONDS
-      _maxDkgSize: 32
-      _admin: $deployer
-      _currency: $TapirRitualToken
-      _feeRatePerSecond: 1
+      constructor:
+        _application: $TapirTACoChildApplication
+        _timeout: $ONE_HOUR_IN_SECONDS
+        _maxDkgSize: 32
+        _admin: $deployer
+        _currency: $TapirRitualToken
+        _feeRatePerSecond: 1
   - GlobalAllowList:
-      _coordinator: $Coordinator
-      _admin: $deployer
+      constructor:
+        _coordinator: $Coordinator
+        _admin: $deployer
