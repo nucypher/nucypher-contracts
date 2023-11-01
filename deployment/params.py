@@ -221,7 +221,6 @@ def _validate_constructor_abi_inputs(
 
 def validate_constructor_parameters(contracts, constants) -> None:
     """Validates the constructor parameters for all contracts in a single config."""
-    print("Validating constructor parameters...")
     available_contracts = list(contracts.keys())
     for contract, parameters in contracts.items():
         if not isinstance(parameters, dict):
@@ -253,6 +252,7 @@ class ConstructorParameters:
     @classmethod
     def from_config(cls, config: typing.Dict) -> "ConstructorParameters":
         """Loads the constructor parameters from a JSON file."""
+        print("Processing contract constructor parameters...")
         contracts_config = OrderedDict()
         for contract_info in config["contracts"]:
             if isinstance(contract_info, str):
@@ -281,16 +281,10 @@ class ConstructorParameters:
 
 def validate_proxy_info(contracts_proxy_info, constants) -> None:
     """Validates the proxy information for all contracts."""
-    print("Validating proxy information...")
     available_contracts = contracts_proxy_info.keys()
     contract_container = OZ_DEPENDENCY.TransparentUpgradeableProxy
     for contract, proxy_info in contracts_proxy_info.items():
-        # validate container data
-        container_name = proxy_info.container_name
-        if container_name:
-            get_contract_container(container_name)
-
-        # validate constructor data
+        # wrap container already validated, simply validate proxy constructor data
         constructor_params = proxy_info.constructor_params
         for value in constructor_params.values():
             _validate_constructor_param(value, available_contracts)
@@ -305,13 +299,14 @@ def validate_proxy_info(contracts_proxy_info, constants) -> None:
 class ProxyParameters:
     """Represents the proxy parameters for contracts that are to be proxied"""
 
-    CONTAINER_PROPERTY = "wrap_container"
+    WRAP_CONTAINER_PROPERTY = "wrap_container"
+    PROXY_NAME = "TransparentUpgradeableProxy"
 
     class Invalid(Exception):
         """Raised when the constructor parameters are invalid"""
 
     class ProxyInfo(typing.NamedTuple):
-        container_name: typing.Union[None, str]
+        wrap_container: ContractContainer
         constructor_params: OrderedDict
 
     def __init__(self, contracts_proxy_info: OrderedDict, constants: dict = None):
@@ -322,6 +317,7 @@ class ProxyParameters:
     @classmethod
     def from_config(cls, config: typing.Dict) -> "ProxyParameters":
         """Loads the proxy parameters from a JSON config file."""
+        print("Processing proxy parameters...")
         contracts_proxy_info = OrderedDict()
         for contract_info in config["contracts"]:
             if isinstance(contract_info, str):
@@ -335,7 +331,7 @@ class ProxyParameters:
             if CONTRACT_PROXY_KEY not in contract_data:
                 continue
 
-            proxy_info = cls._generate_proxy_info(contract_data, contract_name)
+            proxy_info = cls._generate_proxy_info(contract_name, contract_data)
             contracts_proxy_info.update({contract_name: proxy_info})
 
         return cls(contracts_proxy_info=contracts_proxy_info, constants=config.get("constants"))
@@ -352,8 +348,7 @@ class ProxyParameters:
         if not proxy_info:
             raise ValueError(f"Unexpected contract to proxy: {contract_name}")
 
-        contract_container_name = proxy_info.container_name or contract_name
-        contract_container = get_contract_container(contract_container_name)
+        contract_container = proxy_info.wrap_container
 
         resolved_params = OrderedDict()
         for name, value in proxy_info.constructor_params.items():
@@ -362,12 +357,13 @@ class ProxyParameters:
         return contract_container, resolved_params
 
     @classmethod
-    def _generate_proxy_info(cls, contract_data, contract_name) -> ProxyInfo:
+    def _generate_proxy_info(cls, contract_name, contract_data) -> ProxyInfo:
         proxy_data = contract_data[CONTRACT_PROXY_KEY] or dict()
 
-        container = None
-        if cls.CONTAINER_PROPERTY in proxy_data:
-            container = proxy_data[cls.CONTAINER_PROPERTY]
+        wrap_container_name = contract_name
+        if cls.WRAP_CONTAINER_PROPERTY in proxy_data:
+            wrap_container_name = proxy_data[cls.WRAP_CONTAINER_PROPERTY]
+        wrap_container = get_contract_container(wrap_container_name)
 
         constructor_data = cls._default_proxy_parameters(contract_name)
         if CONTRACT_CONSTRUCTOR_KEY in proxy_data:
@@ -380,7 +376,9 @@ class ProxyParameters:
 
                 constructor_data.update({name: value})
 
-        proxy_info = cls.ProxyInfo(container_name=container, constructor_params=constructor_data)
+        proxy_info = cls.ProxyInfo(
+            wrap_container=wrap_container, constructor_params=constructor_data
+        )
         return proxy_info
 
     @classmethod
@@ -476,10 +474,10 @@ class Deployer(Transactor):
         instance = self._deploy_contract(container, resolved_constructor_params)
 
         if self.proxy_parameters.contract_needs_proxy(contract_name):
-            contract_container, resolved_params = self.proxy_parameters.resolve(
+            wrap_container, resolved_proxy_params = self.proxy_parameters.resolve(
                 contract_name=contract_name
             )
-            instance = self._deploy_proxy(contract_name, contract_container, resolved_params)
+            instance = self._deploy_proxy(contract_name, wrap_container, resolved_proxy_params)
 
         return instance
 
@@ -495,20 +493,25 @@ class Deployer(Transactor):
         return deployer_account.deploy(*deployment_params, **kwargs)
 
     def _deploy_proxy(
-        self, target_contract_name: str, container: ContractContainer, resolved_params: OrderedDict
+        self,
+        target_contract_name: str,
+        wrap_container: ContractContainer,
+        resolved_proxy_params: OrderedDict,
     ) -> ContractInstance:
         proxy_container = OZ_DEPENDENCY.TransparentUpgradeableProxy
         print(
             f"\nDeploying {proxy_container.contract_type.name} "
             f"contract to proxy {target_contract_name}."
         )
-        proxy_contract = self._deploy_contract(proxy_container, resolved_params=resolved_params)
+        proxy_contract = self._deploy_contract(
+            proxy_container, resolved_params=resolved_proxy_params
+        )
         print(
             f"\nWrapping {target_contract_name} into "
-            f"{proxy_contract.contract_type.name} (as {container.contract_type.name}) "
+            f"{proxy_contract.contract_type.name} (as {wrap_container.contract_type.name}) "
             f"at {proxy_contract.address}."
         )
-        return container.at(proxy_contract.address)
+        return wrap_container.at(proxy_contract.address)
 
     def finalize(self, deployments: List[ContractInstance]) -> None:
         """
