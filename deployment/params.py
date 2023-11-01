@@ -28,8 +28,8 @@ from deployment.utils import (
 from eth_typing import ChecksumAddress
 from web3.auto import w3
 
-CONTRACT_CONSTRUCTOR_KEY = "constructor"
-CONTRACT_PROXY_KEY = "proxy"
+CONTRACT_CONSTRUCTOR_PARAMETER_KEY = "constructor"
+CONTRACT_PROXY_PARAMETER_KEY = "proxy"
 
 
 def _is_variable(param: Any) -> bool:
@@ -261,8 +261,10 @@ class ConstructorParameters:
                 contract_name = list(contract_info.keys())[0]  # only one entry
                 contract_data = contract_info[contract_name]
                 parameter_values = OrderedDict()
-                if CONTRACT_CONSTRUCTOR_KEY in contract_data:
-                    parameter_values = OrderedDict(contract_data[CONTRACT_CONSTRUCTOR_KEY])
+                if CONTRACT_CONSTRUCTOR_PARAMETER_KEY in contract_data:
+                    parameter_values = OrderedDict(
+                        contract_data[CONTRACT_CONSTRUCTOR_PARAMETER_KEY]
+                    )
 
                 contract_constructor_params = {contract_name: parameter_values}
             else:
@@ -328,7 +330,7 @@ class ProxyParameters:
 
             contract_name = list(contract_info.keys())[0]  # only one entry
             contract_data = contract_info[contract_name]
-            if CONTRACT_PROXY_KEY not in contract_data:
+            if CONTRACT_PROXY_PARAMETER_KEY not in contract_data:
                 continue
 
             proxy_info = cls._generate_proxy_info(contract_name, contract_data)
@@ -358,7 +360,7 @@ class ProxyParameters:
 
     @classmethod
     def _generate_proxy_info(cls, contract_name, contract_data) -> ProxyInfo:
-        proxy_data = contract_data[CONTRACT_PROXY_KEY] or dict()
+        proxy_data = contract_data[CONTRACT_PROXY_PARAMETER_KEY] or dict()
 
         wrap_container_name = contract_name
         if cls.WRAP_CONTAINER_PROPERTY in proxy_data:
@@ -366,8 +368,8 @@ class ProxyParameters:
         wrap_container = get_contract_container(wrap_container_name)
 
         constructor_data = cls._default_proxy_parameters(contract_name)
-        if CONTRACT_CONSTRUCTOR_KEY in proxy_data:
-            for name, value in proxy_data[CONTRACT_CONSTRUCTOR_KEY].items():
+        if CONTRACT_CONSTRUCTOR_PARAMETER_KEY in proxy_data:
+            for name, value in proxy_data[CONTRACT_CONSTRUCTOR_PARAMETER_KEY].items():
                 if name == "_logic":
                     raise cls.Invalid(
                         "'_logic' parameter cannot be specified: it is implicitly "
