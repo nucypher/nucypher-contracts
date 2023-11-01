@@ -24,7 +24,7 @@ contracts:
         _totalSupplyOfTokens: $TEN_MILLION_TOKENS_IN_WEI_UNITS
   - Coordinator:
       constructor:
-        _application: $proxy:LynxTACoChildApplication
+        _application: $LynxTACoChildApplication
         _timeout: $ONE_HOUR_IN_SECONDS
         _maxDkgSize: 4
         _admin: $deployer

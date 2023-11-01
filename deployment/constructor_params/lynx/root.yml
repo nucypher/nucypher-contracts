@@ -32,4 +32,4 @@ contracts:
         _commitmentDurationOptions: [$IN_SECONDS_182_DAYS, $IN_SECONDS_364_DAYS]
   - MockPolygonRoot:
       constructor:
-        _rootApplication: $proxy:TACoApplication
+        _rootApplication: $TACoApplication

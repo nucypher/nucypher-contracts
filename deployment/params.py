@@ -13,7 +13,6 @@ from deployment.constants import (
     BYTES_PREFIX,
     DEPLOYER_INDICATOR,
     OZ_DEPENDENCY,
-    PROXY_PREFIX,
     SPECIAL_VARIABLE_DELIMITER,
     VARIABLE_PREFIX,
 )
@@ -40,13 +39,8 @@ def _is_variable(param: Any) -> bool:
 
 def _is_special_variable(variable: str) -> bool:
     """Returns True if the variable is a special variable."""
-    rules = [_is_bytes, _is_proxy_variable, _is_deployer, _is_constant]
+    rules = [_is_bytes, _is_deployer, _is_constant]
     return any(rule(variable) for rule in rules)
-
-
-def _is_proxy_variable(variable: str) -> bool:
-    """Returns True if the variable is a special proxy variable."""
-    return variable.startswith(PROXY_PREFIX + SPECIAL_VARIABLE_DELIMITER)
 
 
 def _is_bytes(variable: str) -> bool:
@@ -62,22 +56,6 @@ def _is_deployer(variable: str) -> bool:
 def _is_constant(variable: str) -> bool:
     """Returns True if the variable is a deployment constant."""
     return variable.isupper()
-
-
-def _resolve_proxy_address(variable) -> str:
-    _, target = variable.split(SPECIAL_VARIABLE_DELIMITER)
-    target_contract_container = get_contract_container(target)
-    target_contract_instance = _get_contract_instance(target_contract_container)
-    if target_contract_instance == ZERO_ADDRESS:
-        # eager validation
-        return ZERO_ADDRESS
-
-    local_proxies = chain.contracts._local_proxies
-    for proxy_address, proxy_info in local_proxies.items():
-        if proxy_info.target == target_contract_instance.address:
-            return proxy_address
-
-    raise ConstructorParameters.Invalid(f"Could not determine proxy for {variable}")
 
 
 def _get_contract_instance(
@@ -118,19 +96,26 @@ def _validate_transaction_args(
     raise ValueError(f"Could not find ABI for {method} with {len(args)} args and given types")
 
 
-def _resolve_contract_address(variable: str) -> str:
+def _resolve_contract_address(variable: str, check_for_proxy_instances=True) -> str:
     """Resolves a contract address."""
     contract_container = get_contract_container(variable)
     contract_instance = _get_contract_instance(contract_container)
     if contract_instance == ZERO_ADDRESS:
+        # eager validation
         return ZERO_ADDRESS
+
+    if check_for_proxy_instances:
+        # check if contract is proxied - if so return proxy contract instead
+        local_proxies = chain.contracts._local_proxies
+        for proxy_address, proxy_info in local_proxies.items():
+            if proxy_info.target == contract_instance.address:
+                return proxy_address
+
     return contract_instance.address
 
 
 def _resolve_special_variable(variable: str, constants) -> Any:
-    if _is_proxy_variable(variable):
-        result = _resolve_proxy_address(variable)
-    elif _is_deployer(variable):
+    if _is_deployer(variable):
         result = _resolve_deployer()
     elif _is_constant(variable):
         result = _resolve_constant(variable, constants=constants)
@@ -139,17 +124,17 @@ def _resolve_special_variable(variable: str, constants) -> Any:
     return result
 
 
-def _resolve_param(value: Any, constants) -> Any:
+def _resolve_param(value: Any, constants, resolve_contracts_checking_proxies=True) -> Any:
     """Resolves a single parameter value or a list of parameter values."""
     if isinstance(value, list):
-        return [_resolve_param(v, constants) for v in value]
+        return [_resolve_param(v, constants, resolve_contracts_checking_proxies) for v in value]
     if not _is_variable(value):
         return value  # literally a value
     variable = value.strip(VARIABLE_PREFIX)
     if _is_special_variable(variable):
         result = _resolve_special_variable(variable, constants=constants)
     else:
-        result = _resolve_contract_address(variable)
+        result = _resolve_contract_address(variable, resolve_contracts_checking_proxies)
     return result
 
 
@@ -171,10 +156,6 @@ def _validate_constructor_param(param: Any, contracts: List[str]) -> None:
     if not _is_variable(param):
         return  # literally a value
     variable = param.strip(VARIABLE_PREFIX)
-
-    if _is_proxy_variable(variable):
-        _, target = variable.split(SPECIAL_VARIABLE_DELIMITER)
-        variable = target  # check proxy target
 
     if _is_special_variable(variable):
         return  # special variables are always marked as valid
@@ -354,7 +335,9 @@ class ProxyParameters:
 
         resolved_params = OrderedDict()
         for name, value in proxy_info.constructor_params.items():
-            resolved_params[name] = _resolve_param(value, constants=self.constants)
+            resolved_params[name] = _resolve_param(
+                value=value, constants=self.constants, resolve_contracts_checking_proxies=False
+            )
 
         return contract_container, resolved_params
 
