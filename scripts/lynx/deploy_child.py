@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
 from ape import project
-
 from deployment.constants import CONSTRUCTOR_PARAMS_DIR
 from deployment.params import Deployer
 
@@ -26,7 +25,9 @@ def main():
     deployer = Deployer.from_yaml(filepath=CONSTRUCTOR_PARAMS_FILEPATH, verify=VERIFY)
 
     mock_polygon_child = deployer.deploy(project.MockPolygonChild)
+
     taco_child_application = deployer.deploy(project.LynxTACoChildApplication)
+
     deployer.transact(mock_polygon_child.setChildApplication, taco_child_application.address)
 
     ritual_token = deployer.deploy(project.LynxRitualToken)
