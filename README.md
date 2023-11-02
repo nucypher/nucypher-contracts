@@ -150,6 +150,8 @@ $ ape run <domain> <script_name>  --network ethereum:goerli:infura
 
 ## NPM publishing process
 
+> **_Note:_** This manual process has been deprecated in favour of a Github workflow: [npm.yml](.github/workflows/npm.yml).
+
 For interoperability, we keep an NPM package with information of deployed smart contracts, such as address, ABI, etc.
 
 The NPM package can be found in https://www.npmjs.com/package/@nucypher/nucypher-contracts and the process to update it is as follows:
