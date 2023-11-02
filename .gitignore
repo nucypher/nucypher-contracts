@@ -16,3 +16,4 @@ contracts/.cache
 env
 .cache/
 dist/
+.cosine/

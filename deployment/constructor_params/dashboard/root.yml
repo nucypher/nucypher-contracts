@@ -1,0 +1,26 @@
+deployment:
+  name: dashboard-root
+  chain_id: 5
+
+artifacts:
+    dir: ./deployment/artifacts/
+    filename: dashboard.json
+
+constants:
+   IN_SECONDS_1_HOUR: 3600
+   IN_SECONDS_7_DAYS: 604800
+   IN_SECONDS_60_DAYS: 5184000
+   IN_SECONDS_182_DAYS: 15724800
+   IN_SECONDS_364_DAYS: 31449600
+   FORTY_THOUSAND_TOKENS_IN_WEI_UNITS: 40000000000000000000000  
+   TEN_MILLION_TOKENS_IN_WEI_UNITS: 10000000000000000000000000
+
+contracts:
+  - TACoApplication:
+      _token: "0x3f16380656cAE45D3f80D8833682d2b606eD094A"
+      _tStaking: "0x1da5d88C26EA4f87b5e09C3452eE2384Ee20DC75"
+      _minimumAuthorization: $FORTY_THOUSAND_TOKENS_IN_WEI_UNITS
+      _minOperatorSeconds: $IN_SECONDS_1_HOUR
+      _rewardDuration: $IN_SECONDS_7_DAYS
+      _deauthorizationDuration: $IN_SECONDS_60_DAYS
+      _commitmentDurationOptions: [$IN_SECONDS_182_DAYS, $IN_SECONDS_364_DAYS]
