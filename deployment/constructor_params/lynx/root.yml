@@ -22,6 +22,8 @@ contracts:
   - TestnetThresholdStaking
   - TACoApplication:
       proxy:
+        constructor:
+          _data: $encode:initialize
       constructor:
         _token: $LynxStakingToken
         _tStaking: $TestnetThresholdStaking
