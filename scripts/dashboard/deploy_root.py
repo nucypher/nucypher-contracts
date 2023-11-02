@@ -15,7 +15,8 @@ def main():
     """
 
     deployer = Deployer.from_yaml(filepath=CONSTRUCTOR_PARAMS_FILEPATH, verify=VERIFY)
-    taco_application = deployer.deploy(project.TACoApplication)
+    proxy = deployer.deploy(OZ_DEPENDENCY.TransparentUpgradeableProxy)
+    taco_application = deployer.proxy(project.TACoApplication, proxy)
 
     deployments = [
         taco_application,
