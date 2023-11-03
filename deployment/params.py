@@ -20,7 +20,7 @@ from deployment.utils import (
     verify_contracts,
 )
 from eth_typing import ChecksumAddress
-from hexbytes import HexBytes
+from ethpm_types import MethodABI
 from web3.auto import w3
 
 CONTRACT_CONSTRUCTOR_PARAMETER_KEY = "constructor"
@@ -94,13 +94,11 @@ class Encode(Variable):
 
     def __init__(self, variable: str, context: VariableContext):
         variable = variable[len(self.ENCODE_PREFIX) :]
-        self.method_name, self.input_abi_types, self.method_args = self._get_call_data(
-            variable, context
-        )
+        self.method_name, self.method_args = self._get_call_data(variable, context)
         self.contract_name = context.contract_name
 
     @staticmethod
-    def _get_call_data(variable, context) -> typing.Tuple[str, List[str], List[Any]]:
+    def _get_call_data(variable, context) -> typing.Tuple[str, List[Any]]:
         variable_elements = variable.split(",")
         method_name = variable_elements[0]
         method_args = [_process_raw_value(arg, context) for arg in variable_elements[1:]]
@@ -108,20 +106,12 @@ class Encode(Variable):
         contract_name = context.contract_name
         contract_container = get_contract_container(contract_name)
         contract_method_abis = contract_container.contract_type.methods
-        method_abi = None
-        for abi in contract_method_abis:
-            if abi.name == method_name:
-                method_abi = abi
-        if not method_abi:
-            raise ValueError(f"ABI could not be found for method {contract_name}.{method_name}")
-        input_abi_types = [t.type for t in method_abi.inputs]
-        if len(input_abi_types) != len(method_args):
-            raise ValueError(
-                f"{contract_name}.{method_name} parameters length mismatch - "
-                f"ABI requires {len(input_abi_types)}, Got {len(method_args)}."
-            )
+        specific_method_abis = [abi for abi in contract_method_abis if abi.name == method_name]
 
-        return method_name, input_abi_types, method_args
+        resolved_method_args = [_resolve_param(method_arg) for method_arg in method_args]
+        _validate_method_args(method_abis=specific_method_abis, args=resolved_method_args)
+
+        return method_name, method_args
 
     @classmethod
     def is_encode(cls, value: str) -> bool:
@@ -135,10 +125,10 @@ class Encode(Variable):
             # logic contract not yet deployed - in eager validation check
             return "0xdeadbeef"  # something noticeable in case ever actually returned
 
-        method_args = [_resolve_param(method_arg) for method_arg in self.method_args]
+        resolved_method_args = [_resolve_param(method_arg) for method_arg in self.method_args]
 
         method_handler = getattr(contract_instance, self.method_name)
-        encoded_bytes = method_handler.encode_input(*method_args)
+        encoded_bytes = method_handler.encode_input(*resolved_method_args)
         return encoded_bytes.hex()  # return as hex - just cleaner
 
 
@@ -243,6 +233,27 @@ def _get_contract_names(config: typing.Dict) -> List[str]:
             raise ValueError("Malformed constructor parameters YAML.")
 
     return contract_names
+
+
+def _validate_method_args(
+    method_abis: List[MethodABI], args: typing.Sequence[Any]
+) -> typing.Dict[str, Any]:
+    """Validates the transaction arguments against the function ABI."""
+    if len(method_abis) == 0:
+        raise ValueError("No method abis provided for validation of args")
+
+    abis_matching_args_length = [abi for abi in method_abis if len(abi.inputs) == len(args)]
+    for abi in abis_matching_args_length:
+        named_args = {}
+        for arg, abi_input in zip(args, abi.inputs):
+            if not w3.is_encodable(abi_input.type, arg):
+                break
+            named_args[abi_input.name] = arg
+        else:
+            return named_args
+    raise ValueError(
+        f"Could not find ABI for '{method_abis[0].name}' with {len(args)} arg(s) and given type(s)"
+    )
 
 
 def _validate_constructor_abi_inputs(
@@ -461,22 +472,6 @@ class ProxyParameters:
         return default_parameters
 
 
-def _validate_transaction_args(
-    method: ContractTransactionHandler, args: typing.Tuple[Any, ...]
-) -> typing.Dict[str, Any]:
-    """Validates the transaction arguments against the function ABI."""
-    expected_length_abis = [abi for abi in method.abis if len(abi.inputs) == len(args)]
-    for abi in expected_length_abis:
-        named_args = {}
-        for arg, abi_input in zip(args, abi.inputs):
-            if not w3.is_encodable(abi_input.type, arg):
-                break
-            named_args[abi_input.name] = arg
-        else:
-            return named_args
-    raise ValueError(f"Could not find ABI for {method} with {len(args)} args and given types")
-
-
 class Transactor:
     """
     Represents an ape account plus validated/annotated transaction execution.
@@ -493,7 +488,7 @@ class Transactor:
         return self._account
 
     def transact(self, method: ContractTransactionHandler, *args) -> ReceiptAPI:
-        named_args = _validate_transaction_args(method=method, args=args)
+        named_args = _validate_method_args(method_abis=method.abis, args=args)
         base_message = (
             f"\nTransacting {method.contract.contract_type.name}"
             f"[{method.contract.address[:10]}].{method}"
