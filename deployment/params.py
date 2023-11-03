@@ -73,7 +73,7 @@ class DeployerAccount(Variable):
         return deployer_account.address
 
 
-class Constant(Variable):  # oxymoron
+class Constant(Variable):  # oxymoron anyone (except David :P)...
     def __init__(self, constant_name: str, context: VariableContext):
         try:
             self.constant_value = context.constants[constant_name]
@@ -103,12 +103,7 @@ class Encode(Variable):
     def _get_call_data(variable, context) -> typing.Tuple[str, List[str], List[Any]]:
         variable_elements = variable.split(",")
         method_name = variable_elements[0]
-        method_args = list()
-        if len(variable_elements) > 1:
-            args = variable_elements[1:]
-            for arg in args:
-                processed_value = _process_raw_value(arg, context)
-                method_args.append(processed_value)
+        method_args = [_process_raw_value(arg, context) for arg in variable_elements[1:]]
 
         contract_name = context.contract_name
         contract_container = get_contract_container(contract_name)
@@ -140,12 +135,7 @@ class Encode(Variable):
             # logic contract not yet deployed - in eager validation check
             return "0xdeadbeef"  # something noticeable in case ever actually returned
 
-        method_args = list()
-        for method_arg in self.method_args:
-            value = method_arg
-            if isinstance(method_arg, Variable):
-                value = method_arg.resolve()
-            method_args.append(value)
+        method_args = [_resolve_param(method_arg) for method_arg in self.method_args]
 
         method_handler = getattr(contract_instance, self.method_name)
         encoded_bytes = method_handler.encode_input(*method_args)
