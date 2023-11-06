@@ -16,7 +16,7 @@ along with nucypher.  If not, see <https://www.gnu.org/licenses/>.
 """
 import ape
 from ape.utils import ZERO_ADDRESS
-from eth_utils import to_checksum_address
+from eth_utils import to_checksum_address, to_int
 from web3 import Web3
 
 CONFIRMATION_SLOT = 1
@@ -122,8 +122,8 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     all_locked, staking_providers = taco_application.getActiveStakingProviders(0, 0)
     assert all_locked == min_authorization
     assert len(staking_providers) == 1
-    assert to_checksum_address(staking_providers[0][0]) == staking_provider_3
-    assert staking_providers[0][1] == min_authorization
+    assert to_checksum_address(staking_providers[0][0:20]) == staking_provider_3
+    assert to_int(staking_providers[0][20:32]) == min_authorization
 
     # Operator is in use so other stakingProviders can't bond him
     with ape.reverts():
@@ -322,10 +322,10 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     all_locked, staking_providers = taco_application.getActiveStakingProviders(0, 0)
     assert all_locked == 2 * min_authorization
     assert len(staking_providers) == 2
-    assert to_checksum_address(staking_providers[0][0]) == staking_provider_3
-    assert staking_providers[0][1] == min_authorization
-    assert to_checksum_address(staking_providers[1][0]) == staking_provider_1
-    assert staking_providers[1][1] == min_authorization
+    assert to_checksum_address(staking_providers[0][0:20]) == staking_provider_3
+    assert to_int(staking_providers[0][20:32]) == min_authorization
+    assert to_checksum_address(staking_providers[1][0:20]) == staking_provider_1
+    assert to_int(staking_providers[1][20:32]) == min_authorization
     threshold_staking.involuntaryAuthorizationDecrease(
         staking_provider_1, min_authorization, min_authorization - 1, sender=creator
     )

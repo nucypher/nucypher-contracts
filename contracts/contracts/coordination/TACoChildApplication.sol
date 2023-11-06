@@ -143,36 +143,35 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
      * @param _maxStakingProviders Max providers for looking, if set 0 then all will be used
      * @return allAuthorizedTokens Sum of authorized tokens for active providers
      * @return activeStakingProviders Array of providers and their authorized tokens.
-     * Providers addresses stored as uint256
-     * @dev Note that activeStakingProviders[0] is an array of uint256, but you want addresses.
+     * Providers addresses stored together with amounts as bytes32
+     * @dev Note that activeStakingProviders is an array of bytes32, but you want addresses and amounts
      * Careful when used directly!
      */
     function getActiveStakingProviders(
         uint256 _startIndex,
         uint256 _maxStakingProviders
-    )
-        external
-        view
-        returns (uint256 allAuthorizedTokens, uint256[2][] memory activeStakingProviders)
-    {
+    ) external view returns (uint96 allAuthorizedTokens, bytes32[] memory activeStakingProviders) {
         uint256 endIndex = stakingProviders.length;
         require(_startIndex < endIndex, "Wrong start index");
         if (_maxStakingProviders != 0 && _startIndex + _maxStakingProviders < endIndex) {
             endIndex = _startIndex + _maxStakingProviders;
         }
-        activeStakingProviders = new uint256[2][](endIndex - _startIndex);
+        activeStakingProviders = new bytes32[](endIndex - _startIndex);
         allAuthorizedTokens = 0;
 
         uint256 resultIndex = 0;
         for (uint256 i = _startIndex; i < endIndex; i++) {
             address stakingProvider = stakingProviders[i];
             StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
-            uint256 eligibleAmount = info.authorized;
+            uint96 eligibleAmount = info.authorized;
             if (eligibleAmount < minimumAuthorization || !info.operatorConfirmed) {
                 continue;
             }
-            activeStakingProviders[resultIndex][0] = uint256(uint160(stakingProvider));
-            activeStakingProviders[resultIndex++][1] = eligibleAmount;
+            // bytes20 -> bytes32 adds padding after address: <address><12 zeros>
+            // uint96 -> uint256 adds padding before uint96: <20 zeros><amount>
+            activeStakingProviders[resultIndex++] =
+                bytes32(bytes20(stakingProvider)) |
+                bytes32(uint256(eligibleAmount));
             allAuthorizedTokens += eligibleAmount;
         }
         assembly {
