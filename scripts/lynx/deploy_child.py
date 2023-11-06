@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from ape import project
-from deployment.constants import CONSTRUCTOR_PARAMS_DIR, OZ_DEPENDENCY
+from deployment.constants import CONSTRUCTOR_PARAMS_DIR
 from deployment.params import Deployer
 
 VERIFY = False
@@ -26,25 +26,20 @@ def main():
 
     mock_polygon_child = deployer.deploy(project.MockPolygonChild)
 
-    taco_implementation = deployer.deploy(project.LynxTACoChildApplication)
-
-    proxy = deployer.deploy(OZ_DEPENDENCY.TransparentUpgradeableProxy)
-    taco_child_application = deployer.proxy(project.TACoChildApplication, proxy)
+    taco_child_application = deployer.deploy(project.LynxTACoChildApplication)
 
     deployer.transact(mock_polygon_child.setChildApplication, taco_child_application.address)
 
     ritual_token = deployer.deploy(project.LynxRitualToken)
 
     coordinator = deployer.deploy(project.Coordinator)
-
     deployer.transact(taco_child_application.initialize, coordinator.address)
 
     global_allow_list = deployer.deploy(project.GlobalAllowList)
 
     deployments = [
         mock_polygon_child,
-        taco_implementation,  # implementation (contract name is different than proxy contract)
-        taco_child_application,  # proxy
+        taco_child_application,
         ritual_token,
         coordinator,
         global_allow_list,

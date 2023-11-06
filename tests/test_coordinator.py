@@ -84,26 +84,31 @@ def erc20(project, initiator):
 
 
 @pytest.fixture()
-def coordinator(project, deployer, application, erc20, initiator):
+def coordinator(project, deployer, application, erc20, initiator, oz_dependency):
     admin = deployer
     contract = project.Coordinator.deploy(
         application.address,
-        TIMEOUT,
-        MAX_DKG_SIZE,
-        admin,
         erc20.address,
         FEE_RATE,
         sender=deployer,
     )
-    contract.grantRole(contract.INITIATOR_ROLE(), initiator, sender=admin)
-    return contract
+
+    encoded_initializer_function = contract.initialize.encode_input(TIMEOUT, MAX_DKG_SIZE, admin)
+    proxy = oz_dependency.TransparentUpgradeableProxy.deploy(
+        contract.address,
+        deployer,
+        encoded_initializer_function,
+        sender=deployer,
+    )
+    proxy_contract = project.Coordinator.at(proxy.address)
+
+    proxy_contract.grantRole(contract.INITIATOR_ROLE(), initiator, sender=admin)
+    return proxy_contract
 
 
 @pytest.fixture()
 def global_allow_list(project, deployer, coordinator):
-    contract = project.GlobalAllowList.deploy(
-        coordinator.address, deployer, sender=deployer  # admin
-    )
+    contract = project.GlobalAllowList.deploy(coordinator.address, sender=deployer)
     return contract
 
 
@@ -378,11 +383,6 @@ def test_authorize_using_global_allow_list(
         nodes=nodes,
         allow_logic=global_allow_list,
     )
-
-    with ape.reverts(access_control_error_message(initiator.address, role=0)):
-        global_allow_list.setCoordinator(coordinator.address, sender=initiator)
-
-    global_allow_list.setCoordinator(coordinator.address, sender=deployer)
 
     # This block mocks the signature of a threshold decryption request
     w3 = Web3()

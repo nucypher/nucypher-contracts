@@ -17,19 +17,21 @@ constants:
 
 contracts:
   - LynxStakingToken:
-      _totalSupplyOfTokens: $TEN_MILLION_TOKENS_IN_WEI_UNITS
+      constructor:
+        _totalSupplyOfTokens: $TEN_MILLION_TOKENS_IN_WEI_UNITS
   - TestnetThresholdStaking
   - TACoApplication:
-      _token: $LynxStakingToken
-      _tStaking: $TestnetThresholdStaking
-      _minimumAuthorization: $FORTY_THOUSAND_TOKENS_IN_WEI_UNITS
-      _minOperatorSeconds: $IN_SECONDS_1_HOUR
-      _rewardDuration: $IN_SECONDS_7_DAYS
-      _deauthorizationDuration: $IN_SECONDS_60_DAYS
-      _commitmentDurationOptions: [$IN_SECONDS_182_DAYS, $IN_SECONDS_364_DAYS]
-  - TransparentUpgradeableProxy:
-      _logic: $TACoApplication
-      initialOwner: $deployer
-      _data: 0x
+      proxy:
+        constructor:
+          _data: $encode:initialize
+      constructor:
+        _token: $LynxStakingToken
+        _tStaking: $TestnetThresholdStaking
+        _minimumAuthorization: $FORTY_THOUSAND_TOKENS_IN_WEI_UNITS
+        _minOperatorSeconds: $IN_SECONDS_1_HOUR
+        _rewardDuration: $IN_SECONDS_7_DAYS
+        _deauthorizationDuration: $IN_SECONDS_60_DAYS
+        _commitmentDurationOptions: [$IN_SECONDS_182_DAYS, $IN_SECONDS_364_DAYS]
   - MockPolygonRoot:
-      _rootApplication: $TransparentUpgradeableProxy:TACoApplication
+      constructor:
+        _rootApplication: $TACoApplication

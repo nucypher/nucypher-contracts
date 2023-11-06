@@ -6,12 +6,6 @@ from ape import project
 DEPLOYMENT_DIR = Path(deployment.__file__).parent
 CONSTRUCTOR_PARAMS_DIR = DEPLOYMENT_DIR / "constructor_params"
 ARTIFACTS_DIR = DEPLOYMENT_DIR / "artifacts"
-VARIABLE_PREFIX = "$"
-SPECIAL_VARIABLE_DELIMITER = ":"
-HEX_PREFIX = "0x"
-BYTES_PREFIX = "bytes"
-DEPLOYER_INDICATOR = "deployer"
-PROXY_NAME = "TransparentUpgradeableProxy"
 OZ_DEPENDENCY = project.dependencies["openzeppelin"]["5.0.0"]
 
 #

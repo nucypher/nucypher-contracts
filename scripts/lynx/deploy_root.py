@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from ape import project
-from deployment.constants import CONSTRUCTOR_PARAMS_DIR, OZ_DEPENDENCY
+from deployment.constants import CONSTRUCTOR_PARAMS_DIR
 from deployment.params import Deployer
 
 VERIFY = False
@@ -27,14 +27,9 @@ def main():
 
     mock_threshold_staking = deployer.deploy(project.TestnetThresholdStaking)
 
-    _ = deployer.deploy(project.TACoApplication)
-
-    proxy = deployer.deploy(OZ_DEPENDENCY.TransparentUpgradeableProxy)
-    taco_application = deployer.proxy(project.TACoApplication, proxy)
+    taco_application = deployer.deploy(project.TACoApplication)
 
     deployer.transact(mock_threshold_staking.setApplication, taco_application.address)
-
-    deployer.transact(taco_application.initialize)
 
     mock_polygon_root = deployer.deploy(project.MockPolygonRoot)
     deployer.transact(taco_application.setChildApplication, mock_polygon_root.address)

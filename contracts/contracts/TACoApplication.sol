@@ -639,6 +639,15 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
     }
 
     /**
+     * @notice Returns the amount of stake that is pending authorization
+     *         decrease for the given staking provider. If no authorization
+     *         decrease has been requested, returns zero.
+     */
+    function pendingAuthorizationDecrease(address _stakingProvider) external view returns (uint96) {
+        return stakingProviderInfo[_stakingProvider].deauthorizing;
+    }
+
+    /**
      * @notice Get the value of authorized tokens for active providers as well as providers and their authorized tokens
      * @param _startIndex Start index for looking in providers array
      * @param _maxStakingProviders Max providers for looking, if set 0 then all will be used

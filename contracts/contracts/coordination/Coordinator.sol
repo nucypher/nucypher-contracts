@@ -2,7 +2,8 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/extensions/AccessControlDefaultAdminRules.sol";
+import "@openzeppelin-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
+import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./FlatRateFeeModel.sol";
@@ -15,7 +16,7 @@ import "./IEncryptionAuthorizer.sol";
  * @title Coordinator
  * @notice Coordination layer for Threshold Access Control (TACo 🌮)
  */
-contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
+contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable, FlatRateFeeModel {
     // Ritual
     event StartRitual(uint32 indexed ritualId, address indexed authority, address[] participants);
     event StartAggregationRound(uint32 indexed ritualId);
@@ -99,15 +100,19 @@ contract Coordinator is AccessControlDefaultAdminRules, FlatRateFeeModel {
 
     constructor(
         ITACoChildApplication _application,
-        uint32 _timeout,
-        uint16 _maxDkgSize,
-        address _admin,
         IERC20 _currency,
         uint256 _feeRatePerSecond
-    ) AccessControlDefaultAdminRules(0, _admin) FlatRateFeeModel(_currency, _feeRatePerSecond) {
+    ) FlatRateFeeModel(_currency, _feeRatePerSecond) {
         application = _application;
+    }
+
+    /**
+     * @notice Initialize function for using with OpenZeppelin proxy
+     */
+    function initialize(uint32 _timeout, uint16 _maxDkgSize, address _admin) external initializer {
         timeout = _timeout;
         maxDkgSize = _maxDkgSize;
+        __AccessControlDefaultAdminRules_init(0, _admin);
     }
 
     function getRitualState(uint32 ritualId) external view returns (RitualState) {
