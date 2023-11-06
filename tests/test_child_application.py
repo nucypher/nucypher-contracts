@@ -21,7 +21,7 @@ from eth_utils import to_checksum_address
 from web3 import Web3
 
 OPERATOR_SLOT = 0
-CONFIRMATION_SLOT = 1
+CONFIRMATION_SLOT = 2
 
 MIN_AUTHORIZATION = Web3.to_wei(40_000, "ether")
 

@@ -16,10 +16,9 @@ import "./Coordinator.sol";
 contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initializable {
     struct StakingProviderInfo {
         address operator;
-        bool operatorConfirmed;
         uint96 authorized;
-        // TODO: what about undelegations etc?
-        uint256 index; // index in stakingProviders array + 1
+        bool operatorConfirmed;
+        uint248 index; // index in stakingProviders array + 1
     }
 
     ITACoChildToRoot public immutable rootApplication;
@@ -91,7 +90,7 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
 
         if (info.index == 0) {
             stakingProviders.push(stakingProvider);
-            info.index = stakingProviders.length;
+            info.index = uint248(stakingProviders.length);
         }
 
         info.operator = operator;
