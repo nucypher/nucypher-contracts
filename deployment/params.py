@@ -168,6 +168,7 @@ def _get_contract_instance(
         raise ValueError(
             f"Variable {contract_container.contract_type.name} is ambiguous - "
             f"expected exactly one contract instance, got {len(contract_instances)}"
+            " Checkout ~/.ape/<NETWORK>/deployments_map.json"
         )
     contract_instance = contract_instances[0]
     return contract_instance

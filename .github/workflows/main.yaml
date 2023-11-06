@@ -43,6 +43,9 @@ jobs:
       - name: Run Ape Tests
         run: ape test
 
+      - name: Build npm package
+        run: npm run build
+
       - name: Run TS Tests
         run: npm run test
 
