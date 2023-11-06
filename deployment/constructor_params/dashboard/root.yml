@@ -17,6 +17,8 @@ constants:
 contracts:
   - TACoApplication:
       proxy:
+        constructor:
+          _data: $encode:initialize
       constructor:
         _token: "0x3f16380656cAE45D3f80D8833682d2b606eD094A"
         _tStaking: "0x1da5d88C26EA4f87b5e09C3452eE2384Ee20DC75"
