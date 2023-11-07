@@ -17,10 +17,11 @@ along with nucypher.  If not, see <https://www.gnu.org/licenses/>.
 import ape
 import pytest
 from ape.utils import ZERO_ADDRESS
+from eth_utils import to_checksum_address, to_int
 from web3 import Web3
 
 OPERATOR_SLOT = 0
-CONFIRMATION_SLOT = 1
+CONFIRMATION_SLOT = 2
 
 MIN_AUTHORIZATION = Web3.to_wei(40_000, "ether")
 
@@ -77,10 +78,16 @@ def test_update_operator(accounts, root_application, child_application):
     assert child_application.stakingProviderFromOperator(operator_1) == staking_provider_1
     assert child_application.stakingProviderInfo(staking_provider_1)[OPERATOR_SLOT] == operator_1
     assert not child_application.stakingProviderInfo(staking_provider_1)[CONFIRMATION_SLOT]
+    assert child_application.getStakingProvidersLength() == 1
 
     assert tx.events == [
         child_application.OperatorUpdated(stakingProvider=staking_provider_1, operator=operator_1)
     ]
+
+    # No active stakingProviders before confirmation
+    all_locked, staking_providers = child_application.getActiveStakingProviders(0, 0)
+    assert all_locked == 0
+    assert len(staking_providers) == 0
 
     # Rebond operator
     tx = root_application.updateOperator(staking_provider_1, operator_2, sender=creator)
@@ -89,6 +96,7 @@ def test_update_operator(accounts, root_application, child_application):
     assert child_application.stakingProviderInfo(staking_provider_1)[OPERATOR_SLOT] == operator_2
     assert not child_application.stakingProviderInfo(operator_2)[CONFIRMATION_SLOT]
     assert not child_application.stakingProviderInfo(operator_1)[CONFIRMATION_SLOT]
+    assert child_application.getStakingProvidersLength() == 1
 
     assert tx.events == [
         child_application.OperatorUpdated(stakingProvider=staking_provider_1, operator=operator_2)
@@ -100,6 +108,7 @@ def test_update_operator(accounts, root_application, child_application):
     assert child_application.stakingProviderInfo(staking_provider_1)[OPERATOR_SLOT] == ZERO_ADDRESS
     assert not child_application.stakingProviderInfo(operator_2)[CONFIRMATION_SLOT]
     assert child_application.stakingProviderFromOperator(ZERO_ADDRESS) == ZERO_ADDRESS
+    assert child_application.getStakingProvidersLength() == 1
 
     assert tx.events == [
         child_application.OperatorUpdated(stakingProvider=staking_provider_1, operator=ZERO_ADDRESS)
@@ -110,6 +119,7 @@ def test_update_operator(accounts, root_application, child_application):
     assert child_application.stakingProviderFromOperator(operator_1) == staking_provider_2
     assert child_application.stakingProviderInfo(staking_provider_2)[OPERATOR_SLOT] == operator_1
     assert not child_application.stakingProviderInfo(operator_1)[CONFIRMATION_SLOT]
+    assert child_application.getStakingProvidersLength() == 2
 
     assert tx.events == [
         child_application.OperatorUpdated(stakingProvider=staking_provider_2, operator=operator_1)
@@ -154,7 +164,14 @@ def test_update_authorization(accounts, root_application, child_application):
 
 
 def test_confirm_address(accounts, root_application, child_application, coordinator):
-    creator, staking_provider, operator, *everyone_else = accounts[0:]
+    (
+        creator,
+        staking_provider,
+        operator,
+        other_staking_provider,
+        other_operator,
+        *everyone_else,
+    ) = accounts[0:]
     value = Web3.to_wei(40_000, "ether")
 
     # Call to confirm operator address can be done only from coordinator
@@ -170,6 +187,7 @@ def test_confirm_address(accounts, root_application, child_application, coordina
     assert child_application.stakingProviderFromOperator(operator) == staking_provider
     assert child_application.stakingProviderInfo(staking_provider)[OPERATOR_SLOT] == operator
     assert not child_application.stakingProviderInfo(staking_provider)[CONFIRMATION_SLOT]
+    assert child_application.getStakingProvidersLength() == 1
 
     # Can't confirm operator address without authorized amount
     with ape.reverts("Authorization must be greater than minimum"):
@@ -189,14 +207,55 @@ def test_confirm_address(accounts, root_application, child_application, coordina
         child_application.OperatorConfirmed(stakingProvider=staking_provider, operator=operator)
     ]
 
+    # After confirmation operator is becoming active
+    all_locked, staking_providers = child_application.getActiveStakingProviders(0, 0)
+    assert all_locked == value
+    assert len(staking_providers) == 1
+    assert to_checksum_address(staking_providers[0][0:20]) == staking_provider
+    assert to_int(staking_providers[0][20:32]) == value
+
     # Can't confirm twice
     with ape.reverts("Can't confirm same operator twice"):
         coordinator.confirmOperatorAddress(operator, sender=creator)
 
+    # Confirm another operator
+    root_application.updateAuthorization(other_staking_provider, value, sender=creator)
+    root_application.updateOperator(other_staking_provider, other_staking_provider, sender=creator)
+    coordinator.confirmOperatorAddress(other_staking_provider, sender=creator)
+    assert child_application.stakingProviderInfo(other_staking_provider)[CONFIRMATION_SLOT]
+    assert root_application.confirmations(other_staking_provider)
+    assert child_application.getStakingProvidersLength() == 2
+
+    # After confirmation operator is becoming active
+    all_locked, staking_providers = child_application.getActiveStakingProviders(0, 0)
+    assert all_locked == 2 * value
+    assert len(staking_providers) == 2
+    assert to_checksum_address(staking_providers[0][0:20]) == staking_provider
+    assert to_int(staking_providers[0][20:32]) == value
+    assert to_checksum_address(staking_providers[1][0:20]) == other_staking_provider
+    assert to_int(staking_providers[1][20:32]) == value
+    all_locked, staking_providers = child_application.getActiveStakingProviders(1, 1)
+    assert all_locked == value
+    assert len(staking_providers) == 1
+    assert to_checksum_address(staking_providers[0][0:20]) == other_staking_provider
+    assert to_int(staking_providers[0][20:32]) == value
+
     # Changing operator resets confirmation
-    root_application.updateOperator(staking_provider, staking_provider, sender=creator)
-    assert child_application.stakingProviderFromOperator(staking_provider) == staking_provider
+    root_application.updateOperator(other_staking_provider, other_operator, sender=creator)
+    assert child_application.stakingProviderFromOperator(other_operator) == other_staking_provider
     assert (
-        child_application.stakingProviderInfo(staking_provider)[OPERATOR_SLOT] == staking_provider
+        child_application.stakingProviderInfo(other_staking_provider)[OPERATOR_SLOT]
+        == other_operator
     )
-    assert not child_application.stakingProviderInfo(staking_provider)[CONFIRMATION_SLOT]
+    assert not child_application.stakingProviderInfo(other_staking_provider)[CONFIRMATION_SLOT]
+    assert child_application.getStakingProvidersLength() == 2
+
+    # Resetting operator removes from active list before next confirmation
+    all_locked, staking_providers = child_application.getActiveStakingProviders(1, 0)
+    assert all_locked == 0
+    assert len(staking_providers) == 0
+
+    root_application.updateAuthorization(staking_provider, value - 1, sender=creator)
+    all_locked, staking_providers = child_application.getActiveStakingProviders(0, 0)
+    assert all_locked == 0
+    assert len(staking_providers) == 0
