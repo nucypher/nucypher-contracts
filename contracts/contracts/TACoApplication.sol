@@ -648,6 +648,20 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
     }
 
     /**
+     * @notice Returns the remaining time in seconds that needs to pass before
+     *         the requested authorization decrease can be approved.
+     */
+    function remainingAuthorizationDecreaseDelay(
+        address _stakingProvider
+    ) external view returns (uint64) {
+        uint256 endDeauthorization = stakingProviderInfo[_stakingProvider].endDeauthorization;
+        if (endDeauthorization <= block.timestamp) {
+            return 0;
+        }
+        return uint64(endDeauthorization - block.timestamp);
+    }
+
+    /**
      * @notice Get the value of authorized tokens for active providers as well as providers and their authorized tokens
      * @param _startIndex Start index for looking in providers array
      * @param _maxStakingProviders Max providers for looking, if set 0 then all will be used
