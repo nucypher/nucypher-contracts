@@ -1,7 +1,7 @@
 {
   "5": {
     "TACoApplication": {
-      "address": "0xC1a87ED2FEEa048eB69EBB6e033757EF7a837Ea9",
+      "address": "0x52f09eB7D82344b5343dAeF7D7ef56E9b84AEbA4",
       "abi": [
         {
           "type": "constructor",
@@ -749,8 +749,8 @@
             },
             {
               "name": "activeStakingProviders",
-              "type": "uint256[2][]",
-              "internalType": "uint256[2][]"
+              "type": "bytes32[]",
+              "internalType": "bytes32[]"
             }
           ]
         },
@@ -1000,6 +1000,25 @@
             }
           ],
           "outputs": []
+        },
+        {
+          "type": "function",
+          "name": "remainingAuthorizationDecreaseDelay",
+          "stateMutability": "view",
+          "inputs": [
+            {
+              "name": "_stakingProvider",
+              "type": "address",
+              "internalType": "address"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "",
+              "type": "uint64",
+              "internalType": "uint64"
+            }
+          ]
         },
         {
           "type": "function",
@@ -1298,8 +1317,8 @@
           "outputs": []
         }
       ],
-      "tx_hash": "0x35c2b2e4c82fa383fce1d3ed24f9a9bd1cd57f2100d1117a329fbf4507740f7b",
-      "block_number": 9995765,
+      "tx_hash": "0xfe32445a73839f513259ea38804f1e51c5dc09e2ab67b6510d1b73357dcc4ef3",
+      "block_number": 10018886,
       "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
     }
   }
