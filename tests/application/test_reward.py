@@ -238,7 +238,7 @@ def test_update_reward(
 
     # Finish decrease without confirmation
     chain.pending_timestamp += deauthorization_duration
-    taco_application.finishAuthorizationDecrease(staking_provider_2, sender=creator)
+    taco_application.approveAuthorizationDecrease(staking_provider_2, sender=creator)
     check_reward_no_confirmation()
 
     # Resync without confirmation
@@ -279,7 +279,7 @@ def test_update_reward(
 
     # Finish decrease with confirmation
     chain.pending_timestamp += deauthorization_duration
-    taco_application.finishAuthorizationDecrease(staking_provider_2, sender=creator)
+    taco_application.approveAuthorizationDecrease(staking_provider_2, sender=creator)
     check_reward_with_confirmation()
 
     # Resync with confirmation

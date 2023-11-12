@@ -57,13 +57,13 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     )
 
     assert taco_application.getOperatorFromStakingProvider(staking_provider_1) == ZERO_ADDRESS
-    assert taco_application.stakingProviderFromOperator(staking_provider_1) == ZERO_ADDRESS
+    assert taco_application.stakingProviderToOperator(staking_provider_1) == ZERO_ADDRESS
     assert taco_application.getOperatorFromStakingProvider(staking_provider_2) == ZERO_ADDRESS
-    assert taco_application.stakingProviderFromOperator(staking_provider_2) == ZERO_ADDRESS
+    assert taco_application.stakingProviderToOperator(staking_provider_2) == ZERO_ADDRESS
     assert taco_application.getOperatorFromStakingProvider(staking_provider_3) == ZERO_ADDRESS
-    assert taco_application.stakingProviderFromOperator(staking_provider_3) == ZERO_ADDRESS
+    assert taco_application.stakingProviderToOperator(staking_provider_3) == ZERO_ADDRESS
     assert taco_application.getOperatorFromStakingProvider(staking_provider_4) == ZERO_ADDRESS
-    assert taco_application.stakingProviderFromOperator(staking_provider_4) == ZERO_ADDRESS
+    assert taco_application.stakingProviderToOperator(staking_provider_4) == ZERO_ADDRESS
 
     # Staking provider can't confirm operator address because there is no operator by default
     child_application.confirmOperatorAddress(staking_provider_1, sender=staking_provider_1)
@@ -84,18 +84,22 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
         taco_application.bondOperator(staking_provider_3, operator1, sender=beneficiary)
     with ape.reverts():
         taco_application.bondOperator(staking_provider_3, operator1, sender=authorizer)
+    with ape.reverts():
+        taco_application.registerOperator(operator1, sender=beneficiary)
+    with ape.reverts():
+        taco_application.registerOperator(operator1, sender=authorizer)
 
     # Staking provider bonds operator and now operator can make a confirmation
     tx = taco_application.bondOperator(staking_provider_3, operator1, sender=owner3)
     timestamp = tx.timestamp
     assert taco_application.getOperatorFromStakingProvider(staking_provider_3) == operator1
-    assert taco_application.stakingProviderFromOperator(operator1) == staking_provider_3
+    assert taco_application.stakingProviderToOperator(operator1) == staking_provider_3
     assert not taco_application.stakingProviderInfo(staking_provider_3)[CONFIRMATION_SLOT]
     assert not taco_application.isOperatorConfirmed(operator1)
     assert taco_application.getStakingProvidersLength() == 1
     assert taco_application.stakingProviders(0) == staking_provider_3
     assert child_application.operatorFromStakingProvider(staking_provider_3) == operator1
-    assert child_application.stakingProviderFromOperator(operator1) == staking_provider_3
+    assert child_application.stakingProviderToOperator(operator1) == staking_provider_3
 
     # No active stakingProviders before confirmation
     all_locked, staking_providers = taco_application.getActiveStakingProviders(0, 0)
@@ -106,7 +110,7 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     assert taco_application.stakingProviderInfo(staking_provider_3)[CONFIRMATION_SLOT]
     assert taco_application.isOperatorConfirmed(operator1)
     assert child_application.operatorFromStakingProvider(staking_provider_3) == operator1
-    assert child_application.stakingProviderFromOperator(operator1) == staking_provider_3
+    assert child_application.stakingProviderToOperator(operator1) == staking_provider_3
 
     events = taco_application.OperatorBonded.from_receipt(tx)
     assert events == [
@@ -148,14 +152,14 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     tx = taco_application.bondOperator(staking_provider_3, ZERO_ADDRESS, sender=staking_provider_3)
     timestamp = tx.timestamp
     assert taco_application.getOperatorFromStakingProvider(staking_provider_3) == ZERO_ADDRESS
-    assert taco_application.stakingProviderFromOperator(staking_provider_3) == ZERO_ADDRESS
-    assert taco_application.stakingProviderFromOperator(operator1) == ZERO_ADDRESS
+    assert taco_application.stakingProviderToOperator(staking_provider_3) == ZERO_ADDRESS
+    assert taco_application.stakingProviderToOperator(operator1) == ZERO_ADDRESS
     assert not taco_application.stakingProviderInfo(staking_provider_3)[CONFIRMATION_SLOT]
     assert not taco_application.isOperatorConfirmed(operator1)
     assert taco_application.getStakingProvidersLength() == 1
     assert taco_application.stakingProviders(0) == staking_provider_3
     assert child_application.operatorFromStakingProvider(staking_provider_3) == ZERO_ADDRESS
-    assert child_application.stakingProviderFromOperator(operator1) == ZERO_ADDRESS
+    assert child_application.stakingProviderToOperator(operator1) == ZERO_ADDRESS
 
     # Resetting operator removes from active list before next confirmation
     all_locked, staking_providers = taco_application.getActiveStakingProviders(0, 0)
@@ -173,16 +177,16 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     ]
 
     # The staking provider can bond now a new operator, without waiting additional time.
-    tx = taco_application.bondOperator(staking_provider_3, operator2, sender=staking_provider_3)
+    tx = taco_application.registerOperator(operator2, sender=staking_provider_3)
     timestamp = tx.timestamp
     assert taco_application.getOperatorFromStakingProvider(staking_provider_3) == operator2
-    assert taco_application.stakingProviderFromOperator(operator2) == staking_provider_3
+    assert taco_application.stakingProviderToOperator(operator2) == staking_provider_3
     assert not taco_application.stakingProviderInfo(staking_provider_3)[CONFIRMATION_SLOT]
     assert not taco_application.isOperatorConfirmed(operator2)
     assert taco_application.getStakingProvidersLength() == 1
     assert taco_application.stakingProviders(0) == staking_provider_3
     assert child_application.operatorFromStakingProvider(staking_provider_3) == operator2
-    assert child_application.stakingProviderFromOperator(operator2) == staking_provider_3
+    assert child_application.stakingProviderToOperator(operator2) == staking_provider_3
 
     events = taco_application.OperatorBonded.from_receipt(tx)
     assert events == [
@@ -203,21 +207,21 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     assert taco_application.isOperatorConfirmed(operator2)
     assert taco_application.stakingProviderInfo(staking_provider_3)[CONFIRMATION_SLOT]
     assert child_application.operatorFromStakingProvider(staking_provider_3) == operator2
-    assert child_application.stakingProviderFromOperator(operator2) == staking_provider_3
+    assert child_application.stakingProviderToOperator(operator2) == staking_provider_3
 
     # Another staking provider can bond a free operator
     assert taco_application.authorizedOverall() == min_authorization
     tx = taco_application.bondOperator(staking_provider_4, operator1, sender=staking_provider_4)
     timestamp = tx.timestamp
     assert taco_application.getOperatorFromStakingProvider(staking_provider_4) == operator1
-    assert taco_application.stakingProviderFromOperator(operator1) == staking_provider_4
+    assert taco_application.stakingProviderToOperator(operator1) == staking_provider_4
     assert not taco_application.isOperatorConfirmed(operator1)
     assert not taco_application.stakingProviderInfo(staking_provider_4)[CONFIRMATION_SLOT]
     assert taco_application.getStakingProvidersLength() == 2
     assert taco_application.stakingProviders(1) == staking_provider_4
     assert taco_application.authorizedOverall() == min_authorization
     assert child_application.operatorFromStakingProvider(staking_provider_4) == operator1
-    assert child_application.stakingProviderFromOperator(operator1) == staking_provider_4
+    assert child_application.stakingProviderToOperator(operator1) == staking_provider_4
 
     events = taco_application.OperatorBonded.from_receipt(tx)
     assert events == [
@@ -241,14 +245,14 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     assert taco_application.stakingProviderInfo(staking_provider_4)[CONFIRMATION_SLOT]
     assert taco_application.authorizedOverall() == 2 * min_authorization
     assert child_application.operatorFromStakingProvider(staking_provider_4) == operator1
-    assert child_application.stakingProviderFromOperator(operator1) == staking_provider_4
+    assert child_application.stakingProviderToOperator(operator1) == staking_provider_4
 
     chain.pending_timestamp += min_operator_seconds
     tx = taco_application.bondOperator(staking_provider_4, operator3, sender=staking_provider_4)
     timestamp = tx.timestamp
     assert taco_application.getOperatorFromStakingProvider(staking_provider_4) == operator3
-    assert taco_application.stakingProviderFromOperator(operator3) == staking_provider_4
-    assert taco_application.stakingProviderFromOperator(operator1) == ZERO_ADDRESS
+    assert taco_application.stakingProviderToOperator(operator3) == staking_provider_4
+    assert taco_application.stakingProviderToOperator(operator1) == ZERO_ADDRESS
     assert not taco_application.isOperatorConfirmed(operator3)
     assert not taco_application.isOperatorConfirmed(operator1)
     assert not taco_application.stakingProviderInfo(staking_provider_4)[CONFIRMATION_SLOT]
@@ -256,8 +260,8 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     assert taco_application.stakingProviders(1) == staking_provider_4
     assert taco_application.authorizedOverall() == min_authorization
     assert child_application.operatorFromStakingProvider(staking_provider_4) == operator3
-    assert child_application.stakingProviderFromOperator(operator1) == ZERO_ADDRESS
-    assert child_application.stakingProviderFromOperator(operator3) == staking_provider_4
+    assert child_application.stakingProviderToOperator(operator1) == ZERO_ADDRESS
+    assert child_application.stakingProviderToOperator(operator3) == staking_provider_4
 
     # Resetting operator removes from active list before next confirmation
     all_locked, staking_providers = taco_application.getActiveStakingProviders(1, 0)
@@ -278,7 +282,7 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     threshold_staking.setRoles(operator1, sender=creator)
     threshold_staking.authorizationIncreased(operator1, 0, min_authorization, sender=operator1)
     assert taco_application.getOperatorFromStakingProvider(operator1) == ZERO_ADDRESS
-    assert taco_application.stakingProviderFromOperator(operator1) == ZERO_ADDRESS
+    assert taco_application.stakingProviderToOperator(operator1) == ZERO_ADDRESS
 
     chain.pending_timestamp += min_operator_seconds
 
@@ -293,7 +297,7 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     )
     timestamp = tx.timestamp
     assert taco_application.getOperatorFromStakingProvider(staking_provider_1) == staking_provider_1
-    assert taco_application.stakingProviderFromOperator(staking_provider_1) == staking_provider_1
+    assert taco_application.stakingProviderToOperator(staking_provider_1) == staking_provider_1
     assert taco_application.getStakingProvidersLength() == 3
     assert taco_application.stakingProviders(2) == staking_provider_1
 
@@ -313,7 +317,7 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     )
     child_application.confirmOperatorAddress(staking_provider_1, sender=staking_provider_1)
     assert child_application.operatorFromStakingProvider(staking_provider_1) == staking_provider_1
-    assert child_application.stakingProviderFromOperator(staking_provider_1) == staking_provider_1
+    assert child_application.stakingProviderToOperator(staking_provider_1) == staking_provider_1
 
     # If stake will be less than minimum then provider is not active
     threshold_staking.authorizationIncreased(
@@ -334,15 +338,15 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     assert len(staking_providers) == 0
 
     # Unbond and rebond oeprator
-    taco_application.bondOperator(staking_provider_3, ZERO_ADDRESS, sender=staking_provider_3)
-    taco_application.bondOperator(staking_provider_3, operator2, sender=staking_provider_3)
+    taco_application.registerOperator(ZERO_ADDRESS, sender=staking_provider_3)
+    taco_application.registerOperator(operator2, sender=staking_provider_3)
     assert not taco_application.isOperatorConfirmed(operator2)
 
     # Operator can be unbonded before confirmation without restriction
     taco_application.bondOperator(staking_provider_3, ZERO_ADDRESS, sender=staking_provider_3)
     assert taco_application.getOperatorFromStakingProvider(staking_provider_3) == ZERO_ADDRESS
-    assert taco_application.stakingProviderFromOperator(staking_provider_3) == ZERO_ADDRESS
-    assert taco_application.stakingProviderFromOperator(operator2) == ZERO_ADDRESS
+    assert taco_application.stakingProviderToOperator(staking_provider_3) == ZERO_ADDRESS
+    assert taco_application.stakingProviderToOperator(operator2) == ZERO_ADDRESS
 
 
 def test_confirm_address(

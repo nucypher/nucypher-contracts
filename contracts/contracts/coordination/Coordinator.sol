@@ -176,7 +176,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
     function setProviderPublicKey(BLS12381.G2Point calldata _publicKey) external {
         uint32 lastRitualId = uint32(rituals.length);
-        address stakingProvider = application.stakingProviderFromOperator(msg.sender);
+        address stakingProvider = application.stakingProviderToOperator(msg.sender);
         require(stakingProvider != address(0), "Operator has no bond with staking provider");
 
         ParticipantKey memory newRecord = ParticipantKey(lastRitualId, _publicKey);
@@ -314,7 +314,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
             "Not waiting for transcripts"
         );
 
-        address provider = application.stakingProviderFromOperator(msg.sender);
+        address provider = application.stakingProviderToOperator(msg.sender);
         Participant storage participant = getParticipantFromProvider(ritual, provider);
 
         require(application.authorizedStake(provider) > 0, "Not enough authorization");
@@ -353,7 +353,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
             "Not waiting for aggregations"
         );
 
-        address provider = application.stakingProviderFromOperator(msg.sender);
+        address provider = application.stakingProviderToOperator(msg.sender);
         Participant storage participant = getParticipantFromProvider(ritual, provider);
         require(application.authorizedStake(provider) > 0, "Not enough authorization");
 

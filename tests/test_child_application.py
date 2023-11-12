@@ -75,7 +75,7 @@ def test_update_operator(accounts, root_application, child_application):
 
     # First bonding of operator
     tx = root_application.updateOperator(staking_provider_1, operator_1, sender=creator)
-    assert child_application.stakingProviderFromOperator(operator_1) == staking_provider_1
+    assert child_application.stakingProviderToOperator(operator_1) == staking_provider_1
     assert child_application.stakingProviderInfo(staking_provider_1)[OPERATOR_SLOT] == operator_1
     assert not child_application.stakingProviderInfo(staking_provider_1)[CONFIRMATION_SLOT]
     assert child_application.getStakingProvidersLength() == 1
@@ -91,8 +91,8 @@ def test_update_operator(accounts, root_application, child_application):
 
     # Rebond operator
     tx = root_application.updateOperator(staking_provider_1, operator_2, sender=creator)
-    assert child_application.stakingProviderFromOperator(operator_2) == staking_provider_1
-    assert child_application.stakingProviderFromOperator(operator_1) == ZERO_ADDRESS
+    assert child_application.stakingProviderToOperator(operator_2) == staking_provider_1
+    assert child_application.stakingProviderToOperator(operator_1) == ZERO_ADDRESS
     assert child_application.stakingProviderInfo(staking_provider_1)[OPERATOR_SLOT] == operator_2
     assert not child_application.stakingProviderInfo(operator_2)[CONFIRMATION_SLOT]
     assert not child_application.stakingProviderInfo(operator_1)[CONFIRMATION_SLOT]
@@ -104,10 +104,10 @@ def test_update_operator(accounts, root_application, child_application):
 
     # Unbond operator
     tx = root_application.updateOperator(staking_provider_1, ZERO_ADDRESS, sender=creator)
-    assert child_application.stakingProviderFromOperator(operator_2) == ZERO_ADDRESS
+    assert child_application.stakingProviderToOperator(operator_2) == ZERO_ADDRESS
     assert child_application.stakingProviderInfo(staking_provider_1)[OPERATOR_SLOT] == ZERO_ADDRESS
     assert not child_application.stakingProviderInfo(operator_2)[CONFIRMATION_SLOT]
-    assert child_application.stakingProviderFromOperator(ZERO_ADDRESS) == ZERO_ADDRESS
+    assert child_application.stakingProviderToOperator(ZERO_ADDRESS) == ZERO_ADDRESS
     assert child_application.getStakingProvidersLength() == 1
 
     assert tx.events == [
@@ -116,7 +116,7 @@ def test_update_operator(accounts, root_application, child_application):
 
     # Bonding from another address
     tx = root_application.updateOperator(staking_provider_2, operator_1, sender=creator)
-    assert child_application.stakingProviderFromOperator(operator_1) == staking_provider_2
+    assert child_application.stakingProviderToOperator(operator_1) == staking_provider_2
     assert child_application.stakingProviderInfo(staking_provider_2)[OPERATOR_SLOT] == operator_1
     assert not child_application.stakingProviderInfo(operator_1)[CONFIRMATION_SLOT]
     assert child_application.getStakingProvidersLength() == 2
@@ -184,7 +184,7 @@ def test_confirm_address(accounts, root_application, child_application, coordina
 
     # First bonding of operator
     root_application.updateOperator(staking_provider, operator, sender=creator)
-    assert child_application.stakingProviderFromOperator(operator) == staking_provider
+    assert child_application.stakingProviderToOperator(operator) == staking_provider
     assert child_application.stakingProviderInfo(staking_provider)[OPERATOR_SLOT] == operator
     assert not child_application.stakingProviderInfo(staking_provider)[CONFIRMATION_SLOT]
     assert child_application.getStakingProvidersLength() == 1
@@ -242,7 +242,7 @@ def test_confirm_address(accounts, root_application, child_application, coordina
 
     # Changing operator resets confirmation
     root_application.updateOperator(other_staking_provider, other_operator, sender=creator)
-    assert child_application.stakingProviderFromOperator(other_operator) == other_staking_provider
+    assert child_application.stakingProviderToOperator(other_operator) == other_staking_provider
     assert (
         child_application.stakingProviderInfo(other_staking_provider)[OPERATOR_SLOT]
         == other_operator
