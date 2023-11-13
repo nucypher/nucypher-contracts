@@ -159,6 +159,7 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
     uint64 public immutable commitmentDurationOption2;
     uint64 public immutable commitmentDurationOption3;
     uint64 public immutable commitmentDurationOption4;
+    uint64 public immutable commitmentDeadline;
 
     IStaking public immutable tStaking;
     IERC20 public immutable token;
@@ -186,6 +187,7 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
      * @param _rewardDuration Duration of one reward cycle in seconds
      * @param _deauthorizationDuration Duration of decreasing authorization in seconds
      * @param _commitmentDurationOptions Options for commitment duration
+     * @param _commitmentDeadline Last date to make a commitment
      */
     constructor(
         IERC20 _token,
@@ -194,7 +196,8 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
         uint256 _minOperatorSeconds,
         uint256 _rewardDuration,
         uint256 _deauthorizationDuration,
-        uint64[] memory _commitmentDurationOptions
+        uint64[] memory _commitmentDurationOptions,
+        uint64 _commitmentDeadline
     ) {
         uint256 totalSupply = _token.totalSupply();
         require(
@@ -228,6 +231,7 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
         commitmentDurationOption4 = _commitmentDurationOptions.length >= 4
             ? _commitmentDurationOptions[3]
             : 0;
+        commitmentDeadline = _commitmentDeadline;
         _disableInitializers();
     }
 
@@ -286,23 +290,25 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
         adjudicator = _adjudicator;
     }
 
-    /// @notice Returns authorization-related parameters of the application.
-    /// @dev The minimum authorization is also returned by `minimumAuthorization()`
-    ///      function, as a requirement of `IApplication` interface.
-    /// @return _minimumAuthorization The minimum authorization amount required
-    ///         so that operator can participate in the application.
-    /// @return authorizationDecreaseDelay Delay in seconds that needs to pass
-    ///         between the time authorization decrease is requested and the
-    ///         time that request gets approved. Protects against free-riders
-    ///         earning rewards and not being active in the network.
-    /// @return authorizationDecreaseChangePeriod Authorization decrease change
-    ///        period in seconds. It is the time, before authorization decrease
-    ///        delay end, during which the pending authorization decrease
-    ///        request can be overwritten.
-    ///        If set to 0, pending authorization decrease request can not be
-    ///        overwritten until the entire `authorizationDecreaseDelay` ends.
-    ///        If set to value equal `authorizationDecreaseDelay`, request can
-    ///        always be overwritten.
+    /**
+     *  @notice Returns authorization-related parameters of the application.
+     *  @dev The minimum authorization is also returned by `minimumAuthorization()`
+     *       function, as a requirement of `IApplication` interface.
+     *  @return _minimumAuthorization The minimum authorization amount required
+     *          so that operator can participate in the application.
+     *  @return authorizationDecreaseDelay Delay in seconds that needs to pass
+     *          between the time authorization decrease is requested and the
+     *          time that request gets approved. Protects against free-riders
+     *          earning rewards and not being active in the network.
+     *  @return authorizationDecreaseChangePeriod Authorization decrease change
+     *         period in seconds. It is the time, before authorization decrease
+     *         delay end, during which the pending authorization decrease
+     *         request can be overwritten.
+     *         If set to 0, pending authorization decrease request can not be
+     *         overwritten until the entire `authorizationDecreaseDelay` ends.
+     *         If set to value equal `authorizationDecreaseDelay`, request can
+     *         always be overwritten.
+     */
     function authorizationParameters()
         external
         view
@@ -592,6 +598,7 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
         address _stakingProvider,
         uint64 _commitmentDuration
     ) external onlyOwnerOrStakingProvider(_stakingProvider) {
+        require(block.timestamp < commitmentDeadline, "Commitment window closed");
         require(
             _commitmentDuration > 0 &&
                 (_commitmentDuration == commitmentDurationOption1 ||

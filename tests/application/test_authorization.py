@@ -702,6 +702,7 @@ def test_commitment(accounts, threshold_staking, taco_application, chain, child_
     commitment_duration_1 = taco_application.commitmentDurationOption1()
     commitment_duration_2 = taco_application.commitmentDurationOption2()
     commitment_duration_3 = taco_application.commitmentDurationOption3()
+    commitment_deadline = taco_application.commitmentDeadline()
 
     # Commitment can be made only for authorized staking provider
     with ape.reverts("Not owner or provider"):
@@ -779,3 +780,9 @@ def test_commitment(accounts, threshold_staking, taco_application, chain, child_
             stakingProvider=another_staking_provider, endCommitment=end_commitment
         )
     ]
+
+    # Wait until deadline
+    chain.pending_timestamp = commitment_deadline
+    threshold_staking.authorizationIncreased(creator, 0, value, sender=creator)
+    with ape.reverts("Commitment window closed"):
+        taco_application.makeCommitment(creator, commitment_duration_1, sender=creator)
