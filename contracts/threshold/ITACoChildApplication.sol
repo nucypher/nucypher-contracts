@@ -9,5 +9,6 @@ interface ITACoChildApplication is ITACoChildToRoot {
 
     function authorizedStake(address _stakingProvider) external view returns (uint96);
 
+    function minimumAuthorization() external view returns (uint96);
     //TODO: Function to get locked stake duration?
 }

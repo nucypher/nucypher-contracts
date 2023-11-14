@@ -254,6 +254,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         ritual.endTimestamp = ritual.initTimestamp + duration;
         ritual.accessController = accessController;
 
+        uint96 minAuthorization = application.minimumAuthorization();
         address previous = address(0);
         for (uint256 i = 0; i < length; i++) {
             Participant storage newParticipant = ritual.participant.push();
@@ -265,7 +266,10 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
             require(previous < current, "Providers must be sorted");
             // TODO: Improve check for eligible nodes (staking, etc) - nucypher#3109
             // TODO: Change check to isAuthorized(), without amount
-            require(application.authorizedStake(current) > 0, "Not enough authorization");
+            require(
+                application.authorizedStake(current) >= minAuthorization, 
+                "Not enough authorization"
+            );
             newParticipant.provider = current;
             previous = current;
         }
