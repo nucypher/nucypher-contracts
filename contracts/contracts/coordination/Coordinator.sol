@@ -438,7 +438,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         currency.safeTransferFrom(msg.sender, address(this), ritualCost);
     }
 
-    function processPendingFee(uint32 ritualId) public {
+    function processPendingFee(uint32 ritualId) public returns(uint256){
         Ritual storage ritual = rituals[ritualId];
         RitualState state = getRitualState(ritual);
         require(
@@ -454,13 +454,15 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         totalPendingFees -= pending;
         delete pendingFees[ritualId];
         // Transfer fees back to initiator if failed
+        uint256 refundableFee = 0;
         if (state == RitualState.TIMEOUT || state == RitualState.INVALID) {
             // Refund everything minus cost of renting cohort for a day
             // TODO: Validate if this is enough to remove griefing attacks
             uint256 duration = ritual.endTimestamp - ritual.initTimestamp;
-            uint256 refundableFee = (pending * (duration - 1 days)) / duration;
+            refundableFee = (pending * (duration - 1 days)) / duration;
             currency.safeTransfer(ritual.initiator, refundableFee);
         }
+        return refundableFee;
     }
 
     function processReimbursement(uint256 initialGasLeft) internal {
