@@ -13,6 +13,7 @@ constants:
   IN_SECONDS_182_DAYS: 15724800
   IN_SECONDS_364_DAYS: 31449600
   FORTY_THOUSAND_TOKENS_IN_WEI_UNITS: 40000000000000000000000
+  YEAR_2025: 1735689600
 
 contracts:
   - TACoApplication:
@@ -27,3 +28,4 @@ contracts:
         _rewardDuration: $IN_SECONDS_7_DAYS
         _deauthorizationDuration: $IN_SECONDS_60_DAYS
         _commitmentDurationOptions: [$IN_SECONDS_182_DAYS, $IN_SECONDS_364_DAYS]
+        _commitmentDeadline: $YEAR_2025
