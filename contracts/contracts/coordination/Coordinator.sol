@@ -124,6 +124,17 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         return getRitualState(rituals[ritualId]) == RitualState.FINALIZED;
     }
 
+    function isRitualActive(Ritual storage ritual) internal view returns (bool) {
+        bool dkgIsFinalized = getRitualState(ritual) == RitualState.FINALIZED;
+        bool ritualIsNotExpired = block.timestamp <= ritual.endTimestamp;
+        return dkgIsFinalized && ritualIsNotExpired;
+    }
+
+    function isRitualActive(uint32 ritualId) external view returns (bool) {
+        Ritual storage ritual = rituals[ritualId];
+        return isRitualActive(ritual);
+    }
+
     function getRitualState(Ritual storage ritual) internal view returns (RitualState) {
         uint32 t0 = ritual.initTimestamp;
         uint32 deadline = t0 + timeout;
