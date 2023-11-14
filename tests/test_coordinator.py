@@ -16,11 +16,12 @@ RitualState = IntEnum(
     "RitualState",
     [
         "NON_INITIATED",
-        "AWAITING_TRANSCRIPTS",
-        "AWAITING_AGGREGATIONS",
-        "TIMEOUT",
-        "INVALID",
-        "FINALIZED",
+        "DKG_AWAITING_TRANSCRIPTS",
+        "DKG_AWAITING_AGGREGATIONS",
+        "DKG_TIMEOUT",
+        "DKG_INVALID",
+        "ACTIVE",
+        "EXPIRED"
     ],
     start=0,
 )
@@ -190,7 +191,7 @@ def test_initiate_ritual(
     assert event["authority"] == authority
     assert event["participants"] == tuple(n.address.lower() for n in nodes)
 
-    assert coordinator.getRitualState(0) == RitualState.AWAITING_TRANSCRIPTS
+    assert coordinator.getRitualState(0) == RitualState.DKG_AWAITING_TRANSCRIPTS
 
     ritual_struct = coordinator.rituals(ritualID)
     assert ritual_struct[0] == initiator
@@ -248,7 +249,7 @@ def test_post_transcript(coordinator, nodes, initiator, erc20, global_allow_list
     transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
 
     for node in nodes:
-        assert coordinator.getRitualState(0) == RitualState.AWAITING_TRANSCRIPTS
+        assert coordinator.getRitualState(0) == RitualState.DKG_AWAITING_TRANSCRIPTS
 
         tx = coordinator.postTranscript(0, transcript, sender=node)
 
@@ -264,7 +265,7 @@ def test_post_transcript(coordinator, nodes, initiator, erc20, global_allow_list
         assert not participant.aggregated
         assert not participant.decryptionRequestStaticKey
 
-    assert coordinator.getRitualState(0) == RitualState.AWAITING_AGGREGATIONS
+    assert coordinator.getRitualState(0) == RitualState.DKG_AWAITING_AGGREGATIONS
 
 
 def test_post_transcript_but_not_part_of_ritual(
@@ -336,7 +337,7 @@ def test_post_aggregation(
     decryption_request_static_keys = [os.urandom(42) for _ in nodes]
     dkg_public_key = (os.urandom(32), os.urandom(16))
     for i, node in enumerate(nodes):
-        assert coordinator.getRitualState(ritualID) == RitualState.AWAITING_AGGREGATIONS
+        assert coordinator.getRitualState(ritualID) == RitualState.DKG_AWAITING_AGGREGATIONS
         tx = coordinator.postAggregation(
             ritualID, aggregated, dkg_public_key, decryption_request_static_keys[i], sender=node
         )
@@ -353,7 +354,7 @@ def test_post_aggregation(
         assert participant.aggregated
         assert participant.decryptionRequestStaticKey == decryption_request_static_keys[i]
 
-    assert coordinator.getRitualState(ritualID) == RitualState.FINALIZED
+    assert coordinator.getRitualState(ritualID) == RitualState.ACTIVE
     events = coordinator.EndRitual.from_receipt(tx)
     assert events == [coordinator.EndRitual(ritualId=ritualID, successful=True)]
 
@@ -402,7 +403,7 @@ def test_authorize_using_global_allow_list(
     with ape.reverts("Only active rituals can add authorizations"):
         global_allow_list.authorize(0, [deployer.address], sender=initiator)
 
-    with ape.reverts("Ritual not finalized"):
+    with ape.reverts("Ritual not active"):
         coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(digest))
 
     # Finalize ritual
