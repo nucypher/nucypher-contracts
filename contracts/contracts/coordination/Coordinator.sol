@@ -17,12 +17,10 @@ import "./IEncryptionAuthorizer.sol";
  * @notice Coordination layer for Threshold Access Control (TACo 🌮)
  */
 contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable, FlatRateFeeModel {
-    // Ritual
+    // DKG Protocol
     event StartRitual(uint32 indexed ritualId, address indexed authority, address[] participants);
     event StartAggregationRound(uint32 indexed ritualId);
     event EndRitual(uint32 indexed ritualId, bool successful);
-
-    // Node
     event TranscriptPosted(uint32 indexed ritualId, address indexed node, bytes32 transcriptDigest);
     event AggregationPosted(
         uint32 indexed ritualId,
@@ -30,11 +28,17 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         bytes32 aggregatedTranscriptDigest
     );
 
-    // Admin
+    // Protocol administration
     event TimeoutChanged(uint32 oldTimeout, uint32 newTimeout);
     event MaxDkgSizeChanged(uint16 oldSize, uint16 newSize);
     event ReimbursementPoolSet(address indexed pool);
 
+    // Cohort administration
+    event RitualAuthorityTransferred(
+        uint32 indexed ritualId,
+        address indexed previousAuthority,
+        address indexed newAuthority
+    );
     event ParticipantPublicKeySet(
         uint32 indexed ritualId,
         address indexed participant,
@@ -218,11 +222,13 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         emit ReimbursementPoolSet(address(pool));
     }
 
-    function setRitualAuthority(uint32 ritualId, address authority) external {
+    function transferRitualAuthority(uint32 ritualId, address newAuthority) external {
         Ritual storage ritual = rituals[ritualId];
-        require(getRitualState(ritual) == RitualState.FINALIZED, "Ritual not finalized");
-        require(msg.sender == ritual.authority, "Sender not ritual authority");
-        ritual.authority = authority;
+        require(isRitualActive(ritual), "Ritual is not active");
+        address previousAuthority = ritual.authority;
+        require(msg.sender == previousAuthority, "Sender not ritual authority");
+        ritual.authority = newAuthority;
+        emit RitualAuthorityTransferred(ritualId, previousAuthority, newAuthority);
     }
 
     function numberOfRituals() external view returns (uint256) {
