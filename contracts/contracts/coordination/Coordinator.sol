@@ -33,6 +33,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     // Admin
     event TimeoutChanged(uint32 oldTimeout, uint32 newTimeout);
     event MaxDkgSizeChanged(uint16 oldSize, uint16 newSize);
+    event ReimbursementPoolSet(address indexed pool);
 
     event ParticipantPublicKeySet(
         uint32 indexed ritualId,
@@ -203,7 +204,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
             "Invalid ReimbursementPool"
         );
         reimbursementPool = pool;
-        // TODO: Events
+        emit ReimbursementPoolSet(address(pool));
     }
 
     function setRitualAuthority(uint32 ritualId, address authority) external {
