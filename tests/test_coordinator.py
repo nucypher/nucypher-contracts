@@ -11,6 +11,7 @@ MAX_DKG_SIZE = 4
 FEE_RATE = 42
 ERC20_SUPPLY = 10**24
 DURATION = 48 * 60 * 60
+ONE_DAY = 24 * 60 * 60
 
 RitualState = IntEnum(
     "RitualState",
@@ -372,6 +373,67 @@ def test_post_aggregation(
         coordinator.withdrawTokens(erc20.address, fee + 1, sender=treasury)
     coordinator.withdrawTokens(erc20.address, fee, sender=treasury)
 
+
+def test_post_aggregation_fails(
+    coordinator, nodes, initiator, erc20, global_allow_list, treasury, deployer
+):
+    coordinator.grantRole(coordinator.TREASURY_ROLE(), treasury, sender=deployer)
+    initiator_balance_before_payment = erc20.balanceOf(initiator)
+
+    initiate_ritual(
+        coordinator=coordinator,
+        erc20=erc20,
+        authority=initiator,
+        nodes=nodes,
+        allow_logic=global_allow_list,
+    )
+    ritualID = 0
+    transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
+    for node in nodes:
+        coordinator.postTranscript(ritualID, transcript, sender=node)
+
+    aggregated = transcript  # has the same size as transcript
+    decryption_request_static_keys = [os.urandom(42) for _ in nodes]
+    dkg_public_key = (os.urandom(32), os.urandom(16))
+
+    # First node does their thing
+    _ = coordinator.postAggregation(
+        ritualID, aggregated, dkg_public_key, decryption_request_static_keys[0], sender=nodes[0]
+    )
+
+    # Second node screws up everything
+    bad_aggregated = os.urandom(transcript_size(len(nodes), len(nodes)))
+    tx = coordinator.postAggregation(
+        ritualID, bad_aggregated, dkg_public_key, decryption_request_static_keys[1], sender=nodes[1]
+    )
+
+    assert coordinator.getRitualState(ritualID) == RitualState.DKG_INVALID
+    events = coordinator.EndRitual.from_receipt(tx)
+    assert events == [coordinator.EndRitual(ritualId=ritualID, successful=False)]
+
+    # Fees are still pending
+    fee = coordinator.getRitualInitiationCost(nodes, DURATION)
+    assert erc20.balanceOf(coordinator) == fee
+    assert coordinator.totalPendingFees() == fee
+    assert coordinator.pendingFees(ritualID) == fee
+    with ape.reverts("Can't withdraw pending fees"):
+        coordinator.withdrawTokens(erc20.address, 1, sender=treasury)
+
+    # Anyone can trigger processing of pending fees
+
+    initiator_balance_before_refund = erc20.balanceOf(initiator)
+    assert initiator_balance_before_refund == initiator_balance_before_payment - fee
+
+    coordinator.processPendingFee(ritualID, sender=treasury)
+
+    initiator_balance_after_refund = erc20.balanceOf(initiator)
+    coordinator_balance_after_refund = erc20.balanceOf(coordinator)
+    refund = initiator_balance_after_refund - initiator_balance_before_refund
+    assert refund == coordinator.getRitualInitiationCost(nodes, ONE_DAY)
+    assert coordinator_balance_after_refund + refund == fee
+    assert coordinator.totalPendingFees() == 0
+    assert coordinator.pendingFees(ritualID) == 0
+    coordinator.withdrawTokens(erc20.address, coordinator_balance_after_refund, sender=treasury)
 
 def test_authorize_using_global_allow_list(
     coordinator, nodes, deployer, initiator, erc20, global_allow_list
