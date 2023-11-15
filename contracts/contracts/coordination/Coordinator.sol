@@ -141,7 +141,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
             return RitualState.NON_INITIATED;
         } else if (ritual.totalAggregations == ritual.dkgSize) {
             // DKG was succesful
-            if(block.timestamp <= ritual.endTimestamp) {
+            if (block.timestamp <= ritual.endTimestamp) {
                 return RitualState.ACTIVE;
             } else {
                 return RitualState.EXPIRED;
@@ -287,7 +287,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
             // TODO: Improve check for eligible nodes (staking, etc) - nucypher#3109
             // TODO: Change check to isAuthorized(), without amount
             require(
-                application.authorizedStake(current) >= minAuthorization, 
+                application.authorizedStake(current) >= minAuthorization,
                 "Not enough authorization"
             );
             newParticipant.provider = current;
@@ -417,8 +417,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         Ritual storage ritual = rituals[ritualId];
         RitualState state = getRitualState(ritual);
         require(
-            state == RitualState.ACTIVE
-            || state == RitualState.EXPIRED,
+            state == RitualState.ACTIVE || state == RitualState.EXPIRED,
             "Ritual not finalized"
         );
         return ritual.publicKey;
@@ -468,7 +467,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         currency.safeTransferFrom(msg.sender, address(this), ritualCost);
     }
 
-    function processPendingFee(uint32 ritualId) public returns(uint256){
+    function processPendingFee(uint32 ritualId) public returns (uint256) {
         Ritual storage ritual = rituals[ritualId];
         RitualState state = getRitualState(ritual);
         require(
