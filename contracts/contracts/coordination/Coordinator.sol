@@ -92,6 +92,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     bytes32 public constant TREASURY_ROLE = keccak256("TREASURY_ROLE");
 
     ITACoChildApplication public immutable application;
+    uint96 private immutable minAuthorization;
 
     Ritual[] public rituals;
     uint32 public timeout;
@@ -110,6 +111,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         uint256 _feeRatePerSecond
     ) FlatRateFeeModel(_currency, _feeRatePerSecond) {
         application = _application;
+        minAuthorization = _application.minimumAuthorization();
     }
 
     /**
@@ -274,7 +276,6 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         ritual.endTimestamp = ritual.initTimestamp + duration;
         ritual.accessController = accessController;
 
-        uint96 minAuthorization = application.minimumAuthorization();
         address previous = address(0);
         for (uint256 i = 0; i < length; i++) {
             Participant storage newParticipant = ritual.participant.push();
@@ -467,7 +468,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         currency.safeTransferFrom(msg.sender, address(this), ritualCost);
     }
 
-    function processPendingFee(uint32 ritualId) public returns (uint256) {
+    function processPendingFee(uint32 ritualId) public returns (uint256 refundableFee) {
         Ritual storage ritual = rituals[ritualId];
         RitualState state = getRitualState(ritual);
         require(
@@ -484,7 +485,6 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         totalPendingFees -= pending;
         delete pendingFees[ritualId];
         // Transfer fees back to initiator if failed
-        uint256 refundableFee = 0;
         if (state == RitualState.DKG_TIMEOUT || state == RitualState.DKG_INVALID) {
             // Refund everything minus cost of renting cohort for a day
             // TODO: Validate if this is enough to remove griefing attacks
