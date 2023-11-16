@@ -625,16 +625,14 @@ contract TACoApplication is
     /**
      * @notice Returns staking provider for specified operator
      */
-    function stakingProviderToOperator(address _operator) external view returns (address) {
+    function operatorToStakingProvider(address _operator) external view returns (address) {
         return _stakingProviderFromOperator[_operator];
     }
 
     /**
      * @notice Returns operator for specified staking provider
      */
-    function getOperatorFromStakingProvider(
-        address _stakingProvider
-    ) external view returns (address) {
+    function stakingProviderToOperator(address _stakingProvider) external view returns (address) {
         return stakingProviderInfo[_stakingProvider].operator;
     }
 

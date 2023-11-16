@@ -22,6 +22,9 @@ interface IApplicationWithOperator is IApplication {
     /// @notice Returns operator registered for the given staking provider.
     function stakingProviderToOperator(address stakingProvider) external view returns (address);
 
+    /// @notice Returns staking provider of the given operator.
+    function operatorToStakingProvider(address operator) external view returns (address);
+
     /// @notice Used by staking provider to set operator address that will
     ///         operate a node. The operator addressmust be unique.
     ///         Reverts if the operator is already set for the staking provider

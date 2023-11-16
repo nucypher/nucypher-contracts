@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 import "../contracts/coordination/ITACoChildToRoot.sol";
 
 interface ITACoChildApplication is ITACoChildToRoot {
-    function stakingProviderToOperator(address _operator) external view returns (address);
+    function operatorToStakingProvider(address _operator) external view returns (address);
 
     function authorizedStake(address _stakingProvider) external view returns (uint96);
 
