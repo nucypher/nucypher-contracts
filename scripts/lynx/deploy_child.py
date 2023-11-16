@@ -21,6 +21,13 @@ def main():
     ape-polygon               0.6.5
     ape-solidity              0.6.9
     eth-ape                   0.6.20
+
+    November 16, 2023, Update:
+    ape-etherscan             0.6.10
+    ape-infura                0.6.4
+    ape-polygon               0.6.6
+    ape-solidity              0.6.9
+    eth-ape                   0.6.20
     """
 
     deployer = Deployer.from_yaml(filepath=CONSTRUCTOR_PARAMS_FILEPATH, verify=VERIFY)
