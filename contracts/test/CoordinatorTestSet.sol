@@ -8,6 +8,8 @@ import "../threshold/ITACoChildApplication.sol";
  * @notice Contract for testing Coordinator contract
  */
 contract ChildApplicationForCoordinatorMock is ITACoChildApplication {
+    uint96 public minimumAuthorization = 0;
+
     mapping(address => uint96) public authorizedStake;
     mapping(address => address) public operatorFromStakingProvider;
     mapping(address => address) public stakingProviderFromOperator;

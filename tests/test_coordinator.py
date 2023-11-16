@@ -11,16 +11,18 @@ MAX_DKG_SIZE = 4
 FEE_RATE = 42
 ERC20_SUPPLY = 10**24
 DURATION = 48 * 60 * 60
+ONE_DAY = 24 * 60 * 60
 
 RitualState = IntEnum(
     "RitualState",
     [
         "NON_INITIATED",
-        "AWAITING_TRANSCRIPTS",
-        "AWAITING_AGGREGATIONS",
-        "TIMEOUT",
-        "INVALID",
-        "FINALIZED",
+        "DKG_AWAITING_TRANSCRIPTS",
+        "DKG_AWAITING_AGGREGATIONS",
+        "DKG_TIMEOUT",
+        "DKG_INVALID",
+        "ACTIVE",
+        "EXPIRED"
     ],
     start=0,
 )
@@ -190,7 +192,7 @@ def test_initiate_ritual(
     assert event["authority"] == authority
     assert event["participants"] == tuple(n.address.lower() for n in nodes)
 
-    assert coordinator.getRitualState(0) == RitualState.AWAITING_TRANSCRIPTS
+    assert coordinator.getRitualState(0) == RitualState.DKG_AWAITING_TRANSCRIPTS
 
     ritual_struct = coordinator.rituals(ritualID)
     assert ritual_struct[0] == initiator
@@ -248,7 +250,7 @@ def test_post_transcript(coordinator, nodes, initiator, erc20, global_allow_list
     transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
 
     for node in nodes:
-        assert coordinator.getRitualState(0) == RitualState.AWAITING_TRANSCRIPTS
+        assert coordinator.getRitualState(0) == RitualState.DKG_AWAITING_TRANSCRIPTS
 
         tx = coordinator.postTranscript(0, transcript, sender=node)
 
@@ -264,7 +266,7 @@ def test_post_transcript(coordinator, nodes, initiator, erc20, global_allow_list
         assert not participant.aggregated
         assert not participant.decryptionRequestStaticKey
 
-    assert coordinator.getRitualState(0) == RitualState.AWAITING_AGGREGATIONS
+    assert coordinator.getRitualState(0) == RitualState.DKG_AWAITING_AGGREGATIONS
 
 
 def test_post_transcript_but_not_part_of_ritual(
@@ -336,7 +338,7 @@ def test_post_aggregation(
     decryption_request_static_keys = [os.urandom(42) for _ in nodes]
     dkg_public_key = (os.urandom(32), os.urandom(16))
     for i, node in enumerate(nodes):
-        assert coordinator.getRitualState(ritualID) == RitualState.AWAITING_AGGREGATIONS
+        assert coordinator.getRitualState(ritualID) == RitualState.DKG_AWAITING_AGGREGATIONS
         tx = coordinator.postAggregation(
             ritualID, aggregated, dkg_public_key, decryption_request_static_keys[i], sender=node
         )
@@ -353,7 +355,7 @@ def test_post_aggregation(
         assert participant.aggregated
         assert participant.decryptionRequestStaticKey == decryption_request_static_keys[i]
 
-    assert coordinator.getRitualState(ritualID) == RitualState.FINALIZED
+    assert coordinator.getRitualState(ritualID) == RitualState.ACTIVE
     events = coordinator.EndRitual.from_receipt(tx)
     assert events == [coordinator.EndRitual(ritualId=ritualID, successful=True)]
 
@@ -371,6 +373,67 @@ def test_post_aggregation(
         coordinator.withdrawTokens(erc20.address, fee + 1, sender=treasury)
     coordinator.withdrawTokens(erc20.address, fee, sender=treasury)
 
+
+def test_post_aggregation_fails(
+    coordinator, nodes, initiator, erc20, global_allow_list, treasury, deployer
+):
+    coordinator.grantRole(coordinator.TREASURY_ROLE(), treasury, sender=deployer)
+    initiator_balance_before_payment = erc20.balanceOf(initiator)
+
+    initiate_ritual(
+        coordinator=coordinator,
+        erc20=erc20,
+        authority=initiator,
+        nodes=nodes,
+        allow_logic=global_allow_list,
+    )
+    ritualID = 0
+    transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
+    for node in nodes:
+        coordinator.postTranscript(ritualID, transcript, sender=node)
+
+    aggregated = transcript  # has the same size as transcript
+    decryption_request_static_keys = [os.urandom(42) for _ in nodes]
+    dkg_public_key = (os.urandom(32), os.urandom(16))
+
+    # First node does their thing
+    _ = coordinator.postAggregation(
+        ritualID, aggregated, dkg_public_key, decryption_request_static_keys[0], sender=nodes[0]
+    )
+
+    # Second node screws up everything
+    bad_aggregated = os.urandom(transcript_size(len(nodes), len(nodes)))
+    tx = coordinator.postAggregation(
+        ritualID, bad_aggregated, dkg_public_key, decryption_request_static_keys[1], sender=nodes[1]
+    )
+
+    assert coordinator.getRitualState(ritualID) == RitualState.DKG_INVALID
+    events = coordinator.EndRitual.from_receipt(tx)
+    assert events == [coordinator.EndRitual(ritualId=ritualID, successful=False)]
+
+    # Fees are still pending
+    fee = coordinator.getRitualInitiationCost(nodes, DURATION)
+    assert erc20.balanceOf(coordinator) == fee
+    assert coordinator.totalPendingFees() == fee
+    assert coordinator.pendingFees(ritualID) == fee
+    with ape.reverts("Can't withdraw pending fees"):
+        coordinator.withdrawTokens(erc20.address, 1, sender=treasury)
+
+    # Anyone can trigger processing of pending fees
+
+    initiator_balance_before_refund = erc20.balanceOf(initiator)
+    assert initiator_balance_before_refund == initiator_balance_before_payment - fee
+
+    coordinator.processPendingFee(ritualID, sender=treasury)
+
+    initiator_balance_after_refund = erc20.balanceOf(initiator)
+    coordinator_balance_after_refund = erc20.balanceOf(coordinator)
+    refund = initiator_balance_after_refund - initiator_balance_before_refund
+    assert refund == coordinator.getRitualInitiationCost(nodes, ONE_DAY)
+    assert coordinator_balance_after_refund + refund == fee
+    assert coordinator.totalPendingFees() == 0
+    assert coordinator.pendingFees(ritualID) == 0
+    coordinator.withdrawTokens(erc20.address, coordinator_balance_after_refund, sender=treasury)
 
 def test_authorize_using_global_allow_list(
     coordinator, nodes, deployer, initiator, erc20, global_allow_list
@@ -402,7 +465,7 @@ def test_authorize_using_global_allow_list(
     with ape.reverts("Only active rituals can add authorizations"):
         global_allow_list.authorize(0, [deployer.address], sender=initiator)
 
-    with ape.reverts("Ritual not finalized"):
+    with ape.reverts("Ritual not active"):
         coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(digest))
 
     # Finalize ritual

@@ -17,12 +17,10 @@ import "./IEncryptionAuthorizer.sol";
  * @notice Coordination layer for Threshold Access Control (TACo 🌮)
  */
 contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable, FlatRateFeeModel {
-    // Ritual
+    // DKG Protocol
     event StartRitual(uint32 indexed ritualId, address indexed authority, address[] participants);
     event StartAggregationRound(uint32 indexed ritualId);
     event EndRitual(uint32 indexed ritualId, bool successful);
-
-    // Node
     event TranscriptPosted(uint32 indexed ritualId, address indexed node, bytes32 transcriptDigest);
     event AggregationPosted(
         uint32 indexed ritualId,
@@ -30,10 +28,17 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         bytes32 aggregatedTranscriptDigest
     );
 
-    // Admin
+    // Protocol administration
     event TimeoutChanged(uint32 oldTimeout, uint32 newTimeout);
     event MaxDkgSizeChanged(uint16 oldSize, uint16 newSize);
+    event ReimbursementPoolSet(address indexed pool);
 
+    // Cohort administration
+    event RitualAuthorityTransferred(
+        uint32 indexed ritualId,
+        address indexed previousAuthority,
+        address indexed newAuthority
+    );
     event ParticipantPublicKeySet(
         uint32 indexed ritualId,
         address indexed participant,
@@ -42,11 +47,12 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
     enum RitualState {
         NON_INITIATED,
-        AWAITING_TRANSCRIPTS,
-        AWAITING_AGGREGATIONS,
-        TIMEOUT,
-        INVALID,
-        FINALIZED
+        DKG_AWAITING_TRANSCRIPTS,
+        DKG_AWAITING_AGGREGATIONS,
+        DKG_TIMEOUT,
+        DKG_INVALID,
+        ACTIVE,
+        EXPIRED
     }
 
     struct Participant {
@@ -86,6 +92,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     bytes32 public constant TREASURY_ROLE = keccak256("TREASURY_ROLE");
 
     ITACoChildApplication public immutable application;
+    uint96 private immutable minAuthorization;
 
     Ritual[] public rituals;
     uint32 public timeout;
@@ -104,6 +111,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         uint256 _feeRatePerSecond
     ) FlatRateFeeModel(_currency, _feeRatePerSecond) {
         application = _application;
+        minAuthorization = _application.minimumAuthorization();
     }
 
     /**
@@ -119,8 +127,13 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         return getRitualState(rituals[ritualId]);
     }
 
-    function isRitualFinalized(uint32 ritualId) external view returns (bool) {
-        return getRitualState(rituals[ritualId]) == RitualState.FINALIZED;
+    function isRitualActive(Ritual storage ritual) internal view returns (bool) {
+        return getRitualState(ritual) == RitualState.ACTIVE;
+    }
+
+    function isRitualActive(uint32 ritualId) external view returns (bool) {
+        Ritual storage ritual = rituals[ritualId];
+        return isRitualActive(ritual);
     }
 
     function getRitualState(Ritual storage ritual) internal view returns (RitualState) {
@@ -129,16 +142,24 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         if (t0 == 0) {
             return RitualState.NON_INITIATED;
         } else if (ritual.totalAggregations == ritual.dkgSize) {
-            return RitualState.FINALIZED;
+            // DKG was succesful
+            if (block.timestamp <= ritual.endTimestamp) {
+                return RitualState.ACTIVE;
+            } else {
+                return RitualState.EXPIRED;
+            }
         } else if (ritual.aggregationMismatch) {
-            return RitualState.INVALID;
+            // DKG failed due to invalid transcripts
+            return RitualState.DKG_INVALID;
         } else if (block.timestamp > deadline) {
-            return RitualState.TIMEOUT;
+            // DKG failed due to timeout
+            return RitualState.DKG_TIMEOUT;
         } else if (ritual.totalTranscripts < ritual.dkgSize) {
-            return RitualState.AWAITING_TRANSCRIPTS;
+            // DKG still waiting for transcripts
+            return RitualState.DKG_AWAITING_TRANSCRIPTS;
         } else if (ritual.totalAggregations < ritual.dkgSize) {
-            return RitualState.AWAITING_AGGREGATIONS;
-            // solhint-disable-next-line no-empty-blocks
+            // DKG still waiting for aggregations
+            return RitualState.DKG_AWAITING_AGGREGATIONS;
         } else {
             // It shouldn't be possible to reach this state:
             //   - No public key
@@ -203,14 +224,16 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
             "Invalid ReimbursementPool"
         );
         reimbursementPool = pool;
-        // TODO: Events
+        emit ReimbursementPoolSet(address(pool));
     }
 
-    function setRitualAuthority(uint32 ritualId, address authority) external {
+    function transferRitualAuthority(uint32 ritualId, address newAuthority) external {
         Ritual storage ritual = rituals[ritualId];
-        require(getRitualState(ritual) == RitualState.FINALIZED, "Ritual not finalized");
-        require(msg.sender == ritual.authority, "Sender not ritual authority");
-        ritual.authority = authority;
+        require(isRitualActive(ritual), "Ritual is not active");
+        address previousAuthority = ritual.authority;
+        require(msg.sender == previousAuthority, "Sender not ritual authority");
+        ritual.authority = newAuthority;
+        emit RitualAuthorityTransferred(ritualId, previousAuthority, newAuthority);
     }
 
     function numberOfRituals() external view returns (uint256) {
@@ -264,7 +287,10 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
             require(previous < current, "Providers must be sorted");
             // TODO: Improve check for eligible nodes (staking, etc) - nucypher#3109
             // TODO: Change check to isAuthorized(), without amount
-            require(application.authorizedStake(current) > 0, "Not enough authorization");
+            require(
+                application.authorizedStake(current) >= minAuthorization,
+                "Not enough authorization"
+            );
             newParticipant.provider = current;
             previous = current;
         }
@@ -284,7 +310,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
         Ritual storage ritual = rituals[ritualId];
         require(
-            getRitualState(ritual) == RitualState.AWAITING_TRANSCRIPTS,
+            getRitualState(ritual) == RitualState.DKG_AWAITING_TRANSCRIPTS,
             "Not waiting for transcripts"
         );
 
@@ -323,7 +349,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
         Ritual storage ritual = rituals[ritualId];
         require(
-            getRitualState(ritual) == RitualState.AWAITING_AGGREGATIONS,
+            getRitualState(ritual) == RitualState.DKG_AWAITING_AGGREGATIONS,
             "Not waiting for aggregations"
         );
 
@@ -390,7 +416,11 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         uint32 ritualId
     ) external view returns (BLS12381.G1Point memory dkgPublicKey) {
         Ritual storage ritual = rituals[ritualId];
-        require(getRitualState(ritual) == RitualState.FINALIZED, "Ritual not finalized");
+        RitualState state = getRitualState(ritual);
+        require(
+            state == RitualState.ACTIVE || state == RitualState.EXPIRED,
+            "Ritual not finalized"
+        );
         return ritual.publicKey;
     }
 
@@ -422,7 +452,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         bytes memory ciphertextHeader
     ) external view returns (bool) {
         Ritual storage ritual = rituals[ritualId];
-        require(getRitualState(ritual) == RitualState.FINALIZED, "Ritual not finalized");
+        require(getRitualState(ritual) == RitualState.ACTIVE, "Ritual not active");
         return ritual.accessController.isAuthorized(ritualId, evidence, ciphertextHeader);
     }
 
@@ -438,13 +468,14 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         currency.safeTransferFrom(msg.sender, address(this), ritualCost);
     }
 
-    function processPendingFee(uint32 ritualId) public {
+    function processPendingFee(uint32 ritualId) public returns (uint256 refundableFee) {
         Ritual storage ritual = rituals[ritualId];
         RitualState state = getRitualState(ritual);
         require(
-            state == RitualState.TIMEOUT ||
-                state == RitualState.INVALID ||
-                state == RitualState.FINALIZED,
+            state == RitualState.DKG_TIMEOUT ||
+                state == RitualState.DKG_INVALID ||
+                state == RitualState.ACTIVE ||
+                state == RitualState.EXPIRED,
             "Ritual is not ended"
         );
         uint256 pending = pendingFees[ritualId];
@@ -454,13 +485,14 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         totalPendingFees -= pending;
         delete pendingFees[ritualId];
         // Transfer fees back to initiator if failed
-        if (state == RitualState.TIMEOUT || state == RitualState.INVALID) {
+        if (state == RitualState.DKG_TIMEOUT || state == RitualState.DKG_INVALID) {
             // Refund everything minus cost of renting cohort for a day
             // TODO: Validate if this is enough to remove griefing attacks
             uint256 duration = ritual.endTimestamp - ritual.initTimestamp;
-            uint256 refundableFee = (pending * (duration - 1 days)) / duration;
+            refundableFee = (pending * (duration - 1 days)) / duration;
             currency.safeTransfer(ritual.initiator, refundableFee);
         }
+        return refundableFee;
     }
 
     function processReimbursement(uint256 initialGasLeft) internal {
