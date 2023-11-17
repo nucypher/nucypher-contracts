@@ -68,22 +68,6 @@ contract MockPolygonChild is Ownable, ITACoChildToRoot, ITACoRootToChild {
     function confirmOperatorAddress(address _operator) external override {}
 }
 
-contract LynxTACoChildApplication is TACoChildApplication, Ownable {
-    constructor(
-        ITACoChildToRoot _rootApplication,
-        uint96 _minimumAuthorization
-    ) TACoChildApplication(_rootApplication, _minimumAuthorization) Ownable(msg.sender) {}
-
-    function setCoordinator(address _coordinator) external onlyOwner {
-        require(_coordinator != address(0), "Coordinator must be specified");
-        require(
-            address(Coordinator(_coordinator).application()) == address(this),
-            "Invalid coordinator"
-        );
-        coordinator = _coordinator;
-    }
-}
-
 contract LynxRitualToken is ERC20("LynxRitualToken", "LRT") {
     constructor(uint256 _totalSupplyOfTokens) {
         _mint(msg.sender, _totalSupplyOfTokens);
