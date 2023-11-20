@@ -1,0 +1,55 @@
+deployment:
+  name: mainnet-child
+  chain_id: 137  # Polygon Mainnet
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: mainnet.json
+
+constants:
+  # DAI Token on Polygon PoS - References:
+  # - https://polygonscan.com/token/0x8f3cf7ad23cd3cadbd9735aff958023239c6a063
+  # - https://github.com/search?q=0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063&type=code
+  DAI_ON_POLYGON: "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063"
+
+  # TACO specific constants:
+  PRIVATE_BETA_FEE_RATE: 4050925925925  # $0.35 per day, expressed in DAI units per seconds (in Python: 35*10**16 // 86400)
+  MAX_DKG_SIZE: 32
+  DKG_TIMEOUT_IN_SECONDS: 3600  # One hour in seconds
+  FORTY_THOUSAND_TOKENS_IN_WEI_UNITS: 40000000000000000000000
+
+  # Threshold Network - References:
+  # - https://docs.threshold.network/resources/contract-addresses/mainnet/threshold-dao
+  TREASURY_GUILD_ON_POLYGON: "0xc3Bf49eBA094AF346830dF4dbB42a07dE378EeB6"
+  INTEGRATIONS_GUILD_ON_POLYGON: "0x5bD70E385414C8dCC25305AeB7E542d8FC70e667"
+  THRESHOLD_COUNCIL_ON_POLYGON: "0x9F6e831c8F8939DC0C830C6e492e7cEf4f9C2F5f"
+
+  # FxPortal addresses - References:
+  # - https://github.com/0xPolygon/fx-portal#deployment-addresses
+  # - https://github.com/0xPolygon/fx-portal/blob/main/config/config.json
+  # - https://wiki.polygon.technology/docs/pos/design/bridge/l1-l2-communication/state-transfer/#prerequisites
+  FXPORTAL_FXCHILD: "0x8397259c983751DAf40400790063935a11afa28a"
+
+contracts:
+  - PolygonChild:
+      constructor:
+        _fxChild: $FXPORTAL_FXCHILD
+  - TACoChildApplication:
+      proxy:
+        constructor:
+          initialOwner: $THRESHOLD_COUNCIL_ON_POLYGON  # Upgrades owner
+      constructor:
+        _rootApplication: $PolygonChild
+        _minimumAuthorization: $FORTY_THOUSAND_TOKENS_IN_WEI_UNITS
+  - Coordinator:
+      proxy:
+        constructor:
+          initialOwner: $THRESHOLD_COUNCIL_ON_POLYGON  # Upgrades owner
+          _data: $encode:initialize,$DKG_TIMEOUT_IN_SECONDS,$MAX_DKG_SIZE,$deployer
+      constructor:
+        _application: $TACoChildApplication
+        _currency: $DAI_ON_POLYGON
+        _feeRatePerSecond: $PRIVATE_BETA_FEE_RATE
+  - GlobalAllowList:
+      constructor:
+        _coordinator: $Coordinator
