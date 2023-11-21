@@ -1,17 +1,22 @@
 import json
+import shutil
 from collections import OrderedDict, defaultdict
 from enum import Enum
 from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional
 
 from ape.contracts import ContractInstance
-from deployment.utils import _load_json, get_contract_container
 from eth_typing import ChecksumAddress
 from eth_utils import to_checksum_address
 from web3.types import ABI
 
+from deployment.utils import _load_json, get_contract_container
+
 ChainId = int
 ContractName = str
+
+
+STANDARD_REGISTRY_JSON_FORMAT = {"indent": 4, "separators": (',', ': ')}
 
 
 class RegistryEntry(NamedTuple):
@@ -97,20 +102,27 @@ def read_registry(filepath: Path) -> List[RegistryEntry]:
     return registry_entries
 
 
-def write_registry(entries: List[RegistryEntry], filepath: Path) -> Path:
+def write_registry(entries: List[RegistryEntry], filepath: Path, silent: bool = False) -> Path:
     """Writes a nucypher-style contract registry to a file."""
 
     if not entries:
         print("No entries provided.")
         return filepath
 
+    # Sort registry entries to enforce common order
+    # See https://github.com/nucypher/nucypher-contracts/issues/192
+    entries.sort(key=lambda entry: (str(entry.chain_id), entry.name))
+
     data = defaultdict(dict)
     for entry in entries:
+        entry_abi = list(entry.abi)
+        entry_abi.sort(key=lambda d: (d["type"], d.get("name", "")))
+
         data[str(entry.chain_id)][entry.name] = {
             "address": entry.address,
-            "abi": entry.abi,
+            "abi": entry_abi,
             "tx_hash": entry.tx_hash,
-            "block_number": entry.block_number,
+            "block_number": int(entry.block_number),
             "deployer": entry.deployer,
         }
 
@@ -119,23 +131,25 @@ def write_registry(entries: List[RegistryEntry], filepath: Path) -> Path:
 
     # If the file already exists, attempt to merge the data, if not create a new file
     if filepath.exists():
-        print(f"Updating existing registry at {filepath}.")
+        if not silent:
+            print(f"Updating existing registry at {filepath}.")
         existing_data = _load_json(filepath)
 
         if any(chain_id in existing_data for chain_id in data):
             filepath = filepath.with_suffix(".unmerged.json")
-            print(
-                "Cannot merge registries with overlapping chain IDs.\n"
-                f"Writing to {filepath} to avoid overwriting existing data."
-            )
+            if not silent:
+                print(
+                    "Cannot merge registries with overlapping chain IDs.\n"
+                    f"Writing to {filepath} to avoid overwriting existing data."
+                )
         else:
             existing_data.update(data)
             data = existing_data
-    else:
+    elif not silent:
         print(f"Creating new registry at {filepath}.")
 
     with open(filepath, "w") as file:
-        json.dump(data, file, indent=4)
+        json.dump(data, file, **STANDARD_REGISTRY_JSON_FORMAT)
 
     return filepath
 
@@ -261,3 +275,21 @@ def contracts_from_registry(filepath: Path, chain_id: ChainId) -> Dict[str, Cont
         contract_instance = contract_container.at(registry_entry.address)
         deployments[contract_type] = contract_instance
     return deployments
+
+def normalize_registry(filepath: Path):
+    """Normalizes a potentially non-standard registry file."""
+    try:
+        registry_entries = read_registry(filepath=filepath)
+    except Exception:
+        print(f"Error when reading registry at {filepath}.")
+        raise
+
+    try:
+        temp_filepath = filepath.with_suffix(".temp.json")
+        write_registry(entries=registry_entries, filepath=temp_filepath, silent=True)
+        shutil.copy(temp_filepath, filepath)
+        temp_filepath.unlink()
+        print(f"Successfully normalized registry at {filepath}.")
+    except Exception:
+        print(f"Error when normalizing registry at {filepath}.")
+        raise
