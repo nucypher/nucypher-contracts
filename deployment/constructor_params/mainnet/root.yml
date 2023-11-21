@@ -27,7 +27,7 @@ constants:
   IN_SECONDS_364_DAYS: 31449600
   IN_SECONDS_AVERAGE_MONTH_DURATION: 2628000  # 365*24*60*60/12
   FORTY_THOUSAND_TOKENS_IN_WEI_UNITS: 40000000000000000000000
-  TIMESTAMP_FOR_2023_12_31_1100_UTC: 1703930400
+  TIMESTAMP_FOR_2023_12_30_2359_UTC: 1703980799
 
 contracts:
   - TACoApplication:
@@ -43,7 +43,7 @@ contracts:
         _rewardDuration: $IN_SECONDS_AVERAGE_MONTH_DURATION
         _deauthorizationDuration: $IN_SECONDS_182_DAYS
         _commitmentDurationOptions: [$IN_SECONDS_182_DAYS, $IN_SECONDS_364_DAYS]
-        _commitmentDeadline: $TIMESTAMP_FOR_2023_12_31_1100_UTC
+        _commitmentDeadline: $TIMESTAMP_FOR_2023_12_30_2359_UTC
   - PolygonRoot:
       constructor:
         _checkpointManager: $FXPORTAL_CHECKPOINT_MANAGER
