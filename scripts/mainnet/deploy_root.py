@@ -25,7 +25,7 @@ def main():
 
     # TODO: Workaround to provide PolygonChild address from existing registry
     polygon_child = polygon_childs.pop()
-    deployer.constants[polygon_child_name] = polygon_child.address
+    deployer.constructor_parameters.parameters["PolygonRoot"]["_fxChildTunnel"] = polygon_child.address
 
     taco_application = deployer.deploy(project.TACoApplication)
 
