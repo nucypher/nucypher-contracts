@@ -23,6 +23,10 @@ def main():
     
     deployer = Deployer.from_yaml(filepath=CONSTRUCTOR_PARAMS_FILEPATH, verify=VERIFY)
 
+    # TODO: Workaround to provide PolygonChild address from existing registry
+    polygon_child = polygon_childs.pop()
+    deployer.constants[polygon_child_name] = polygon_child.address
+
     taco_application = deployer.deploy(project.TACoApplication)
 
     polygon_root = deployer.deploy(project.PolygonRoot)

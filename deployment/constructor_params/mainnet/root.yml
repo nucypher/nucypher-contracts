@@ -19,7 +19,7 @@ constants:
   # - https://wiki.polygon.technology/docs/pos/design/bridge/l1-l2-communication/state-transfer/#prerequisites
   FXPORTAL_CHECKPOINT_MANAGER: "0x86e4dc95c7fbdbf52e33d563bbdb00823894c287"
   FXPORTAL_FXROOT: "0xfe5e5D361b2ad62c541bAb87C45a0B9B018389a2"
-  POLYGON_CHILD: # FIXME: Either manually add it, or allow Deployer to inspect registry
+  POLYGON_CHILD: "invalid" # Temporary invalid value that will be overwritten by workaround in deployment script
 
   # TACo specific constants:
   IN_SECONDS_1_HOUR: 3600
