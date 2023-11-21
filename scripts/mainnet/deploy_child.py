@@ -5,7 +5,7 @@ from ape import project
 from deployment.constants import CONSTRUCTOR_PARAMS_DIR
 from deployment.params import Deployer
 
-VERIFY = True
+VERIFY = False
 CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "mainnet" / "child.yml"
 
 

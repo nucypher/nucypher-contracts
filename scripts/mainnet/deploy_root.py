@@ -6,12 +6,12 @@ from deployment.constants import ARTIFACTS_DIR, CONSTRUCTOR_PARAMS_DIR
 from deployment.params import Deployer
 from deployment.registry import read_registry
 
-VERIFY = True
+VERIFY = False
 CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "mainnet" / "root.yml"
 
 
 def main():
-    current_mainnet_registry = read_registry(ARTIFACTS_DIR / "mainnet.json")
+    current_mainnet_registry = read_registry(ARTIFACTS_DIR / "mainnet-child.json")
     polygon_chain_id = 137
     polygon_child_name = "PolygonChild"
     polygon_childs = [

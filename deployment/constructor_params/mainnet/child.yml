@@ -4,7 +4,7 @@ deployment:
 
 artifacts:
   dir: ./deployment/artifacts/
-  filename: mainnet.json
+  filename: mainnet-child.json
 
 constants:
   # DAI Token on Polygon PoS - References:
