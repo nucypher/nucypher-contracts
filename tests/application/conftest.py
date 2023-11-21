@@ -29,6 +29,7 @@ DEAUTHORIZATION_DURATION = 60 * 60 * 24 * 60  # 60 days in seconds
 COMMITMENT_DURATION_1 = 182 * 60 * 24 * 60  # 182 days in seconds
 COMMITMENT_DURATION_2 = 2 * COMMITMENT_DURATION_1  # 365 days in seconds
 COMMITMENT_DURATION_3 = 3 * COMMITMENT_DURATION_1  # 365 days in seconds
+COMMITMENT_DEADLINE = 60 * 60 * 24 * 100  # 100 days after deploymwent
 
 
 @pytest.fixture()
@@ -65,7 +66,8 @@ def encode_function_data(initializer=None, *args):
 
 
 @pytest.fixture()
-def taco_application(project, creator, token, threshold_staking, oz_dependency):
+def taco_application(project, creator, token, threshold_staking, oz_dependency, chain):
+    now = chain.pending_timestamp
     contract = creator.deploy(
         project.TACoApplication,
         token.address,
@@ -75,6 +77,7 @@ def taco_application(project, creator, token, threshold_staking, oz_dependency):
         REWARD_DURATION,
         DEAUTHORIZATION_DURATION,
         [COMMITMENT_DURATION_1, COMMITMENT_DURATION_2, COMMITMENT_DURATION_3],
+        now + COMMITMENT_DEADLINE,
     )
 
     encoded_initializer_function = encode_function_data()
