@@ -503,7 +503,11 @@ class Transactor:
         print(message)
         _continue()
 
-        result = method(*args, sender=self._account)
+        result = method(*args, sender=self._account,
+                        # FIXME
+                        max_priority_fee="10 gwei",
+                        max_fee="100 gwei"
+                        )
         return result
 
 
@@ -583,7 +587,11 @@ class Deployer(Transactor):
         kwargs = self._get_kwargs()
 
         deployer_account = self.get_account()
-        return deployer_account.deploy(*deployment_params, **kwargs)
+        return deployer_account.deploy(*deployment_params, 
+                                       # FIXME
+                                       max_priority_fee="10 gwei",
+                                       max_fee="100 gwei",
+                                       **kwargs)
 
     def _deploy_proxy(
         self,
