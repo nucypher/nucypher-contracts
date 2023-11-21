@@ -23,6 +23,7 @@ constants:
 
   # TACo specific constants:
   IN_SECONDS_1_HOUR: 3600
+  IN_SECONDS_1_DAY: 86400
   IN_SECONDS_7_DAYS: 604800
   IN_SECONDS_60_DAYS: 5184000
   IN_SECONDS_182_DAYS: 15724800
@@ -40,7 +41,7 @@ contracts:
         _token: $T_TOKEN_ETH_MAINNET
         _tStaking: $T_STAKING_CONTRACT
         _minimumAuthorization: $FORTY_THOUSAND_TOKENS_IN_WEI_UNITS
-        _minOperatorSeconds: $IN_SECONDS_1_HOUR
+        _minOperatorSeconds: $IN_SECONDS_1_DAY
         _rewardDuration: $IN_SECONDS_7_DAYS
         _deauthorizationDuration: $IN_SECONDS_60_DAYS
         _commitmentDurationOptions: [$IN_SECONDS_182_DAYS, $IN_SECONDS_364_DAYS]
