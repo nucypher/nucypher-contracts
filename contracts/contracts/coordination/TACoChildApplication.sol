@@ -28,7 +28,7 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
 
     mapping(address => StakingProviderInfo) public stakingProviderInfo;
     address[] public stakingProviders;
-    mapping(address => address) public stakingProviderFromOperator;
+    mapping(address => address) public operatorToStakingProvider;
 
     /**
      * @dev Checks caller is root application
@@ -95,9 +95,9 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
 
         info.operator = operator;
         // Update operator to provider mapping
-        stakingProviderFromOperator[oldOperator] = address(0);
+        operatorToStakingProvider[oldOperator] = address(0);
         if (operator != address(0)) {
-            stakingProviderFromOperator[operator] = stakingProvider;
+            operatorToStakingProvider[operator] = stakingProvider;
         }
         info.operatorConfirmed = false;
         // TODO placeholder to notify Coordinator
@@ -117,7 +117,7 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
 
     function confirmOperatorAddress(address _operator) external override {
         require(msg.sender == coordinator, "Only Coordinator allowed to confirm operator");
-        address stakingProvider = stakingProviderFromOperator[_operator];
+        address stakingProvider = operatorToStakingProvider[_operator];
         StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
         require(
             info.authorized >= minimumAuthorization,

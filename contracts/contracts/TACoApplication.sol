@@ -7,7 +7,8 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
-import "@threshold/contracts/staking/IApplication.sol";
+import "../threshold/IApplicationWithOperator.sol";
+import "../threshold/IApplicationWithDecreaseDelay.sol";
 import "@threshold/contracts/staking/IStaking.sol";
 import "./coordination/ITACoRootToChild.sol";
 import "./coordination/ITACoChildToRoot.sol";
@@ -16,7 +17,12 @@ import "./coordination/ITACoChildToRoot.sol";
  * @title TACo Application
  * @notice Contract distributes rewards for participating in app and slashes for violating rules
  */
-contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
+contract TACoApplication is
+    IApplicationWithDecreaseDelay,
+    IApplicationWithOperator,
+    ITACoChildToRoot,
+    OwnableUpgradeable
+{
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
 
@@ -312,6 +318,7 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
     function authorizationParameters()
         external
         view
+        override
         returns (
             uint96 _minimumAuthorization,
             uint64 authorizationDecreaseDelay,
@@ -535,7 +542,7 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
      * @notice Approve request of decreasing authorization. Can be called by anyone
      * @param _stakingProvider Address of staking provider
      */
-    function finishAuthorizationDecrease(
+    function approveAuthorizationDecrease(
         address _stakingProvider
     ) external updateReward(_stakingProvider) {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
@@ -618,16 +625,14 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
     /**
      * @notice Returns staking provider for specified operator
      */
-    function stakingProviderFromOperator(address _operator) external view returns (address) {
+    function operatorToStakingProvider(address _operator) external view returns (address) {
         return _stakingProviderFromOperator[_operator];
     }
 
     /**
      * @notice Returns operator for specified staking provider
      */
-    function getOperatorFromStakingProvider(
-        address _stakingProvider
-    ) external view returns (address) {
+    function stakingProviderToOperator(address _stakingProvider) external view returns (address) {
         return stakingProviderInfo[_stakingProvider].operator;
     }
 
@@ -650,7 +655,9 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
      *         decrease for the given staking provider. If no authorization
      *         decrease has been requested, returns zero.
      */
-    function pendingAuthorizationDecrease(address _stakingProvider) external view returns (uint96) {
+    function pendingAuthorizationDecrease(
+        address _stakingProvider
+    ) external view override returns (uint96) {
         return stakingProviderInfo[_stakingProvider].deauthorizing;
     }
 
@@ -660,7 +667,7 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
      */
     function remainingAuthorizationDecreaseDelay(
         address _stakingProvider
-    ) external view returns (uint64) {
+    ) external view override returns (uint64) {
         uint256 endDeauthorization = stakingProviderInfo[_stakingProvider].endDeauthorization;
         if (endDeauthorization <= block.timestamp) {
             return 0;
@@ -744,6 +751,16 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
     }
 
     /**
+     *  @notice Used by staking provider to set operator address that will
+     *          operate a node. The operator address must be unique.
+     *          Reverts if the operator is already set for the staking provider
+     *          or if the operator address is already in use.
+     */
+    function registerOperator(address _operator) external override {
+        bondOperator(msg.sender, _operator);
+    }
+
+    /**
      * @notice Bond operator
      * @param _stakingProvider Staking provider address
      * @param _operator Operator address. Must be an EOA, not a contract address
@@ -751,7 +768,7 @@ contract TACoApplication is IApplication, ITACoChildToRoot, OwnableUpgradeable {
     function bondOperator(
         address _stakingProvider,
         address _operator
-    ) external onlyOwnerOrStakingProvider(_stakingProvider) updateReward(_stakingProvider) {
+    ) public onlyOwnerOrStakingProvider(_stakingProvider) updateReward(_stakingProvider) {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         address previousOperator = info.operator;
         require(

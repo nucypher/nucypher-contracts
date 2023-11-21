@@ -14,7 +14,7 @@ contract TACoApplicationForAdjudicatorMock {
     mapping(address => uint256) public rewardInfo;
     mapping(address => address) internal _stakingProviderFromOperator;
 
-    function stakingProviderFromOperator(address _operator) public view returns (address) {
+    function operatorToStakingProvider(address _operator) public view returns (address) {
         return _stakingProviderFromOperator[_operator];
     }
 
