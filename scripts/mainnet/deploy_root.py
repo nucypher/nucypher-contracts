@@ -18,7 +18,7 @@ def main():
         entry for entry in current_mainnet_registry
         if entry.chain_id == polygon_chain_id and entry.name == polygon_child_name
     ]
-    if len(polygon_childs) is not 1:
+    if len(polygon_childs) != 1:
         raise ValueError("Mainnet root deployment requires valid child deployment first")
     
     deployer = Deployer.from_yaml(filepath=CONSTRUCTOR_PARAMS_FILEPATH, verify=VERIFY)
