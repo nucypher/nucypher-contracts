@@ -20,6 +20,7 @@ constants:
 
   # Threshold Network - References:
   # - https://docs.threshold.network/resources/contract-addresses/mainnet/threshold-dao
+  # - https://github.com/keep-network/tbtc-v2/issues/594
   TREASURY_GUILD_ON_POLYGON: "0xc3Bf49eBA094AF346830dF4dbB42a07dE378EeB6"
   INTEGRATIONS_GUILD_ON_POLYGON: "0x5bD70E385414C8dCC25305AeB7E542d8FC70e667"
   THRESHOLD_COUNCIL_ON_POLYGON: "0x9F6e831c8F8939DC0C830C6e492e7cEf4f9C2F5f"
