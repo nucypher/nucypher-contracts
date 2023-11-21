@@ -482,20 +482,29 @@ def test_authorize_using_global_allow_list(
         )
 
     # Actually authorize
-    global_allow_list.authorize(0, [deployer.address], sender=initiator)
+    tx = global_allow_list.authorize(0, [deployer.address], sender=initiator)
 
     # Authorized
     assert global_allow_list.isAuthorized(0, bytes(signature), bytes(data))
     assert coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(data))
+    events = global_allow_list.AddressAuthorizationSet.from_receipt(tx)
+    assert events == [global_allow_list.AddressAuthorizationSet(
+        ritualId=0, _address=deployer.address, isAuthorized=True
+    )]
 
     # Deauthorize
-    global_allow_list.deauthorize(0, [deployer.address], sender=initiator)
+    tx = global_allow_list.deauthorize(0, [deployer.address], sender=initiator)
+
     assert not global_allow_list.isAuthorized(0, bytes(signature), bytes(data))
     assert not coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(data))
+    events = global_allow_list.AddressAuthorizationSet.from_receipt(tx)
+    assert events == [global_allow_list.AddressAuthorizationSet(
+        ritualId=0, _address=deployer.address, isAuthorized=False
+    )]
 
     # Reauthorize in batch
     addresses_to_authorize = [deployer.address, initiator.address]
-    global_allow_list.authorize(0, addresses_to_authorize, sender=initiator)
+    tx = global_allow_list.authorize(0, addresses_to_authorize, sender=initiator)
     signed_digest = w3.eth.account.sign_message(signable_message, private_key=initiator.private_key)
     initiator_signature = signed_digest.signature
     assert global_allow_list.isAuthorized(0, bytes(initiator_signature), bytes(data))
@@ -503,3 +512,13 @@ def test_authorize_using_global_allow_list(
 
     assert global_allow_list.isAuthorized(0, bytes(signature), bytes(data))
     assert coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(data))
+
+    events = global_allow_list.AddressAuthorizationSet.from_receipt(tx)
+    assert events == [
+        global_allow_list.AddressAuthorizationSet(
+            ritualId=0, _address=deployer.address, isAuthorized=True
+        ),
+        global_allow_list.AddressAuthorizationSet(
+            ritualId=0, _address=initiator.address, isAuthorized=False
+        ),
+    ]

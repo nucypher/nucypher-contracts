@@ -15,6 +15,12 @@ contract GlobalAllowList is IEncryptionAuthorizer {
 
     mapping(bytes32 => bool) internal authorizations;
 
+    event AddressAuthorizationSet(
+        uint32 indexed ritualId,
+        address indexed _address,
+        bool isAuthorized
+    );
+
     constructor(Coordinator _coordinator) {
         require(address(_coordinator) != address(0), "Coordinator cannot be zero address");
         require(_coordinator.numberOfRituals() >= 0, "Invalid coordinator");
@@ -65,6 +71,7 @@ contract GlobalAllowList is IEncryptionAuthorizer {
         require(coordinator.isRitualActive(ritualId), "Only active rituals can add authorizations");
         for (uint256 i = 0; i < addresses.length; i++) {
             authorizations[lookupKey(ritualId, addresses[i])] = value;
+            emit AddressAuthorizationSet(ritualId, addresses[i], value);
         }
     }
 }
