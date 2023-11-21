@@ -22,14 +22,12 @@ constants:
   POLYGON_CHILD: "invalid" # Temporary invalid value that will be overwritten by workaround in deployment script
 
   # TACo specific constants:
-  IN_SECONDS_1_HOUR: 3600
   IN_SECONDS_1_DAY: 86400
-  IN_SECONDS_7_DAYS: 604800
-  IN_SECONDS_60_DAYS: 5184000
   IN_SECONDS_182_DAYS: 15724800
   IN_SECONDS_364_DAYS: 31449600
+  IN_SECONDS_AVERAGE_MONTH_DURATION: 2628000  # 365*24*60*60/12
   FORTY_THOUSAND_TOKENS_IN_WEI_UNITS: 40000000000000000000000
-  TIMESTAMP_FOR_2024_01_01_0000_UTC: 1704067200  # FIXME: Made up value, waiting for https://github.com/nucypher/nucypher/issues/3342
+  TIMESTAMP_FOR_2023_12_31_1100_UTC: 1703930400
 
 contracts:
   - TACoApplication:
@@ -42,13 +40,13 @@ contracts:
         _tStaking: $T_STAKING_CONTRACT
         _minimumAuthorization: $FORTY_THOUSAND_TOKENS_IN_WEI_UNITS
         _minOperatorSeconds: $IN_SECONDS_1_DAY
-        _rewardDuration: $IN_SECONDS_7_DAYS
-        _deauthorizationDuration: $IN_SECONDS_60_DAYS
+        _rewardDuration: $IN_SECONDS_AVERAGE_MONTH_DURATION
+        _deauthorizationDuration: $IN_SECONDS_182_DAYS
         _commitmentDurationOptions: [$IN_SECONDS_182_DAYS, $IN_SECONDS_364_DAYS]
-        _commitmentDeadline: $TIMESTAMP_FOR_2024_01_01_0000_UTC
+        _commitmentDeadline: $TIMESTAMP_FOR_2023_12_31_1100_UTC
   - PolygonRoot:
       constructor:
         _checkpointManager: $FXPORTAL_CHECKPOINT_MANAGER
         _fxRoot: $FXPORTAL_FXROOT
         _rootApplication: $TACoApplication
-        _fxChildTunnel: $POLYGON_CHILD
+        _fxChildTunnel: $POLYGON_CHILD  # This is a Polygon address
