@@ -1,6 +1,6 @@
 import typing
 from abc import ABC, abstractmethod
-from collections import OrderedDict
+from collections import namedtuple, OrderedDict
 from pathlib import Path
 from typing import Any, List
 
@@ -9,6 +9,10 @@ from ape.api import AccountAPI, ReceiptAPI
 from ape.cli import get_user_selected_account
 from ape.contracts.base import ContractContainer, ContractInstance, ContractTransactionHandler
 from ape.utils import ZERO_ADDRESS
+from eth_typing import ChecksumAddress
+from ethpm_types import MethodABI
+from web3.auto import w3
+
 from deployment.confirm import _confirm_resolution, _continue
 from deployment.constants import OZ_DEPENDENCY
 from deployment.registry import registry_from_ape_deployments
@@ -19,9 +23,6 @@ from deployment.utils import (
     validate_config,
     verify_contracts,
 )
-from eth_typing import ChecksumAddress
-from ethpm_types import MethodABI
-from web3.auto import w3
 
 CONTRACT_CONSTRUCTOR_PARAMETER_KEY = "constructor"
 CONTRACT_PROXY_PARAMETER_KEY = "proxy"
@@ -502,7 +503,11 @@ class Transactor:
         print(message)
         _continue()
 
-        result = method(*args, sender=self._account)
+        result = method(*args, sender=self._account,
+                        # FIXME
+                        max_priority_fee="10 gwei",
+                        max_fee="100 gwei"
+                        )
         return result
 
 
@@ -527,6 +532,12 @@ class Deployer(Transactor):
         self.registry_filepath = validate_config(config=self.config)
         self.constructor_parameters = ConstructorParameters.from_config(self.config)
         self.proxy_parameters = ProxyParameters.from_config(self.config)
+
+        # Little trick to expose contracts as attributes (e.g., deployer.constants.FOO)
+        constants = config.get("constants", {})
+        _Constants = namedtuple("_Constants", list(constants))
+        self.constants = _Constants(**constants)
+        
         super().__init__(account)
         self._set_account(self._account)
         self.verify = verify
@@ -576,7 +587,11 @@ class Deployer(Transactor):
         kwargs = self._get_kwargs()
 
         deployer_account = self.get_account()
-        return deployer_account.deploy(*deployment_params, **kwargs)
+        return deployer_account.deploy(*deployment_params, 
+                                       # FIXME
+                                       max_priority_fee="10 gwei",
+                                       max_fee="100 gwei",
+                                       **kwargs)
 
     def _deploy_proxy(
         self,
