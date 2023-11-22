@@ -6,17 +6,6 @@ pragma solidity ^0.8.0;
 import "../contracts/StakingEscrow.sol";
 import "../contracts/NuCypherToken.sol";
 import "@threshold/contracts/staking/IStaking.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
-
-/**
- * @notice Contract for testing the application contract
- */
-contract TToken is ERC20("T", "T") {
-    constructor(uint256 _totalSupplyOfTokens) {
-        _mint(msg.sender, _totalSupplyOfTokens);
-    }
-}
 
 
 /**
