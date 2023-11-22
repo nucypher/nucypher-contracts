@@ -8,7 +8,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./Coordinator.sol";
 
 contract BetaProgramInitiator {
-
     using SafeERC20 for IERC20;
 
     struct InitiationRequest {
@@ -25,14 +24,19 @@ contract BetaProgramInitiator {
 
     Coordinator public immutable coordinator;
     IERC20 public immutable currency;
-    address public executor;
+    address public immutable executor; // TODO transferable role?
 
     InitiationRequest[] public requests;
-    
-    constructor(Coordinator _coordinator, address _executor){
+
+    constructor(Coordinator _coordinator, address _executor) {
+        require(executor != address(0), "Invalid parameters");
         coordinator = _coordinator;
         currency = coordinator.currency();
         executor = _executor;
+    }
+
+    function getRequestsLength() external view returns (uint256) {
+        return requests.length;
     }
 
     function registerInitiationRequest(
@@ -69,13 +73,11 @@ contract BetaProgramInitiator {
         require(request.ritualId == NO_RITUAL, "Can't cancel executed request");
 
         // Erase payment and transfer refund to original sender
-        delete request.payment;
-        currency.safeTransferFrom(address(this), sender, ritualCost);
+        request.payment = 0;
+        currency.safeTransfer(sender, ritualCost);
     }
 
-    function executeInitiationRequest(
-        uint256 requestIndex
-    ) external {
+    function executeInitiationRequest(uint256 requestIndex) external {
         require(msg.sender == executor, "Only executor");
 
         InitiationRequest storage request = requests[requestIndex];
@@ -83,8 +85,9 @@ contract BetaProgramInitiator {
         address[] memory providers = request.providers;
         uint32 duration = request.duration;
         uint256 ritualCost = coordinator.getRitualInitiationCost(providers, duration);
+        require(ritualCost == request.payment, "Ritual initiation cost has changed");
         currency.approve(address(coordinator), ritualCost);
-        
+
         uint32 ritualId = coordinator.initiateRitual(
             providers,
             request.authority,
@@ -94,30 +97,24 @@ contract BetaProgramInitiator {
         request.ritualId = ritualId;
     }
 
-    function refundFailedRequest(
-        uint256 requestIndex
-    ) external {
+    function refundFailedRequest(uint256 requestIndex) external {
         InitiationRequest storage request = requests[requestIndex];
         uint32 ritualId = request.ritualId;
         Coordinator.RitualState state = coordinator.getRitualState(ritualId);
         require(
-            state == Coordinator.RitualState.DKG_INVALID || state == Coordinator.RitualState.DKG_TIMEOUT,
+            state == Coordinator.RitualState.DKG_INVALID ||
+                state == Coordinator.RitualState.DKG_TIMEOUT,
             "Ritual is not failed"
         );
 
-        uint256 ritualCost = request.payment;
-        require(ritualCost > 0, "Refund already processed");
-
-        // Process pending fees in Coordinator, if necessary
-        if (coordinator.pendingFees(ritualId) > 0) {
-            coordinator.processPendingFee(ritualId);
-        }
-
-        uint32 duration = request.duration;
-        uint256 refundAmount = ritualCost * 1 days / duration;
+        require(request.payment > 0, "Refund already processed");
 
         // Erase payment and transfer refund to original sender
-        delete request.payment;
-        currency.safeTransferFrom(address(this), request.sender, refundAmount);
+        request.payment = 0;
+        // Process pending fees in Coordinator, if necessary
+        if (coordinator.pendingFees(ritualId) > 0) {
+            uint256 refundAmount = coordinator.processPendingFee(ritualId);
+            currency.safeTransfer(request.sender, refundAmount);
+        }
     }
 }
