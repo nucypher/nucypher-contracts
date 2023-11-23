@@ -28,4 +28,9 @@ contract FlatRateFeeModel is IFeeModel {
         require(size > 0, "Invalid ritual size");
         return feeRatePerSecond * size * duration;
     }
+
+    // TODO: Validate if this is enough to remove griefing attacks
+    function feeDeduction(uint256 pending, uint256 duration) public pure returns (uint256) {
+        return (pending * 1 days) / duration;
+    }
 }

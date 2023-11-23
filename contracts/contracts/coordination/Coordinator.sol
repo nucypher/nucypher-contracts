@@ -468,11 +468,6 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         currency.safeTransferFrom(msg.sender, address(this), ritualCost);
     }
 
-    // TODO: Validate if this is enough to remove griefing attacks
-    function feeDeduction(uint256 pending, uint256 duration) public pure returns (uint256) {
-        return (pending * 1 days) / duration;
-    }
-
     function processPendingFee(uint32 ritualId) public returns (uint256 refundableFee) {
         Ritual storage ritual = rituals[ritualId];
         RitualState state = getRitualState(ritual);
