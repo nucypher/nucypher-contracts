@@ -10,6 +10,22 @@ import "./Coordinator.sol";
 contract BetaProgramInitiator {
     using SafeERC20 for IERC20;
 
+    event RequestRegistered(
+        address indexed sender,
+        uint256 indexed requestIndex,
+        address[] providers,
+        address authority,
+        uint32 duration,
+        IEncryptionAuthorizer accessController,
+        uint256 payment
+    );
+
+    event RequestCanceled(address indexed sender, uint256 indexed requestIndex);
+
+    event RequestExecuted(uint256 indexed requestIndex, uint256 indexed ritualId);
+
+    event FailedRequestRefunded(uint256 indexed requestIndex, uint256 refundAmount);
+
     struct InitiationRequest {
         address[] providers;
         address authority;
@@ -29,7 +45,7 @@ contract BetaProgramInitiator {
     InitiationRequest[] public requests;
 
     constructor(Coordinator _coordinator, address _executor) {
-        require(executor != address(0), "Invalid parameters");
+        require(_executor != address(0), "Invalid parameters");
         coordinator = _coordinator;
         currency = coordinator.currency();
         executor = _executor;
@@ -37,6 +53,11 @@ contract BetaProgramInitiator {
 
     function getRequestsLength() external view returns (uint256) {
         return requests.length;
+    }
+
+    function getProviders(uint256 requestIndex) external view returns (address[] memory) {
+        InitiationRequest storage request = requests[requestIndex];
+        return request.providers;
     }
 
     function registerInitiationRequest(
@@ -57,30 +78,44 @@ contract BetaProgramInitiator {
         request.ritualId = NO_RITUAL;
         request.payment = ritualCost;
 
+        emit RequestRegistered(
+            msg.sender,
+            requestIndex,
+            providers,
+            authority,
+            duration,
+            accessController,
+            ritualCost
+        );
         currency.safeTransferFrom(msg.sender, address(this), ritualCost);
 
         return requestIndex;
     }
 
     function cancelInitiationRequest(uint256 requestIndex) external {
+        require(requestIndex < requests.length, "Non-existent request");
         InitiationRequest storage request = requests[requestIndex];
         address sender = request.sender;
         require(msg.sender == sender || msg.sender == executor, "Not allowed to cancel");
 
         uint256 ritualCost = request.payment;
-        require(ritualCost > 0, "Request already canceled");
-
-        require(request.ritualId == NO_RITUAL, "Can't cancel executed request");
+        require(request.ritualId == NO_RITUAL, "Request already executed");
+        require(ritualCost != 0, "Request canceled");
 
         // Erase payment and transfer refund to original sender
         request.payment = 0;
+        emit RequestCanceled(msg.sender, requestIndex);
         currency.safeTransfer(sender, ritualCost);
+        // TODO consider gas refund by setting zero values
     }
 
     function executeInitiationRequest(uint256 requestIndex) external {
         require(msg.sender == executor, "Only executor");
 
+        require(requestIndex < requests.length, "Non-existent request");
         InitiationRequest storage request = requests[requestIndex];
+        require(request.ritualId == NO_RITUAL, "Request already executed");
+        require(request.payment != 0, "Request canceled");
 
         address[] memory providers = request.providers;
         uint32 duration = request.duration;
@@ -95,11 +130,16 @@ contract BetaProgramInitiator {
             request.accessController
         );
         request.ritualId = ritualId;
+        emit RequestExecuted(requestIndex, ritualId);
     }
 
     function refundFailedRequest(uint256 requestIndex) external {
+        require(requestIndex < requests.length, "Non-existent request");
         InitiationRequest storage request = requests[requestIndex];
         uint32 ritualId = request.ritualId;
+        require(request.ritualId != NO_RITUAL, "Request is not executed");
+        require(request.payment != 0, "Refund already processed");
+
         Coordinator.RitualState state = coordinator.getRitualState(ritualId);
         require(
             state == Coordinator.RitualState.DKG_INVALID ||
@@ -107,14 +147,16 @@ contract BetaProgramInitiator {
             "Ritual is not failed"
         );
 
-        require(request.payment > 0, "Refund already processed");
+        // Process pending fees in Coordinator, if necessary
+        uint256 refundAmount = coordinator.feeDeduction(request.payment, request.duration);
+        if (coordinator.pendingFees(ritualId) > 0) {
+            coordinator.processPendingFee(ritualId);
+        }
 
         // Erase payment and transfer refund to original sender
         request.payment = 0;
-        // Process pending fees in Coordinator, if necessary
-        if (coordinator.pendingFees(ritualId) > 0) {
-            uint256 refundAmount = coordinator.processPendingFee(ritualId);
-            currency.safeTransfer(request.sender, refundAmount);
-        }
+        currency.safeTransfer(request.sender, refundAmount);
+        emit FailedRequestRefunded(requestIndex, refundAmount);
+        // TODO consider gas refund by setting zero values
     }
 }

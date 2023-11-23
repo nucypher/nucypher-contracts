@@ -468,6 +468,11 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         currency.safeTransferFrom(msg.sender, address(this), ritualCost);
     }
 
+    // TODO: Validate if this is enough to remove griefing attacks
+    function feeDeduction(uint256 pending, uint256 duration) public pure returns (uint256) {
+        return (pending * 1 days) / duration;
+    }
+
     function processPendingFee(uint32 ritualId) public returns (uint256 refundableFee) {
         Ritual storage ritual = rituals[ritualId];
         RitualState state = getRitualState(ritual);
@@ -487,9 +492,8 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         // Transfer fees back to initiator if failed
         if (state == RitualState.DKG_TIMEOUT || state == RitualState.DKG_INVALID) {
             // Refund everything minus cost of renting cohort for a day
-            // TODO: Validate if this is enough to remove griefing attacks
             uint256 duration = ritual.endTimestamp - ritual.initTimestamp;
-            refundableFee = (pending * (duration - 1 days)) / duration;
+            refundableFee = pending - feeDeduction(pending, duration);
             currency.safeTransfer(ritual.initiator, refundableFee);
         }
         return refundableFee;
