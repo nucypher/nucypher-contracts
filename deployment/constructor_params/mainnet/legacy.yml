@@ -1,0 +1,26 @@
+deployment:
+  name: mainnet-root
+  chain_id: 1 # Ethereum Mainnet
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: mainnet-legacy-upgrade.json
+
+constants:
+  # Threshold Network - References:
+  # - https://docs.threshold.network/resources/contract-addresses/mainnet/threshold-dao
+  T_TOKEN_ETH_MAINNET: "0xCdF7028ceAB81fA0C6971208e83fa7872994beE5"
+  T_STAKING_CONTRACT: "0x01B67b1194C75264d06F808A921228a95C765dd7"
+  NU_VENDING_MACHINE: "0x1CCA7E410eE41739792eA0A24e00349Dd247680e"
+
+  NU_CYPHER_TOKEN: "0x4fE83213D56308330EC302a8BD641f1d0113A4Cc"
+  WORKLOCK: "0xe9778E69a961e64d3cdBB34CF6778281d34667c2"
+
+contracts:
+  - StakingEscrow:
+      constructor:
+        _token: $NU_CYPHER_TOKEN
+        _workLock: $WORKLOCK
+        _tStaking: $T_STAKING_CONTRACT
+        _tToken: $T_TOKEN_ETH_MAINNET
+        _vendingMachine: $NU_VENDING_MACHINE
