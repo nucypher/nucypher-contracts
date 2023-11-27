@@ -36,48 +36,6 @@ interface IVendingMachine {
 
 
 /**
-* @title StakingEscrowStub
-* @notice Stub is used to deploy main StakingEscrow after all other contract and make some variables immutable
-* @dev |v1.1.0|
-*/
-contract StakingEscrowStub is Upgradeable {
-    NuCypherToken public immutable token;
-    // only to deploy WorkLock
-    uint32 public immutable secondsPerPeriod = 1;
-    uint16 public immutable minLockedPeriods = 0;
-    uint256 public immutable minAllowableLockedTokens;
-    uint256 public immutable maxAllowableLockedTokens;
-
-    /**
-    * @notice Predefines some variables for use when deploying other contracts
-    * @param _token Token contract
-    * @param _minAllowableLockedTokens Min amount of tokens that can be locked
-    * @param _maxAllowableLockedTokens Max amount of tokens that can be locked
-    */
-    constructor(
-        NuCypherToken _token,
-        uint256 _minAllowableLockedTokens,
-        uint256 _maxAllowableLockedTokens
-    ) {
-        require(_token.totalSupply() > 0 &&
-            _maxAllowableLockedTokens != 0);
-
-        token = _token;
-        minAllowableLockedTokens = _minAllowableLockedTokens;
-        maxAllowableLockedTokens = _maxAllowableLockedTokens;
-    }
-
-    /// @dev the `onlyWhileUpgrading` modifier works through a call to the parent `verifyState`
-    function verifyState(address _testTarget) public override virtual {
-        super.verifyState(_testTarget);
-
-        // we have to use real values even though this is a stub
-        require(address(uint160(delegateGet(_testTarget, this.token.selector))) == address(token));
-    }
-}
-
-
-/**
 * @title StakingEscrow
 * @notice Contract holds and locks stakers tokens.
 * Each staker that locks their tokens will receive some compensation
@@ -161,8 +119,6 @@ contract StakingEscrow is Upgradeable, IERC900History {
 
     // indices for flags (0-4 were in use, skip it in future)
 //    uint8 internal constant SOME_FLAG_INDEX = 5;
-    address internal constant AFFECTED_STAKER_ADDRESS = 0xcd087a44ED8EE2aCe79F497c803005Ff79A64A94; // SAFT + university
-    uint256 internal constant AFFECTED_STAKER_UNVESTED_TOKENS = 1500000 * 10**18; // 1.5M
 
     NuCypherToken public immutable token;
     WorkLockInterface public immutable workLock;
@@ -202,7 +158,7 @@ contract StakingEscrow is Upgradeable, IERC900History {
         IVendingMachine _vendingMachine
     ) {
         require(_token.totalSupply() > 0 &&
-            _tStaking.stakedNu(address(0)) == 0 &&
+            _tStaking.getApplicationsLength() != 0 &&
             (address(_workLock) == address(0) || _workLock.token() == _token) &&
             _vendingMachine.wrappedToken() == _token &&
             _vendingMachine.tToken() == _tToken,
@@ -304,14 +260,9 @@ contract StakingEscrow is Upgradeable, IERC900History {
     function withdraw(uint256 _value) external onlyStaker {
         require(_value > 0, "Value must be specified");
         StakerInfo storage info = stakerInfo[msg.sender];
-        // TODO remove that line after 2 step of upgrading TokenStaking
         require(
-            _value + tStaking.stakedNu(info.stakingProvider) <= info.value,
-            "Not enough tokens unstaked in T staking contract"
-        );
-        require(
-            _value + getUnvestedTokens(msg.sender) <= info.value,
-            "Not enough tokens released during vesting"
+            _value <= info.value,
+            "Not enough tokens"
         );
         info.value -= _value;
 
@@ -325,14 +276,6 @@ contract StakingEscrow is Upgradeable, IERC900History {
     function wrapAndTopUp() external onlyStaker {
         StakerInfo storage info = stakerInfo[msg.sender];
         require(info.stakingProvider != address(0), "There is no stake in T staking contract");
-        require(
-            tStaking.stakedNu(info.stakingProvider) == 0,
-            "Not all tokens unstaked in T staking contract"
-        );
-        require(
-            getUnvestedTokens(msg.sender) == 0,
-            "Not all tokens released during vesting"
-        );
 
         (uint256 tTokenAmount, uint256 remainder) = vendingMachine.conversionToT(
             info.value
@@ -345,107 +288,6 @@ contract StakingEscrow is Upgradeable, IERC900History {
         tStaking.topUp(info.stakingProvider, uint96(tTokenAmount));
         info.value = remainder;
         emit WrappedAndToppedUp(msg.sender, wrappedTokenAmount);
-    }
-
-    /**
-    * @notice Returns amount of not released yet tokens for staker
-    */
-    function getUnvestedTokens(address _staker) public view returns (uint256) {
-        StakerInfo storage info = stakerInfo[_staker];
-        if (info.vestingReleaseTimestamp <= block.timestamp) {
-            return 0;
-        }
-        if (_staker == AFFECTED_STAKER_ADDRESS) {
-            return AFFECTED_STAKER_UNVESTED_TOKENS;
-        }
-        if (info.vestingReleaseRate == 0) {
-            // this value includes all not withdrawn reward
-            return info.value;
-        }
-        uint256 unvestedTokens = (info.vestingReleaseTimestamp - block.timestamp) * info.vestingReleaseRate;
-        return info.value < unvestedTokens ? info.value : unvestedTokens;
-    }
-
-    /**
-    * @notice Setup vesting parameters
-    * @param _stakers Array of stakers
-    * @param _releaseTimestamp Array of timestamps when stake will be released
-    * @param _releaseRate Array of release rates
-    * @dev If release rate is 0 then all value will be locked before release timestamp
-    */
-    function setupVesting(
-        address[] calldata _stakers,
-        uint256[] calldata _releaseTimestamp,
-        uint256[] calldata _releaseRate
-    ) external onlyOwner {
-        require(_stakers.length == _releaseTimestamp.length &&
-            _releaseTimestamp.length == _releaseRate.length,
-            "Input arrays must have same number of elements"
-        );
-        for (uint256 i = 0; i < _stakers.length; i++) {
-            address staker = _stakers[i];
-            StakerInfo storage info = stakerInfo[staker];
-            require(info.vestingReleaseTimestamp == 0, "Vesting parameters can be set only once");
-            info.vestingReleaseTimestamp = _releaseTimestamp[i];
-            info.vestingReleaseRate = _releaseRate[i];
-            require(getUnvestedTokens(staker) > 0, "Vesting parameters must be set properly");
-            emit VestingSet(staker, info.vestingReleaseTimestamp, info.vestingReleaseRate);
-        }
-    }
-
-    /**
-    * @notice Request migration to threshold network
-    * @param _staker Staker address
-    * @param _stakingProvider Staking provider address
-    * @return Amount of tokens
-    */
-    function requestMerge(address _staker, address _stakingProvider)
-        external onlyTStakingContract returns (uint256)
-    {
-        StakerInfo storage info = stakerInfo[_staker];
-        require(
-            info.stakingProvider == address(0) ||
-            info.stakingProvider == _stakingProvider ||
-            tStaking.stakedNu(info.stakingProvider) == 0,
-            "Staking provider already set for the staker"
-        );
-        if (info.stakingProvider != _stakingProvider) {
-            info.stakingProvider = _stakingProvider;
-            emit MergeRequested(_staker, _stakingProvider);
-        }
-        return info.value;
-    }
-
-    //-------------------------Slashing-------------------------
-    /**
-    * @notice Slash the staker's stake and reward the investigator
-    * @param _staker Staker's address
-    * @param _penalty Penalty
-    * @param _investigator Investigator
-    * @param _reward Reward for the investigator
-    */
-    function slashStaker(
-        address _staker,
-        uint256 _penalty,
-        address _investigator,
-        uint256 _reward
-    )
-        external onlyTStakingContract
-    {
-        require(_penalty > 0, "Penalty must be specified");
-        StakerInfo storage info = stakerInfo[_staker];
-        if (info.value <= _penalty) {
-            _penalty = info.value;
-        }
-        info.value -= _penalty;
-        if (_reward > _penalty) {
-            _reward = _penalty;
-        }
-
-        emit Slashed(_staker, _penalty, _investigator, _reward);
-        if (_reward > 0) {
-            token.safeTransfer(_investigator, _reward);
-        }
     }
 
     //-------------Additional getters for stakers info-------------
