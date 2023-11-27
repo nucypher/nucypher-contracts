@@ -1,31 +1,36 @@
 deployment:
   name: dashboard-root
-  chain_id: 5
+  chain_id: 11155111  # Sepolia Testnet
 
 artifacts:
   dir: ./deployment/artifacts/
   filename: dashboard.json
 
 constants:
-  IN_SECONDS_1_HOUR: 3600
-  IN_SECONDS_7_DAYS: 604800
-  IN_SECONDS_60_DAYS: 5184000
+  IN_SECONDS_1_DAY: 86400
   IN_SECONDS_182_DAYS: 15724800
   IN_SECONDS_364_DAYS: 31449600
+  IN_SECONDS_AVERAGE_MONTH_DURATION: 2628000  # 365*24*60*60/12
   FORTY_THOUSAND_TOKENS_IN_WEI_UNITS: 40000000000000000000000
-  YEAR_2025: 1735689600
+  TIMESTAMP_FOR_2023_12_30_2359_UTC: 1703980799
+  # https://app.safe.global/home?safe=sep:0xED152d8E2ba12C9E51D4170047877966bCcD5190
+  SEPOLIA_SAFE: "0xED152d8E2ba12C9E51D4170047877966bCcD5190"
+  # Sepolia Threshold addresses - see https://docs.threshold.network/resources/contract-addresses/sepolia-testnet
+  SEPOLIA_T_TOKEN: "0x46abDF5aD1726ba700794539C3dB8fE591854729"
+  SEPOLIA_T_STAKING: "0x3d4cb85c0e3c5bd1667B7E30f3E86B3FAB878Ff8"
 
 contracts:
   - TACoApplication:
       proxy:
         constructor:
+          initialOwner: $SEPOLIA_SAFE  # Upgrades owner
           _data: $encode:initialize
       constructor:
-        _token: "0x3f16380656cAE45D3f80D8833682d2b606eD094A"
-        _tStaking: "0x1da5d88C26EA4f87b5e09C3452eE2384Ee20DC75"
+        _token: $SEPOLIA_T_TOKEN
+        _tStaking: $SEPOLIA_T_STAKING
         _minimumAuthorization: $FORTY_THOUSAND_TOKENS_IN_WEI_UNITS
-        _minOperatorSeconds: $IN_SECONDS_1_HOUR
-        _rewardDuration: $IN_SECONDS_7_DAYS
-        _deauthorizationDuration: $IN_SECONDS_60_DAYS
+        _minOperatorSeconds: $IN_SECONDS_1_DAY
+        _rewardDuration: $IN_SECONDS_AVERAGE_MONTH_DURATION
+        _deauthorizationDuration: $IN_SECONDS_182_DAYS
         _commitmentDurationOptions: [$IN_SECONDS_182_DAYS, $IN_SECONDS_364_DAYS]
-        _commitmentDeadline: $YEAR_2025
+        _commitmentDeadline: $TIMESTAMP_FOR_2023_12_30_2359_UTC
