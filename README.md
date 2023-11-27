@@ -150,27 +150,27 @@ $ ape run <domain> <script_name>  --network ethereum:goerli:infura
 
 ## NPM publishing process
 
-> **_Note:_** This manual process has been deprecated in favour of a Github workflow: [npm.yml](.github/workflows/npm.yml).
-
 For interoperability, we keep an NPM package with information of deployed smart contracts, such as address, ABI, etc.
+The NPM package can be found at https://www.npmjs.com/package/@nucypher/nucypher-contracts.
 
-The NPM package can be found in https://www.npmjs.com/package/@nucypher/nucypher-contracts and the process to update it is as follows:
+The process to publish a new NPM release is as follows:
 
-1. Run the deployment scripts.
+1. Make the required changes to deployment artifacts, usually by running a deployment script.
 
-2. Change the `version` field of the `package.json`. See “Versioning” section.
+2. Update the package version using `bump2version <VERSION_PART>` (e.g., `bump2version patch` to go from v0.1.2 to v0.1.3).
+Alternatively, modify the `version` field in `package.json` and `setup.cfg`.
+Note that we follow [semantic versioning](https://docs.npmjs.com/about-semantic-versioning).
 
-3. Publish the new version:
+3. Push the bump commit and new tag upstream:
 
 ```bash
-  $ npm publish
+> git push origin main && git push origin <VERSION_TAG>
 ```
 
-### NPM versioning
+3. Publish the new NPM version; this is performed automatically by Github Actions 
+when you [create a new release](https://github.com/nucypher/nucypher-contracts/releases/new),
+associated to the latest version tag. Alternatively, run:
 
-We follow semantic versioning schema:
-
-https://docs.npmjs.com/about-semantic-versioning
-
-But with some changes: while the major version is 0, we always bump patch version instead of minor
-version.
+```bash
+> npm publish
+```
