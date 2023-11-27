@@ -1,7 +1,7 @@
 {
-    "5": {
+    "11155111": {
         "TACoApplication": {
-            "address": "0x52f09eB7D82344b5343dAeF7D7ef56E9b84AEbA4",
+            "address": "0xE9Eb81F72cDBE9fE82f61EA527e8a3A39f5B023a",
             "abi": [
                 {
                     "type": "constructor",
@@ -41,6 +41,11 @@
                             "name": "_commitmentDurationOptions",
                             "type": "uint64[]",
                             "internalType": "uint64[]"
+                        },
+                        {
+                            "name": "_commitmentDeadline",
+                            "type": "uint64",
+                            "internalType": "uint64"
                         }
                     ]
                 },
@@ -485,6 +490,19 @@
                 },
                 {
                     "type": "function",
+                    "name": "approveAuthorizationDecrease",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
                     "name": "authorizationDecreaseRequested",
                     "stateMutability": "nonpayable",
                     "inputs": [
@@ -636,6 +654,19 @@
                 },
                 {
                     "type": "function",
+                    "name": "commitmentDeadline",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint64",
+                            "internalType": "uint64"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
                     "name": "commitmentDurationOption1",
                     "stateMutability": "view",
                     "inputs": [],
@@ -714,19 +745,6 @@
                 },
                 {
                     "type": "function",
-                    "name": "finishAuthorizationDecrease",
-                    "stateMutability": "nonpayable",
-                    "inputs": [
-                        {
-                            "name": "_stakingProvider",
-                            "type": "address",
-                            "internalType": "address"
-                        }
-                    ],
-                    "outputs": []
-                },
-                {
-                    "type": "function",
                     "name": "getActiveStakingProviders",
                     "stateMutability": "view",
                     "inputs": [
@@ -770,25 +788,6 @@
                             "name": "beneficiary",
                             "type": "address",
                             "internalType": "address payable"
-                        }
-                    ]
-                },
-                {
-                    "type": "function",
-                    "name": "getOperatorFromStakingProvider",
-                    "stateMutability": "view",
-                    "inputs": [
-                        {
-                            "name": "_stakingProvider",
-                            "type": "address",
-                            "internalType": "address"
-                        }
-                    ],
-                    "outputs": [
-                        {
-                            "name": "",
-                            "type": "address",
-                            "internalType": "address"
                         }
                     ]
                 },
@@ -945,6 +944,25 @@
                 },
                 {
                     "type": "function",
+                    "name": "operatorToStakingProvider",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "_operator",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
                     "name": "owner",
                     "stateMutability": "view",
                     "inputs": [],
@@ -997,6 +1015,19 @@
                             "name": "_reward",
                             "type": "uint96",
                             "internalType": "uint96"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "registerOperator",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_operator",
+                            "type": "address",
+                            "internalType": "address"
                         }
                     ],
                     "outputs": []
@@ -1169,25 +1200,6 @@
                 },
                 {
                     "type": "function",
-                    "name": "stakingProviderFromOperator",
-                    "stateMutability": "view",
-                    "inputs": [
-                        {
-                            "name": "_operator",
-                            "type": "address",
-                            "internalType": "address"
-                        }
-                    ],
-                    "outputs": [
-                        {
-                            "name": "",
-                            "type": "address",
-                            "internalType": "address"
-                        }
-                    ]
-                },
-                {
-                    "type": "function",
                     "name": "stakingProviderInfo",
                     "stateMutability": "view",
                     "inputs": [
@@ -1242,6 +1254,25 @@
                             "name": "endCommitment",
                             "type": "uint64",
                             "internalType": "uint64"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "stakingProviderToOperator",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "address",
+                            "internalType": "address"
                         }
                     ]
                 },
@@ -1317,9 +1348,9 @@
                     "outputs": []
                 }
             ],
-            "tx_hash": "0xfe32445a73839f513259ea38804f1e51c5dc09e2ab67b6510d1b73357dcc4ef3",
-            "block_number": 10018886,
-            "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
+            "tx_hash": "0xb9cd5deb857d4e74e45bcd9dd435f3fccf08cdb8c91ac0ca9da36c47210eb149",
+            "block_number": 4776043,
+            "deployer": "0x24dbb0BEE134C3773D2C1791d65d99e307Fe86CF"
         }
     }
 }
