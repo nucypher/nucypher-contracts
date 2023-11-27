@@ -48,6 +48,11 @@ contract EnhancedStakingEscrow is StakingEscrow {
         stakers.push(_staker);
     }
 
+    function setStakingProvider(address _staker, address _stakingProvider) external {
+        StakerInfo storage info = stakerInfo[_staker];
+        info.stakingProvider = _stakingProvider;
+    }
+
 }
 
 
@@ -155,68 +160,22 @@ contract ThresholdStakingForStakingEscrowMock {
     IERC20 public immutable tToken;
     StakingEscrow public escrow;
 
-    struct StakingProviderInfo {
-        uint256 staked;
-        uint96 minStaked;
-    }
-
-    mapping(address => StakingProviderInfo) public stakingProviders;
+    mapping(address => uint256) public stakingProviders;
 
     constructor(IERC20 _tToken) {
         tToken = _tToken;
     }
 
+    function getApplicationsLength() external pure returns (uint256) {
+        return 1;
+    }
+
     function setStakingEscrow(StakingEscrow _escrow) external {
         escrow = _escrow;
     }
-
-    function stakedNu(address _stakingProvider) external view returns (uint256) {
-        return stakingProviders[_stakingProvider].staked;
-    }
-
-    function getMinStaked(address _stakingProvider, IStaking.StakeType _stakeTypes) external view returns (uint96) {
-        require(_stakeTypes == IStaking.StakeType.NU);
-        return stakingProviders[_stakingProvider].minStaked;
-    }
-
-    function stakes(address _stakingProvider) external view returns
-    (
-        uint96 tStake,
-        uint96 keepInTStake,
-        uint96 nuInTStake
-    ) {
-        tStake = 0;
-        keepInTStake = 0;
-        nuInTStake = uint96(stakingProviders[_stakingProvider].staked);
-    }
-
-    function slashStaker(
-        address _staker,
-        uint256 _penalty,
-        address _investigator,
-        uint256 _reward
-    )
-        external
-    {
-        escrow.slashStaker(_staker, _penalty, _investigator, _reward);
-    }
-
-    function requestMerge(address _staker, address _stakingProvider) external {
-        stakingProviders[_stakingProvider].staked = escrow.requestMerge(_staker, _stakingProvider);
-    }
-
-    function setStakedNu(address _stakingProvider, uint256 _staked) external {
-        require(_staked <= stakingProviders[_stakingProvider].staked);
-        stakingProviders[_stakingProvider].staked = _staked;
-    }
-
-    function setMinStaked(address _stakingProvider, uint96 _minStaked) external {
-        require(_minStaked <= stakingProviders[_stakingProvider].staked);
-        stakingProviders[_stakingProvider].minStaked = _minStaked;
-    }
     
     function topUp(address _stakingProvider, uint96 _amount) external {
-        stakingProviders[_stakingProvider].staked += _amount;
+        stakingProviders[_stakingProvider] += _amount;
         tToken.transferFrom(msg.sender, address(this), _amount);
     }
 }
