@@ -17,8 +17,12 @@ def main():
 
     taco_application = deployer.deploy(project.TACoApplication)
 
+    mock_polygon_root = deployer.deploy(project.MockPolygonRoot)
+    deployer.transact(taco_application.setChildApplication, mock_polygon_root.address)
+
     deployments = [
         taco_application,
+        mock_polygon_root,
     ]
 
     deployer.finalize(deployments=deployments)

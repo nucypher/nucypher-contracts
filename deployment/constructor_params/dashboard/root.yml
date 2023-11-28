@@ -34,3 +34,6 @@ contracts:
         _deauthorizationDuration: $IN_SECONDS_182_DAYS
         _commitmentDurationOptions: [$IN_SECONDS_182_DAYS, $IN_SECONDS_364_DAYS]
         _commitmentDeadline: $TIMESTAMP_FOR_2023_12_30_2359_UTC
+  - MockPolygonRoot:
+      constructor:
+        _rootApplication: $TACoApplication
