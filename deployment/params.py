@@ -8,13 +8,14 @@ from ape import chain, networks
 from ape.api import AccountAPI, ReceiptAPI
 from ape.cli import get_user_selected_account
 from ape.contracts.base import ContractContainer, ContractInstance, ContractTransactionHandler
-from ape.utils import ZERO_ADDRESS
+from ape.utils import EMPTY_BYTES32, ZERO_ADDRESS
 from eth_typing import ChecksumAddress
+from eth_utils import to_checksum_address
 from ethpm_types import MethodABI
 from web3.auto import w3
 
 from deployment.confirm import _confirm_resolution, _continue
-from deployment.constants import OZ_DEPENDENCY
+from deployment.constants import EIP1967_ADMIN_SLOT, OZ_DEPENDENCY
 from deployment.registry import registry_from_ape_deployments
 from deployment.utils import (
     _load_yaml,
@@ -613,6 +614,31 @@ class Deployer(Transactor):
             f"at {proxy_contract.address}."
         )
         return contract_type_container.at(proxy_contract.address)
+
+    def upgrade(self, container: ContractContainer, proxy_address, data=b'') -> ContractInstance:
+        
+        admin_slot = chain.provider.get_storage_at(
+            address=proxy_address,
+            slot=EIP1967_ADMIN_SLOT
+        )
+
+        if admin_slot == EMPTY_BYTES32:
+            raise ValueError(
+                f"Admin slot for contract at {proxy_address} is empty. "
+                "Are you sure this is an EIP1967-compatible proxy?"
+            )
+        
+        admin_address = to_checksum_address(admin_slot[-20:])
+        proxy_admin = OZ_DEPENDENCY.ProxyAdmin.at(admin_address)
+        # TODO: Check that owner of proxy admin is deployer
+
+        implementation = self.deploy(container)
+        # TODO: initialize taco app implementation too
+
+        self.transact(proxy_admin.upgradeAndCall, proxy_address, implementation.address, data)
+        
+        wrapped_instance = container.at(proxy_address)
+        return wrapped_instance
 
     def finalize(self, deployments: List[ContractInstance]) -> None:
         """
