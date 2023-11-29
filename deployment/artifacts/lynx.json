@@ -5162,20 +5162,7 @@
                 },
                 {
                     "type": "function",
-                    "name": "rootApplication",
-                    "stateMutability": "view",
-                    "inputs": [],
-                    "outputs": [
-                        {
-                            "name": "",
-                            "type": "address",
-                            "internalType": "contract ITACoChildToRoot"
-                        }
-                    ]
-                },
-                {
-                    "type": "function",
-                    "name": "stakingProviderFromOperator",
+                    "name": "operatorToStakingProvider",
                     "stateMutability": "view",
                     "inputs": [
                         {
@@ -5189,6 +5176,19 @@
                             "name": "",
                             "type": "address",
                             "internalType": "address"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "rootApplication",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "address",
+                            "internalType": "contract ITACoChildToRoot"
                         }
                     ]
                 },
