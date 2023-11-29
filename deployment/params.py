@@ -630,7 +630,6 @@ class Deployer(Transactor):
         
         admin_address = to_checksum_address(admin_slot[-20:])
         proxy_admin = OZ_DEPENDENCY.ProxyAdmin.at(admin_address)
-
         # TODO: Check that owner of proxy admin is deployer
 
         implementation = self.deploy(container)
@@ -638,8 +637,8 @@ class Deployer(Transactor):
 
         self.transact(proxy_admin.upgradeAndCall, proxy_address, implementation.address, data)
         
-        # TODO: wrap implementaiton with proxy
-        return implementation
+        wrapped_instance = container.at(proxy_address)
+        return wrapped_instance
 
     def finalize(self, deployments: List[ContractInstance]) -> None:
         """

@@ -1,0 +1,23 @@
+deployment:
+  name: lynx-child-upgrade
+  chain_id: 80001
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: lynx-upgrade.json
+
+constants:
+  FORTY_THOUSAND_TOKENS_IN_WEI_UNITS: 40000000000000000000000
+  MOCK_POLYGON_CHILD: "0x45e06A2EaC4D928C8773A64b9eFe9d757B17F04D"
+  LYNX_RITUAL_TOKEN: "0x6DED3A2DCaC9dcB62253F063D765F323D6E4be82"
+
+contracts:
+  - TACoChildApplication:
+      constructor:
+        _rootApplication: $MOCK_POLYGON_CHILD
+        _minimumAuthorization: $FORTY_THOUSAND_TOKENS_IN_WEI_UNITS
+  - Coordinator:
+      constructor:
+        _application: "0x8BFB087C4427387dFA217599EA0b860b3F3C49A3"
+        _currency: $LYNX_RITUAL_TOKEN
+        _feeRatePerSecond: 1
