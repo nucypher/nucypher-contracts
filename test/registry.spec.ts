@@ -2,21 +2,19 @@ import { describe, expect, it } from "vitest";
 
 import { ChainId, type ContractName, contractNames, type Domain, getContract } from "../src";
 
-const testCases: Array<[string, number, ContractName]> = contractNames.map((contractName) =>
-  [
-    ["lynx", 80001, contractName],
-    ["tapir", 80001, contractName],
-  ].flat()
-);
+const testCases: Array<[string, number, ContractName]> = contractNames.flatMap((contract) => [
+  ["lynx", 80001, contract],
+  ["tapir", 80001, contract],
+]);
 
 describe("registry", () => {
-  for (const testCase of testCases) {
-    const [domain, chainId, contract] = testCase;
-    it(`should for domain ${domain}, chainId ${chainId}, contract ${contract}`, () => {
+  it.each(testCases)(
+    `should work for domain %s, chainId %i, contract %s`,
+    (domain, chainId, contract) => {
       const contractAddress = getContract(domain as Domain, chainId as ChainId, contract);
       expect(contractAddress).toBeDefined();
-    });
-  }
+    },
+  );
 
   it("should throw for invalid domain", () => {
     expect(() => getContract("invalid-domain", 80001, "Coordinator")).toThrow();

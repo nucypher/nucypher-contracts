@@ -1,8 +1,8 @@
-import lynxRegistryJson from '../deployment/artifacts/lynx.json';
-import mainnetRegistryJson from '../deployment/artifacts/mainnet.json';
-import tapirRegistryJson from '../deployment/artifacts/tapir.json';
+import lynxRegistryJson from "../deployment/artifacts/lynx.json";
+import mainnetRegistryJson from "../deployment/artifacts/mainnet.json";
+import tapirRegistryJson from "../deployment/artifacts/tapir.json";
 
-export type Abi = unknown
+export type Abi = unknown;
 
 export interface DeployedContract {
   address: string;
@@ -10,20 +10,16 @@ export interface DeployedContract {
 }
 
 // Only expose contracts that are used in the SDK
-export const contractNames = [
-  'Coordinator',
-  'GlobalAllowList',
-  'SubscriptionManager',
-] as const;
+export const contractNames = ["Coordinator", "GlobalAllowList", "SubscriptionManager"] as const;
 
-export type ContractName = (typeof contractNames)[number]
+export type ContractName = (typeof contractNames)[number];
 
 export interface Contract {
   name: ContractName;
   abi: Abi;
 }
 
-export type ContractRegistry = Record<string, Record<string, DeployedContract>>
+export type ContractRegistry = Record<string, Record<string, DeployedContract>>;
 
 export const domainRegistry: Record<string, ContractRegistry> = {
   lynx: lynxRegistryJson,
@@ -31,11 +27,11 @@ export const domainRegistry: Record<string, ContractRegistry> = {
   mainnet: mainnetRegistryJson,
 };
 
-export type Domain = 'mainnet' | 'oryx' | 'tapir' | 'lynx'
+export type Domain = "mainnet" | "oryx" | "tapir" | "lynx";
 
-export type ChainId = 1 | 5 | 137 | 80001
+export type ChainId = 1 | 5 | 137 | 80001;
 
-export type ChecksumAddress = `0x${string}`
+export type ChecksumAddress = `0x${string}`;
 
 export const getContract = (
   domain: Domain | string,
@@ -54,7 +50,7 @@ export const getContract = (
 
   const deployedContract = contracts[contract];
   if (!deployedContract) {
-    throw new Error(`No contract found for name: ${deployedContract}`);
+    throw new Error(`No contract found for name: ${contract}`);
   }
 
   return deployedContract.address as ChecksumAddress;
