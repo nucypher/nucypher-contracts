@@ -38,6 +38,10 @@ export const getContract = (
   chainId: ChainId | number,
   contract: ContractName | string,
 ): ChecksumAddress => {
+  if (!contractNames.includes(contract as ContractName)) {
+    throw new Error(`Invalid contract name: ${contract}`);
+  }
+
   const registry = domainRegistry[domain];
   if (!registry) {
     throw new Error(`No contract registry found for domain: ${domain}`);
