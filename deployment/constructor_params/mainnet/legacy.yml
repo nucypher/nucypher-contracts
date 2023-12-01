@@ -1,5 +1,5 @@
 deployment:
-  name: mainnet-root
+  name: mainnet-legacy-upgrade
   chain_id: 1 # Ethereum Mainnet
 
 artifacts:
