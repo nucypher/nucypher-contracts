@@ -14,6 +14,8 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with nucypher.  If not, see <https://www.gnu.org/licenses/>.
 """
+from enum import IntEnum
+
 import ape
 import pytest
 
@@ -25,6 +27,20 @@ ACCESS_CONTROLLER_SLOT = 2
 SENDER_SLOT = 3
 RITUAL_ID_SLOT = 4
 PAYMENT_SLOT = 5
+
+RitualState = IntEnum(
+    "RitualState",
+    [
+        "NON_INITIATED",
+        "DKG_AWAITING_TRANSCRIPTS",
+        "DKG_AWAITING_AGGREGATIONS",
+        "DKG_TIMEOUT",
+        "DKG_INVALID",
+        "ACTIVE",
+        "EXPIRED",
+    ],
+    start=0,
+)
 
 
 @pytest.fixture()
@@ -364,13 +380,19 @@ def test_refund(accounts, beta_program_initiator, token, coordinator, executor):
     beta_program_initiator.executeInitiationRequest(0, sender=executor)
     request_0_ritual_id = 1
     request_1_ritual_id = 0
-    for state in [0, 1, 2, 5, 6]:
+    for state in [
+        RitualState.NON_INITIATED,
+        RitualState.DKG_AWAITING_TRANSCRIPTS,
+        RitualState.DKG_AWAITING_AGGREGATIONS,
+        RitualState.ACTIVE,
+        RitualState.EXPIRED,
+    ]:
         coordinator.setRitualState(request_0_ritual_id, state, sender=initiator_2)
         with ape.reverts("Ritual is not failed"):
             beta_program_initiator.refundFailedRequest(request_0_ritual_id, sender=initiator_2)
 
     # Refund failed request
-    coordinator.setRitualState(request_0_ritual_id, 3, sender=initiator_2)
+    coordinator.setRitualState(request_0_ritual_id, RitualState.DKG_TIMEOUT, sender=initiator_2)
     balance_before = token.balanceOf(initiator_1)
     assert coordinator.pendingFees(request_0_ritual_id) == ritual_cost_1
     tx = beta_program_initiator.refundFailedRequest(0, sender=initiator_2)
@@ -388,7 +410,7 @@ def test_refund(accounts, beta_program_initiator, token, coordinator, executor):
         beta_program_initiator.refundFailedRequest(0, sender=executor)
 
     # Refund failed request without pending fees
-    coordinator.setRitualState(request_1_ritual_id, 4, sender=initiator_2)
+    coordinator.setRitualState(request_1_ritual_id, RitualState.DKG_INVALID, sender=initiator_2)
     balance_before = token.balanceOf(initiator_2)
     coordinator.processPendingFee(request_1_ritual_id, sender=initiator_1)
     assert coordinator.pendingFees(request_1_ritual_id) == 0
