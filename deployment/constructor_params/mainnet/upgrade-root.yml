@@ -1,6 +1,6 @@
 deployment:
   name: mainnet-upgrade-root
-  chain_id: 5
+  chain_id: 1
 
 artifacts:
   dir: ./deployment/artifacts/
