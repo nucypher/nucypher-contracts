@@ -300,7 +300,7 @@ contract TACoApplication is
      *  @notice Returns authorization-related parameters of the application.
      *  @dev The minimum authorization is also returned by `minimumAuthorization()`
      *       function, as a requirement of `IApplication` interface.
-     *  @return _minimumAuthorization The minimum authorization amount required
+     *  @return minimumAuthorization The minimum authorization amount required
      *          so that operator can participate in the application.
      *  @return authorizationDecreaseDelay Delay in seconds that needs to pass
      *          between the time authorization decrease is requested and the
@@ -320,7 +320,7 @@ contract TACoApplication is
         view
         override
         returns (
-            uint96 _minimumAuthorization,
+            uint96 minimumAuthorization,
             uint64 authorizationDecreaseDelay,
             uint64 authorizationDecreaseChangePeriod
         )
