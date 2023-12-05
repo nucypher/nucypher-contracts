@@ -95,7 +95,7 @@ contract TACoApplication is
     );
 
     /**
-     * @notice Signals that authorization was resynchronized
+     * @notice Signals that authorization was resynchronized with Threshold staking contract
      * @param stakingProvider Staking provider address
      * @param fromAmount Previous amount of authorized tokens
      * @param toAmount Resynchronized amount of authorized tokens
@@ -140,6 +140,18 @@ contract TACoApplication is
      * @param endCommitment End of commitment
      */
     event CommitmentMade(address indexed stakingProvider, uint256 endCommitment);
+
+    /**
+     * @notice Signals that manual child synchronization was called
+     * @param stakingProvider Staking provider address
+     * @param authorized Previous amount of authorized tokens
+     * @param operator Resynchronized amount of authorized tokens
+     */
+    event ManualChildSynchronizationSent(
+        address indexed stakingProvider,
+        uint96 authorized,
+        address operator
+    );
 
     struct StakingProviderInfo {
         address operator;
@@ -865,6 +877,18 @@ contract TACoApplication is
         // TODO send both authorized and eligible amounts in case of slashing from child app
         uint96 eligibleAmount = getEligibleAmount(_info);
         childApplication.updateAuthorization(_stakingProvider, eligibleAmount);
+    }
+
+    /**
+     * @notice Manual signal to the bridge with the current state of the specified staking provider
+     * @dev This method useful only in case of issues with the bridge
+     */
+    function manualChildSynchronization(address _stakingProvider) external {
+        require(_stakingProvider != address(0), "Staking provider must be specified");
+        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
+        emit ManualChildSynchronizationSent(_stakingProvider, info.authorized, info.operator);
+        _updateAuthorization(_stakingProvider, info);
+        childApplication.updateOperator(_stakingProvider, info.operator);
     }
 
     //-------------------------Slashing-------------------------
