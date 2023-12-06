@@ -1,0 +1,51 @@
+deployment:
+  name: mainnet-root-repair
+  chain_id: 1
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: mainnet-root-repair.json
+
+constants:
+  # Threshold Network - References:
+  # - https://docs.threshold.network/resources/contract-addresses/mainnet/threshold-dao
+  T_TOKEN_ETH_MAINNET: "0xCdF7028ceAB81fA0C6971208e83fa7872994beE5"
+  T_STAKING_CONTRACT: "0x01B67b1194C75264d06F808A921228a95C765dd7"
+
+  # FxPortal addresses - References:
+  # - https://github.com/0xPolygon/fx-portal#deployment-addresses
+  # - https://github.com/0xPolygon/fx-portal/blob/main/config/config.json
+  # - https://wiki.polygon.technology/docs/pos/design/bridge/l1-l2-communication/state-transfer/#prerequisites
+  FXPORTAL_CHECKPOINT_MANAGER: "0x86e4dc95c7fbdbf52e33d563bbdb00823894c287"
+  FXPORTAL_FXROOT: "0xfe5e5D361b2ad62c541bAb87C45a0B9B018389a2"
+  POLYGON_CHILD: "invalid" # Temporary invalid value that will be overwritten by workaround in deployment script
+
+  # TACo specific constants:
+  IN_SECONDS_1_DAY: 86400
+  IN_SECONDS_91_DAYS: 7862400
+  IN_SECONDS_182_DAYS: 15724800
+  IN_SECONDS_364_DAYS: 31449600
+  IN_SECONDS_546_DAYS: 47174400
+  IN_SECONDS_AVERAGE_MONTH_DURATION: 2628000  # 365*24*60*60/12
+  FORTY_THOUSAND_TOKENS_IN_WEI_UNITS: 40000000000000000000000
+  TIMESTAMP_FOR_2023_12_30_2359_UTC: 1703980799
+  TACO_APPLICATION_PROXY: "0x347CC7ede7e5517bD47D20620B2CF1b406edcF07"
+
+contracts:
+  - TACoApplication:
+      constructor:
+        _token: $T_TOKEN_ETH_MAINNET
+        _tStaking: $T_STAKING_CONTRACT
+        _minimumAuthorization: $FORTY_THOUSAND_TOKENS_IN_WEI_UNITS
+        _minOperatorSeconds: $IN_SECONDS_1_DAY
+        _rewardDuration: $IN_SECONDS_AVERAGE_MONTH_DURATION
+        _deauthorizationDuration: $IN_SECONDS_182_DAYS
+        _commitmentDurationOptions: [$IN_SECONDS_91_DAYS, $IN_SECONDS_182_DAYS, $IN_SECONDS_364_DAYS, $IN_SECONDS_546_DAYS]
+        _commitmentDeadline: $TIMESTAMP_FOR_2023_12_30_2359_UTC
+  - PolygonRoot:
+      constructor:
+        _checkpointManager: $FXPORTAL_CHECKPOINT_MANAGER
+        _fxRoot: $FXPORTAL_FXROOT
+        _rootApplication: $TACO_APPLICATION_PROXY
+        _fxChildTunnel: $POLYGON_CHILD  # This is a Polygon address
+
