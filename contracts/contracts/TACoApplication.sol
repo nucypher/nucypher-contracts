@@ -292,7 +292,6 @@ contract TACoApplication is
      * @notice Set contract for multi-chain interactions
      */
     function setChildApplication(ITACoRootToChild _childApplication) external onlyOwner {
-        require(address(childApplication) == address(0), "Child application is already set");
         require(address(_childApplication).code.length > 0, "Child app must be contract");
         childApplication = _childApplication;
     }
