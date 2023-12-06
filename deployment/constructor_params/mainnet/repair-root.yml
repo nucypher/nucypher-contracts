@@ -16,7 +16,7 @@ constants:
   # - https://github.com/0xPolygon/fx-portal#deployment-addresses
   # - https://github.com/0xPolygon/fx-portal/blob/main/config/config.json
   # - https://wiki.polygon.technology/docs/pos/design/bridge/l1-l2-communication/state-transfer/#prerequisites
-  FXPORTAL_CHECKPOINT_MANAGER: "0x86e4dc95c7fbdbf52e33d563bbdb00823894c287"
+  FXPORTAL_CHECKPOINT_MANAGER: "0x86E4Dc95c7FBdBf52e33D563BbDB00823894C287"
   FXPORTAL_FXROOT: "0xfe5e5D361b2ad62c541bAb87C45a0B9B018389a2"
   POLYGON_CHILD: "invalid" # Temporary invalid value that will be overwritten by workaround in deployment script
 

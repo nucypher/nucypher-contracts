@@ -12,7 +12,7 @@ CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "mainnet" / "repair-child
 def main():
     """
     This script deploys latest TACoApplication and PolygonChild contracts on Polygon/Mainnet, setting
-    the PolygonChild's child application to the new TACoApplication contract.
+    the PolygonChild's child application to the existing TACoApplication proxy.
     """
 
     deployer = Deployer.from_yaml(filepath=CONSTRUCTOR_PARAMS_FILEPATH, verify=VERIFY)

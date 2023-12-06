@@ -20,7 +20,8 @@ def main():
         taco_application_implementation = deployer.deploy(project.TACoApplication)
         polygon_root = deployer.deploy(project.PolygonRoot)
 
-        # Council multisig must call the next function
+        # Council multisig upgrades TACoApplication with new implementation.
+        # Also, council must set the child application with new PolygonRoot
         # deployer.transact(taco_application.setChildApplication, polygon_root.address)
 
 
