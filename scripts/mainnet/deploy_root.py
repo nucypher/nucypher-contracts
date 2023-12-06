@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from ape import project
+from ape import project, networks
 
 from deployment.constants import ARTIFACTS_DIR, CONSTRUCTOR_PARAMS_DIR
 from deployment.params import Deployer
@@ -34,7 +34,10 @@ def main():
 
     polygon_root = deployer.deploy(project.PolygonRoot)
 
-    deployer.transact(polygon_child.setFxRootTunnel, polygon_root.address)
+    # This line was missing from the original script
+    # with networks.polygon.mainnet.use_provider("infura"):
+    #     polygon_child = project.PolygonChild.at('invalid')
+    #     deployer.transact(polygon_child.setFxRootTunnel, polygon_root.address)
 
     # Need to set child application before transferring ownership
     deployer.transact(taco_application.setChildApplication, polygon_root.address)
