@@ -144,8 +144,8 @@ contract TACoApplication is
     /**
      * @notice Signals that manual child synchronization was called
      * @param stakingProvider Staking provider address
-     * @param authorized Previous amount of authorized tokens
-     * @param operator Resynchronized amount of authorized tokens
+     * @param authorized Amount of authorized tokens to synchronize
+     * @param operator Operator address to synchronize
      */
     event ManualChildSynchronizationSent(
         address indexed stakingProvider,
@@ -881,7 +881,7 @@ contract TACoApplication is
 
     /**
      * @notice Manual signal to the bridge with the current state of the specified staking provider
-     * @dev This method useful only in case of issues with the bridge
+     * @dev This method is useful only in case of issues with the bridge
      */
     function manualChildSynchronization(address _stakingProvider) external {
         require(_stakingProvider != address(0), "Staking provider must be specified");
