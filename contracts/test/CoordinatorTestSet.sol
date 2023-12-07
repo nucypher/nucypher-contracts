@@ -11,14 +11,14 @@ contract ChildApplicationForCoordinatorMock is ITACoChildApplication {
     uint96 public minimumAuthorization = 0;
 
     mapping(address => uint96) public authorizedStake;
-    mapping(address => address) public operatorFromStakingProvider;
+    mapping(address => address) public stakingProviderToOperator;
     mapping(address => address) public operatorToStakingProvider;
     mapping(address => bool) public confirmations;
 
     function updateOperator(address _stakingProvider, address _operator) external {
-        address oldOperator = operatorFromStakingProvider[_stakingProvider];
+        address oldOperator = stakingProviderToOperator[_stakingProvider];
         operatorToStakingProvider[oldOperator] = address(0);
-        operatorFromStakingProvider[_stakingProvider] = _operator;
+        stakingProviderToOperator[_stakingProvider] = _operator;
         operatorToStakingProvider[_operator] = _stakingProvider;
     }
 

@@ -147,7 +147,7 @@ contract ChildApplicationForTACoApplicationMock {
     TACoApplication public immutable rootApplication;
 
     mapping(address => uint96) public authorizedStake;
-    mapping(address => address) public operatorFromStakingProvider;
+    mapping(address => address) public stakingProviderToOperator;
     mapping(address => address) public operatorToStakingProvider;
 
     constructor(TACoApplication _rootApplication) {
@@ -155,9 +155,9 @@ contract ChildApplicationForTACoApplicationMock {
     }
 
     function updateOperator(address _stakingProvider, address _operator) external {
-        address oldOperator = operatorFromStakingProvider[_stakingProvider];
+        address oldOperator = stakingProviderToOperator[_stakingProvider];
         operatorToStakingProvider[oldOperator] = address(0);
-        operatorFromStakingProvider[_stakingProvider] = _operator;
+        stakingProviderToOperator[_stakingProvider] = _operator;
         operatorToStakingProvider[_operator] = _stakingProvider;
     }
 

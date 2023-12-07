@@ -23,11 +23,16 @@ contract PolygonChild is FxBaseChildTunnel, Ownable {
     function setFxRootTunnel(address _fxRootTunnel) external override onlyOwner {
         require(fxRootTunnel == address(0x0), "FxBaseChildTunnel: ROOT_TUNNEL_ALREADY_SET");
         fxRootTunnel = _fxRootTunnel;
+        if (childApplication != address(0)) {
+            renounceOwnership();
+        }
     }
 
     function setChildApplication(address _childApplication) public onlyOwner {
         childApplication = _childApplication;
-        renounceOwnership();
+        if (fxRootTunnel != address(0)) {
+            renounceOwnership();
+        }
     }
 
     fallback() external {
