@@ -2,6 +2,7 @@
 
 
 from ape import networks, project
+
 from deployment.constants import ARTIFACTS_DIR, LYNX_NODES
 from deployment.params import Transactor
 from deployment.registry import contracts_from_registry
@@ -10,10 +11,10 @@ from deployment.utils import check_plugins
 LYNX_REGISTRY_FILEPATH = ARTIFACTS_DIR / "lynx.json"
 
 
-def configure_goerli_root(transactor: Transactor) -> int:
-    """Configures ThresholdStaking and TACoApplication on Goerli."""
-    # Set up lynx stakes on Goerli
-    eth_network = networks.ethereum.goerli
+def configure_sepolia_root(transactor: Transactor) -> int:
+    """Configures ThresholdStaking and TACoApplication on Sepolia."""
+    # Set up lynx stakes on Sepolia
+    eth_network = networks.ethereum.sepolia
     with eth_network.use_provider("infura"):
         deployments = contracts_from_registry(
             filepath=LYNX_REGISTRY_FILEPATH, chain_id=eth_network.chain_id
@@ -72,5 +73,5 @@ def configure_mumbai_root(transactor: Transactor, stake_size: int):
 def main():
     check_plugins()
     transactor = Transactor()
-    stake_size = configure_goerli_root(transactor)
+    stake_size = configure_sepolia_root(transactor)
     configure_mumbai_root(transactor, stake_size)

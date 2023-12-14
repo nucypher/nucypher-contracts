@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 from ape import project
+
 from deployment.constants import CONSTRUCTOR_PARAMS_DIR
 from deployment.params import Deployer
 
@@ -13,7 +14,7 @@ def main():
     This script deploys only the Proxied Lynx TACo Root Application.
 
     September 25, 2023, Deployment:
-    ape-run deploy_lynx_root --network etherscan:goerli:infura
+    ape-run deploy_lynx_root --network etherscan:sepolia:infura
     ape-etherscan             0.6.10
     ape-infura                0.6.3
     ape-polygon               0.6.5
@@ -26,6 +27,14 @@ def main():
     ape-polygon               0.6.6
     ape-solidity              0.6.9
     eth-ape                   0.6.20
+
+    December 14, 2023, Switch to Sepolia:
+    ape-etherscan    0.6.10
+    ape-polygon      0.6.6
+    ape-solidity     0.6.9
+    ape-infura       0.6.4
+    eth-ape          0.6.19
+
     """
 
     deployer = Deployer.from_yaml(filepath=CONSTRUCTOR_PARAMS_FILEPATH, verify=VERIFY)
