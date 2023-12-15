@@ -216,7 +216,7 @@ def test_cancel(accounts, beta_program_initiator, token, coordinator, executor):
     with ape.reverts("Request canceled"):
         beta_program_initiator.cancelInitiationRequest(2, sender=initiator_2)
 
-    # Can't executed request
+    # Can't cancel an executed request
     beta_program_initiator.executeInitiationRequest(1, sender=executor)
     with ape.reverts("Request already executed"):
         beta_program_initiator.cancelInitiationRequest(1, sender=executor)
@@ -264,7 +264,7 @@ def test_execute(accounts, beta_program_initiator, token, coordinator, executor)
     )
 
     # Only executor can execute request
-    with ape.reverts("Only executor"):
+    with ape.reverts("Only executor can call"):
         beta_program_initiator.executeInitiationRequest(0, sender=initiator_1)
 
     # Can't execute canceled request

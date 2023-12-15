@@ -110,7 +110,7 @@ contract BetaProgramInitiator {
     }
 
     function executeInitiationRequest(uint256 requestIndex) external {
-        require(msg.sender == executor, "Only executor");
+        require(msg.sender == executor, "Only executor can call");
 
         require(requestIndex < requests.length, "Non-existent request");
         InitiationRequest storage request = requests[requestIndex];
