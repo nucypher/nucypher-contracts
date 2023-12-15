@@ -487,9 +487,8 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         // Transfer fees back to initiator if failed
         if (state == RitualState.DKG_TIMEOUT || state == RitualState.DKG_INVALID) {
             // Refund everything minus cost of renting cohort for a day
-            // TODO: Validate if this is enough to remove griefing attacks
             uint256 duration = ritual.endTimestamp - ritual.initTimestamp;
-            refundableFee = (pending * (duration - 1 days)) / duration;
+            refundableFee = pending - feeDeduction(pending, duration);
             currency.safeTransfer(ritual.initiator, refundableFee);
         }
         return refundableFee;

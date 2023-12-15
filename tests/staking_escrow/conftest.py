@@ -32,7 +32,7 @@ def token(project, accounts):
 @pytest.fixture()
 def t_token(project, accounts):
     # Create an ERC20 token
-    token = accounts[0].deploy(project.TToken, TOTAL_SUPPLY)
+    token = accounts[0].deploy(project.TestToken, TOTAL_SUPPLY)
     return token
 
 

@@ -22,7 +22,7 @@ RitualState = IntEnum(
         "DKG_TIMEOUT",
         "DKG_INVALID",
         "ACTIVE",
-        "EXPIRED"
+        "EXPIRED",
     ],
     start=0,
 )
@@ -80,8 +80,7 @@ def application(project, deployer, nodes):
 
 @pytest.fixture()
 def erc20(project, initiator):
-    # Create an ERC20 token (using NuCypherToken because it's easier, but could be any ERC20)
-    token = project.NuCypherToken.deploy(ERC20_SUPPLY, sender=initiator)
+    token = project.TestToken.deploy(ERC20_SUPPLY, sender=initiator)
     return token
 
 
@@ -435,10 +434,10 @@ def test_post_aggregation_fails(
     assert coordinator.pendingFees(ritualID) == 0
     coordinator.withdrawTokens(erc20.address, coordinator_balance_after_refund, sender=treasury)
 
+
 def test_authorize_using_global_allow_list(
     coordinator, nodes, deployer, initiator, erc20, global_allow_list
 ):
-
     initiate_ritual(
         coordinator=coordinator,
         erc20=erc20,
