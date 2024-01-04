@@ -16,7 +16,7 @@ def main():
 
     deployer = Deployer.from_yaml(filepath=CONSTRUCTOR_PARAMS_FILEPATH, verify=VERIFY)
 
-    taco_app_proxy_address = "0x31F0a0B94C829Ba6d902c98CAF8d8462C6c63241"
+    taco_app_proxy_address = "0x329bc9Df0e45f360583374726ccaFF003264a136"
     new_taco_app_implementation = deployer.upgrade(project.TACoApplication, taco_app_proxy_address)
 
     deployments = [
