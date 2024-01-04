@@ -2,6 +2,7 @@
 
 
 from ape import networks, project
+
 from deployment.constants import ARTIFACTS_DIR, LYNX_NODES
 from deployment.params import Transactor
 from deployment.registry import contracts_from_registry
@@ -12,9 +13,9 @@ LYNX_REGISTRY_FILEPATH = ARTIFACTS_DIR / "lynx.json"
 
 def main():
     """
-    Confirm lynx operator addresses on the Goerli side of the bridge
+    Confirm lynx operator addresses on the Sepolia side of the bridge
 
-    ape run lynx confirm_operator_addresses --network ethereum:goerli:infura
+    ape run lynx confirm_operator_addresses --network ethereum:sepolia:infura
     """
     check_plugins()
     transactor = Transactor()

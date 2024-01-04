@@ -1,6 +1,6 @@
 deployment:
   name: lynx-root
-  chain_id: 5
+  chain_id: 11155111 # sepolia
 
 artifacts:
   dir: ./deployment/artifacts/
@@ -10,8 +10,10 @@ constants:
   IN_SECONDS_1_HOUR: 3600
   IN_SECONDS_7_DAYS: 604800
   IN_SECONDS_60_DAYS: 5184000
+  IN_SECONDS_91_DAYS: 7862400
   IN_SECONDS_182_DAYS: 15724800
   IN_SECONDS_364_DAYS: 31449600
+  IN_SECONDS_546_DAYS: 47174400
   FORTY_THOUSAND_TOKENS_IN_WEI_UNITS: 40000000000000000000000
   TEN_MILLION_TOKENS_IN_WEI_UNITS: 10000000000000000000000000
   YEAR_2025: 1735689600
@@ -32,7 +34,7 @@ contracts:
         _minOperatorSeconds: $IN_SECONDS_1_HOUR
         _rewardDuration: $IN_SECONDS_7_DAYS
         _deauthorizationDuration: $IN_SECONDS_60_DAYS
-        _commitmentDurationOptions: [$IN_SECONDS_182_DAYS, $IN_SECONDS_364_DAYS]
+        _commitmentDurationOptions: [$IN_SECONDS_91_DAYS, $IN_SECONDS_182_DAYS, $IN_SECONDS_364_DAYS, $IN_SECONDS_546_DAYS]
         _commitmentDeadline: $YEAR_2025
   - MockPolygonRoot:
       constructor:
