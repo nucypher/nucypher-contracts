@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 from ape import project
+
 from deployment.constants import CONSTRUCTOR_PARAMS_DIR
 from deployment.params import Deployer
 
@@ -21,18 +22,24 @@ def main():
     ape-solidity              0.6.9
     eth-ape                   0.6.20
 
+    January 8th, 2024
+    ape run tapir deploy_child --network polygon:mumbai:infura
+    ape-etherscan    0.6.10
+    ape-infura       0.6.4
+    ape-polygon      0.6.6
+    ape-solidity     0.6.9
+    eth-ape          0.6.19
     """
 
     deployer = Deployer.from_yaml(filepath=CONSTRUCTOR_PARAMS_FILEPATH, verify=VERIFY)
 
     mock_polygon_child = deployer.deploy(project.MockPolygonChild)
 
-    taco_child_application = deployer.deploy(project.TapirTACoChildApplication)
+    taco_child_application = deployer.deploy(project.TACoChildApplication)
 
     deployer.transact(mock_polygon_child.setChildApplication, taco_child_application.address)
 
     ritual_token = deployer.deploy(project.TapirRitualToken)
-
     coordinator = deployer.deploy(project.Coordinator)
 
     deployer.transact(taco_child_application.initialize, coordinator.address)

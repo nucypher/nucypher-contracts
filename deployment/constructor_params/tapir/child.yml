@@ -14,9 +14,8 @@ constants:
 
 contracts:
   - MockPolygonChild
-  - TapirTACoChildApplication:
+  - TACoChildApplication:
       proxy:
-        contract_type: TACoChildApplication
       constructor:
         _rootApplication: $MockPolygonChild
         _minimumAuthorization: $FORTY_THOUSAND_TOKENS_IN_WEI_UNITS
@@ -28,7 +27,7 @@ contracts:
         constructor:
           _data: $encode:initialize,$ONE_HOUR_IN_SECONDS,$MAX_DKG_SIZE,$deployer
       constructor:
-        _application: $TapirTACoChildApplication
+        _application: $TACoChildApplication
         _currency: $TapirRitualToken
         _feeRatePerSecond: 1
   - GlobalAllowList:
