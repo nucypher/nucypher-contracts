@@ -17,4 +17,4 @@ contracts:
     - BetaProgramInitiator:
         constructor:
           _coordinator: $COORDINATOR_PROXY
-          _executor: EXECUTOR
+          _executor: $EXECUTOR
