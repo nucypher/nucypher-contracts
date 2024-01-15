@@ -1033,6 +1033,30 @@
                 },
                 {
                     "type": "function",
+                    "name": "feeDeduction",
+                    "stateMutability": "pure",
+                    "inputs": [
+                        {
+                            "name": "pending",
+                            "type": "uint256",
+                            "internalType": "uint256"
+                        },
+                        {
+                            "name": "duration",
+                            "type": "uint256",
+                            "internalType": "uint256"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256",
+                            "internalType": "uint256"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
                     "name": "feeRatePerSecond",
                     "stateMutability": "view",
                     "inputs": [],
