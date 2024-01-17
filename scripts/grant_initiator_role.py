@@ -19,7 +19,14 @@ from deployment.utils import check_plugins, registry_filepath_from_domain
     type=click.Choice(SUPPORTED_TACO_DOMAINS),
     required=True,
 )
-def cli(network, account, domain):
+@click.option(
+    "--grant-address",
+    "-g",
+    help="Address to grant initiator role",
+    type=str,
+    required=False,
+)
+def cli(network, account, domain, grant_address):
     check_plugins()
     transactor = Transactor(account)
     registry_filepath = registry_filepath_from_domain(domain=domain)
@@ -31,7 +38,7 @@ def cli(network, account, domain):
     transactor.transact(
         coordinator.grantRole,
         initiator_role_hash,
-        transactor.get_account().address,  # <- new initiator
+        grant_address,  # <- new initiator
     )
 
 

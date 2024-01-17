@@ -1,0 +1,20 @@
+deployment:
+  name: beta-program-initiator
+  chain_id: 137
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: beta_program_initiator.json
+
+constants:
+  # See deployment/artifacts/mainnet.json
+  COORDINATOR_PROXY: "0xE74259e3dafe30bAA8700238e324b47aC98FE755"
+  # See https://github.com/nucypher/tdec/issues/137#issuecomment-1881525878
+  # and https://app.safe.global/home?safe=matic:0x861aa915C785dEe04684444560fC7A2AB43a1543
+  EXECUTOR_MULTISIG: "0x861aa915C785dEe04684444560fC7A2AB43a1543"
+
+contracts:
+    - BetaProgramInitiator:
+        constructor:
+          _coordinator: $COORDINATOR_PROXY
+          _executor: $EXECUTOR_MULTISIG

@@ -1,0 +1,20 @@
+deployment:
+  name: beta-program-initiator
+  chain_id: 80001
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: beta_program_initiator_tapir.json
+
+constants:
+  # See deployment/artifacts/tapir.json
+  COORDINATOR_PROXY: "0xdED71c37e4e17aF2c825c2A4441Dd6BF5A98D194"
+
+  # tapir deployer account
+  EXECUTOR: "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
+
+contracts:
+    - BetaProgramInitiator:
+        constructor:
+          _coordinator: $COORDINATOR_PROXY
+          _executor: $EXECUTOR
