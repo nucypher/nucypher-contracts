@@ -5,6 +5,7 @@ import { ChainId, type ContractName, contractNames, type Domain, getContract } f
 const testCases: Array<[string, number, ContractName]> = contractNames.flatMap((contract) => [
   ["lynx", 80001, contract],
   ["tapir", 80001, contract],
+  ["mainnet", 137, contract],
 ]);
 
 describe("registry", () => {
