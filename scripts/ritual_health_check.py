@@ -57,9 +57,10 @@ def cli(network, domain, ritual_id):
     # Info
     print("Ritual Information")
     print("==================")
-    print(f"\tInitiator         : {ritual.initiator}")
+    print(f"\tThreshold         : {ritual.threshold}-of-{ritual.dkgSize}")
     print(f"\tInit Timestamp    : {datetime.fromtimestamp(ritual.initTimestamp).isoformat()}")
     print(f"\tEnd Timestamp     : {datetime.fromtimestamp(ritual.endTimestamp).isoformat()}")
+    print(f"\tInitiator         : {ritual.initiator}")
     print(f"\tAuthority         : {ritual.authority}")
     isGlobalAllowList = ritual.accessController == contracts["GlobalAllowList"].address
     print(
@@ -75,7 +76,7 @@ def cli(network, domain, ritual_id):
     print()
     print("Ritual State")
     print("============")
-    print(f"\tState             : {RitualState(ritual_state).name}")
+    print(f"\tState            : {RitualState(ritual_state).name}")
     if ritual_state == RitualState.DKG_AWAITING_TRANSCRIPTS:
         if ritual.totalTranscripts < len(participants):
             print("\t! Missing transcripts")
