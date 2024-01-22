@@ -1,3 +1,4 @@
+import time
 from datetime import datetime
 from enum import IntEnum
 
@@ -23,6 +24,45 @@ RitualState = IntEnum(
     start=0,
 )
 
+END_STATES = [
+    RitualState.DKG_TIMEOUT,
+    RitualState.DKG_INVALID,
+    RitualState.ACTIVE,
+    RitualState.EXPIRED,
+]
+
+# expired means that it was active at some point in the past
+SUCCESSFUL_END_STATES = [RitualState.ACTIVE, RitualState.EXPIRED]
+
+
+def print_ritual_state(ritual_id, coordinator) -> RitualState:
+    ritual_state = coordinator.getRitualState(ritual_id)
+    print()
+    print("Ritual State")
+    print("============")
+    print(f"\tState            : {RitualState(ritual_state).name}")
+
+    if ritual_state in SUCCESSFUL_END_STATES:
+        return ritual_state
+
+    # if not successful, better understand why
+    # OR if still ongoing, provide information
+    ritual = coordinator.rituals(ritual_id)
+    participants = coordinator.getParticipants(ritual_id)
+
+    if ritual.totalTranscripts < len(participants):
+        print("\t(!) Missing transcripts")
+        for participant in participants:
+            if not participant.transcript:
+                print(f"\t\t{participant.provider}")
+    elif ritual.totalAggregations < len(participants):
+        print("\t(!) Missing aggregated transcripts")
+        for participant in participants:
+            if not participant.aggregated:
+                print(f"\t\t{participant.provider}")
+
+    return ritual_state
+
 
 @click.command(cls=NetworkBoundCommand)
 @network_option(required=True)
@@ -34,7 +74,13 @@ RitualState = IntEnum(
     required=True,
 )
 @click.option("--ritual-id", "-r", help="Ritual ID to check", type=int, required=True)
-def cli(network, domain, ritual_id):
+@click.option(
+    "--realtime/--no-realtime",
+    help="Perform real-time monitoring of ritual if still ongoing",
+    required=False,
+    default=None,
+)
+def cli(network, domain, ritual_id, realtime):
     """Verify deployed contracts from a registry file."""
     registry_filepath = registry_filepath_from_domain(domain=domain)
     contracts = contracts_from_registry(
@@ -51,10 +97,11 @@ def cli(network, domain, ritual_id):
         print(f"x Ritual ID #{ritual_id} not found")
         raise click.Abort()
 
-    ritual_state = coordinator.getRitualState(ritual_id)
     participants = coordinator.getParticipants(ritual_id)
 
+    #
     # Info
+    #
     print("Ritual Information")
     print("==================")
     print(f"\tThreshold         : {ritual.threshold}-of-{ritual.dkgSize}")
@@ -73,22 +120,20 @@ def cli(network, domain, ritual_id):
         staking_provider_info = taco_child_application.stakingProviderInfo(provider)
         print(f"\t\t{provider} (operator={staking_provider_info.operator})")
 
-    print()
-    print("Ritual State")
-    print("============")
-    print(f"\tState            : {RitualState(ritual_state).name}")
-    if ritual_state == RitualState.DKG_AWAITING_TRANSCRIPTS:
-        if ritual.totalTranscripts < len(participants):
-            print("\t! Missing transcripts")
-            for participant in participants:
-                if not participant.transcript:
-                    print(f"\t\t{participant.provider}")
-    elif ritual_state == RitualState.DKG_AWAITING_AGGREGATIONS:
-        if ritual.totalAggregations < len(participants):
-            print("\t! Missing aggregated transcripts")
-            for participant in participants:
-                if not participant.aggregated:
-                    print(f"\t\t{participant.provider}")
+    #
+    # State
+    #
+    ritual_state = print_ritual_state(ritual_id, coordinator)
+    if ritual_state in END_STATES or realtime is False:
+        return
+    elif realtime is None:
+        click.confirm("Monitor DKG ritual in real-time?", abort=True)
+
+    while ritual_state not in END_STATES:
+        print()
+        print("---- Waiting 15s -----")
+        time.sleep(15)
+        ritual_state = print_ritual_state(ritual_id, coordinator)
 
 
 if __name__ == "__main__":
