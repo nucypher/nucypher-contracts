@@ -81,7 +81,7 @@ def print_ritual_state(ritual_id, coordinator) -> RitualState:
     default=None,
 )
 def cli(network, domain, ritual_id, realtime):
-    """Verify deployed contracts from a registry file."""
+    """Check/Monitor the state of a Ritual."""
     registry_filepath = registry_filepath_from_domain(domain=domain)
     contracts = contracts_from_registry(
         registry_filepath, chain_id=networks.active_provider.chain_id
