@@ -148,7 +148,8 @@ contract BetaProgramInitiator {
         );
 
         // Process pending fees in Coordinator, if necessary
-        uint256 refundAmount = coordinator.feeDeduction(request.payment, request.duration);
+        uint256 refundAmount = request.payment;
+        refundAmount -= coordinator.feeDeduction(request.payment, request.duration);
         if (coordinator.pendingFees(ritualId) > 0) {
             coordinator.processPendingFee(ritualId);
         }
