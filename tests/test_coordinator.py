@@ -414,7 +414,8 @@ def test_post_aggregation_fails(
     fee = coordinator.getRitualInitiationCost(nodes, DURATION)
     assert erc20.balanceOf(coordinator) == fee
     assert coordinator.totalPendingFees() == fee
-    assert coordinator.pendingFees(ritualID) == fee
+    pending_fee = coordinator.pendingFees(ritualID)
+    assert pending_fee == fee
     with ape.reverts("Can't withdraw pending fees"):
         coordinator.withdrawTokens(erc20.address, 1, sender=treasury)
 
@@ -428,7 +429,7 @@ def test_post_aggregation_fails(
     initiator_balance_after_refund = erc20.balanceOf(initiator)
     coordinator_balance_after_refund = erc20.balanceOf(coordinator)
     refund = initiator_balance_after_refund - initiator_balance_before_refund
-    assert refund == coordinator.getRitualInitiationCost(nodes, ONE_DAY)
+    assert refund == fee - coordinator.feeDeduction(pending_fee, DURATION)
     assert coordinator_balance_after_refund + refund == fee
     assert coordinator.totalPendingFees() == 0
     assert coordinator.pendingFees(ritualID) == 0
