@@ -81,7 +81,7 @@ contract CoordinatorForBetaProgramInitiatorMock {
     }
 
     function feeDeduction(uint256 pending, uint256) public pure returns (uint256) {
-        return pending / 2;
+        return pending / 10;
     }
 
     function pendingFees(uint256 _ritualId) external view returns (uint256) {
