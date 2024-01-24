@@ -345,7 +345,7 @@ def test_refund(accounts, beta_program_initiator, token, coordinator, executor):
     nodes = [node_1, node_2]
     duration_1 = DAY_IN_SECONDS
     ritual_cost_1 = coordinator.getRitualInitiationCost(nodes, duration_1)
-    duration_2 = 2 * duration_1
+    duration_2 = 3 * duration_1
     ritual_cost_2 = coordinator.getRitualInitiationCost(nodes, duration_2)
 
     token.mint(initiator_1, 10 * ritual_cost_1, sender=initiator_1)
@@ -393,17 +393,31 @@ def test_refund(accounts, beta_program_initiator, token, coordinator, executor):
 
     # Refund failed request
     coordinator.setRitualState(request_0_ritual_id, RitualState.DKG_TIMEOUT, sender=initiator_2)
-    balance_before = token.balanceOf(initiator_1)
-    assert coordinator.pendingFees(request_0_ritual_id) == ritual_cost_1
-    tx = beta_program_initiator.refundFailedRequest(0, sender=initiator_2)
+
     assert token.balanceOf(beta_program_initiator.address) == 0
-    balance_after = token.balanceOf(initiator_1)
-    assert balance_after - balance_before == ritual_cost_1 // 2
+    initiator_1_balance_before = token.balanceOf(initiator_1)
+    coordinator_balance_before = token.balanceOf(coordinator.address)
+    assert coordinator_balance_before == ritual_cost_1 + ritual_cost_2
+    pending_fees_1_before = coordinator.pendingFees(request_0_ritual_id)
+    assert pending_fees_1_before == ritual_cost_1
+
+    tx = beta_program_initiator.refundFailedRequest(0, sender=initiator_2)
+
+    coordinator_balance_after = token.balanceOf(coordinator.address)
+    fee_deduction_1 = coordinator.feeDeduction(pending_fees_1_before, duration_1)
+    pending_fees_1_after = coordinator.pendingFees(request_0_ritual_id)
+    assert coordinator_balance_after == ritual_cost_2 + fee_deduction_1
+    assert pending_fees_1_after == 0
+    assert token.balanceOf(beta_program_initiator.address) == 0
+
+    refund_1 = ritual_cost_1 - fee_deduction_1
+    initiator_1_balance_after = token.balanceOf(initiator_1)
+    assert initiator_1_balance_after - initiator_1_balance_before == refund_1
     assert beta_program_initiator.requests(0)[RITUAL_ID_SLOT] == request_0_ritual_id
     assert beta_program_initiator.requests(0)[PAYMENT_SLOT] == 0
 
     events = beta_program_initiator.FailedRequestRefunded.from_receipt(tx)
-    assert events == [beta_program_initiator.FailedRequestRefunded(0, ritual_cost_1 // 2)]
+    assert events == [beta_program_initiator.FailedRequestRefunded(0, refund_1)]
 
     # Can't refund again
     with ape.reverts("Refund already processed"):
@@ -411,15 +425,28 @@ def test_refund(accounts, beta_program_initiator, token, coordinator, executor):
 
     # Refund failed request without pending fees
     coordinator.setRitualState(request_1_ritual_id, RitualState.DKG_INVALID, sender=initiator_2)
-    balance_before = token.balanceOf(initiator_2)
+
+    assert token.balanceOf(beta_program_initiator.address) == 0
+    initiator_2_balance_before = token.balanceOf(initiator_2)
+    coordinator_balance_before = token.balanceOf(coordinator.address)
+    assert coordinator_balance_before == ritual_cost_2 + fee_deduction_1
+    pending_fees_2_before = coordinator.pendingFees(request_1_ritual_id)
+    assert pending_fees_2_before == ritual_cost_2
+
     coordinator.processPendingFee(request_1_ritual_id, sender=initiator_1)
     assert coordinator.pendingFees(request_1_ritual_id) == 0
+    
+    fee_deduction_2 = coordinator.feeDeduction(pending_fees_2_before, duration_2)
+    refund_2 = ritual_cost_2 - fee_deduction_2
+    assert token.balanceOf(beta_program_initiator.address) == refund_2
+
     tx = beta_program_initiator.refundFailedRequest(1, sender=initiator_2)
+    
     assert token.balanceOf(beta_program_initiator.address) == 0
-    balance_after = token.balanceOf(initiator_2)
-    assert balance_after - balance_before == ritual_cost_2 // 2
+    initiator_2_balance_after = token.balanceOf(initiator_2)
+    assert initiator_2_balance_after - initiator_2_balance_before == refund_2
     assert beta_program_initiator.requests(1)[RITUAL_ID_SLOT] == request_1_ritual_id
     assert beta_program_initiator.requests(1)[PAYMENT_SLOT] == 0
 
     events = beta_program_initiator.FailedRequestRefunded.from_receipt(tx)
-    assert events == [beta_program_initiator.FailedRequestRefunded(1, ritual_cost_2 // 2)]
+    assert events == [beta_program_initiator.FailedRequestRefunded(1, refund_2)]
