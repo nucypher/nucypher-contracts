@@ -31,6 +31,6 @@ contract FlatRateFeeModel is IFeeModel {
 
     // TODO: Validate if this is enough to remove griefing attacks
     function feeDeduction(uint256 pending, uint256) public pure returns (uint256) {
-        return pending;
+        return 0;
     }
 }
