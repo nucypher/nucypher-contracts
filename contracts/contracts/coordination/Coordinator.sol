@@ -310,7 +310,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         );
 
         address provider = application.operatorToStakingProvider(msg.sender);
-        (Participant storage participant, uint256 _index) = getParticipantFromProvider(ritual, provider);
+        Participant storage participant = getParticipantFromProvider(ritual, provider);
 
         require(application.authorizedStake(provider) > 0, "Not enough authorization");
         require(participant.transcript.length == 0, "Node already posted transcript");
@@ -349,7 +349,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         );
 
         address provider = application.operatorToStakingProvider(msg.sender);
-        (Participant storage participant, uint256 _index) = getParticipantFromProvider(ritual, provider);
+        Participant storage participant = getParticipantFromProvider(ritual, provider);
         require(application.authorizedStake(provider) > 0, "Not enough authorization");
 
         require(!participant.aggregated, "Node already posted aggregation");
@@ -419,10 +419,11 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         return ritual.publicKey;
     }
 
-    function getParticipantFromProvider(
+    function getParticipantIndex(
         Ritual storage ritual,
         address provider
-    ) internal view returns (Participant storage, uint256) {
+    ) internal view returns (int256) {
+        if (ritual.participant.length == 0) {return -1;}
         uint256 low = 0;
         uint256 high = ritual.participant.length - 1;
         while (low <= high) {
@@ -431,19 +432,35 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
             if (participant.provider < provider) {
                 low = mid + 1;
             } else if (participant.provider > provider) {
+                if (mid == 0) {return -1;}
                 high = mid - 1;
             } else {
-                return (participant, mid); // Participant found
+                return int256(mid);
             }
         }
-        revert("Participant not part of ritual");
+        return -1;
+    }
+
+    function getParticipantFromProvider(uint32 ritualId, address provider) external view returns (Participant memory participant) {
+        Ritual storage ritual = rituals[ritualId];
+        int256 index = getParticipantIndex(ritual, provider);
+        require(index >= 0, "Participant not found");
+        return ritual.participant[uint256(index)];
     }
 
     function getParticipantFromProvider(
-        uint32 ritualId,
+        Ritual storage ritual,
         address provider
-    ) external view returns (Participant memory, uint256) {
-        return getParticipantFromProvider(rituals[ritualId], provider);
+    ) internal view returns (Participant storage participant) {
+        int256 index = getParticipantIndex(ritual, provider);
+        require(index >= 0, "Participant not found");
+        return ritual.participant[uint256(index)];
+    }
+
+    function isParticipant(uint32 ritualId, address provider) external view returns (bool) {
+        Ritual storage ritual = rituals[ritualId];
+        int256 index = getParticipantIndex(ritual, provider);
+        return index >= 0;
     }
 
     function getParticipants(
@@ -476,17 +493,6 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
             addresses[i] = ritual.participant[i].provider;
         }
         return addresses;
-    }
-
-    function isProviderParticipating(
-        uint32 ritualId,
-        address provider
-    ) external view returns (bool) {
-        try getParticipantFromProvider(ritualId, provider) {
-            return true;
-        } catch {
-            return false;
-        }
     }
 
     function isEncryptionAuthorized(
