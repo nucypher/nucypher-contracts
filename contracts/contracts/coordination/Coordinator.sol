@@ -311,7 +311,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         );
 
         address provider = application.operatorToStakingProvider(msg.sender);
-        Participant storage participant = getParticipantFromProvider(ritual, provider);
+        Participant storage participant = getParticipant(ritual, provider);
 
         require(application.authorizedStake(provider) > 0, "Not enough authorization");
         require(participant.transcript.length == 0, "Node already posted transcript");
@@ -350,7 +350,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         );
 
         address provider = application.operatorToStakingProvider(msg.sender);
-        Participant storage participant = getParticipantFromProvider(ritual, provider);
+        Participant storage participant = getParticipant(ritual, provider);
         require(application.authorizedStake(provider) > 0, "Not enough authorization");
 
         require(!participant.aggregated, "Node already posted aggregation");
@@ -420,7 +420,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         return ritual.publicKey;
     }
 
-    function getParticipantIndex(
+    function _getParticipant(
         Ritual storage ritual,
         address provider
     ) internal view returns (bool, uint256, Participant storage participant) {
@@ -440,51 +440,32 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         return (false, 0, SENTINEL_PARTICIPANT);
     }
 
-    function getParticipantIndex (
-        uint32 ritualId,
-        address provider
-    ) external view returns (uint256) {
-        Ritual storage ritual = rituals[ritualId];
-        (bool found, uint256 index,) = getParticipantIndex(ritual, provider);
-        require(found, "Participant not found");
-        return index;
-    }
-
-    function isParticipant(uint32 ritualId, address provider) external view returns (bool) {
-        Ritual storage ritual = rituals[ritualId];
-        (bool found,,) = getParticipantIndex(ritual, provider);
-        return found;
-    }
-
-    function getParticipantFromProvider(
-        uint32 ritualId,
-        address provider
-    ) external view returns (Participant memory) {
-        Ritual storage ritual = rituals[ritualId];
-        (bool found,, Participant storage participant) = getParticipantIndex(ritual, provider);
-        require(found, "Participant not found");
-        return participant;
-    }
-
-    function getParticipantFromProvider(
+    function getParticipant(
         Ritual storage ritual,
         address provider
-    ) internal view returns (Participant storage participant) {
-        (bool found, uint256 index, Participant storage participant) = getParticipantIndex(ritual, provider);
+    ) internal view returns (Participant storage) {
+        (bool found,, Participant storage participant) = _getParticipant(ritual, provider);
         require(found, "Participant not found");
         return participant;
     }
 
-
-
-    function getParticipants(
-        uint32 ritualId
-    ) external view returns (Participant[] memory) {
+    function getParticipant(
+        uint32 ritualId,
+        address provider
+    ) external view returns (Participant memory, uint256) {
         Ritual storage ritual = rituals[ritualId];
-        return ritual.participant;
+        (bool found, uint256 index, Participant storage participant) = _getParticipant(ritual, provider);
+        require(found, "Participant not found");
+        return (participant, index);
     }
 
-    function getParticipantProviders(uint32 ritualId) external view returns (address[] memory) {
+    function isParticipant(uint32 ritualId, address provider) external view returns (bool, uint256) {
+        Ritual storage ritual = rituals[ritualId];
+        (bool found, uint256 index,) = _getParticipant(ritual, provider);
+        return (found, index);
+    }
+
+    function getProviders(uint32 ritualId) external view returns (address[] memory) {
         Ritual storage ritual = rituals[ritualId];
         address[] memory addresses = new address[](ritual.participant.length);
         for (uint256 i = 0; i < ritual.participant.length; i++) {
