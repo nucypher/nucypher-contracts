@@ -104,7 +104,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     IReimbursementPool internal reimbursementPool;
     mapping(address => ParticipantKey[]) internal participantKeysHistory;
     mapping(bytes32 => uint32) internal ritualPublicKeyRegistry;
-    Participant internal SENTINEL_PARTICIPANT;
+    Participant internal sentinelParticipant;
 
     constructor(
         ITACoChildApplication _application,
@@ -437,14 +437,14 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
                 return (true, mid, participant);
             }
         }
-        return (false, 0, SENTINEL_PARTICIPANT);
+        return (false, 0, sentinelParticipant);
     }
 
     function getParticipant(
         Ritual storage ritual,
         address provider
     ) internal view returns (Participant storage) {
-        (bool found,, Participant storage participant) = findParticipant(ritual, provider);
+        (bool found, , Participant storage participant) = findParticipant(ritual, provider);
         require(found, "Participant not found");
         return participant;
     }
@@ -452,20 +452,35 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     function getParticipant(
         uint32 ritualId,
         address provider,
-        bool transcripts
-    ) external view returns (Participant memory, uint256) {
+        bool transcript
+    ) public view returns (Participant memory, uint256) {
         Ritual storage ritual = rituals[ritualId];
-        (bool found, uint256 index, Participant memory participant) = _getParticipant(ritual, provider);
+        (bool found, uint256 index, Participant memory participant) = findParticipant(
+            ritual,
+            provider
+        );
         require(found, "Participant not found");
-        if (!transcripts) {
-            participant.transcript = '';
+        if (!transcript) {
+            participant.transcript = "";
         }
         return (participant, index);
     }
 
-    function isParticipant(uint32 ritualId, address provider) external view returns (bool, uint256) {
+    function getProviders(uint32 ritualId) external view returns (address[] memory) {
         Ritual storage ritual = rituals[ritualId];
-        (bool found, uint256 index,) = findParticipant(ritual, provider);
+        address[] memory providers = new address[](ritual.participant.length);
+        for (uint256 i = 0; i < ritual.participant.length; i++) {
+            providers[i] = ritual.participant[i].provider;
+        }
+        return providers;
+    }
+
+    function isParticipant(
+        uint32 ritualId,
+        address provider
+    ) external view returns (bool, uint256) {
+        Ritual storage ritual = rituals[ritualId];
+        (bool found, uint256 index, ) = findParticipant(ritual, provider);
         return (found, index);
     }
 
