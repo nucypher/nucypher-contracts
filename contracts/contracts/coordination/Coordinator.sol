@@ -448,13 +448,18 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     function getParticipantFromProvider(
         Ritual storage ritual,
         address provider
-    ) internal view returns (Participant storage) {
-        uint256 length = ritual.participant.length;
-        // TODO: Improve with binary search
-        for (uint256 i = 0; i < length; i++) {
-            Participant storage participant = ritual.participant[i];
-            if (participant.provider == provider) {
-                return participant;
+    ) internal view returns (Participant storage, uint256) {
+        uint256 low = 0;
+        uint256 high = ritual.participant.length - 1;
+        while (low <= high) {
+            uint256 mid = low + (high - low) / 2;
+            Participant storage participant = ritual.participant[mid];
+            if (participant.provider < provider) {
+                low = mid + 1;
+            } else if (participant.provider > provider) {
+                high = mid - 1;
+            } else {
+                return (participant, mid); // Participant found
             }
         }
         revert("Participant not part of ritual");
@@ -463,7 +468,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     function getParticipantFromProvider(
         uint32 ritualId,
         address provider
-    ) external view returns (Participant memory) {
+    ) external view returns (Participant memory, uint256) {
         return getParticipantFromProvider(rituals[ritualId], provider);
     }
 
