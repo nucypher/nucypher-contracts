@@ -451,11 +451,15 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
     function getParticipant(
         uint32 ritualId,
-        address provider
+        address provider,
+        bool transcripts
     ) external view returns (Participant memory, uint256) {
         Ritual storage ritual = rituals[ritualId];
-        (bool found, uint256 index, Participant storage participant) = _getParticipant(ritual, provider);
+        (bool found, uint256 index, Participant memory participant) = _getParticipant(ritual, provider);
         require(found, "Participant not found");
+        if (!transcripts) {
+            participant.transcript = '';
+        }
         return (participant, index);
     }
 
@@ -463,19 +467,6 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         Ritual storage ritual = rituals[ritualId];
         (bool found, uint256 index,) = _getParticipant(ritual, provider);
         return (found, index);
-    }
-
-    function getAllParticipants(uint32 ritualId) external view returns (Participant[] memory) {
-        Ritual storage ritual = rituals[ritualId];
-        Participant[] memory participants = new Participant[](ritual.dkgSize);
-        for (uint256 i = 0; i < ritual.participant.length; i++) {
-            Participant memory participant;
-            participant.provider = ritual.participant[i].provider;
-            participant.aggregated = ritual.participant[i].aggregated;
-            participant.decryptionRequestStaticKey = ritual.participant[i].decryptionRequestStaticKey;
-            participants[i] = participant;
-        }
-        return participants;
     }
 
     function isEncryptionAuthorized(
