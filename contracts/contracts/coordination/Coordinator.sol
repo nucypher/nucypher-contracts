@@ -420,7 +420,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         return ritual.publicKey;
     }
 
-    function _getParticipant(
+    function findParticipant(
         Ritual storage ritual,
         address provider
     ) internal view returns (bool, uint256, Participant storage participant) {
@@ -444,7 +444,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         Ritual storage ritual,
         address provider
     ) internal view returns (Participant storage) {
-        (bool found,, Participant storage participant) = _getParticipant(ritual, provider);
+        (bool found,, Participant storage participant) = findParticipant(ritual, provider);
         require(found, "Participant not found");
         return participant;
     }
@@ -465,7 +465,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
     function isParticipant(uint32 ritualId, address provider) external view returns (bool, uint256) {
         Ritual storage ritual = rituals[ritualId];
-        (bool found, uint256 index,) = _getParticipant(ritual, provider);
+        (bool found, uint256 index,) = findParticipant(ritual, provider);
         return (found, index);
     }
 
