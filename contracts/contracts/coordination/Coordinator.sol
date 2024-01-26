@@ -482,8 +482,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         uint32 ritualId,
         address provider
     ) external view returns (bool) {
-        Ritual storage ritual = rituals[ritualId];
-        try getParticipantFromProvider(ritual, provider) {
+        try getParticipantFromProvider(ritualId, provider) {
             return true;
         } catch {
             return false;
