@@ -310,7 +310,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         );
 
         address provider = application.operatorToStakingProvider(msg.sender);
-        Participant storage participant = getParticipantFromProvider(ritual, provider);
+        (Participant storage participant, uint256 _index) = getParticipantFromProvider(ritual, provider);
 
         require(application.authorizedStake(provider) > 0, "Not enough authorization");
         require(participant.transcript.length == 0, "Node already posted transcript");
@@ -349,7 +349,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         );
 
         address provider = application.operatorToStakingProvider(msg.sender);
-        Participant storage participant = getParticipantFromProvider(ritual, provider);
+        (Participant storage participant, uint256 _index) = getParticipantFromProvider(ritual, provider);
         require(application.authorizedStake(provider) > 0, "Not enough authorization");
 
         require(!participant.aggregated, "Node already posted aggregation");
