@@ -241,6 +241,11 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         return rituals.length;
     }
 
+    function getParticipants(uint32 ritualId) external view returns (Participant[] memory) {
+        Ritual storage ritual = rituals[ritualId];
+        return ritual.participant;
+    }
+
     function getThresholdForRitualSize(uint16 size) public pure returns (uint16) {
         return 1 + size / 2;
         // Alternatively: 1 + 2*size/3 (for >66.6%) or 1 + 3*size/5 (for >60%)
