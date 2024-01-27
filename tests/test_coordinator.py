@@ -318,6 +318,52 @@ def test_post_transcript_but_not_waiting_for_transcripts(
         coordinator.postTranscript(0, transcript, sender=nodes[1])
 
 
+def test_get_participants(coordinator, nodes, initiator, erc20, global_allow_list):
+    initiate_ritual(
+        coordinator=coordinator,
+        erc20=erc20,
+        authority=initiator,
+        nodes=nodes,
+        allow_logic=global_allow_list,
+    )
+    transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
+
+    for node in nodes:
+        tx = coordinator.postTranscript(0, transcript, sender=node)
+
+    # get all participants
+    participants = coordinator.getParticipants(0, 0, len(nodes), False)
+    assert len(participants) == len(nodes)
+    for index, participant in enumerate(participants):
+        assert participant.provider == nodes[index].address
+        assert participant.aggregated is False
+        assert not participant.transcript
+
+    # max is higher than available
+    participants = coordinator.getParticipants(0, 0, len(nodes)*2, False)
+    assert len(participants) == len(nodes)
+    for index, participant in enumerate(participants):
+        assert participant.provider == nodes[index].address
+        assert participant.aggregated is False
+        assert not participant.transcript
+
+    # n at a time
+    for n_at_a_time in [2]:
+        index = 0
+        while index < len(nodes):
+            print(f">>>> Start Index {index}, End Index {index+n_at_a_time}")
+            participants_n_at_a_time = coordinator.getParticipants(0, index, index+n_at_a_time, True)
+            assert len(participants_n_at_a_time) <= n_at_a_time
+            for i, participant in enumerate(participants_n_at_a_time):
+                assert participant.provider == nodes[index+i].address
+                assert participant.aggregated is False
+                assert participant.transcript == transcript
+
+            index += n_at_a_time
+
+        assert index == len(nodes)
+
+
 def test_post_aggregation(
     coordinator, nodes, initiator, erc20, global_allow_list, treasury, deployer
 ):

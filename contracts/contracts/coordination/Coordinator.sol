@@ -479,6 +479,32 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         return (participant, index);
     }
 
+    function getParticipants(
+        uint32 ritualId,
+        uint256 _startIndex,
+        uint256 _maxParticipants,
+        bool _includeTranscript
+    ) external view returns (Participant[] memory) {
+        Ritual storage ritual = rituals[ritualId];
+        uint256 endIndex = ritual.participant.length;
+        require(_startIndex < endIndex, "Wrong start index");
+        if (_maxParticipants != 0 && _startIndex + _maxParticipants < endIndex) {
+            endIndex = _startIndex + _maxParticipants;
+        }
+        Participant[] memory ritualParticipants = new Participant[](endIndex - _startIndex);
+
+        uint256 resultIndex = 0;
+        for (uint256 i = _startIndex; i < endIndex; i++) {
+            Participant memory ritualParticipant = ritual.participant[i];
+            if (!_includeTranscript) {
+                ritualParticipant.transcript = "";
+            }
+            ritualParticipants[resultIndex++] = ritualParticipant;
+        }
+
+        return ritualParticipants;
+    }
+
     function getProviders(uint32 ritualId) external view returns (address[] memory) {
         Ritual storage ritual = rituals[ritualId];
         address[] memory providers = new address[](ritual.participant.length);
