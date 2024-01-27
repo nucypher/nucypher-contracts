@@ -429,17 +429,24 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         Ritual storage ritual,
         address provider
     ) internal view returns (bool, uint256, Participant storage participant) {
+        uint256 length = ritual.participant.length;
+        if (length == 0) {
+            return (false, 0, SENTINEL_PARTICIPANT);
+        }
         uint256 low = 0;
-        uint256 high = ritual.participant.length - 1;
+        uint256 high = length - 1;
         while (low <= high) {
-            uint256 mid = low + (high - low) / 2;
+            uint256 mid = (low + high) / 2;
             Participant storage participant = ritual.participant[mid];
-            if (participant.provider < provider) {
-                low = mid + 1;
-            } else if (participant.provider > provider) {
-                high = mid - 1;
-            } else {
+            if (participant.provider == provider) {
                 return (true, mid, participant);
+            } else if (participant.provider < provider) {
+                low = mid + 1;
+            } else if (high == 0) {
+                // prevent underflow of unsigned int
+                return (false, 0, SENTINEL_PARTICIPANT);
+            } else {
+                high = mid - 1;
             }
         }
         return (false, 0, sentinelParticipant);
