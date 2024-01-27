@@ -431,7 +431,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     ) internal view returns (bool, uint256, Participant storage participant) {
         uint256 length = ritual.participant.length;
         if (length == 0) {
-            return (false, 0, SENTINEL_PARTICIPANT);
+            return (false, 0, sentinelParticipant);
         }
         uint256 low = 0;
         uint256 high = length - 1;
@@ -444,7 +444,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
                 low = mid + 1;
             } else if (high == 0) {
                 // prevent underflow of unsigned int
-                return (false, 0, SENTINEL_PARTICIPANT);
+                return (false, 0, sentinelParticipant);
             } else {
                 high = mid - 1;
             }
@@ -469,7 +469,10 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         bool transcript
     ) public view returns (Participant memory, uint256) {
         Ritual storage ritual = rituals[ritualId];
-        (bool found, uint256 index, Participant memory participant) = findParticipant(ritual, provider);
+        (bool found, uint256 index, Participant memory participant) = findParticipant(
+            ritual,
+            provider
+        );
         if (!found) {
             revert("Participant not part of ritual");
         }
