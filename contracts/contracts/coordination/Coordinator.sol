@@ -457,7 +457,9 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         address provider
     ) internal view returns (Participant storage) {
         (bool found, , Participant storage participant) = findParticipant(ritual, provider);
-        require(found, "Participant not found");
+        if (!found) {
+            revert("Participant not part of ritual");
+        }
         return participant;
     }
 
@@ -467,11 +469,10 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         bool transcript
     ) public view returns (Participant memory, uint256) {
         Ritual storage ritual = rituals[ritualId];
-        (bool found, uint256 index, Participant memory participant) = findParticipant(
-            ritual,
-            provider
-        );
-        require(found, "Participant not found");
+        (bool found, uint256 index, Participant memory participant) = findParticipant(ritual, provider);
+        if (!found) {
+            revert("Participant not part of ritual");
+        }
         if (!transcript) {
             participant.transcript = "";
         }
