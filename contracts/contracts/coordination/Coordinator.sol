@@ -457,9 +457,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         address provider
     ) internal view returns (Participant storage) {
         (bool found, , Participant storage participant) = findParticipant(ritual, provider);
-        if (!found) {
-            revert("Participant not part of ritual");
-        }
+        require(found, "Participant not part of ritual");
         return participant;
     }
 
@@ -473,9 +471,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
             ritual,
             provider
         );
-        if (!found) {
-            revert("Participant not part of ritual");
-        }
+        require(found, "Participant not part of ritual");
         if (!transcript) {
             participant.transcript = "";
         }
