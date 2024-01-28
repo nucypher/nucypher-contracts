@@ -348,10 +348,9 @@ def test_get_participants(coordinator, nodes, initiator, erc20, global_allow_lis
         assert not participant.transcript
 
     # n at a time
-    for n_at_a_time in [2]:
+    for n_at_a_time in range(1, len(nodes)):
         index = 0
         while index < len(nodes):
-            print(f">>>> Start Index {index}, End Index {index+n_at_a_time}")
             participants_n_at_a_time = coordinator.getParticipants(0, index, index+n_at_a_time, True)
             assert len(participants_n_at_a_time) <= n_at_a_time
             for i, participant in enumerate(participants_n_at_a_time):
