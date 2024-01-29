@@ -175,28 +175,28 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         _setRoleAdmin(INITIATOR_ROLE, bytes32(0));
     }
 
-    function setProviderPublicKey(BLS12381.G2Point calldata _publicKey) external {
+    function setProviderPublicKey(BLS12381.G2Point calldata publicKey) external {
         uint32 lastRitualId = uint32(rituals.length);
         address stakingProvider = application.operatorToStakingProvider(msg.sender);
         require(stakingProvider != address(0), "Operator has no bond with staking provider");
 
-        ParticipantKey memory newRecord = ParticipantKey(lastRitualId, _publicKey);
+        ParticipantKey memory newRecord = ParticipantKey(lastRitualId, publicKey);
         participantKeysHistory[stakingProvider].push(newRecord);
 
-        emit ParticipantPublicKeySet(lastRitualId, stakingProvider, _publicKey);
+        emit ParticipantPublicKeySet(lastRitualId, stakingProvider, publicKey);
         // solhint-disable-next-line avoid-tx-origin
         require(msg.sender == tx.origin, "Only operator with real address can set public key");
         application.confirmOperatorAddress(msg.sender);
     }
 
     function getProviderPublicKey(
-        address _provider,
-        uint256 _ritualId
+        address provider,
+        uint256 ritualId
     ) external view returns (BLS12381.G2Point memory) {
-        ParticipantKey[] storage participantHistory = participantKeysHistory[_provider];
+        ParticipantKey[] storage participantHistory = participantKeysHistory[provider];
 
         for (uint256 i = participantHistory.length; i > 0; i--) {
-            if (participantHistory[i - 1].lastRitualId <= _ritualId) {
+            if (participantHistory[i - 1].lastRitualId <= ritualId) {
                 return participantHistory[i - 1].publicKey;
             }
         }
@@ -204,8 +204,8 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         revert("No keys found prior to the provided ritual");
     }
 
-    function isProviderPublicKeySet(address _provider) external view returns (bool) {
-        ParticipantKey[] storage participantHistory = participantKeysHistory[_provider];
+    function isProviderPublicKeySet(address provider) external view returns (bool) {
+        ParticipantKey[] storage participantHistory = participantKeysHistory[provider];
         return participantHistory.length > 0;
     }
 
@@ -481,23 +481,23 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
     function getParticipants(
         uint32 ritualId,
-        uint256 _startIndex,
-        uint256 _maxParticipants,
-        bool _includeTranscript
+        uint256 startIndex,
+        uint256 maxParticipants,
+        bool includeTranscript
     ) external view returns (Participant[] memory) {
         Ritual storage ritual = rituals[ritualId];
         uint256 endIndex = ritual.participant.length;
-        require(_startIndex >= 0, "Invalid start index");
-        require(_startIndex < endIndex, "Wrong start index");
-        if (_maxParticipants != 0 && _startIndex + _maxParticipants < endIndex) {
-            endIndex = _startIndex + _maxParticipants;
+        require(startIndex >= 0, "Invalid start index");
+        require(startIndex < endIndex, "Wrong start index");
+        if (maxParticipants != 0 && startIndex + maxParticipants < endIndex) {
+            endIndex = startIndex + maxParticipants;
         }
-        Participant[] memory ritualParticipants = new Participant[](endIndex - _startIndex);
+        Participant[] memory ritualParticipants = new Participant[](endIndex - startIndex);
 
         uint256 resultIndex = 0;
-        for (uint256 i = _startIndex; i < endIndex; i++) {
+        for (uint256 i = startIndex; i < endIndex; i++) {
             Participant memory ritualParticipant = ritual.participant[i];
-            if (!_includeTranscript) {
+            if (!includeTranscript) {
                 ritualParticipant.transcript = "";
             }
             ritualParticipants[resultIndex++] = ritualParticipant;
