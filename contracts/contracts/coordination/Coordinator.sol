@@ -104,7 +104,8 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     IReimbursementPool internal reimbursementPool;
     mapping(address => ParticipantKey[]) internal participantKeysHistory;
     mapping(bytes32 => uint32) internal ritualPublicKeyRegistry;
-    Participant internal sentinelParticipant;
+    mapping(uint256 => Participant) internal sentinelParticipants;
+    uint256 internal sentinelIndex = 0;
 
     constructor(
         ITACoChildApplication _application,
@@ -431,7 +432,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     ) internal view returns (bool, uint256, Participant storage participant) {
         uint256 length = ritual.participant.length;
         if (length == 0) {
-            return (false, 0, sentinelParticipant);
+            return (false, 0, sentinelParticipants[sentinelIndex]);
         }
         uint256 low = 0;
         uint256 high = length - 1;
@@ -445,12 +446,12 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
             } else {
                 if (mid == 0) {
                     // prevent underflow of unsigned int
-                    return (false, 0, sentinelParticipant);
+                    break;
                 }
                 high = mid - 1;
             }
         }
-        return (false, 0, sentinelParticipant);
+        return (false, 0, sentinelParticipants[sentinelIndex]);
     }
 
     function getParticipant(
