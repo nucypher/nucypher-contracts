@@ -3,6 +3,7 @@ from enum import IntEnum
 
 import ape
 import pytest
+from eth_account import Account
 from eth_account.messages import encode_defunct
 from web3 import Web3
 
@@ -361,6 +362,35 @@ def test_get_participants(coordinator, nodes, initiator, erc20, global_allow_lis
             index += n_at_a_time
 
         assert index == len(nodes)
+
+
+def test_get_participant(nodes, coordinator, initiator, erc20, global_allow_list):
+    initiate_ritual(
+        coordinator=coordinator,
+        erc20=erc20,
+        authority=initiator,
+        nodes=nodes,
+        allow_logic=global_allow_list,
+    )
+    transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
+
+    for node in nodes:
+        tx = coordinator.postTranscript(0, transcript, sender=node)
+
+    # find actual participants
+    for i, node in enumerate(nodes):
+        p, index = coordinator.getParticipant(0, node.address, True)
+        assert index == i
+        assert p.provider == node.address
+        assert p.aggregated is False
+        assert p.transcript == transcript
+
+    # can't find non-participants
+    for i in range(5):
+        new_account = Account.create()
+        assert new_account.address not in nodes
+        with ape.reverts("Participant not part of ritual"):
+            coordinator.getParticipant(0, new_account.address, True)
 
 
 def test_post_aggregation(

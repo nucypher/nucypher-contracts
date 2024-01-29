@@ -465,7 +465,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         uint32 ritualId,
         address provider,
         bool transcript
-    ) public view returns (Participant memory, uint256) {
+    ) external view returns (Participant memory, uint256) {
         Ritual storage ritual = rituals[ritualId];
         (bool found, uint256 index, Participant memory participant) = findParticipant(
             ritual,
