@@ -437,10 +437,10 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         uint256 high = length - 1;
         while (low <= high) {
             uint256 mid = (low + high) / 2;
-            Participant storage participant = ritual.participant[mid];
-            if (participant.provider == provider) {
-                return (true, mid, participant);
-            } else if (participant.provider < provider) {
+            Participant storage middleParticipant = ritual.participant[mid];
+            if (middleParticipant.provider == provider) {
+                return (true, mid, middleParticipant);
+            } else if (middleParticipant.provider < provider) {
                 low = mid + 1;
             } else if (high == 0) {
                 // prevent underflow of unsigned int
