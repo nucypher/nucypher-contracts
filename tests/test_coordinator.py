@@ -352,14 +352,14 @@ def test_get_participants(coordinator, nodes, initiator, erc20, global_allow_lis
     for n_at_a_time in range(1, len(nodes)):
         index = 0
         while index < len(nodes):
-            participants_n_at_a_time = coordinator.getParticipants(0, index, index+n_at_a_time, True)
+            participants_n_at_a_time = coordinator.getParticipants(0, index, n_at_a_time, True)
             assert len(participants_n_at_a_time) <= n_at_a_time
             for i, participant in enumerate(participants_n_at_a_time):
                 assert participant.provider == nodes[index+i].address
                 assert participant.aggregated is False
                 assert participant.transcript == transcript
 
-            index += n_at_a_time
+            index += len(participants_n_at_a_time)
 
         assert index == len(nodes)
 
