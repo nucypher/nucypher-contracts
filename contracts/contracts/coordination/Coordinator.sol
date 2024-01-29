@@ -487,6 +487,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     ) external view returns (Participant[] memory) {
         Ritual storage ritual = rituals[ritualId];
         uint256 endIndex = ritual.participant.length;
+        require(_startIndex >= 0, "Invalid start index");
         require(_startIndex < endIndex, "Wrong start index");
         if (_maxParticipants != 0 && _startIndex + _maxParticipants < endIndex) {
             endIndex = _startIndex + _maxParticipants;
