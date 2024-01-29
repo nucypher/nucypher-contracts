@@ -442,10 +442,11 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
                 return (true, mid, middleParticipant);
             } else if (middleParticipant.provider < provider) {
                 low = mid + 1;
-            } else if (high == 0) {
-                // prevent underflow of unsigned int
-                return (false, 0, sentinelParticipant);
             } else {
+                if (mid == 0) {
+                    // prevent underflow of unsigned int
+                    return (false, 0, sentinelParticipant);
+                }
                 high = mid - 1;
             }
         }
