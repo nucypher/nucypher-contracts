@@ -166,7 +166,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
             //   - No public key
             //   - All transcripts and all aggregations
             //   - Still within the deadline
-            assert(false);
+            revert("Ambiguous ritual state");
         }
     }
 
