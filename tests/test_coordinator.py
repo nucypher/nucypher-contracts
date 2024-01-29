@@ -387,8 +387,10 @@ def test_get_participant(nodes, coordinator, initiator, erc20, global_allow_list
 
     # can't find non-participants
     for i in range(5):
-        new_account = Account.create()
-        assert new_account.address not in nodes
+        while True:
+            new_account = Account.create()
+            if new_account.address not in nodes:
+                break
         with ape.reverts("Participant not part of ritual"):
             coordinator.getParticipant(0, new_account.address, True)
 
