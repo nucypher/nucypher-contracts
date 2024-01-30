@@ -8,7 +8,7 @@ from eth_account.messages import encode_defunct
 from web3 import Web3
 
 TIMEOUT = 1000
-MAX_DKG_SIZE = 30
+MAX_DKG_SIZE = 31
 FEE_RATE = 42
 ERC20_SUPPLY = 10**24
 DURATION = 48 * 60 * 60
@@ -347,6 +347,14 @@ def test_get_participants(coordinator, nodes, initiator, erc20, global_allow_lis
         assert participant.provider == nodes[index].address
         assert participant.aggregated is False
         assert not participant.transcript
+
+    # max is 0 which means get all
+    participants = coordinator.getParticipants(0, 0, 0, True)
+    assert len(participants) == len(nodes)
+    for index, participant in enumerate(participants):
+        assert participant.provider == nodes[index].address
+        assert participant.aggregated is False
+        assert participant.transcript == transcript
 
     # n at a time
     for n_at_a_time in range(2, len(nodes) // 2):
