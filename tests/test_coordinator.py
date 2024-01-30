@@ -390,6 +390,17 @@ def test_get_participant(nodes, coordinator, initiator, erc20, global_allow_list
         assert p.aggregated is False
         assert p.transcript == transcript
 
+        p, index = coordinator.getParticipant(0, node.address, False)
+        assert index == i
+        assert p.provider == node.address
+        assert p.aggregated is False
+        assert not p.transcript
+
+        p = coordinator.getParticipantFromProvider(0, node.address)
+        assert p.provider == node.address
+        assert p.aggregated is False
+        assert p.transcript == transcript
+
     # can't find non-participants
     for i in range(5):
         while True:
@@ -398,6 +409,12 @@ def test_get_participant(nodes, coordinator, initiator, erc20, global_allow_list
                 break
         with ape.reverts("Participant not part of ritual"):
             coordinator.getParticipant(0, new_account.address, True)
+
+        with ape.reverts("Participant not part of ritual"):
+            coordinator.getParticipant(0, new_account.address, False)
+
+        with ape.reverts("Participant not part of ritual"):
+            coordinator.getParticipantFromProvider(0, new_account.address)
 
 
 def test_post_aggregation(
