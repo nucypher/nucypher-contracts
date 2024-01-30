@@ -392,14 +392,12 @@ def test_get_participant(nodes, coordinator, initiator, erc20, global_allow_list
 
     # find actual participants
     for i, node in enumerate(nodes):
-        p, index = coordinator.getParticipant(0, node.address, True)
-        assert index == i
+        p = coordinator.getParticipant(0, node.address, True)
         assert p.provider == node.address
         assert p.aggregated is False
         assert p.transcript == transcript
 
-        p, index = coordinator.getParticipant(0, node.address, False)
-        assert index == i
+        p = coordinator.getParticipant(0, node.address, False)
         assert p.provider == node.address
         assert p.aggregated is False
         assert not p.transcript
