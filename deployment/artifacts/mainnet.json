@@ -1541,7 +1541,7 @@
     },
     "137": {
         "BetaProgramInitiator": {
-            "address": "0x2A8eA9760CB41a36f8320B8020173D3CA0495FC8",
+            "address": "0x7CEbC88351061b2721865f01d2aCEc4c3eC92E8d",
             "abi": [
                 {
                     "type": "constructor",
@@ -1905,8 +1905,8 @@
                     ]
                 }
             ],
-            "tx_hash": "0xd20ad04b6b39c7913e313c75c566170bd9891649cf2bae0706bb11ac23404626",
-            "block_number": 51972892,
+            "tx_hash": "0xca501b1153acf6d47a2def2413fc5c72302f6d87c050f4e859eacc888e3fc492",
+            "block_number": 52701776,
             "deployer": "0x1591165F1BF8B73de7053A6BE6f239BC15076879"
         },
         "Coordinator": {

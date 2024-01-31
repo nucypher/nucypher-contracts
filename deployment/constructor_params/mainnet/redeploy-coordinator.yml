@@ -1,0 +1,26 @@
+deployment:
+  name: redeploy-coordinator
+  chain_id: 137  # Polygon Mainnet
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: redeploy-coordinator.json
+
+constants:
+  # See deployment/artifacts/mainnet.json
+  TACO_CHILD_APPLICATION: "0xFa07aaB78062Fac4C36995bF28F6D677667973F5"
+
+  # DAI Token on Polygon PoS - References:
+  # - https://polygonscan.com/token/0x8f3cf7ad23cd3cadbd9735aff958023239c6a063
+  # - https://github.com/search?q=0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063&type=code
+  DAI_ON_POLYGON: "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063"
+
+  # TACO specific constants:
+  PRIVATE_BETA_FEE_RATE: 4050925925925  # $0.35 per day, expressed in DAI units per seconds (in Python: 35*10**16 // 86400)
+
+contracts:
+  - Coordinator:
+      constructor:
+        _application: $TACO_CHILD_APPLICATION
+        _currency: $DAI_ON_POLYGON
+        _feeRatePerSecond: $PRIVATE_BETA_FEE_RATE
