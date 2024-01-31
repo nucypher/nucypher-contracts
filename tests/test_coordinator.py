@@ -3,11 +3,12 @@ from enum import IntEnum
 
 import ape
 import pytest
+from eth_account import Account
 from eth_account.messages import encode_defunct
 from web3 import Web3
 
 TIMEOUT = 1000
-MAX_DKG_SIZE = 4
+MAX_DKG_SIZE = 31
 FEE_RATE = 42
 ERC20_SUPPLY = 10**24
 DURATION = 48 * 60 * 60
@@ -316,6 +317,110 @@ def test_post_transcript_but_not_waiting_for_transcripts(
 
     with ape.reverts("Not waiting for transcripts"):
         coordinator.postTranscript(0, transcript, sender=nodes[1])
+
+
+def test_get_participants(coordinator, nodes, initiator, erc20, global_allow_list):
+    initiate_ritual(
+        coordinator=coordinator,
+        erc20=erc20,
+        authority=initiator,
+        nodes=nodes,
+        allow_logic=global_allow_list,
+    )
+    transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
+
+    for node in nodes:
+        tx = coordinator.postTranscript(0, transcript, sender=node)
+
+    # get all participants
+    participants = coordinator.getParticipants(0, 0, len(nodes), False)
+    assert len(participants) == len(nodes)
+    for index, participant in enumerate(participants):
+        assert participant.provider == nodes[index].address
+        assert participant.aggregated is False
+        assert not participant.transcript
+
+    # max is higher than available
+    participants = coordinator.getParticipants(0, 0, len(nodes)*2, False)
+    assert len(participants) == len(nodes)
+    for index, participant in enumerate(participants):
+        assert participant.provider == nodes[index].address
+        assert participant.aggregated is False
+        assert not participant.transcript
+
+    # max is 0 which means get all
+    participants = coordinator.getParticipants(0, 0, 0, True)
+    assert len(participants) == len(nodes)
+    for index, participant in enumerate(participants):
+        assert participant.provider == nodes[index].address
+        assert participant.aggregated is False
+        assert participant.transcript == transcript
+
+    # n at a time
+    for n_at_a_time in range(2, len(nodes) // 2):
+        if len(nodes) % n_at_a_time == 1:
+            # TODO ugly; decoding issues with web3py/ape w.r.t
+            #  struct array of size 1 not being returned as an array of 1 tuple
+            #  but rather an array of tuple elements - more investigation needed
+            continue
+        index = 0
+        while index < len(nodes):
+            participants_n_at_a_time = coordinator.getParticipants(0, index, n_at_a_time, True)
+            assert len(participants_n_at_a_time) <= n_at_a_time
+            for i, participant in enumerate(participants_n_at_a_time):
+                assert participant.provider == nodes[index+i].address
+                assert participant.aggregated is False
+                assert participant.transcript == transcript
+
+            index += len(participants_n_at_a_time)
+
+        assert index == len(nodes)
+
+
+def test_get_participant(nodes, coordinator, initiator, erc20, global_allow_list):
+    initiate_ritual(
+        coordinator=coordinator,
+        erc20=erc20,
+        authority=initiator,
+        nodes=nodes,
+        allow_logic=global_allow_list,
+    )
+    transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
+
+    for node in nodes:
+        tx = coordinator.postTranscript(0, transcript, sender=node)
+
+    # find actual participants
+    for i, node in enumerate(nodes):
+        p = coordinator.getParticipant(0, node.address, True)
+        assert p.provider == node.address
+        assert p.aggregated is False
+        assert p.transcript == transcript
+
+        p = coordinator.getParticipant(0, node.address, False)
+        assert p.provider == node.address
+        assert p.aggregated is False
+        assert not p.transcript
+
+        p = coordinator.getParticipantFromProvider(0, node.address)
+        assert p.provider == node.address
+        assert p.aggregated is False
+        assert p.transcript == transcript
+
+    # can't find non-participants
+    for i in range(5):
+        while True:
+            new_account = Account.create()
+            if new_account.address not in nodes:
+                break
+        with ape.reverts("Participant not part of ritual"):
+            coordinator.getParticipant(0, new_account.address, True)
+
+        with ape.reverts("Participant not part of ritual"):
+            coordinator.getParticipant(0, new_account.address, False)
+
+        with ape.reverts("Participant not part of ritual"):
+            coordinator.getParticipantFromProvider(0, new_account.address)
 
 
 def test_post_aggregation(

@@ -60,6 +60,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         bool aggregated;
         bytes transcript;
         bytes decryptionRequestStaticKey;
+        // Note: Adjust __postSentinelGap size if this struct's size changes
     }
 
     struct Ritual {
@@ -104,6 +105,12 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     IReimbursementPool internal reimbursementPool;
     mapping(address => ParticipantKey[]) internal participantKeysHistory;
     mapping(bytes32 => uint32) internal ritualPublicKeyRegistry;
+    // Note: Adjust the __preSentinelGap size if more contract variables are added
+
+    // Storage area for sentinel values
+    uint256[20] internal __preSentinelGap;
+    Participant internal __sentinelParticipant;
+    uint256[20] internal __postSentinelGap;
 
     constructor(
         ITACoChildApplication _application,
@@ -165,7 +172,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
             //   - No public key
             //   - All transcripts and all aggregations
             //   - Still within the deadline
-            assert(false);
+            revert("Ambiguous ritual state");
         }
     }
 
@@ -174,28 +181,28 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         _setRoleAdmin(INITIATOR_ROLE, bytes32(0));
     }
 
-    function setProviderPublicKey(BLS12381.G2Point calldata _publicKey) external {
+    function setProviderPublicKey(BLS12381.G2Point calldata publicKey) external {
         uint32 lastRitualId = uint32(rituals.length);
         address stakingProvider = application.operatorToStakingProvider(msg.sender);
         require(stakingProvider != address(0), "Operator has no bond with staking provider");
 
-        ParticipantKey memory newRecord = ParticipantKey(lastRitualId, _publicKey);
+        ParticipantKey memory newRecord = ParticipantKey(lastRitualId, publicKey);
         participantKeysHistory[stakingProvider].push(newRecord);
 
-        emit ParticipantPublicKeySet(lastRitualId, stakingProvider, _publicKey);
+        emit ParticipantPublicKeySet(lastRitualId, stakingProvider, publicKey);
         // solhint-disable-next-line avoid-tx-origin
         require(msg.sender == tx.origin, "Only operator with real address can set public key");
         application.confirmOperatorAddress(msg.sender);
     }
 
     function getProviderPublicKey(
-        address _provider,
-        uint256 _ritualId
+        address provider,
+        uint256 ritualId
     ) external view returns (BLS12381.G2Point memory) {
-        ParticipantKey[] storage participantHistory = participantKeysHistory[_provider];
+        ParticipantKey[] storage participantHistory = participantKeysHistory[provider];
 
         for (uint256 i = participantHistory.length; i > 0; i--) {
-            if (participantHistory[i - 1].lastRitualId <= _ritualId) {
+            if (participantHistory[i - 1].lastRitualId <= ritualId) {
                 return participantHistory[i - 1].publicKey;
             }
         }
@@ -203,8 +210,8 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         revert("No keys found prior to the provided ritual");
     }
 
-    function isProviderPublicKeySet(address _provider) external view returns (bool) {
-        ParticipantKey[] storage participantHistory = participantKeysHistory[_provider];
+    function isProviderPublicKeySet(address provider) external view returns (bool) {
+        ParticipantKey[] storage participantHistory = participantKeysHistory[provider];
         return participantHistory.length > 0;
     }
 
@@ -315,7 +322,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         );
 
         address provider = application.operatorToStakingProvider(msg.sender);
-        Participant storage participant = getParticipantFromProvider(ritual, provider);
+        Participant storage participant = getParticipant(ritual, provider);
 
         require(application.authorizedStake(provider) > 0, "Not enough authorization");
         require(participant.transcript.length == 0, "Node already posted transcript");
@@ -354,7 +361,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         );
 
         address provider = application.operatorToStakingProvider(msg.sender);
-        Participant storage participant = getParticipantFromProvider(ritual, provider);
+        Participant storage participant = getParticipant(ritual, provider);
         require(application.authorizedStake(provider) > 0, "Not enough authorization");
 
         require(!participant.aggregated, "Node already posted aggregation");
@@ -414,7 +421,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
     function getPublicKeyFromRitualId(
         uint32 ritualId
-    ) external view returns (BLS12381.G1Point memory dkgPublicKey) {
+    ) external view returns (BLS12381.G1Point memory) {
         Ritual storage ritual = rituals[ritualId];
         RitualState state = getRitualState(ritual);
         require(
@@ -424,26 +431,105 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         return ritual.publicKey;
     }
 
-    function getParticipantFromProvider(
+    function findParticipant(
+        Ritual storage ritual,
+        address provider
+    ) internal view returns (bool, Participant storage) {
+        uint256 length = ritual.participant.length;
+        if (length == 0) {
+            return (false, __sentinelParticipant);
+        }
+        uint256 low = 0;
+        uint256 high = length - 1;
+        while (low <= high) {
+            uint256 mid = (low + high) / 2;
+            Participant storage middleParticipant = ritual.participant[mid];
+            if (middleParticipant.provider == provider) {
+                return (true, middleParticipant);
+            } else if (middleParticipant.provider < provider) {
+                low = mid + 1;
+            } else {
+                if (mid == 0) {
+                    // prevent underflow of unsigned int
+                    break;
+                }
+                high = mid - 1;
+            }
+        }
+        return (false, __sentinelParticipant);
+    }
+
+    function getParticipant(
         Ritual storage ritual,
         address provider
     ) internal view returns (Participant storage) {
-        uint256 length = ritual.participant.length;
-        // TODO: Improve with binary search
-        for (uint256 i = 0; i < length; i++) {
-            Participant storage participant = ritual.participant[i];
-            if (participant.provider == provider) {
-                return participant;
-            }
+        (bool found, Participant storage participant) = findParticipant(ritual, provider);
+        require(found, "Participant not part of ritual");
+        return participant;
+    }
+
+    function getParticipant(
+        uint32 ritualId,
+        address provider,
+        bool transcript
+    ) external view returns (Participant memory) {
+        Ritual storage ritual = rituals[ritualId];
+        Participant memory participant = getParticipant(ritual, provider);
+        if (!transcript) {
+            participant.transcript = "";
         }
-        revert("Participant not part of ritual");
+        return participant;
     }
 
     function getParticipantFromProvider(
         uint32 ritualId,
         address provider
     ) external view returns (Participant memory) {
-        return getParticipantFromProvider(rituals[ritualId], provider);
+        Ritual storage ritual = rituals[ritualId];
+        Participant memory participant = getParticipant(ritual, provider);
+        return participant;
+    }
+
+    function getParticipants(
+        uint32 ritualId,
+        uint256 startIndex,
+        uint256 maxParticipants,
+        bool includeTranscript
+    ) external view returns (Participant[] memory) {
+        Ritual storage ritual = rituals[ritualId];
+        uint256 endIndex = ritual.participant.length;
+        require(startIndex >= 0, "Invalid start index");
+        require(startIndex < endIndex, "Wrong start index");
+        if (maxParticipants != 0 && startIndex + maxParticipants < endIndex) {
+            endIndex = startIndex + maxParticipants;
+        }
+        Participant[] memory ritualParticipants = new Participant[](endIndex - startIndex);
+
+        uint256 resultIndex = 0;
+        for (uint256 i = startIndex; i < endIndex; i++) {
+            Participant memory ritualParticipant = ritual.participant[i];
+            if (!includeTranscript) {
+                ritualParticipant.transcript = "";
+            }
+            ritualParticipants[resultIndex++] = ritualParticipant;
+        }
+
+        return ritualParticipants;
+    }
+
+    function getProviders(uint32 ritualId) external view returns (address[] memory) {
+        Ritual storage ritual = rituals[ritualId];
+        address[] memory providers = new address[](ritual.participant.length);
+        for (uint256 i = 0; i < ritual.participant.length; i++) {
+            providers[i] = ritual.participant[i].provider;
+        }
+        return providers;
+    }
+
+    function isParticipant(uint32 ritualId, address provider) external view returns (bool) {
+        Ritual storage ritual = rituals[ritualId];
+        (bool found, ) = findParticipant(ritual, provider);
+        return found;
     }
 
     function isEncryptionAuthorized(
