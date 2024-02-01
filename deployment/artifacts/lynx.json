@@ -1138,63 +1138,7 @@
                         }
                     ]
                 },
-              {
-                "type": "function",
-                "name": "getParticipants",
-                "stateMutability": "view",
-                "inputs": [
-                  {
-                    "internalType": "uint32",
-                    "name": "ritualId",
-                    "type": "uint32"
-                  },
-                  {
-                    "internalType": "uint256",
-                    "name": "startIndex",
-                    "type": "uint256"
-                  },
-                  {
-                    "internalType": "uint256",
-                    "name": "maxParticipants",
-                    "type": "uint256"
-                  },
-                  {
-                    "internalType": "bool",
-                    "name": "includeTranscript",
-                    "type": "bool"
-                  }
-                ],
-                "outputs": [
-                  {
-                    "components": [
-                      {
-                        "internalType": "address",
-                        "name": "provider",
-                        "type": "address"
-                      },
-                      {
-                        "internalType": "bool",
-                        "name": "aggregated",
-                        "type": "bool"
-                      },
-                      {
-                        "internalType": "bytes",
-                        "name": "transcript",
-                        "type": "bytes"
-                      },
-                      {
-                        "internalType": "bytes",
-                        "name": "decryptionRequestStaticKey",
-                        "type": "bytes"
-                      }
-                    ],
-                    "internalType": "struct Coordinator.Participant[]",
-                    "name": "",
-                    "type": "tuple[]"
-                  }
-                ]
-              },
-              {
+                {
                     "type": "function",
                     "name": "getParticipantFromProvider",
                     "stateMutability": "view",
@@ -1249,6 +1193,62 @@
                             "name": "ritualId",
                             "type": "uint32",
                             "internalType": "uint32"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "tuple[]",
+                            "components": [
+                                {
+                                    "name": "provider",
+                                    "type": "address",
+                                    "internalType": "address"
+                                },
+                                {
+                                    "name": "aggregated",
+                                    "type": "bool",
+                                    "internalType": "bool"
+                                },
+                                {
+                                    "name": "transcript",
+                                    "type": "bytes",
+                                    "internalType": "bytes"
+                                },
+                                {
+                                    "name": "decryptionRequestStaticKey",
+                                    "type": "bytes",
+                                    "internalType": "bytes"
+                                }
+                            ],
+                            "internalType": "struct Coordinator.Participant[]"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "getParticipants",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        },
+                        {
+                            "name": "startIndex",
+                            "type": "uint256",
+                            "internalType": "uint256"
+                        },
+                        {
+                            "name": "maxParticipants",
+                            "type": "uint256",
+                            "internalType": "uint256"
+                        },
+                        {
+                            "name": "includeTranscript",
+                            "type": "bool",
+                            "internalType": "bool"
                         }
                     ],
                     "outputs": [
