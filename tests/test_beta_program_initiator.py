@@ -110,7 +110,7 @@ def test_register(accounts, beta_program_initiator, token, coordinator):
     event = events[0]
     assert event.sender == initiator_1
     assert event.requestIndex == 0
-    assert event.providers == list(n.address for n in nodes)
+    assert event.providers == [n.address for n in nodes]
     assert event.authority == authority
     assert event.duration == duration
     assert event.accessController == access_controller
@@ -142,7 +142,7 @@ def test_register(accounts, beta_program_initiator, token, coordinator):
     event = events[0]
     assert event.sender == initiator_2
     assert event.requestIndex == 1
-    assert event.providers == list(n.address for n in nodes)
+    assert event.providers == [n.address for n in nodes]
     assert event.authority == authority
     assert event.duration == duration
     assert event.accessController == access_controller

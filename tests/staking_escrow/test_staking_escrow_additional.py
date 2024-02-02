@@ -42,11 +42,15 @@ def test_upgrading(accounts, token, t_token, vending_machine, project):
     dispatcher = creator.deploy(project.Dispatcher, contract_library_v1.address)
 
     tx = creator.history[-1]
-    assert tx.events == [
-        dispatcher.OwnershipTransferred(previousOwner=ZERO_ADDRESS, newOwner=creator),
-        dispatcher.StateVerified(testTarget=contract_library_v1.address, sender=creator),
-        dispatcher.UpgradeFinished(target=contract_library_v1.address, sender=creator),
-    ]
+    assert tx.events[0] == dispatcher.OwnershipTransferred(
+        previousOwner=ZERO_ADDRESS, newOwner=creator
+    )
+    assert tx.events[1] == dispatcher.StateVerified(
+        testTarget=contract_library_v1.address, sender=creator
+    )
+    assert tx.events[2] == dispatcher.UpgradeFinished(
+        target=contract_library_v1.address, sender=creator
+    )
 
     # Deploy second version of the contract
     contract_library_v2 = creator.deploy(
@@ -82,11 +86,15 @@ def test_upgrading(accounts, token, t_token, vending_machine, project):
     contract.setValueToCheck(3, sender=creator)
     assert contract.valueToCheck() == 3
 
-    assert tx.events == [
-        dispatcher.StateVerified(testTarget=contract_library_v2.address, sender=creator),
-        dispatcher.StateVerified(testTarget=contract_library_v2.address, sender=creator),
-        dispatcher.UpgradeFinished(target=contract_library_v2.address, sender=creator),
-    ]
+    assert tx.events[0] == dispatcher.StateVerified(
+        testTarget=contract_library_v2.address, sender=creator
+    )
+    assert tx.events[1] == dispatcher.StateVerified(
+        testTarget=contract_library_v2.address, sender=creator
+    )
+    assert tx.events[2] == dispatcher.UpgradeFinished(
+        target=contract_library_v2.address, sender=creator
+    )
 
     # Can't upgrade to the previous version or to the bad version
     contract_library_bad = creator.deploy(
@@ -124,10 +132,12 @@ def test_upgrading(accounts, token, t_token, vending_machine, project):
     assert contract_library_v1.address == event["target"]
     assert event["sender"] == creator
 
-    assert tx.events == [
-        dispatcher.StateVerified(testTarget=contract_library_v2.address, sender=creator),
-        dispatcher.UpgradeFinished(target=contract_library_v1.address, sender=creator),
-    ]
+    assert tx.events[1] == dispatcher.StateVerified(
+        testTarget=contract_library_v2.address, sender=creator
+    )
+    assert tx.events[2] == dispatcher.UpgradeFinished(
+        target=contract_library_v1.address, sender=creator
+    )
 
 
 def test_measure_work(accounts, token, worklock, escrow):

@@ -5,6 +5,7 @@ import ape
 import pytest
 from eth_account import Account
 from eth_account.messages import encode_defunct
+from hexbytes import HexBytes
 from web3 import Web3
 
 TIMEOUT = 1000
@@ -190,7 +191,7 @@ def test_initiate_ritual(
     event = events[0]
     assert event.ritualId == ritualID
     assert event.authority == authority
-    assert event.participants == list(n.address for n in nodes)
+    assert event.participants == [n.address for n in nodes]
 
     assert coordinator.getRitualState(0) == RitualState.DKG_AWAITING_TRANSCRIPTS
 
@@ -236,7 +237,7 @@ def test_provider_public_key(coordinator, nodes):
     event = events[0]
     assert event.ritualId == ritual_id
     assert event.participant == selected_provider
-    assert tuple(event.publicKey) == public_key
+    assert event.publicKey == [HexBytes(k) for k in public_key]
     assert coordinator.getProviderPublicKey(selected_provider, ritual_id) == public_key
 
 
