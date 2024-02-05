@@ -347,7 +347,7 @@ def test_selfdestruct(project, accounts):
     contract1_lib = creator.deploy(project.Destroyable, 22)
     assert 22 == contract1_lib.constructorValue()
     contract1_lib.destroy(sender=creator)
-    with pytest.raises(ape.exceptions.ContractError):
+    with pytest.raises(ape.exceptions.ContractNotFoundError):
         contract1_lib.constructorValue()
 
     # Can't create dispatcher using address without contract

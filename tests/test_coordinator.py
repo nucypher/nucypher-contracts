@@ -5,6 +5,7 @@ import ape
 import pytest
 from eth_account import Account
 from eth_account.messages import encode_defunct
+from hexbytes import HexBytes
 from web3 import Web3
 
 TIMEOUT = 1000
@@ -188,9 +189,9 @@ def test_initiate_ritual(
     events = coordinator.StartRitual.from_receipt(tx)
     assert len(events) == 1
     event = events[0]
-    assert event["ritualId"] == ritualID
-    assert event["authority"] == authority
-    assert event["participants"] == tuple(n.address.lower() for n in nodes)
+    assert event.ritualId == ritualID
+    assert event.authority == authority
+    assert event.participants == [n.address for n in nodes]
 
     assert coordinator.getRitualState(0) == RitualState.DKG_AWAITING_TRANSCRIPTS
 
@@ -234,8 +235,9 @@ def test_provider_public_key(coordinator, nodes):
     events = coordinator.ParticipantPublicKeySet.from_receipt(tx)
     assert len(events) == 1
     event = events[0]
-    assert event["participant"] == selected_provider
-    assert event["publicKey"] == public_key
+    assert event.ritualId == ritual_id
+    assert event.participant == selected_provider
+    assert event.publicKey == [HexBytes(k) for k in public_key]
     assert coordinator.getProviderPublicKey(selected_provider, ritual_id) == public_key
 
 
@@ -330,7 +332,7 @@ def test_get_participants(coordinator, nodes, initiator, erc20, global_allow_lis
     transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
 
     for node in nodes:
-        tx = coordinator.postTranscript(0, transcript, sender=node)
+        _ = coordinator.postTranscript(0, transcript, sender=node)
 
     # get all participants
     participants = coordinator.getParticipants(0, 0, len(nodes), False)
@@ -341,7 +343,7 @@ def test_get_participants(coordinator, nodes, initiator, erc20, global_allow_lis
         assert not participant.transcript
 
     # max is higher than available
-    participants = coordinator.getParticipants(0, 0, len(nodes)*2, False)
+    participants = coordinator.getParticipants(0, 0, len(nodes) * 2, False)
     assert len(participants) == len(nodes)
     for index, participant in enumerate(participants):
         assert participant.provider == nodes[index].address
@@ -368,7 +370,7 @@ def test_get_participants(coordinator, nodes, initiator, erc20, global_allow_lis
             participants_n_at_a_time = coordinator.getParticipants(0, index, n_at_a_time, True)
             assert len(participants_n_at_a_time) <= n_at_a_time
             for i, participant in enumerate(participants_n_at_a_time):
-                assert participant.provider == nodes[index+i].address
+                assert participant.provider == nodes[index + i].address
                 assert participant.aggregated is False
                 assert participant.transcript == transcript
 
@@ -388,7 +390,7 @@ def test_get_participant(nodes, coordinator, initiator, erc20, global_allow_list
     transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
 
     for node in nodes:
-        tx = coordinator.postTranscript(0, transcript, sender=node)
+        _ = coordinator.postTranscript(0, transcript, sender=node)
 
     # find actual participants
     for i, node in enumerate(nodes):
@@ -593,9 +595,11 @@ def test_authorize_using_global_allow_list(
     assert global_allow_list.isAuthorized(0, bytes(signature), bytes(data))
     assert coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(data))
     events = global_allow_list.AddressAuthorizationSet.from_receipt(tx)
-    assert events == [global_allow_list.AddressAuthorizationSet(
-        ritualId=0, _address=deployer.address, isAuthorized=True
-    )]
+    assert events == [
+        global_allow_list.AddressAuthorizationSet(
+            ritualId=0, _address=deployer.address, isAuthorized=True
+        )
+    ]
 
     # Deauthorize
     tx = global_allow_list.deauthorize(0, [deployer.address], sender=initiator)
@@ -603,9 +607,11 @@ def test_authorize_using_global_allow_list(
     assert not global_allow_list.isAuthorized(0, bytes(signature), bytes(data))
     assert not coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(data))
     events = global_allow_list.AddressAuthorizationSet.from_receipt(tx)
-    assert events == [global_allow_list.AddressAuthorizationSet(
-        ritualId=0, _address=deployer.address, isAuthorized=False
-    )]
+    assert events == [
+        global_allow_list.AddressAuthorizationSet(
+            ritualId=0, _address=deployer.address, isAuthorized=False
+        )
+    ]
 
     # Reauthorize in batch
     addresses_to_authorize = [deployer.address, initiator.address]
@@ -623,7 +629,8 @@ def test_authorize_using_global_allow_list(
         global_allow_list.AddressAuthorizationSet(
             ritualId=0, _address=deployer.address, isAuthorized=True
         ),
+        # TODO was this originally supposed to True (not sure why it passed before)
         global_allow_list.AddressAuthorizationSet(
-            ritualId=0, _address=initiator.address, isAuthorized=False
+            ritualId=0, _address=initiator.address, isAuthorized=True
         ),
     ]

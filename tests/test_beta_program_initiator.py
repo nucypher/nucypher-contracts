@@ -108,13 +108,13 @@ def test_register(accounts, beta_program_initiator, token, coordinator):
     events = beta_program_initiator.RequestRegistered.from_receipt(tx)
     assert len(events) == 1
     event = events[0]
-    assert event["sender"] == initiator_1
-    assert event["requestIndex"] == 0
-    assert event["providers"] == tuple(n.address.lower() for n in nodes)
-    assert event["authority"] == authority
-    assert event["duration"] == duration
-    assert event["accessController"] == access_controller
-    assert event["payment"] == ritual_cost
+    assert event.sender == initiator_1
+    assert event.requestIndex == 0
+    assert event.providers == [n.address for n in nodes]
+    assert event.authority == authority
+    assert event.duration == duration
+    assert event.accessController == access_controller
+    assert event.payment == ritual_cost
 
     # Register another request
     nodes = [node_1]
@@ -140,13 +140,13 @@ def test_register(accounts, beta_program_initiator, token, coordinator):
     events = beta_program_initiator.RequestRegistered.from_receipt(tx)
     assert len(events) == 1
     event = events[0]
-    assert event["sender"] == initiator_2
-    assert event["requestIndex"] == 1
-    assert event["providers"] == tuple(n.address.lower() for n in nodes)
-    assert event["authority"] == authority
-    assert event["duration"] == duration
-    assert event["accessController"] == access_controller
-    assert event["payment"] == ritual_cost_2
+    assert event.sender == initiator_2
+    assert event.requestIndex == 1
+    assert event.providers == [n.address for n in nodes]
+    assert event.authority == authority
+    assert event.duration == duration
+    assert event.accessController == access_controller
+    assert event.payment == ritual_cost_2
 
 
 def test_cancel(accounts, beta_program_initiator, token, coordinator, executor):
@@ -435,13 +435,13 @@ def test_refund(accounts, beta_program_initiator, token, coordinator, executor):
 
     coordinator.processPendingFee(request_1_ritual_id, sender=initiator_1)
     assert coordinator.pendingFees(request_1_ritual_id) == 0
-    
+
     fee_deduction_2 = coordinator.feeDeduction(pending_fees_2_before, duration_2)
     refund_2 = ritual_cost_2 - fee_deduction_2
     assert token.balanceOf(beta_program_initiator.address) == refund_2
 
     tx = beta_program_initiator.refundFailedRequest(1, sender=initiator_2)
-    
+
     assert token.balanceOf(beta_program_initiator.address) == 0
     initiator_2_balance_after = token.balanceOf(initiator_2)
     assert initiator_2_balance_after - initiator_2_balance_before == refund_2
