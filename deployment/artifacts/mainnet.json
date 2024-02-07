@@ -1919,17 +1919,20 @@
                         {
                             "name": "_application",
                             "type": "address",
-                            "internalType": "contract ITACoChildApplication"
+                            "components": null,
+                            "internal_type": "contract ITACoChildApplication"
                         },
                         {
                             "name": "_currency",
                             "type": "address",
-                            "internalType": "contract IERC20"
+                            "components": null,
+                            "internal_type": "contract IERC20"
                         },
                         {
                             "name": "_feeRatePerSecond",
                             "type": "uint256",
-                            "internalType": "uint256"
+                            "components": null,
+                            "internal_type": "uint256"
                         }
                     ]
                 },
@@ -1945,7 +1948,8 @@
                         {
                             "name": "schedule",
                             "type": "uint48",
-                            "internalType": "uint48"
+                            "components": null,
+                            "internal_type": "uint48"
                         }
                     ]
                 },
@@ -1961,7 +1965,8 @@
                         {
                             "name": "defaultAdmin",
                             "type": "address",
-                            "internalType": "address"
+                            "components": null,
+                            "internal_type": "address"
                         }
                     ]
                 },
@@ -1972,12 +1977,14 @@
                         {
                             "name": "account",
                             "type": "address",
-                            "internalType": "address"
+                            "components": null,
+                            "internal_type": "address"
                         },
                         {
                             "name": "neededRole",
                             "type": "bytes32",
-                            "internalType": "bytes32"
+                            "components": null,
+                            "internal_type": "bytes32"
                         }
                     ]
                 },
@@ -1988,7 +1995,8 @@
                         {
                             "name": "target",
                             "type": "address",
-                            "internalType": "address"
+                            "components": null,
+                            "internal_type": "address"
                         }
                     ]
                 },
@@ -1999,7 +2007,8 @@
                         {
                             "name": "account",
                             "type": "address",
-                            "internalType": "address"
+                            "components": null,
+                            "internal_type": "address"
                         }
                     ]
                 },
@@ -2025,12 +2034,14 @@
                         {
                             "name": "bits",
                             "type": "uint8",
-                            "internalType": "uint8"
+                            "components": null,
+                            "internal_type": "uint8"
                         },
                         {
                             "name": "value",
                             "type": "uint256",
-                            "internalType": "uint256"
+                            "components": null,
+                            "internal_type": "uint256"
                         }
                     ]
                 },
@@ -2041,7 +2052,8 @@
                         {
                             "name": "token",
                             "type": "address",
-                            "internalType": "address"
+                            "components": null,
+                            "internal_type": "address"
                         }
                     ]
                 },
@@ -2052,19 +2064,22 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "internalType": "uint32",
+                            "components": null,
+                            "internal_type": "uint32",
                             "indexed": true
                         },
                         {
                             "name": "node",
                             "type": "address",
-                            "internalType": "address",
+                            "components": null,
+                            "internal_type": "address",
                             "indexed": true
                         },
                         {
                             "name": "aggregatedTranscriptDigest",
                             "type": "bytes32",
-                            "internalType": "bytes32",
+                            "components": null,
+                            "internal_type": "bytes32",
                             "indexed": false
                         }
                     ],
@@ -2083,13 +2098,15 @@
                         {
                             "name": "newDelay",
                             "type": "uint48",
-                            "internalType": "uint48",
+                            "components": null,
+                            "internal_type": "uint48",
                             "indexed": false
                         },
                         {
                             "name": "effectSchedule",
                             "type": "uint48",
-                            "internalType": "uint48",
+                            "components": null,
+                            "internal_type": "uint48",
                             "indexed": false
                         }
                     ],
@@ -2108,13 +2125,15 @@
                         {
                             "name": "newAdmin",
                             "type": "address",
-                            "internalType": "address",
+                            "components": null,
+                            "internal_type": "address",
                             "indexed": true
                         },
                         {
                             "name": "acceptSchedule",
                             "type": "uint48",
-                            "internalType": "uint48",
+                            "components": null,
+                            "internal_type": "uint48",
                             "indexed": false
                         }
                     ],
@@ -2127,13 +2146,15 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "internalType": "uint32",
+                            "components": null,
+                            "internal_type": "uint32",
                             "indexed": true
                         },
                         {
                             "name": "successful",
                             "type": "bool",
-                            "internalType": "bool",
+                            "components": null,
+                            "internal_type": "bool",
                             "indexed": false
                         }
                     ],
@@ -2146,7 +2167,8 @@
                         {
                             "name": "version",
                             "type": "uint64",
-                            "internalType": "uint64",
+                            "components": null,
+                            "internal_type": "uint64",
                             "indexed": false
                         }
                     ],
@@ -2159,13 +2181,15 @@
                         {
                             "name": "oldSize",
                             "type": "uint16",
-                            "internalType": "uint16",
+                            "components": null,
+                            "internal_type": "uint16",
                             "indexed": false
                         },
                         {
                             "name": "newSize",
                             "type": "uint16",
-                            "internalType": "uint16",
+                            "components": null,
+                            "internal_type": "uint16",
                             "indexed": false
                         }
                     ],
@@ -2178,13 +2202,15 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "internalType": "uint32",
+                            "components": null,
+                            "internal_type": "uint32",
                             "indexed": true
                         },
                         {
                             "name": "participant",
                             "type": "address",
-                            "internalType": "address",
+                            "components": null,
+                            "internal_type": "address",
                             "indexed": true
                         },
                         {
@@ -2194,20 +2220,23 @@
                                 {
                                     "name": "word0",
                                     "type": "bytes32",
-                                    "internalType": "bytes32"
+                                    "components": null,
+                                    "internal_type": "bytes32"
                                 },
                                 {
                                     "name": "word1",
                                     "type": "bytes32",
-                                    "internalType": "bytes32"
+                                    "components": null,
+                                    "internal_type": "bytes32"
                                 },
                                 {
                                     "name": "word2",
                                     "type": "bytes32",
-                                    "internalType": "bytes32"
+                                    "components": null,
+                                    "internal_type": "bytes32"
                                 }
                             ],
-                            "internalType": "struct BLS12381.G2Point",
+                            "internal_type": "struct BLS12381.G2Point",
                             "indexed": false
                         }
                     ],
@@ -2220,7 +2249,8 @@
                         {
                             "name": "pool",
                             "type": "address",
-                            "internalType": "address",
+                            "components": null,
+                            "internal_type": "address",
                             "indexed": true
                         }
                     ],
@@ -2233,19 +2263,22 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "internalType": "uint32",
+                            "components": null,
+                            "internal_type": "uint32",
                             "indexed": true
                         },
                         {
                             "name": "previousAuthority",
                             "type": "address",
-                            "internalType": "address",
+                            "components": null,
+                            "internal_type": "address",
                             "indexed": true
                         },
                         {
                             "name": "newAuthority",
                             "type": "address",
-                            "internalType": "address",
+                            "components": null,
+                            "internal_type": "address",
                             "indexed": true
                         }
                     ],
@@ -2258,19 +2291,22 @@
                         {
                             "name": "role",
                             "type": "bytes32",
-                            "internalType": "bytes32",
+                            "components": null,
+                            "internal_type": "bytes32",
                             "indexed": true
                         },
                         {
                             "name": "previousAdminRole",
                             "type": "bytes32",
-                            "internalType": "bytes32",
+                            "components": null,
+                            "internal_type": "bytes32",
                             "indexed": true
                         },
                         {
                             "name": "newAdminRole",
                             "type": "bytes32",
-                            "internalType": "bytes32",
+                            "components": null,
+                            "internal_type": "bytes32",
                             "indexed": true
                         }
                     ],
@@ -2283,19 +2319,22 @@
                         {
                             "name": "role",
                             "type": "bytes32",
-                            "internalType": "bytes32",
+                            "components": null,
+                            "internal_type": "bytes32",
                             "indexed": true
                         },
                         {
                             "name": "account",
                             "type": "address",
-                            "internalType": "address",
+                            "components": null,
+                            "internal_type": "address",
                             "indexed": true
                         },
                         {
                             "name": "sender",
                             "type": "address",
-                            "internalType": "address",
+                            "components": null,
+                            "internal_type": "address",
                             "indexed": true
                         }
                     ],
@@ -2308,19 +2347,22 @@
                         {
                             "name": "role",
                             "type": "bytes32",
-                            "internalType": "bytes32",
+                            "components": null,
+                            "internal_type": "bytes32",
                             "indexed": true
                         },
                         {
                             "name": "account",
                             "type": "address",
-                            "internalType": "address",
+                            "components": null,
+                            "internal_type": "address",
                             "indexed": true
                         },
                         {
                             "name": "sender",
                             "type": "address",
-                            "internalType": "address",
+                            "components": null,
+                            "internal_type": "address",
                             "indexed": true
                         }
                     ],
@@ -2333,7 +2375,8 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "internalType": "uint32",
+                            "components": null,
+                            "internal_type": "uint32",
                             "indexed": true
                         }
                     ],
@@ -2346,19 +2389,22 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "internalType": "uint32",
+                            "components": null,
+                            "internal_type": "uint32",
                             "indexed": true
                         },
                         {
                             "name": "authority",
                             "type": "address",
-                            "internalType": "address",
+                            "components": null,
+                            "internal_type": "address",
                             "indexed": true
                         },
                         {
                             "name": "participants",
                             "type": "address[]",
-                            "internalType": "address[]",
+                            "components": null,
+                            "internal_type": "address[]",
                             "indexed": false
                         }
                     ],
@@ -2371,13 +2417,15 @@
                         {
                             "name": "oldTimeout",
                             "type": "uint32",
-                            "internalType": "uint32",
+                            "components": null,
+                            "internal_type": "uint32",
                             "indexed": false
                         },
                         {
                             "name": "newTimeout",
                             "type": "uint32",
-                            "internalType": "uint32",
+                            "components": null,
+                            "internal_type": "uint32",
                             "indexed": false
                         }
                     ],
@@ -2390,19 +2438,22 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "internalType": "uint32",
+                            "components": null,
+                            "internal_type": "uint32",
                             "indexed": true
                         },
                         {
                             "name": "node",
                             "type": "address",
-                            "internalType": "address",
+                            "components": null,
+                            "internal_type": "address",
                             "indexed": true
                         },
                         {
                             "name": "transcriptDigest",
                             "type": "bytes32",
-                            "internalType": "bytes32",
+                            "components": null,
+                            "internal_type": "bytes32",
                             "indexed": false
                         }
                     ],
@@ -2417,7 +2468,8 @@
                         {
                             "name": "",
                             "type": "bytes32",
-                            "internalType": "bytes32"
+                            "components": null,
+                            "internal_type": "bytes32"
                         }
                     ]
                 },
@@ -2430,7 +2482,8 @@
                         {
                             "name": "",
                             "type": "bytes32",
-                            "internalType": "bytes32"
+                            "components": null,
+                            "internal_type": "bytes32"
                         }
                     ]
                 },
@@ -2443,7 +2496,8 @@
                         {
                             "name": "",
                             "type": "bytes32",
-                            "internalType": "bytes32"
+                            "components": null,
+                            "internal_type": "bytes32"
                         }
                     ]
                 },
@@ -2463,7 +2517,8 @@
                         {
                             "name": "",
                             "type": "address",
-                            "internalType": "contract ITACoChildApplication"
+                            "components": null,
+                            "internal_type": "contract ITACoChildApplication"
                         }
                     ]
                 },
@@ -2475,7 +2530,8 @@
                         {
                             "name": "newAdmin",
                             "type": "address",
-                            "internalType": "address"
+                            "components": null,
+                            "internal_type": "address"
                         }
                     ],
                     "outputs": []
@@ -2495,7 +2551,8 @@
                         {
                             "name": "newDelay",
                             "type": "uint48",
-                            "internalType": "uint48"
+                            "components": null,
+                            "internal_type": "uint48"
                         }
                     ],
                     "outputs": []
@@ -2508,14 +2565,16 @@
                         {
                             "name": "nodes",
                             "type": "address[]",
-                            "internalType": "address[]"
+                            "components": null,
+                            "internal_type": "address[]"
                         }
                     ],
                     "outputs": [
                         {
                             "name": "",
                             "type": "bytes32",
-                            "internalType": "bytes32"
+                            "components": null,
+                            "internal_type": "bytes32"
                         }
                     ]
                 },
@@ -2528,7 +2587,8 @@
                         {
                             "name": "",
                             "type": "address",
-                            "internalType": "contract IERC20"
+                            "components": null,
+                            "internal_type": "contract IERC20"
                         }
                     ]
                 },
@@ -2541,7 +2601,8 @@
                         {
                             "name": "",
                             "type": "address",
-                            "internalType": "address"
+                            "components": null,
+                            "internal_type": "address"
                         }
                     ]
                 },
@@ -2554,7 +2615,8 @@
                         {
                             "name": "",
                             "type": "uint48",
-                            "internalType": "uint48"
+                            "components": null,
+                            "internal_type": "uint48"
                         }
                     ]
                 },
@@ -2567,7 +2629,35 @@
                         {
                             "name": "",
                             "type": "uint48",
-                            "internalType": "uint48"
+                            "components": null,
+                            "internal_type": "uint48"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "feeDeduction",
+                    "stateMutability": "pure",
+                    "inputs": [
+                        {
+                            "name": "",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        },
+                        {
+                            "name": "",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
                         }
                     ]
                 },
@@ -2580,7 +2670,8 @@
                         {
                             "name": "",
                             "type": "uint256",
-                            "internalType": "uint256"
+                            "components": null,
+                            "internal_type": "uint256"
                         }
                     ]
                 },
@@ -2592,14 +2683,74 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "internalType": "uint32"
+                            "components": null,
+                            "internal_type": "uint32"
                         }
                     ],
                     "outputs": [
                         {
                             "name": "",
                             "type": "address",
-                            "internalType": "address"
+                            "components": null,
+                            "internal_type": "address"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "getParticipant",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "components": null,
+                            "internal_type": "uint32"
+                        },
+                        {
+                            "name": "provider",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address"
+                        },
+                        {
+                            "name": "transcript",
+                            "type": "bool",
+                            "components": null,
+                            "internal_type": "bool"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "tuple",
+                            "components": [
+                                {
+                                    "name": "provider",
+                                    "type": "address",
+                                    "components": null,
+                                    "internal_type": "address"
+                                },
+                                {
+                                    "name": "aggregated",
+                                    "type": "bool",
+                                    "components": null,
+                                    "internal_type": "bool"
+                                },
+                                {
+                                    "name": "transcript",
+                                    "type": "bytes",
+                                    "components": null,
+                                    "internal_type": "bytes"
+                                },
+                                {
+                                    "name": "decryptionRequestStaticKey",
+                                    "type": "bytes",
+                                    "components": null,
+                                    "internal_type": "bytes"
+                                }
+                            ],
+                            "internal_type": "struct Coordinator.Participant"
                         }
                     ]
                 },
@@ -2611,12 +2762,14 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "internalType": "uint32"
+                            "components": null,
+                            "internal_type": "uint32"
                         },
                         {
                             "name": "provider",
                             "type": "address",
-                            "internalType": "address"
+                            "components": null,
+                            "internal_type": "address"
                         }
                     ],
                     "outputs": [
@@ -2627,25 +2780,29 @@
                                 {
                                     "name": "provider",
                                     "type": "address",
-                                    "internalType": "address"
+                                    "components": null,
+                                    "internal_type": "address"
                                 },
                                 {
                                     "name": "aggregated",
                                     "type": "bool",
-                                    "internalType": "bool"
+                                    "components": null,
+                                    "internal_type": "bool"
                                 },
                                 {
                                     "name": "transcript",
                                     "type": "bytes",
-                                    "internalType": "bytes"
+                                    "components": null,
+                                    "internal_type": "bytes"
                                 },
                                 {
                                     "name": "decryptionRequestStaticKey",
                                     "type": "bytes",
-                                    "internalType": "bytes"
+                                    "components": null,
+                                    "internal_type": "bytes"
                                 }
                             ],
-                            "internalType": "struct Coordinator.Participant"
+                            "internal_type": "struct Coordinator.Participant"
                         }
                     ]
                 },
@@ -2657,7 +2814,8 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "internalType": "uint32"
+                            "components": null,
+                            "internal_type": "uint32"
                         }
                     ],
                     "outputs": [
@@ -2668,25 +2826,93 @@
                                 {
                                     "name": "provider",
                                     "type": "address",
-                                    "internalType": "address"
+                                    "components": null,
+                                    "internal_type": "address"
                                 },
                                 {
                                     "name": "aggregated",
                                     "type": "bool",
-                                    "internalType": "bool"
+                                    "components": null,
+                                    "internal_type": "bool"
                                 },
                                 {
                                     "name": "transcript",
                                     "type": "bytes",
-                                    "internalType": "bytes"
+                                    "components": null,
+                                    "internal_type": "bytes"
                                 },
                                 {
                                     "name": "decryptionRequestStaticKey",
                                     "type": "bytes",
-                                    "internalType": "bytes"
+                                    "components": null,
+                                    "internal_type": "bytes"
                                 }
                             ],
-                            "internalType": "struct Coordinator.Participant[]"
+                            "internal_type": "struct Coordinator.Participant[]"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "getParticipants",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "components": null,
+                            "internal_type": "uint32"
+                        },
+                        {
+                            "name": "startIndex",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        },
+                        {
+                            "name": "maxParticipants",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        },
+                        {
+                            "name": "includeTranscript",
+                            "type": "bool",
+                            "components": null,
+                            "internal_type": "bool"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "tuple[]",
+                            "components": [
+                                {
+                                    "name": "provider",
+                                    "type": "address",
+                                    "components": null,
+                                    "internal_type": "address"
+                                },
+                                {
+                                    "name": "aggregated",
+                                    "type": "bool",
+                                    "components": null,
+                                    "internal_type": "bool"
+                                },
+                                {
+                                    "name": "transcript",
+                                    "type": "bytes",
+                                    "components": null,
+                                    "internal_type": "bytes"
+                                },
+                                {
+                                    "name": "decryptionRequestStaticKey",
+                                    "type": "bytes",
+                                    "components": null,
+                                    "internal_type": "bytes"
+                                }
+                            ],
+                            "internal_type": "struct Coordinator.Participant[]"
                         }
                     ]
                 },
@@ -2696,14 +2922,16 @@
                     "stateMutability": "view",
                     "inputs": [
                         {
-                            "name": "_provider",
+                            "name": "provider",
                             "type": "address",
-                            "internalType": "address"
+                            "components": null,
+                            "internal_type": "address"
                         },
                         {
-                            "name": "_ritualId",
+                            "name": "ritualId",
                             "type": "uint256",
-                            "internalType": "uint256"
+                            "components": null,
+                            "internal_type": "uint256"
                         }
                     ],
                     "outputs": [
@@ -2714,20 +2942,44 @@
                                 {
                                     "name": "word0",
                                     "type": "bytes32",
-                                    "internalType": "bytes32"
+                                    "components": null,
+                                    "internal_type": "bytes32"
                                 },
                                 {
                                     "name": "word1",
                                     "type": "bytes32",
-                                    "internalType": "bytes32"
+                                    "components": null,
+                                    "internal_type": "bytes32"
                                 },
                                 {
                                     "name": "word2",
                                     "type": "bytes32",
-                                    "internalType": "bytes32"
+                                    "components": null,
+                                    "internal_type": "bytes32"
                                 }
                             ],
-                            "internalType": "struct BLS12381.G2Point"
+                            "internal_type": "struct BLS12381.G2Point"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "getProviders",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "components": null,
+                            "internal_type": "uint32"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "address[]",
+                            "components": null,
+                            "internal_type": "address[]"
                         }
                     ]
                 },
@@ -2739,26 +2991,29 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "internalType": "uint32"
+                            "components": null,
+                            "internal_type": "uint32"
                         }
                     ],
                     "outputs": [
                         {
-                            "name": "dkgPublicKey",
+                            "name": "",
                             "type": "tuple",
                             "components": [
                                 {
                                     "name": "word0",
                                     "type": "bytes32",
-                                    "internalType": "bytes32"
+                                    "components": null,
+                                    "internal_type": "bytes32"
                                 },
                                 {
                                     "name": "word1",
                                     "type": "bytes16",
-                                    "internalType": "bytes16"
+                                    "components": null,
+                                    "internal_type": "bytes16"
                                 }
                             ],
-                            "internalType": "struct BLS12381.G1Point"
+                            "internal_type": "struct BLS12381.G1Point"
                         }
                     ]
                 },
@@ -2774,22 +3029,25 @@
                                 {
                                     "name": "word0",
                                     "type": "bytes32",
-                                    "internalType": "bytes32"
+                                    "components": null,
+                                    "internal_type": "bytes32"
                                 },
                                 {
                                     "name": "word1",
                                     "type": "bytes16",
-                                    "internalType": "bytes16"
+                                    "components": null,
+                                    "internal_type": "bytes16"
                                 }
                             ],
-                            "internalType": "struct BLS12381.G1Point"
+                            "internal_type": "struct BLS12381.G1Point"
                         }
                     ],
                     "outputs": [
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "internalType": "uint32"
+                            "components": null,
+                            "internal_type": "uint32"
                         }
                     ]
                 },
@@ -2801,19 +3059,22 @@
                         {
                             "name": "providers",
                             "type": "address[]",
-                            "internalType": "address[]"
+                            "components": null,
+                            "internal_type": "address[]"
                         },
                         {
                             "name": "duration",
                             "type": "uint32",
-                            "internalType": "uint32"
+                            "components": null,
+                            "internal_type": "uint32"
                         }
                     ],
                     "outputs": [
                         {
                             "name": "",
                             "type": "uint256",
-                            "internalType": "uint256"
+                            "components": null,
+                            "internal_type": "uint256"
                         }
                     ]
                 },
@@ -2825,14 +3086,16 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "internalType": "uint32"
+                            "components": null,
+                            "internal_type": "uint32"
                         }
                     ],
                     "outputs": [
                         {
                             "name": "",
                             "type": "uint8",
-                            "internalType": "enum Coordinator.RitualState"
+                            "components": null,
+                            "internal_type": "enum Coordinator.RitualState"
                         }
                     ]
                 },
@@ -2844,14 +3107,16 @@
                         {
                             "name": "role",
                             "type": "bytes32",
-                            "internalType": "bytes32"
+                            "components": null,
+                            "internal_type": "bytes32"
                         }
                     ],
                     "outputs": [
                         {
                             "name": "",
                             "type": "bytes32",
-                            "internalType": "bytes32"
+                            "components": null,
+                            "internal_type": "bytes32"
                         }
                     ]
                 },
@@ -2863,14 +3128,16 @@
                         {
                             "name": "size",
                             "type": "uint16",
-                            "internalType": "uint16"
+                            "components": null,
+                            "internal_type": "uint16"
                         }
                     ],
                     "outputs": [
                         {
                             "name": "",
                             "type": "uint16",
-                            "internalType": "uint16"
+                            "components": null,
+                            "internal_type": "uint16"
                         }
                     ]
                 },
@@ -2882,12 +3149,14 @@
                         {
                             "name": "role",
                             "type": "bytes32",
-                            "internalType": "bytes32"
+                            "components": null,
+                            "internal_type": "bytes32"
                         },
                         {
                             "name": "account",
                             "type": "address",
-                            "internalType": "address"
+                            "components": null,
+                            "internal_type": "address"
                         }
                     ],
                     "outputs": []
@@ -2900,19 +3169,22 @@
                         {
                             "name": "role",
                             "type": "bytes32",
-                            "internalType": "bytes32"
+                            "components": null,
+                            "internal_type": "bytes32"
                         },
                         {
                             "name": "account",
                             "type": "address",
-                            "internalType": "address"
+                            "components": null,
+                            "internal_type": "address"
                         }
                     ],
                     "outputs": [
                         {
                             "name": "",
                             "type": "bool",
-                            "internalType": "bool"
+                            "components": null,
+                            "internal_type": "bool"
                         }
                     ]
                 },
@@ -2924,17 +3196,20 @@
                         {
                             "name": "_timeout",
                             "type": "uint32",
-                            "internalType": "uint32"
+                            "components": null,
+                            "internal_type": "uint32"
                         },
                         {
                             "name": "_maxDkgSize",
                             "type": "uint16",
-                            "internalType": "uint16"
+                            "components": null,
+                            "internal_type": "uint16"
                         },
                         {
                             "name": "_admin",
                             "type": "address",
-                            "internalType": "address"
+                            "components": null,
+                            "internal_type": "address"
                         }
                     ],
                     "outputs": []
@@ -2947,29 +3222,34 @@
                         {
                             "name": "providers",
                             "type": "address[]",
-                            "internalType": "address[]"
+                            "components": null,
+                            "internal_type": "address[]"
                         },
                         {
                             "name": "authority",
                             "type": "address",
-                            "internalType": "address"
+                            "components": null,
+                            "internal_type": "address"
                         },
                         {
                             "name": "duration",
                             "type": "uint32",
-                            "internalType": "uint32"
+                            "components": null,
+                            "internal_type": "uint32"
                         },
                         {
                             "name": "accessController",
                             "type": "address",
-                            "internalType": "contract IEncryptionAuthorizer"
+                            "components": null,
+                            "internal_type": "contract IEncryptionAuthorizer"
                         }
                     ],
                     "outputs": [
                         {
                             "name": "",
                             "type": "uint32",
-                            "internalType": "uint32"
+                            "components": null,
+                            "internal_type": "uint32"
                         }
                     ]
                 },
@@ -2981,24 +3261,28 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "internalType": "uint32"
+                            "components": null,
+                            "internal_type": "uint32"
                         },
                         {
                             "name": "evidence",
                             "type": "bytes",
-                            "internalType": "bytes"
+                            "components": null,
+                            "internal_type": "bytes"
                         },
                         {
                             "name": "ciphertextHeader",
                             "type": "bytes",
-                            "internalType": "bytes"
+                            "components": null,
+                            "internal_type": "bytes"
                         }
                     ],
                     "outputs": [
                         {
                             "name": "",
                             "type": "bool",
-                            "internalType": "bool"
+                            "components": null,
+                            "internal_type": "bool"
                         }
                     ]
                 },
@@ -3011,7 +3295,35 @@
                         {
                             "name": "",
                             "type": "bool",
-                            "internalType": "bool"
+                            "components": null,
+                            "internal_type": "bool"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "isParticipant",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "components": null,
+                            "internal_type": "uint32"
+                        },
+                        {
+                            "name": "provider",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "bool",
+                            "components": null,
+                            "internal_type": "bool"
                         }
                     ]
                 },
@@ -3021,16 +3333,18 @@
                     "stateMutability": "view",
                     "inputs": [
                         {
-                            "name": "_provider",
+                            "name": "provider",
                             "type": "address",
-                            "internalType": "address"
+                            "components": null,
+                            "internal_type": "address"
                         }
                     ],
                     "outputs": [
                         {
                             "name": "",
                             "type": "bool",
-                            "internalType": "bool"
+                            "components": null,
+                            "internal_type": "bool"
                         }
                     ]
                 },
@@ -3042,14 +3356,16 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "internalType": "uint32"
+                            "components": null,
+                            "internal_type": "uint32"
                         }
                     ],
                     "outputs": [
                         {
                             "name": "",
                             "type": "bool",
-                            "internalType": "bool"
+                            "components": null,
+                            "internal_type": "bool"
                         }
                     ]
                 },
@@ -3069,7 +3385,8 @@
                         {
                             "name": "",
                             "type": "uint16",
-                            "internalType": "uint16"
+                            "components": null,
+                            "internal_type": "uint16"
                         }
                     ]
                 },
@@ -3082,7 +3399,8 @@
                         {
                             "name": "",
                             "type": "uint256",
-                            "internalType": "uint256"
+                            "components": null,
+                            "internal_type": "uint256"
                         }
                     ]
                 },
@@ -3095,7 +3413,8 @@
                         {
                             "name": "",
                             "type": "address",
-                            "internalType": "address"
+                            "components": null,
+                            "internal_type": "address"
                         }
                     ]
                 },
@@ -3108,12 +3427,14 @@
                         {
                             "name": "newAdmin",
                             "type": "address",
-                            "internalType": "address"
+                            "components": null,
+                            "internal_type": "address"
                         },
                         {
                             "name": "schedule",
                             "type": "uint48",
-                            "internalType": "uint48"
+                            "components": null,
+                            "internal_type": "uint48"
                         }
                     ]
                 },
@@ -3126,12 +3447,14 @@
                         {
                             "name": "newDelay",
                             "type": "uint48",
-                            "internalType": "uint48"
+                            "components": null,
+                            "internal_type": "uint48"
                         },
                         {
                             "name": "schedule",
                             "type": "uint48",
-                            "internalType": "uint48"
+                            "components": null,
+                            "internal_type": "uint48"
                         }
                     ]
                 },
@@ -3143,14 +3466,16 @@
                         {
                             "name": "",
                             "type": "uint256",
-                            "internalType": "uint256"
+                            "components": null,
+                            "internal_type": "uint256"
                         }
                     ],
                     "outputs": [
                         {
                             "name": "",
                             "type": "uint256",
-                            "internalType": "uint256"
+                            "components": null,
+                            "internal_type": "uint256"
                         }
                     ]
                 },
@@ -3162,12 +3487,14 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "internalType": "uint32"
+                            "components": null,
+                            "internal_type": "uint32"
                         },
                         {
                             "name": "aggregatedTranscript",
                             "type": "bytes",
-                            "internalType": "bytes"
+                            "components": null,
+                            "internal_type": "bytes"
                         },
                         {
                             "name": "dkgPublicKey",
@@ -3176,20 +3503,23 @@
                                 {
                                     "name": "word0",
                                     "type": "bytes32",
-                                    "internalType": "bytes32"
+                                    "components": null,
+                                    "internal_type": "bytes32"
                                 },
                                 {
                                     "name": "word1",
                                     "type": "bytes16",
-                                    "internalType": "bytes16"
+                                    "components": null,
+                                    "internal_type": "bytes16"
                                 }
                             ],
-                            "internalType": "struct BLS12381.G1Point"
+                            "internal_type": "struct BLS12381.G1Point"
                         },
                         {
                             "name": "decryptionRequestStaticKey",
                             "type": "bytes",
-                            "internalType": "bytes"
+                            "components": null,
+                            "internal_type": "bytes"
                         }
                     ],
                     "outputs": []
@@ -3202,12 +3532,14 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "internalType": "uint32"
+                            "components": null,
+                            "internal_type": "uint32"
                         },
                         {
                             "name": "transcript",
                             "type": "bytes",
-                            "internalType": "bytes"
+                            "components": null,
+                            "internal_type": "bytes"
                         }
                     ],
                     "outputs": []
@@ -3220,14 +3552,16 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "internalType": "uint32"
+                            "components": null,
+                            "internal_type": "uint32"
                         }
                     ],
                     "outputs": [
                         {
                             "name": "refundableFee",
                             "type": "uint256",
-                            "internalType": "uint256"
+                            "components": null,
+                            "internal_type": "uint256"
                         }
                     ]
                 },
@@ -3239,12 +3573,14 @@
                         {
                             "name": "role",
                             "type": "bytes32",
-                            "internalType": "bytes32"
+                            "components": null,
+                            "internal_type": "bytes32"
                         },
                         {
                             "name": "account",
                             "type": "address",
-                            "internalType": "address"
+                            "components": null,
+                            "internal_type": "address"
                         }
                     ],
                     "outputs": []
@@ -3257,12 +3593,14 @@
                         {
                             "name": "role",
                             "type": "bytes32",
-                            "internalType": "bytes32"
+                            "components": null,
+                            "internal_type": "bytes32"
                         },
                         {
                             "name": "account",
                             "type": "address",
-                            "internalType": "address"
+                            "components": null,
+                            "internal_type": "address"
                         }
                     ],
                     "outputs": []
@@ -3275,59 +3613,70 @@
                         {
                             "name": "",
                             "type": "uint256",
-                            "internalType": "uint256"
+                            "components": null,
+                            "internal_type": "uint256"
                         }
                     ],
                     "outputs": [
                         {
                             "name": "initiator",
                             "type": "address",
-                            "internalType": "address"
+                            "components": null,
+                            "internal_type": "address"
                         },
                         {
                             "name": "initTimestamp",
                             "type": "uint32",
-                            "internalType": "uint32"
+                            "components": null,
+                            "internal_type": "uint32"
                         },
                         {
                             "name": "endTimestamp",
                             "type": "uint32",
-                            "internalType": "uint32"
+                            "components": null,
+                            "internal_type": "uint32"
                         },
                         {
                             "name": "totalTranscripts",
                             "type": "uint16",
-                            "internalType": "uint16"
+                            "components": null,
+                            "internal_type": "uint16"
                         },
                         {
                             "name": "totalAggregations",
                             "type": "uint16",
-                            "internalType": "uint16"
+                            "components": null,
+                            "internal_type": "uint16"
                         },
                         {
                             "name": "authority",
                             "type": "address",
-                            "internalType": "address"
+                            "components": null,
+                            "internal_type": "address"
                         },
                         {
                             "name": "dkgSize",
                             "type": "uint16",
-                            "internalType": "uint16"
+                            "components": null,
+                            "internal_type": "uint16"
                         },
                         {
                             "name": "threshold",
                             "type": "uint16",
-                            "internalType": "uint16"
+                            "components": null,
+                            "internal_type": "uint16"
                         },
                         {
                             "name": "aggregationMismatch",
                             "type": "bool",
-                            "internalType": "bool"
+                            "components": null,
+                            "internal_type": "bool"
                         },
                         {
                             "name": "accessController",
                             "type": "address",
-                            "internalType": "contract IEncryptionAuthorizer"
+                            "components": null,
+                            "internal_type": "contract IEncryptionAuthorizer"
                         },
                         {
                             "name": "publicKey",
@@ -3336,20 +3685,23 @@
                                 {
                                     "name": "word0",
                                     "type": "bytes32",
-                                    "internalType": "bytes32"
+                                    "components": null,
+                                    "internal_type": "bytes32"
                                 },
                                 {
                                     "name": "word1",
                                     "type": "bytes16",
-                                    "internalType": "bytes16"
+                                    "components": null,
+                                    "internal_type": "bytes16"
                                 }
                             ],
-                            "internalType": "struct BLS12381.G1Point"
+                            "internal_type": "struct BLS12381.G1Point"
                         },
                         {
                             "name": "aggregatedTranscript",
                             "type": "bytes",
-                            "internalType": "bytes"
+                            "components": null,
+                            "internal_type": "bytes"
                         }
                     ]
                 },
@@ -3368,7 +3720,8 @@
                         {
                             "name": "newSize",
                             "type": "uint16",
-                            "internalType": "uint16"
+                            "components": null,
+                            "internal_type": "uint16"
                         }
                     ],
                     "outputs": []
@@ -3379,26 +3732,29 @@
                     "stateMutability": "nonpayable",
                     "inputs": [
                         {
-                            "name": "_publicKey",
+                            "name": "publicKey",
                             "type": "tuple",
                             "components": [
                                 {
                                     "name": "word0",
                                     "type": "bytes32",
-                                    "internalType": "bytes32"
+                                    "components": null,
+                                    "internal_type": "bytes32"
                                 },
                                 {
                                     "name": "word1",
                                     "type": "bytes32",
-                                    "internalType": "bytes32"
+                                    "components": null,
+                                    "internal_type": "bytes32"
                                 },
                                 {
                                     "name": "word2",
                                     "type": "bytes32",
-                                    "internalType": "bytes32"
+                                    "components": null,
+                                    "internal_type": "bytes32"
                                 }
                             ],
-                            "internalType": "struct BLS12381.G2Point"
+                            "internal_type": "struct BLS12381.G2Point"
                         }
                     ],
                     "outputs": []
@@ -3411,7 +3767,8 @@
                         {
                             "name": "pool",
                             "type": "address",
-                            "internalType": "contract IReimbursementPool"
+                            "components": null,
+                            "internal_type": "contract IReimbursementPool"
                         }
                     ],
                     "outputs": []
@@ -3424,7 +3781,8 @@
                         {
                             "name": "newTimeout",
                             "type": "uint32",
-                            "internalType": "uint32"
+                            "components": null,
+                            "internal_type": "uint32"
                         }
                     ],
                     "outputs": []
@@ -3437,14 +3795,16 @@
                         {
                             "name": "interfaceId",
                             "type": "bytes4",
-                            "internalType": "bytes4"
+                            "components": null,
+                            "internal_type": "bytes4"
                         }
                     ],
                     "outputs": [
                         {
                             "name": "",
                             "type": "bool",
-                            "internalType": "bool"
+                            "components": null,
+                            "internal_type": "bool"
                         }
                     ]
                 },
@@ -3457,7 +3817,8 @@
                         {
                             "name": "",
                             "type": "uint32",
-                            "internalType": "uint32"
+                            "components": null,
+                            "internal_type": "uint32"
                         }
                     ]
                 },
@@ -3470,7 +3831,8 @@
                         {
                             "name": "",
                             "type": "uint256",
-                            "internalType": "uint256"
+                            "components": null,
+                            "internal_type": "uint256"
                         }
                     ]
                 },
@@ -3482,12 +3844,14 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "internalType": "uint32"
+                            "components": null,
+                            "internal_type": "uint32"
                         },
                         {
                             "name": "newAuthority",
                             "type": "address",
-                            "internalType": "address"
+                            "components": null,
+                            "internal_type": "address"
                         }
                     ],
                     "outputs": []
@@ -3500,12 +3864,14 @@
                         {
                             "name": "token",
                             "type": "address",
-                            "internalType": "contract IERC20"
+                            "components": null,
+                            "internal_type": "contract IERC20"
                         },
                         {
                             "name": "amount",
                             "type": "uint256",
-                            "internalType": "uint256"
+                            "components": null,
+                            "internal_type": "uint256"
                         }
                     ],
                     "outputs": []
