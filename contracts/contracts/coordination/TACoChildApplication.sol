@@ -19,6 +19,8 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         uint96 authorized;
         bool operatorConfirmed;
         uint248 index; // index in stakingProviders array + 1
+        uint96 deauthorizing;
+        uint64 endDeauthorization;
     }
 
     ITACoChildToRoot public immutable rootApplication;
@@ -66,6 +68,27 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         return stakingProviderInfo[_stakingProvider].authorized;
     }
 
+    /**
+     * @notice Returns the amount of stake that is pending authorization
+     *         decrease for the given staking provider. If no authorization
+     *         decrease has been requested, returns zero.
+     */
+    function pendingAuthorizationDecrease(address _stakingProvider) external view returns (uint96) {
+        return stakingProviderInfo[_stakingProvider].deauthorizing;
+    }
+
+    function eligibleStake(
+        address _stakingProvider,
+        uint256 _endDate
+    ) public view returns (uint96) {
+        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
+        uint96 eligibleAmount = info.endDeauthorization == 0 || info.endDeauthorization >= _endDate
+            ? info.authorized
+            : info.authorized - info.deauthorizing;
+
+        return eligibleAmount;
+    }
+
     function updateOperator(
         address stakingProvider,
         address operator
@@ -73,11 +96,21 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         _updateOperator(stakingProvider, operator);
     }
 
+    // TODO only for backward compatibility
     function updateAuthorization(
         address stakingProvider,
-        uint96 amount
+        uint96 authorized
     ) external override onlyRootApplication {
-        _updateAuthorization(stakingProvider, amount);
+        _updateAuthorization(stakingProvider, authorized, 0, 0);
+    }
+
+    function updateAuthorization(
+        address stakingProvider,
+        uint96 authorized,
+        uint96 deauthorizing,
+        uint64 endDeauthorization
+    ) external override onlyRootApplication {
+        _updateAuthorization(stakingProvider, authorized, deauthorizing, endDeauthorization);
     }
 
     function _updateOperator(address stakingProvider, address operator) internal {
@@ -105,14 +138,27 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         emit OperatorUpdated(stakingProvider, operator);
     }
 
-    function _updateAuthorization(address stakingProvider, uint96 amount) internal {
+    function _updateAuthorization(
+        address stakingProvider,
+        uint96 authorized,
+        uint96 deauthorizing,
+        uint64 endDeauthorization
+    ) internal {
         StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
-        uint96 fromAmount = info.authorized;
 
-        if (stakingProvider != address(0) && amount != fromAmount) {
-            info.authorized = amount;
-            emit AuthorizationUpdated(stakingProvider, amount);
+        if (
+            stakingProvider == address(0) ||
+            (authorized == info.authorized &&
+                deauthorizing == info.deauthorizing &&
+                endDeauthorization == info.endDeauthorization)
+        ) {
+            return;
         }
+
+        info.authorized = authorized;
+        info.deauthorizing = deauthorizing;
+        info.endDeauthorization = endDeauthorization;
+        emit AuthorizationUpdated(stakingProvider, authorized, deauthorizing, endDeauthorization);
     }
 
     function confirmOperatorAddress(address _operator) external override {
@@ -141,6 +187,7 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
      * @notice Get the value of authorized tokens for active providers as well as providers and their authorized tokens
      * @param _startIndex Start index for looking in providers array
      * @param _maxStakingProviders Max providers for looking, if set 0 then all will be used
+     * @param _cohortDuration Duration during which staking provider should be active. 0 means no end date
      * @return allAuthorizedTokens Sum of authorized tokens for active providers
      * @return activeStakingProviders Array of providers and their authorized tokens.
      * Providers addresses stored together with amounts as bytes32
@@ -149,8 +196,9 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
      */
     function getActiveStakingProviders(
         uint256 _startIndex,
-        uint256 _maxStakingProviders
-    ) external view returns (uint96 allAuthorizedTokens, bytes32[] memory activeStakingProviders) {
+        uint256 _maxStakingProviders,
+        uint32 _cohortDuration
+    ) public view returns (uint96 allAuthorizedTokens, bytes32[] memory activeStakingProviders) {
         uint256 endIndex = stakingProviders.length;
         require(_startIndex < endIndex, "Wrong start index");
         if (_maxStakingProviders != 0 && _startIndex + _maxStakingProviders < endIndex) {
@@ -158,12 +206,15 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         }
         activeStakingProviders = new bytes32[](endIndex - _startIndex);
         allAuthorizedTokens = 0;
+        uint256 endDate = _cohortDuration == 0
+            ? type(uint256).max
+            : block.timestamp + _cohortDuration;
 
         uint256 resultIndex = 0;
         for (uint256 i = _startIndex; i < endIndex; i++) {
             address stakingProvider = stakingProviders[i];
             StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
-            uint96 eligibleAmount = info.authorized;
+            uint96 eligibleAmount = eligibleStake(stakingProvider, endDate);
             if (eligibleAmount < minimumAuthorization || !info.operatorConfirmed) {
                 continue;
             }
@@ -177,6 +228,14 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         assembly {
             mstore(activeStakingProviders, resultIndex)
         }
+    }
+
+    // TODO only for backward compatibility
+    function getActiveStakingProviders(
+        uint256 _startIndex,
+        uint256 _maxStakingProviders
+    ) external view returns (uint96 allAuthorizedTokens, bytes32[] memory activeStakingProviders) {
+        return getActiveStakingProviders(_startIndex, _maxStakingProviders, 0);
     }
 }
 
@@ -204,8 +263,10 @@ contract TestnetTACoChildApplication is AccessControlUpgradeable, TACoChildAppli
 
     function forceUpdateAuthorization(
         address stakingProvider,
-        uint96 amount
+        uint96 authorized,
+        uint96 deauthorizing,
+        uint64 endDeauthorization
     ) external onlyRole(UPDATE_ROLE) {
-        _updateAuthorization(stakingProvider, amount);
+        _updateAuthorization(stakingProvider, authorized, deauthorizing, endDeauthorization);
     }
 }

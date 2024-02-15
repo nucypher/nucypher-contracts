@@ -38,7 +38,14 @@ contract MockPolygonRoot is Ownable, ITACoChildToRoot, ITACoRootToChild {
     function updateOperator(address stakingProvider, address operator) external {}
 
     // solhint-disable-next-line no-empty-blocks
-    function updateAuthorization(address stakingProvider, uint96 amount) external {}
+    function updateAuthorization(address stakingProvider, uint96 authorized) external {}
+
+    function updateAuthorization(
+        address stakingProvider,
+        uint96 authorized,
+        uint96 deauthorizing,
+        uint64 endDeauthorization // solhint-disable-next-line no-empty-blocks
+    ) external {}
 }
 
 contract MockPolygonChild is Ownable, ITACoChildToRoot, ITACoRootToChild {
@@ -62,6 +69,20 @@ contract MockPolygonChild is Ownable, ITACoChildToRoot, ITACoRootToChild {
         uint96 _amount
     ) external override onlyOwner {
         childApplication.updateAuthorization(_stakingProvider, _amount);
+    }
+
+    function updateAuthorization(
+        address _stakingProvider,
+        uint96 _authorized,
+        uint96 _deauthorizing,
+        uint64 _endDeauthorization
+    ) external override onlyOwner {
+        childApplication.updateAuthorization(
+            _stakingProvider,
+            _authorized,
+            _deauthorizing,
+            _endDeauthorization
+        );
     }
 
     // solhint-disable-next-line no-empty-blocks

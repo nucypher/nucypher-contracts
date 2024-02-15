@@ -8,9 +8,21 @@ pragma solidity ^0.8.0;
  */
 interface ITACoRootToChild {
     event OperatorUpdated(address indexed stakingProvider, address indexed operator);
-    event AuthorizationUpdated(address indexed stakingProvider, uint96 amount);
+    event AuthorizationUpdated(
+        address indexed stakingProvider,
+        uint96 authorized,
+        uint96 deauthorizing,
+        uint64 endDeauthorization
+    );
 
     function updateOperator(address stakingProvider, address operator) external;
 
-    function updateAuthorization(address stakingProvider, uint96 amount) external;
+    function updateAuthorization(address stakingProvider, uint96 authorized) external;
+
+    function updateAuthorization(
+        address stakingProvider,
+        uint96 authorized,
+        uint96 deauthorizing,
+        uint64 endDeauthorization
+    ) external;
 }

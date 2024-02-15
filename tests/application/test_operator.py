@@ -102,7 +102,7 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     assert child_application.operatorToStakingProvider(operator1) == staking_provider_3
 
     # No active stakingProviders before confirmation
-    all_locked, staking_providers = taco_application.getActiveStakingProviders(0, 0)
+    all_locked, staking_providers = taco_application.getActiveStakingProviders(0, 0, 0)
     assert all_locked == 0
     assert len(staking_providers) == 0
 
@@ -123,7 +123,7 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     ]
 
     # After confirmation operator is becoming active
-    all_locked, staking_providers = taco_application.getActiveStakingProviders(0, 0)
+    all_locked, staking_providers = taco_application.getActiveStakingProviders(0, 0, 0)
     assert all_locked == min_authorization
     assert len(staking_providers) == 1
     assert to_checksum_address(staking_providers[0][0:20]) == staking_provider_3
@@ -162,7 +162,7 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     assert child_application.operatorToStakingProvider(operator1) == ZERO_ADDRESS
 
     # Resetting operator removes from active list before next confirmation
-    all_locked, staking_providers = taco_application.getActiveStakingProviders(0, 0)
+    all_locked, staking_providers = taco_application.getActiveStakingProviders(0, 0, 0)
     assert all_locked == 0
     assert len(staking_providers) == 0
 
@@ -264,7 +264,7 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     assert child_application.operatorToStakingProvider(operator3) == staking_provider_4
 
     # Resetting operator removes from active list before next confirmation
-    all_locked, staking_providers = taco_application.getActiveStakingProviders(1, 0)
+    all_locked, staking_providers = taco_application.getActiveStakingProviders(1, 0, 0)
     assert all_locked == 0
     assert len(staking_providers) == 0
 
@@ -323,7 +323,7 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     threshold_staking.authorizationIncreased(
         staking_provider_1, min_authorization - 1, min_authorization, sender=creator
     )
-    all_locked, staking_providers = taco_application.getActiveStakingProviders(0, 0)
+    all_locked, staking_providers = taco_application.getActiveStakingProviders(0, 0, 0)
     assert all_locked == 2 * min_authorization
     assert len(staking_providers) == 2
     assert to_checksum_address(staking_providers[0][0:20]) == staking_provider_3
@@ -333,7 +333,7 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     threshold_staking.involuntaryAuthorizationDecrease(
         staking_provider_1, min_authorization, min_authorization - 1, sender=creator
     )
-    all_locked, staking_providers = taco_application.getActiveStakingProviders(1, 0)
+    all_locked, staking_providers = taco_application.getActiveStakingProviders(1, 0, 0)
     assert all_locked == 0
     assert len(staking_providers) == 0
 

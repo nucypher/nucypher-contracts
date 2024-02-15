@@ -21,8 +21,22 @@ contract RootApplicationForTACoChildApplicationMock {
         childApplication.updateOperator(_stakingProvider, _operator);
     }
 
-    function updateAuthorization(address _stakingProvider, uint96 _amount) external {
-        childApplication.updateAuthorization(_stakingProvider, _amount);
+    function updateAuthorization(address _stakingProvider, uint96 _authorized) external {
+        childApplication.updateAuthorization(_stakingProvider, _authorized);
+    }
+
+    function updateAuthorization(
+        address _stakingProvider,
+        uint96 _authorized,
+        uint96 _deauthorizing,
+        uint64 _endDeauthorization
+    ) external {
+        childApplication.updateAuthorization(
+            _stakingProvider,
+            _authorized,
+            _deauthorizing,
+            _endDeauthorization
+        );
     }
 
     function confirmOperatorAddress(address _operator) external {
