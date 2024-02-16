@@ -657,16 +657,21 @@ contract TACoApplication is
     }
 
     /**
-     * @notice Get eligible stake delegated to the staking provider
+     * @notice Returns the amount of stake that are going to be effectively
+     *         staked until the specified date. I.e: in case a deauthorization
+     *         is going to be made during this period, the returned amount will
+     *         be the staked amount minus the deauthorizing amount.
      */
     function eligibleStake(
         address _stakingProvider,
         uint256 _endDate
     ) public view returns (uint96) {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
-        uint96 eligibleAmount = info.endDeauthorization == 0 || info.endDeauthorization >= _endDate
-            ? info.authorized
-            : info.authorized - info.deauthorizing;
+
+        uint96 eligibleAmount = info.authorized;
+        if (0 < info.endDeauthorization && info.endDeauthorization < _endDate) {
+            eligibleAmount -= info.deauthorizing;
+        }
 
         return eligibleAmount;
     }
@@ -700,7 +705,7 @@ contract TACoApplication is
      * @notice Get the value of authorized tokens for active providers as well as providers and their authorized tokens
      * @param _startIndex Start index for looking in providers array
      * @param _maxStakingProviders Max providers for looking, if set 0 then all will be used
-     * @param _cohortDuration Duration during which staking provider should be active. 0 means no end date
+     * @param _cohortDuration Duration during which staking provider should be active. 0 means forever
      * @return allAuthorizedTokens Sum of authorized tokens for active providers
      * @return activeStakingProviders Array of providers and their authorized tokens.
      * Providers addresses stored together with amounts as bytes32
