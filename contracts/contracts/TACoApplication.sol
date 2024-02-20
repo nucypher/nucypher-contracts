@@ -150,6 +150,8 @@ contract TACoApplication is
     event ManualChildSynchronizationSent(
         address indexed stakingProvider,
         uint96 authorized,
+        uint96 deauthorizing,
+        uint64 endDeauthorization,
         address operator
     );
 
@@ -655,10 +657,23 @@ contract TACoApplication is
     }
 
     /**
-     * @notice Get all tokens delegated to the staking provider
+     * @notice Returns the amount of stake that are going to be effectively
+     *         staked until the specified date. I.e: in case a deauthorization
+     *         is going to be made during this period, the returned amount will
+     *         be the staked amount minus the deauthorizing amount.
      */
-    function getEligibleAmount(StakingProviderInfo storage _info) internal view returns (uint96) {
-        return _info.authorized - _info.deauthorizing;
+    function eligibleStake(
+        address _stakingProvider,
+        uint256 _endDate
+    ) public view returns (uint96) {
+        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
+
+        uint96 eligibleAmount = info.authorized;
+        if (0 < info.endDeauthorization && info.endDeauthorization < _endDate) {
+            eligibleAmount -= info.deauthorizing;
+        }
+
+        return eligibleAmount;
     }
 
     /**
@@ -690,6 +705,7 @@ contract TACoApplication is
      * @notice Get the value of authorized tokens for active providers as well as providers and their authorized tokens
      * @param _startIndex Start index for looking in providers array
      * @param _maxStakingProviders Max providers for looking, if set 0 then all will be used
+     * @param _cohortDuration Duration during which staking provider should be active. 0 means forever
      * @return allAuthorizedTokens Sum of authorized tokens for active providers
      * @return activeStakingProviders Array of providers and their authorized tokens.
      * Providers addresses stored together with amounts as bytes32
@@ -698,7 +714,8 @@ contract TACoApplication is
      */
     function getActiveStakingProviders(
         uint256 _startIndex,
-        uint256 _maxStakingProviders
+        uint256 _maxStakingProviders,
+        uint32 _cohortDuration
     ) external view returns (uint256 allAuthorizedTokens, bytes32[] memory activeStakingProviders) {
         uint256 endIndex = stakingProviders.length;
         require(_startIndex < endIndex, "Wrong start index");
@@ -707,12 +724,15 @@ contract TACoApplication is
         }
         activeStakingProviders = new bytes32[](endIndex - _startIndex);
         allAuthorizedTokens = 0;
+        uint256 endDate = _cohortDuration == 0
+            ? type(uint256).max
+            : block.timestamp + _cohortDuration;
 
         uint256 resultIndex = 0;
         for (uint256 i = _startIndex; i < endIndex; i++) {
             address stakingProvider = stakingProviders[i];
             StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
-            uint256 eligibleAmount = getEligibleAmount(info);
+            uint256 eligibleAmount = eligibleStake(stakingProvider, endDate);
             if (eligibleAmount < minimumAuthorization || !info.operatorConfirmed) {
                 continue;
             }
@@ -873,9 +893,12 @@ contract TACoApplication is
         address _stakingProvider,
         StakingProviderInfo storage _info
     ) internal {
-        // TODO send both authorized and eligible amounts in case of slashing from child app
-        uint96 eligibleAmount = getEligibleAmount(_info);
-        childApplication.updateAuthorization(_stakingProvider, eligibleAmount);
+        childApplication.updateAuthorization(
+            _stakingProvider,
+            _info.authorized,
+            _info.deauthorizing,
+            _info.endDeauthorization
+        );
     }
 
     /**
@@ -885,7 +908,13 @@ contract TACoApplication is
     function manualChildSynchronization(address _stakingProvider) external {
         require(_stakingProvider != address(0), "Staking provider must be specified");
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
-        emit ManualChildSynchronizationSent(_stakingProvider, info.authorized, info.operator);
+        emit ManualChildSynchronizationSent(
+            _stakingProvider,
+            info.authorized,
+            info.deauthorizing,
+            info.endDeauthorization,
+            info.operator
+        );
         _updateAuthorization(_stakingProvider, info);
         childApplication.updateOperator(_stakingProvider, info.operator);
     }

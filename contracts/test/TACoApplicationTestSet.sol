@@ -134,9 +134,15 @@ contract ThresholdStakingForTACoApplicationMock {
  * @notice Contract for testing TACo application contract
  */
 contract ChildApplicationForTACoApplicationMock {
+    struct StakingProviderInfo {
+        uint96 authorized;
+        uint96 deauthorizing;
+        uint64 endDeauthorization;
+    }
+
     TACoApplication public immutable rootApplication;
 
-    mapping(address => uint96) public authorizedStake;
+    mapping(address => StakingProviderInfo) public stakingProviderInfo;
     mapping(address => address) public stakingProviderToOperator;
     mapping(address => address) public operatorToStakingProvider;
 
@@ -151,8 +157,16 @@ contract ChildApplicationForTACoApplicationMock {
         operatorToStakingProvider[_operator] = _stakingProvider;
     }
 
-    function updateAuthorization(address _stakingProvider, uint96 _amount) external {
-        authorizedStake[_stakingProvider] = _amount;
+    function updateAuthorization(
+        address _stakingProvider,
+        uint96 _authorized,
+        uint96 _deauthorizing,
+        uint64 _endDeauthorization
+    ) external {
+        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
+        info.authorized = _authorized;
+        info.deauthorizing = _deauthorizing;
+        info.endDeauthorization = _endDeauthorization;
     }
 
     function confirmOperatorAddress(address _operator) external {
