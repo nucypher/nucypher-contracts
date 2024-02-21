@@ -1,0 +1,23 @@
+deployment:
+  name: tapir-child-upgrade
+  chain_id: 80001
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: tapir-child-upgrade.json
+
+constants:
+  FORTY_THOUSAND_TOKENS_IN_WEI_UNITS: 40000000000000000000000
+  MOCK_POLYGON_CHILD: "0xBD367FeeB095D6612724814E27F3fbc7BCCFd80D"
+  TAPIR_RITUAL_TOKEN: "0xc154D3D874664792c145d055Cc0C3BC961a75aA6"
+
+contracts:
+  - TACoChildApplication:
+      constructor:
+        _rootApplication: $MOCK_POLYGON_CHILD
+        _minimumAuthorization: $FORTY_THOUSAND_TOKENS_IN_WEI_UNITS
+  - Coordinator:
+      constructor:
+        _application: "0x3a0Cd9EeF5A812Dc62f81D3b705daAf21561E33c"
+        _currency: $TAPIR_RITUAL_TOKEN
+        _feeRatePerSecond: 1
