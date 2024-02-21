@@ -506,8 +506,8 @@ class Transactor:
 
         result = method(*args, sender=self._account,
                         # FIXME: Manual gas fees - #199
-                        max_priority_fee="3 gwei",
-                        max_fee="120 gwei"
+                        # max_priority_fee="3 gwei",
+                        # max_fee="120 gwei"
                         )
         return result
 
@@ -590,8 +590,8 @@ class Deployer(Transactor):
         deployer_account = self.get_account()
         return deployer_account.deploy(*deployment_params, 
                                        # FIXME: Manual gas fees - #199
-                                       max_priority_fee="3 gwei",
-                                       max_fee="120 gwei",
+                                    #    max_priority_fee="3 gwei",
+                                    #    max_fee="120 gwei",
                                        **kwargs)
 
     def _deploy_proxy(
