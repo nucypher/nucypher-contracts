@@ -1,0 +1,521 @@
+{
+    "137": {
+        "TACoChildApplication": {
+            "address": "0xa6381716D4d9e94B0c332cfFf0527e22C0c007cb",
+            "abi": [
+                {
+                    "type": "constructor",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_rootApplication",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "contract ITACoChildToRoot"
+                        },
+                        {
+                            "name": "_minimumAuthorization",
+                            "type": "uint96",
+                            "components": null,
+                            "internal_type": "uint96"
+                        }
+                    ]
+                },
+                {
+                    "type": "error",
+                    "name": "InvalidInitialization",
+                    "inputs": []
+                },
+                {
+                    "type": "error",
+                    "name": "NotInitializing",
+                    "inputs": []
+                },
+                {
+                    "type": "event",
+                    "name": "AuthorizationUpdated",
+                    "inputs": [
+                        {
+                            "name": "stakingProvider",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address",
+                            "indexed": true
+                        },
+                        {
+                            "name": "authorized",
+                            "type": "uint96",
+                            "components": null,
+                            "internal_type": "uint96",
+                            "indexed": false
+                        },
+                        {
+                            "name": "deauthorizing",
+                            "type": "uint96",
+                            "components": null,
+                            "internal_type": "uint96",
+                            "indexed": false
+                        },
+                        {
+                            "name": "endDeauthorization",
+                            "type": "uint64",
+                            "components": null,
+                            "internal_type": "uint64",
+                            "indexed": false
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
+                    "name": "Initialized",
+                    "inputs": [
+                        {
+                            "name": "version",
+                            "type": "uint64",
+                            "components": null,
+                            "internal_type": "uint64",
+                            "indexed": false
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
+                    "name": "OperatorConfirmed",
+                    "inputs": [
+                        {
+                            "name": "stakingProvider",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address",
+                            "indexed": true
+                        },
+                        {
+                            "name": "operator",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address",
+                            "indexed": true
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
+                    "name": "OperatorUpdated",
+                    "inputs": [
+                        {
+                            "name": "stakingProvider",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address",
+                            "indexed": true
+                        },
+                        {
+                            "name": "operator",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address",
+                            "indexed": true
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "function",
+                    "name": "authorizedStake",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint96",
+                            "components": null,
+                            "internal_type": "uint96"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "confirmOperatorAddress",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_operator",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "coordinator",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "eligibleStake",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address"
+                        },
+                        {
+                            "name": "_endDate",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint96",
+                            "components": null,
+                            "internal_type": "uint96"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "getActiveStakingProviders",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "_startIndex",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        },
+                        {
+                            "name": "_maxStakingProviders",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        },
+                        {
+                            "name": "_cohortDuration",
+                            "type": "uint32",
+                            "components": null,
+                            "internal_type": "uint32"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "allAuthorizedTokens",
+                            "type": "uint96",
+                            "components": null,
+                            "internal_type": "uint96"
+                        },
+                        {
+                            "name": "activeStakingProviders",
+                            "type": "bytes32[]",
+                            "components": null,
+                            "internal_type": "bytes32[]"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "getActiveStakingProviders",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "_startIndex",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        },
+                        {
+                            "name": "_maxStakingProviders",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "allAuthorizedTokens",
+                            "type": "uint96",
+                            "components": null,
+                            "internal_type": "uint96"
+                        },
+                        {
+                            "name": "activeStakingProviders",
+                            "type": "bytes32[]",
+                            "components": null,
+                            "internal_type": "bytes32[]"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "getStakingProvidersLength",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "initialize",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_coordinator",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "minimumAuthorization",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint96",
+                            "components": null,
+                            "internal_type": "uint96"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "operatorToStakingProvider",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "pendingAuthorizationDecrease",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint96",
+                            "components": null,
+                            "internal_type": "uint96"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "rootApplication",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "contract ITACoChildToRoot"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "stakingProviderInfo",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "operator",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address"
+                        },
+                        {
+                            "name": "authorized",
+                            "type": "uint96",
+                            "components": null,
+                            "internal_type": "uint96"
+                        },
+                        {
+                            "name": "operatorConfirmed",
+                            "type": "bool",
+                            "components": null,
+                            "internal_type": "bool"
+                        },
+                        {
+                            "name": "index",
+                            "type": "uint248",
+                            "components": null,
+                            "internal_type": "uint248"
+                        },
+                        {
+                            "name": "deauthorizing",
+                            "type": "uint96",
+                            "components": null,
+                            "internal_type": "uint96"
+                        },
+                        {
+                            "name": "endDeauthorization",
+                            "type": "uint64",
+                            "components": null,
+                            "internal_type": "uint64"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "stakingProviders",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "updateAuthorization",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "stakingProvider",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address"
+                        },
+                        {
+                            "name": "authorized",
+                            "type": "uint96",
+                            "components": null,
+                            "internal_type": "uint96"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "updateAuthorization",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "stakingProvider",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address"
+                        },
+                        {
+                            "name": "authorized",
+                            "type": "uint96",
+                            "components": null,
+                            "internal_type": "uint96"
+                        },
+                        {
+                            "name": "deauthorizing",
+                            "type": "uint96",
+                            "components": null,
+                            "internal_type": "uint96"
+                        },
+                        {
+                            "name": "endDeauthorization",
+                            "type": "uint64",
+                            "components": null,
+                            "internal_type": "uint64"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "updateOperator",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "stakingProvider",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address"
+                        },
+                        {
+                            "name": "operator",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address"
+                        }
+                    ],
+                    "outputs": []
+                }
+            ],
+            "tx_hash": "0xe15af2eab1314bcc2d8a85cb537c8266f7551766de8dd307fab9e5233521ebea",
+            "block_number": 53775101,
+            "deployer": "0x1591165F1BF8B73de7053A6BE6f239BC15076879"
+        }
+    }
+}
