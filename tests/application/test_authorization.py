@@ -476,7 +476,7 @@ def test_finish_authorization_decrease(
     chain.pending_timestamp += commitment_duration
 
     # Can't approve decrease without request
-    with ape.reverts():
+    with ape.reverts("There is no deauthorizing in process"):
         taco_application.approveAuthorizationDecrease(staking_provider, sender=creator)
 
     new_value = 2 * minimum_authorization
@@ -484,8 +484,26 @@ def test_finish_authorization_decrease(
         staking_provider, value, new_value, sender=creator
     )
 
+    # If operator never bonded then decrease can be instant
+    tx = taco_application.approveAuthorizationDecrease(staking_provider, sender=creator)
+    assert taco_application.stakingProviderInfo(staking_provider)[AUTHORIZATION_SLOT] == new_value
+    assert taco_application.pendingAuthorizationDecrease(staking_provider) == 0
+    assert taco_application.stakingProviderInfo(staking_provider)[END_DEAUTHORIZATION_SLOT] == 0
+    assert tx.events == [
+        taco_application.AuthorizationDecreaseApproved(
+            stakingProvider=staking_provider, fromAmount=value, toAmount=new_value
+        )
+    ]
+
+    # Bond operator and request decrease again
+    taco_application.bondOperator(staking_provider, staking_provider, sender=staking_provider)
+    threshold_staking.authorizationIncreased(staking_provider, new_value, value, sender=creator)
+    threshold_staking.authorizationDecreaseRequested(
+        staking_provider, value, new_value, sender=creator
+    )
+
     # Can't approve decrease before end timestamp
-    with ape.reverts():
+    with ape.reverts("Authorization decrease has not finished yet"):
         taco_application.approveAuthorizationDecrease(staking_provider, sender=creator)
 
     chain.pending_timestamp += deauthorization_duration // 4
@@ -511,8 +529,7 @@ def test_finish_authorization_decrease(
         threshold_staking.authorizedStake(staking_provider, taco_application.address) == new_value
     )
 
-    events = taco_application.AuthorizationDecreaseApproved.from_receipt(tx)
-    assert events == [
+    assert tx.events == [
         taco_application.AuthorizationDecreaseApproved(
             stakingProvider=staking_provider, fromAmount=value, toAmount=new_value
         )
@@ -520,7 +537,6 @@ def test_finish_authorization_decrease(
 
     # Confirm operator, request again then desync values and finish decrease
     value = new_value
-    taco_application.bondOperator(staking_provider, staking_provider, sender=staking_provider)
     child_application.confirmOperatorAddress(staking_provider, sender=staking_provider)
     threshold_staking.authorizationDecreaseRequested(
         staking_provider, value, minimum_authorization, sender=creator
