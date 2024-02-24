@@ -33,6 +33,12 @@ contract TACoApplication is
     event RewardDistributorSet(address indexed distributor);
 
     /**
+     * @notice Signals that reward contract role was set
+     * @param rewardContract Address of reward contract
+     */
+    event RewardContractSet(address indexed rewardContract);
+
+    /**
      * @notice Signals that reward was added
      * @param reward Amount of reward
      */
@@ -43,8 +49,14 @@ contract TACoApplication is
      * @param stakingProvider Staking provider address
      * @param beneficiary Beneficiary address
      * @param reward Amount of reward
+     * @param sender Sender of transaction
      */
-    event RewardPaid(address indexed stakingProvider, address indexed beneficiary, uint256 reward);
+    event RewardPaid(
+        address indexed sender,
+        address indexed stakingProvider,
+        address indexed beneficiary,
+        uint256 reward
+    );
 
     /**
      * @notice Signals that authorization was increased for the staking provider
@@ -197,6 +209,8 @@ contract TACoApplication is
     uint256 public lastUpdateTime;
     uint160 public rewardPerTokenStored;
     uint96 public authorizedOverall;
+
+    address public rewardContract;
 
     /**
      * @notice Constructor sets address of token contract and parameters for staking
@@ -356,6 +370,14 @@ contract TACoApplication is
     }
 
     /**
+     * @notice Set reward contract address
+     */
+    function setRewardContract(address _rewardContract) external onlyOwner {
+        rewardContract = _rewardContract;
+        emit RewardContractSet(_rewardContract);
+    }
+
+    /**
      * @notice Update reward for the specified staking provider
      * @param _stakingProvider Staking provider address
      */
@@ -428,18 +450,21 @@ contract TACoApplication is
     }
 
     /**
-     * @notice Withdraw available amount of T reward to beneficiary. Can be called only by beneficiary
+     * @notice Withdraw available amount of T reward to beneficiary. Can be called only by beneficiary or by reward distribution contract
      * @param _stakingProvider Staking provider address
      */
     function withdrawRewards(address _stakingProvider) external updateReward(_stakingProvider) {
         address beneficiary = getBeneficiary(_stakingProvider);
-        require(msg.sender == beneficiary, "Caller must be beneficiary");
+        require(
+            msg.sender == beneficiary || msg.sender == rewardContract,
+            "Caller must be beneficiary or reward contract"
+        );
 
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         uint96 value = info.tReward;
         require(value > 0, "No reward to withdraw");
         info.tReward = 0;
-        emit RewardPaid(_stakingProvider, beneficiary, value);
+        emit RewardPaid(msg.sender, _stakingProvider, beneficiary, value);
         token.safeTransfer(beneficiary, value);
     }
 

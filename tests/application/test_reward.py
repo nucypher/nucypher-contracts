@@ -319,6 +319,7 @@ def test_withdraw(accounts, token, threshold_staking, taco_application, child_ap
         beneficiary,
         authorizer,
         staking_provider_2,
+        reward_contract,
         *everyone_else,
     ) = accounts[0:]
     min_authorization = MIN_AUTHORIZATION
@@ -326,6 +327,8 @@ def test_withdraw(accounts, token, threshold_staking, taco_application, child_ap
     reward_duration = REWARD_DURATION
     min_operator_seconds = MIN_OPERATOR_SECONDS
     value = int(1.5 * min_authorization)
+
+    taco_application.setRewardContract(reward_contract, sender=creator)
 
     # No rewards, no staking providers
     threshold_staking.setRoles(staking_provider, owner, beneficiary, authorizer, sender=creator)
@@ -350,10 +353,10 @@ def test_withdraw(accounts, token, threshold_staking, taco_application, child_ap
     assert taco_application.availableRewards(staking_provider) == 0
 
     chain.pending_timestamp += reward_duration
-    # Only beneficiary can withdraw reward
-    with ape.reverts():
+    # Only beneficiary and reward contract can withdraw reward
+    with ape.reverts("Caller must be beneficiary or reward contract"):
         taco_application.withdrawRewards(staking_provider, sender=owner)
-    with ape.reverts():
+    with ape.reverts("Caller must be beneficiary or reward contract"):
         taco_application.withdrawRewards(staking_provider, sender=authorizer)
 
     reward_per_token = taco_application.rewardPerToken()
@@ -374,7 +377,10 @@ def test_withdraw(accounts, token, threshold_staking, taco_application, child_ap
     events = taco_application.RewardPaid.from_receipt(tx)
     assert events == [
         taco_application.RewardPaid(
-            stakingProvider=staking_provider, beneficiary=beneficiary, reward=earned
+            stakingProvider=staking_provider,
+            beneficiary=beneficiary,
+            reward=earned,
+            sender=beneficiary,
         )
     ]
 
@@ -394,7 +400,7 @@ def test_withdraw(accounts, token, threshold_staking, taco_application, child_ap
     # Withdraw
     chain.pending_timestamp += reward_duration // 2
     assert taco_application.availableRewards(staking_provider) == new_earned
-    tx = taco_application.withdrawRewards(staking_provider, sender=beneficiary)
+    tx = taco_application.withdrawRewards(staking_provider, sender=reward_contract)
     new_reward_per_token = taco_application.rewardPerToken()
     assert taco_application.rewardPerTokenStored() == new_reward_per_token
     assert taco_application.stakingProviderInfo(staking_provider)[REWARDS_SLOT] == 0
@@ -408,6 +414,14 @@ def test_withdraw(accounts, token, threshold_staking, taco_application, child_ap
     events = taco_application.RewardPaid.from_receipt(tx)
     assert events == [
         taco_application.RewardPaid(
-            stakingProvider=staking_provider, beneficiary=beneficiary, reward=new_earned
+            stakingProvider=staking_provider,
+            beneficiary=beneficiary,
+            reward=new_earned,
+            sender=reward_contract,
         )
     ]
+
+    # Reset reward contract
+    taco_application.setRewardContract(ZERO_ADDRESS, sender=creator)
+    with ape.reverts("Caller must be beneficiary or reward contract"):
+        taco_application.withdrawRewards(staking_provider, sender=reward_contract)
