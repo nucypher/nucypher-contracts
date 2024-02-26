@@ -46,10 +46,10 @@ contract TACoApplication is
 
     /**
      * @notice Signals that the beneficiary related to the staking provider received reward
+     * @param sender Sender of transaction
      * @param stakingProvider Staking provider address
      * @param beneficiary Beneficiary address
      * @param reward Amount of reward
-     * @param sender Sender of transaction
      */
     event RewardPaid(
         address indexed sender,
