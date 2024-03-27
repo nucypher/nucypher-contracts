@@ -586,7 +586,7 @@ contract TACoApplication is
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         require(info.deauthorizing > 0, "There is no deauthorizing in process");
         require(
-            info.endDeauthorization <= block.timestamp,
+            info.endDeauthorization <= block.timestamp || info.operatorStartTimestamp == 0,
             "Authorization decrease has not finished yet"
         );
 
