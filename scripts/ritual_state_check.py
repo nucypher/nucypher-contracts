@@ -4,7 +4,7 @@ from enum import IntEnum
 
 import click
 from ape import networks, project
-from ape.cli import NetworkBoundCommand, network_option
+from ape.cli import ConnectedProviderCommand, network_option
 
 from deployment.constants import SUPPORTED_TACO_DOMAINS
 from deployment.registry import contracts_from_registry
@@ -64,7 +64,7 @@ def print_ritual_state(ritual_id, coordinator) -> RitualState:
     return ritual_state
 
 
-@click.command(cls=NetworkBoundCommand)
+@click.command(cls=ConnectedProviderCommand)
 @network_option(required=True)
 @click.option(
     "--domain",
