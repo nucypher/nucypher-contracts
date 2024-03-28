@@ -1,10 +1,10 @@
 deployment:
-  name: lynx-open-access-authorizer
-  chain_id: 80001
+  name: open-access-authorizer
+  chain_id: 80002
 
 artifacts:
-    dir: ./deployment/artifacts/
-    filename: open_access_authorizer.json
+  dir: ./deployment/artifacts/
+  filename: open_access_authorizer.json
 
 contracts:
-    - OpenAccessAuthorizer
+  - OpenAccessAuthorizer

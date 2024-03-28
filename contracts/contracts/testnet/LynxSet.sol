@@ -10,7 +10,7 @@ import "../coordination/ITACoChildToRoot.sol";
 import "../coordination/TACoChildApplication.sol";
 import "../TACoApplication.sol";
 
-//       [Sepolia]                              <--------->             [Mumbai]
+//       [Sepolia]                              <--------->             [Amoy]
 //
 // TACoApplication <---> MockPolygonRoot |   <deployer_account>   | MockPolygonChild <--> TACoChildApplication
 //
