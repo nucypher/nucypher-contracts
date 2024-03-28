@@ -8,7 +8,7 @@ artifacts:
 
 constants:
   # See deployment/artifacts/lynx.json
-  COORDINATOR_PROXY: "0x530608219a8A671FD183534b17E2a2CE09e782a4"
+  COORDINATOR_PROXY: "0xE9e94499bB0f67b9DBD75506ec1735486DE57770"
 
   # lynx deployer account
   EXECUTOR: "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
