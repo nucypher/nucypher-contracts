@@ -28,6 +28,16 @@ def main():
     ape-polygon               0.6.6
     ape-solidity              0.6.9
     eth-ape                   0.6.20
+
+    March 28, 2024. Deployment on amoy (mumbai deprecated)
+    ape-run deploy_child --network polygon:amoy:infura
+    ape-etherscan             0.7.0
+    ape-infura                0.7.2.dev2+g5215faf (customized local version for amoy support -
+                                                   https://github.com/ApeWorX/ape-infura/pull/76)
+    ape-polygon               0.7.2
+    ape-solidity              0.7.1
+    eth-ape                   0.7.7
+
     """
 
     deployer = Deployer.from_yaml(filepath=CONSTRUCTOR_PARAMS_FILEPATH, verify=VERIFY)
