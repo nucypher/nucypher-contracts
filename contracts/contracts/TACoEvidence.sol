@@ -16,15 +16,18 @@ contract TACoEvidence {
         uint256 nonce
     );
 
-    struct Submission {
-        address operator;
-        bytes32 evidence;
-    }
+    event SubmissionSubmitted(
+        uint32 indexed id,
+        address indexed operator,
+        bytes[] evidence,
+        address[] peers
+    );
+
     struct Collection {
         uint32 initTimestamp;
         uint32 endTimestamp;
         uint256 nonce;
-        mapping(address => Submission[]) submissions;
+        mapping(address => mapping(address => bool)) submissions;
     }
 
     ITACoChildApplication public immutable application;
@@ -71,6 +74,7 @@ contract TACoEvidence {
             "Submission period closed"
         );
         require(signatures.length == peers.length, "Mismatched inputs");
+        emit SubmissionSubmitted(id, msg.sender, signatures, peers);
 
         // Verify each signature
         for (uint256 i = 0; i < signatures.length; i++) {
@@ -84,9 +88,7 @@ contract TACoEvidence {
                 .toEthSignedMessageHash();
             address signer = message.recover(signatures[i]);
             if (signer == peers[i]) {
-                collection.submissions[msg.sender].push(
-                    Submission({operator: peers[i], evidence: signatures[i]})
-                );
+                collection.submissions[msg.sender][peers[i]] = true;
             }
         }
     }
