@@ -1,0 +1,16 @@
+deployment:
+  name: lynx-subscription-manager
+  chain_id: 80002 # amoy
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: subscription-manager.json
+
+constants:
+  FEE_RATE_PER_SECOND: 1000000000
+
+contracts:
+  - SubscriptionManager:
+      proxy:
+        constructor:
+          _data: $encode:initialize,$FEE_RATE_PER_SECOND
