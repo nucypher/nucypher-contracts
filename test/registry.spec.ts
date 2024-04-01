@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { ChainId, type ContractName, contractNames, type Domain, getContract } from "../src";
 
 const testCases: Array<[string, number, ContractName]> = contractNames.flatMap((contract) => [
-  ["lynx", 80001, contract],
+  ["lynx", 80002, contract],
   ["tapir", 80001, contract],
   ["mainnet", 137, contract],
 ]);
@@ -30,13 +30,13 @@ describe("registry", () => {
   });
 
   it("should return the same contract address for the same domain, chainId, and contract", () => {
-    const contractAddress1 = getContract("lynx", 80001, "Coordinator");
-    const contractAddress2 = getContract("lynx", 80001, "Coordinator");
+    const contractAddress1 = getContract("lynx", 80002, "Coordinator");
+    const contractAddress2 = getContract("lynx", 80002, "Coordinator");
     expect(contractAddress1).toEqual(contractAddress2);
   });
 
   it("should return different contract addresses for different domains", () => {
-    const contractAddress1 = getContract("lynx", 80001, "Coordinator");
+    const contractAddress1 = getContract("lynx", 80002, "Coordinator");
     const contractAddress2 = getContract("tapir", 80001, "Coordinator");
     expect(contractAddress1).not.toEqual(contractAddress2);
   });
