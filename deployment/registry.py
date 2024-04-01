@@ -16,7 +16,7 @@ ChainId = int
 ContractName = str
 
 
-STANDARD_REGISTRY_JSON_FORMAT = {"indent": 4, "separators": (',', ': ')}
+STANDARD_REGISTRY_JSON_FORMAT = {"indent": 4, "separators": (",", ": ")}
 
 
 class RegistryEntry(NamedTuple):
@@ -109,7 +109,7 @@ def write_registry(entries: List[RegistryEntry], filepath: Path, silent: bool = 
         print("No entries provided.")
         return filepath
 
-    # Sort registry entries to enforce common order
+    # Sort registry entries to enforce common order
     # See https://github.com/nucypher/nucypher-contracts/issues/192
     entries.sort(key=lambda entry: (str(entry.chain_id), entry.name))
 
@@ -275,6 +275,7 @@ def contracts_from_registry(filepath: Path, chain_id: ChainId) -> Dict[str, Cont
         contract_instance = contract_container.at(registry_entry.address)
         deployments[contract_type] = contract_instance
     return deployments
+
 
 def normalize_registry(filepath: Path):
     """Normalizes a potentially non-standard registry file."""
