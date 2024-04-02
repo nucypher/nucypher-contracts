@@ -12,11 +12,11 @@ CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "tapir" / "upgrade-child.
 
 def main():
     """
-    This script upgrades TACoChildApplication and Coordinator on Tapir/Mumbai.
+    This script upgrades TACoChildApplication and Coordinator on Tapir/Amoy.
     """
 
     deployer = Deployer.from_yaml(filepath=CONSTRUCTOR_PARAMS_FILEPATH, verify=VERIFY)
-    instances = contracts_from_registry(filepath=ARTIFACTS_DIR / "tapir.json", chain_id=80001)
+    instances = contracts_from_registry(filepath=ARTIFACTS_DIR / "tapir.json", chain_id=80002)
 
     child_application = deployer.upgrade(
         project.TACoChildApplication,
