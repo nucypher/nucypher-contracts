@@ -1,6 +1,6 @@
 deployment:
   name: lynx-child
-  chain_id: 80001
+  chain_id: 80002
 
 artifacts:
   dir: ./deployment/artifacts/

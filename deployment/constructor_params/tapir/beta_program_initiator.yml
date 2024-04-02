@@ -1,6 +1,6 @@
 deployment:
   name: beta-program-initiator
-  chain_id: 80001
+  chain_id: 80002
 
 artifacts:
   dir: ./deployment/artifacts/
@@ -14,7 +14,7 @@ constants:
   EXECUTOR: "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
 
 contracts:
-    - BetaProgramInitiator:
-        constructor:
-          _coordinator: $COORDINATOR_PROXY
-          _executor: $EXECUTOR
+  - BetaProgramInitiator:
+      constructor:
+        _coordinator: $COORDINATOR_PROXY
+        _executor: $EXECUTOR

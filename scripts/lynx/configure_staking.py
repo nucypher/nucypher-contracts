@@ -47,10 +47,10 @@ def configure_sepolia_root(transactor: Transactor) -> int:
     return min_stake_size
 
 
-def configure_mumbai_root(transactor: Transactor, stake_size: int):
-    """Configures MockTACoApplication on Mumbai."""
-    # Set up lynx stakes on Mumbai
-    poly_network = networks.polygon.mumbai
+def configure_amoy_root(transactor: Transactor, stake_size: int):
+    """Configures MockTACoApplication on Amoy."""
+    # Set up lynx stakes on Amoy
+    poly_network = networks.polygon.amoy
     with poly_network.use_provider("infura"):
         deployments = contracts_from_registry(
             filepath=LYNX_REGISTRY_FILEPATH, chain_id=poly_network.chain_id
@@ -74,4 +74,4 @@ def main():
     check_plugins()
     transactor = Transactor()
     stake_size = configure_sepolia_root(transactor)
-    configure_mumbai_root(transactor, stake_size)
+    configure_amoy_root(transactor, stake_size)

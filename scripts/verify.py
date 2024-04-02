@@ -1,12 +1,13 @@
 import click
 from ape import networks
-from ape.cli import NetworkBoundCommand, network_option
+from ape.cli import ConnectedProviderCommand, network_option
+
 from deployment.constants import SUPPORTED_TACO_DOMAINS
 from deployment.registry import contracts_from_registry
 from deployment.utils import registry_filepath_from_domain, verify_contracts
 
 
-@click.command(cls=NetworkBoundCommand)
+@click.command(cls=ConnectedProviderCommand)
 @network_option(required=True)
 @click.option(
     "--domain",

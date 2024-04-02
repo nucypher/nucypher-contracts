@@ -2,14 +2,15 @@
 
 import click
 from ape import project
-from ape.cli import NetworkBoundCommand, account_option, network_option
+from ape.cli import ConnectedProviderCommand, account_option, network_option
+
 from deployment.constants import LYNX, LYNX_NODES, SUPPORTED_TACO_DOMAINS, TAPIR, TAPIR_NODES
 from deployment.params import Transactor
 from deployment.registry import contracts_from_registry
 from deployment.utils import check_plugins, registry_filepath_from_domain
 
 
-@click.command(cls=NetworkBoundCommand)
+@click.command(cls=ConnectedProviderCommand)
 @network_option(required=True)
 @account_option()
 @click.option(

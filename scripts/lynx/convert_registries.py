@@ -16,7 +16,7 @@ def main():
     if OUTPUT_FILEPATH.exists():
         raise FileExistsError(f"Output filepath already exists at {OUTPUT_FILEPATH}")
     for chain_id, filepath in (
-        (80001, LEGACY_CHILD_REGISTRY_FILEPATH),
+        (80002, LEGACY_CHILD_REGISTRY_FILEPATH),
         (5, LEGACY_ROOT_REGISTRY_FILEPATH),
     ):
         convert_legacy_registry(
