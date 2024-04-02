@@ -8,7 +8,7 @@ artifacts:
 
 constants:
   # See deployment/artifacts/tapir.json
-  COORDINATOR_PROXY: "0xdED71c37e4e17aF2c825c2A4441Dd6BF5A98D194"
+  COORDINATOR_PROXY: "0xE690b6bCC0616Dc5294fF84ff4e00335cA52C388"
 
   # tapir deployer account
   EXECUTOR: "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
