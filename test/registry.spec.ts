@@ -18,7 +18,7 @@ describe("registry", () => {
   );
 
   it("should throw for invalid domain", () => {
-    expect(() => getContract("invalid-domain", 80001, "Coordinator")).toThrow();
+    expect(() => getContract("invalid-domain", 80002, "Coordinator")).toThrow();
   });
 
   it("should throw for invalid chainId", () => {
@@ -26,7 +26,7 @@ describe("registry", () => {
   });
 
   it("should throw for invalid contract", () => {
-    expect(() => getContract("lynx", 80001, "InvalidContract")).toThrow();
+    expect(() => getContract("lynx", 80002, "InvalidContract")).toThrow();
   });
 
   it("should return the same contract address for the same domain, chainId, and contract", () => {
