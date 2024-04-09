@@ -4,7 +4,7 @@ import { ChainId, type ContractName, contractNames, type Domain, getContract } f
 
 const testCases: Array<[string, number, ContractName]> = contractNames.flatMap((contract) => [
   ["lynx", 80002, contract],
-  ["tapir", 80001, contract],
+  ["tapir", 80002, contract],
   ["mainnet", 137, contract],
 ]);
 
@@ -37,7 +37,7 @@ describe("registry", () => {
 
   it("should return different contract addresses for different domains", () => {
     const contractAddress1 = getContract("lynx", 80002, "Coordinator");
-    const contractAddress2 = getContract("tapir", 80001, "Coordinator");
+    const contractAddress2 = getContract("tapir", 80002, "Coordinator");
     expect(contractAddress1).not.toEqual(contractAddress2);
   });
 });

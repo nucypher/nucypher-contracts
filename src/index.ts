@@ -29,7 +29,7 @@ export const domainRegistry: Record<string, ContractRegistry> = {
 
 export type Domain = "mainnet" | "oryx" | "tapir" | "lynx";
 
-export type ChainId = 1 | 5 | 137 | 80001 | 80002;
+export type ChainId = 1 | 5 | 137 | 80002;
 
 export type ChecksumAddress = `0x${string}`;
 
