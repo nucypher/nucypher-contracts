@@ -48,7 +48,7 @@ def configure_sepolia_root(transactor: Transactor) -> int:
 
 def configure_amoy_root(transactor: Transactor, stake_size: int):
     """Configures MockTACoApplication on Amoy."""
-    # Set up Tapir stakes on Mumbai
+    # Set up Tapir stakes on Amoy
     poly_network = networks.polygon.amoy
     with poly_network.use_provider("infura"):
         deployments = contracts_from_registry(
