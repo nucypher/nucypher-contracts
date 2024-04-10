@@ -43,15 +43,29 @@ contract GlobalAllowList is IEncryptionAuthorizer {
         return authorizations[lookupKey(ritualId, encryptor)];
     }
 
+    function _beforeIsAuthorized(
+        uint32 ritualId,
+        bytes memory evidence,
+        bytes memory ciphertextHeader
+    ) internal view virtual {}
+
     function isAuthorized(
         uint32 ritualId,
         bytes memory evidence,
         bytes memory ciphertextHeader
     ) external view override returns (bool) {
+        _beforeIsAuthorized(ritualId, evidence, ciphertextHeader);
+
         bytes32 digest = keccak256(ciphertextHeader);
         address recoveredAddress = digest.toEthSignedMessageHash().recover(evidence);
         return isAddressAuthorized(ritualId, recoveredAddress);
     }
+
+    function _beforeSetAuthorization(
+        uint32 ritualId,
+        address[] calldata addresses,
+        bool value
+    ) internal view virtual {}
 
     function authorize(
         uint32 ritualId,
@@ -69,6 +83,9 @@ contract GlobalAllowList is IEncryptionAuthorizer {
 
     function setAuthorizations(uint32 ritualId, address[] calldata addresses, bool value) internal {
         require(coordinator.isRitualActive(ritualId), "Only active rituals can add authorizations");
+
+        _beforeSetAuthorization(ritualId, addresses, value);
+
         for (uint256 i = 0; i < addresses.length; i++) {
             authorizations[lookupKey(ritualId, addresses[i])] = value;
             emit AddressAuthorizationSet(ritualId, addresses[i], value);
