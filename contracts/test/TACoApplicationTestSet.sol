@@ -172,4 +172,8 @@ contract ChildApplicationForTACoApplicationMock {
     function confirmOperatorAddress(address _operator) external {
         rootApplication.confirmOperatorAddress(_operator);
     }
+
+    function penalize(address _stakingProvider) external {
+        rootApplication.penalize(_stakingProvider);
+    }
 }

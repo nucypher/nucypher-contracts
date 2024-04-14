@@ -22,6 +22,8 @@ from web3 import Web3
 CONFIRMATION_SLOT = 1
 MIN_AUTHORIZATION = Web3.to_wei(40_000, "ether")
 MIN_OPERATOR_SECONDS = 24 * 60 * 60
+PENALTY_DEFAULT = 1000  # 10% penalty
+PENALTY_DURATION = 60 * 60 * 24  # 1 day in seconds
 
 
 def test_bond_operator(accounts, threshold_staking, taco_application, child_application, chain):
@@ -356,6 +358,10 @@ def test_confirm_address(
     min_authorization = MIN_AUTHORIZATION
     min_operator_seconds = MIN_OPERATOR_SECONDS
 
+    # Only child app can penalize
+    with ape.reverts("Only child application allowed to confirm operator"):
+        taco_application.confirmOperatorAddress(staking_provider, sender=staking_provider)
+
     # Skips confirmation if operator is not associated with staking provider
     child_application.confirmOperatorAddress(staking_provider, sender=staking_provider)
     assert not taco_application.isOperatorConfirmed(staking_provider)
@@ -398,3 +404,120 @@ def test_slash(accounts, threshold_staking, taco_application):
     assert threshold_staking.notifier() == investigator
     assert threshold_staking.stakingProvidersToSeize(0) == staking_provider
     assert threshold_staking.getLengthOfStakingProvidersToSeize() == 1
+
+
+def test_penalize(accounts, threshold_staking, taco_application, child_application, chain):
+    creator, staking_provider, *everyone_else = accounts[0:]
+    min_authorization = MIN_AUTHORIZATION
+
+    # Only child app can penalize
+    with ape.reverts("Only child application allowed to penalize"):
+        taco_application.penalize(staking_provider, sender=creator)
+
+    # Skips penalty if staking provider was not specified
+    child_application.penalize(ZERO_ADDRESS, sender=staking_provider)
+    assert taco_application.getPenalty(staking_provider) == [0, 0]
+
+    # Penalize staking provider with 0 authorization
+    tx = child_application.penalize(staking_provider, sender=staking_provider)
+    timestamp = tx.timestamp
+    end_of_penalty = timestamp + PENALTY_DURATION
+    assert taco_application.getPenalty(staking_provider) == [PENALTY_DEFAULT, end_of_penalty]
+    assert tx.events == [
+        taco_application.Penalized(
+            stakingProvider=staking_provider,
+            penaltyPercent=PENALTY_DEFAULT,
+            endPenalty=end_of_penalty,
+        )
+    ]
+    assert taco_application.authorizedOverall() == 0
+
+    # Increase authorization with no confirmation and check penalty
+    chain.pending_timestamp += PENALTY_DURATION
+    threshold_staking.authorizationIncreased(staking_provider, 0, min_authorization, sender=creator)
+    tx = child_application.penalize(staking_provider, sender=staking_provider)
+    timestamp = tx.timestamp
+    end_of_penalty = timestamp + PENALTY_DURATION
+    assert taco_application.getPenalty(staking_provider) == [PENALTY_DEFAULT, end_of_penalty]
+    assert taco_application.authorizedOverall() == 0
+    assert tx.events == [
+        taco_application.Penalized(
+            stakingProvider=staking_provider,
+            penaltyPercent=PENALTY_DEFAULT,
+            endPenalty=end_of_penalty,
+        )
+    ]
+
+    # Increase authorization with confirmation and check penalty
+    chain.pending_timestamp += PENALTY_DURATION
+    taco_application.bondOperator(staking_provider, staking_provider, sender=staking_provider)
+    child_application.confirmOperatorAddress(staking_provider, sender=staking_provider)
+    assert taco_application.authorizedOverall() == min_authorization
+    tx = child_application.penalize(staking_provider, sender=staking_provider)
+    timestamp = tx.timestamp
+    end_of_penalty = timestamp + PENALTY_DURATION
+    assert taco_application.getPenalty(staking_provider) == [PENALTY_DEFAULT, end_of_penalty]
+    assert taco_application.authorizedOverall() == min_authorization * 9 / 10
+    assert tx.events == [
+        taco_application.Penalized(
+            stakingProvider=staking_provider,
+            penaltyPercent=PENALTY_DEFAULT,
+            endPenalty=end_of_penalty,
+        )
+    ]
+
+    # Penalize again
+    tx = child_application.penalize(staking_provider, sender=staking_provider)
+    timestamp = tx.timestamp
+    end_of_penalty = timestamp + PENALTY_DURATION
+    assert taco_application.getPenalty(staking_provider) == [PENALTY_DEFAULT, end_of_penalty]
+    assert taco_application.authorizedOverall() == min_authorization * 9 / 10
+    assert tx.events == [
+        taco_application.Penalized(
+            stakingProvider=staking_provider,
+            penaltyPercent=PENALTY_DEFAULT,
+            endPenalty=end_of_penalty,
+        )
+    ]
+
+
+def test_reset_reward(accounts, threshold_staking, taco_application, child_application, chain):
+    creator, staking_provider, *everyone_else = accounts[0:]
+    min_authorization = MIN_AUTHORIZATION
+
+    # This method only for penalized staking providers
+    with ape.reverts("There are no any penalties"):
+        taco_application.resetReward(staking_provider, sender=creator)
+
+    # Penalize staking provider
+    child_application.penalize(staking_provider, sender=staking_provider)
+
+    # Not enough time passed
+    with ape.reverts("Penalty is still ongoing"):
+        taco_application.resetReward(staking_provider, sender=creator)
+
+    chain.pending_timestamp += PENALTY_DURATION
+    tx = taco_application.resetReward(staking_provider, sender=creator)
+    assert taco_application.getPenalty(staking_provider) == [0, 0]
+    assert taco_application.authorizedOverall() == 0
+    assert tx.events == [taco_application.RewardReset(stakingProvider=staking_provider)]
+
+    # Increase authorization with no confirmation and reset reward
+    threshold_staking.authorizationIncreased(staking_provider, 0, min_authorization, sender=creator)
+    child_application.penalize(staking_provider, sender=staking_provider)
+    chain.pending_timestamp += PENALTY_DURATION
+    tx = taco_application.resetReward(staking_provider, sender=creator)
+    assert taco_application.getPenalty(staking_provider) == [0, 0]
+    assert taco_application.authorizedOverall() == 0
+    assert tx.events == [taco_application.RewardReset(stakingProvider=staking_provider)]
+
+    # Increase authorization with confirmation and reset reward
+    taco_application.bondOperator(staking_provider, staking_provider, sender=staking_provider)
+    child_application.confirmOperatorAddress(staking_provider, sender=staking_provider)
+    child_application.penalize(staking_provider, sender=staking_provider)
+    chain.pending_timestamp += PENALTY_DURATION
+    assert taco_application.authorizedOverall() == min_authorization * 9 / 10
+    tx = taco_application.resetReward(staking_provider, sender=creator)
+    assert taco_application.getPenalty(staking_provider) == [0, 0]
+    assert taco_application.authorizedOverall() == min_authorization
+    assert tx.events == [taco_application.RewardReset(stakingProvider=staking_provider)]

@@ -25,6 +25,8 @@ END_DEAUTHORIZATION_SLOT = 5
 END_COMMITMENT_SLOT = 8
 MIN_AUTHORIZATION = Web3.to_wei(40_000, "ether")
 DEAUTHORIZATION_DURATION = 60 * 60 * 24 * 60  # 60 days in seconds
+PENALTY_DEFAULT = 1000  # 10% penalty
+PENALTY_DURATION = 60 * 60 * 24  # 1 day in seconds
 
 
 def test_authorization_parameters(taco_application):

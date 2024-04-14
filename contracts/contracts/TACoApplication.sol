@@ -411,13 +411,34 @@ contract TACoApplication is
      * @param _stakingProvider Staking provider address
      */
     function updateRewardInternal(address _stakingProvider) internal {
+        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
+        if (
+            _stakingProvider != address(0) &&
+            info.endPenalty != 0 &&
+            info.endPenalty <= block.timestamp
+        ) {
+            resetReward(_stakingProvider, info);
+        }
+
         rewardPerTokenStored = rewardPerToken();
         lastUpdateTime = lastTimeRewardApplicable();
         if (_stakingProvider != address(0)) {
-            StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
             info.tReward = availableRewards(_stakingProvider);
             info.rewardPerTokenPaid = rewardPerTokenStored;
         }
+    }
+
+    /**
+     * @notice Resets reward after penalty
+     */
+    function resetReward(address _stakingProvider, StakingProviderInfo storage _info) internal {
+        uint96 before = effectiveAuthorized(_info.authorized, _info.penaltyPercent);
+        _info.endPenalty = 0;
+        _info.penaltyPercent = 0;
+        if (_info.operatorConfirmed) {
+            authorizedOverall += _info.authorized - before;
+        }
+        emit RewardReset(_stakingProvider);
     }
 
     /**
@@ -456,37 +477,36 @@ contract TACoApplication is
         return result.toUint96();
     }
 
-    // FIXME
     function effectiveAuthorized(
         uint96 _authorized,
         uint192 _penaltyPercent
-    ) internal view returns (uint96) {
+    ) internal pure returns (uint96) {
         return uint96((_authorized * (PENALTY_BASE - _penaltyPercent)) / PENALTY_BASE);
     }
 
+    /// @dev This view should be called after updateReward modifier
     function effectiveAuthorized(
         uint96 _authorized,
         StakingProviderInfo storage _info
     ) internal view returns (uint96) {
-        if (_info.endPenalty != 0 && _info.endPenalty > block.timestamp) {
-            return effectiveAuthorized(_authorized, _info.penaltyPercent);
-        } else {
+        if (_info.endPenalty == 0) {
             return _info.authorized;
         }
+        return effectiveAuthorized(_authorized, _info.penaltyPercent);
     }
 
+    /// @dev This view should be called after updateReward modifier
     function effectiveDifference(
         uint96 _from,
         uint96 _to,
         StakingProviderInfo storage _info
     ) internal view returns (uint96) {
-        if (_info.endPenalty != 0 && _info.endPenalty > block.timestamp) {
-            uint96 effectiveFrom = effectiveAuthorized(_from, _info.penaltyPercent);
-            uint96 effectiveTo = effectiveAuthorized(_to, _info.penaltyPercent);
-            return effectiveFrom - effectiveTo;
-        } else {
+        if (_info.endPenalty == 0) {
             return _from - _to;
         }
+        uint96 effectiveFrom = effectiveAuthorized(_from, _info.penaltyPercent);
+        uint96 effectiveTo = effectiveAuthorized(_to, _info.penaltyPercent);
+        return effectiveFrom - effectiveTo;
     }
 
     /**
@@ -790,6 +810,17 @@ contract TACoApplication is
     }
 
     /**
+     * @notice Returns information about reward penalty.
+     */
+    function getPenalty(
+        address _stakingProvider
+    ) external view returns (uint192 penalty, uint64 endPenalty) {
+        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
+        penalty = info.penaltyPercent;
+        endPenalty = info.endPenalty;
+    }
+
+    /**
      * @notice Get the value of authorized tokens for active providers as well as providers and their authorized tokens
      * @param _startIndex Start index for looking in providers array
      * @param _maxStakingProviders Max providers for looking, if set 0 then all will be used
@@ -1030,9 +1061,18 @@ contract TACoApplication is
             msg.sender == address(childApplication),
             "Only child application allowed to penalize"
         );
+
+        if (_stakingProvider == address(0)) {
+            return;
+        }
+
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
-        info.penaltyPercent = penaltyDefault;
+        uint96 before = effectiveAuthorized(info.authorized, info.penaltyPercent);
         info.endPenalty = uint64(block.timestamp + penaltyDuration);
+        info.penaltyPercent = penaltyDefault;
+        if (info.operatorConfirmed) {
+            authorizedOverall -= before - effectiveAuthorized(info.authorized, info.penaltyPercent);
+        }
         emit Penalized(_stakingProvider, info.penaltyPercent, info.endPenalty);
     }
 
@@ -1040,12 +1080,10 @@ contract TACoApplication is
      * @notice Resets future reward back to 100%
      * @param _stakingProvider Staking provider address
      */
-    function resetReward(address _stakingProvider) external updateReward(_stakingProvider) {
+    function resetReward(address _stakingProvider) external {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         require(info.endPenalty != 0, "There are no any penalties");
         require(info.endPenalty <= block.timestamp, "Penalty is still ongoing");
-        info.endPenalty = 0;
-        info.penaltyPercent = 0;
-        emit RewardReset(_stakingProvider);
+        updateRewardInternal(_stakingProvider);
     }
 }
