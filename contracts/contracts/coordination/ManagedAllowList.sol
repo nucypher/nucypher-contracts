@@ -13,19 +13,24 @@ contract ManagedAllowList is IEncryptionAuthorizer {
 
     Coordinator public immutable coordinator;
 
-    mapping(address => bool) public administrators;
-    mapping(address => uint256) public administratorCaps;
-    mapping(bytes32 => bool) internal authorizations;
+    mapping(bytes32 => uint256) public administrators; // TODO: Rename to allowances?
+    mapping(bytes32 => bool) public authorizations;
 
-    event AdministratorAdded(address indexed admin);
-    event AdministratorRemoved(address indexed admin);
-    event EncryptorAdded(uint32 indexed ritualId, address indexed encryptor);
-    event EncryptorRemoved(uint32 indexed ritualId, address indexed encryptor);
+    event AdministratorCapSet(uint32 indexed ritualId, address indexed _address, uint256 cap);
+    event AddressAuthorizationSet(
+        uint32 indexed ritualId,
+        address indexed _address,
+        bool isAuthorized
+    );
 
     constructor(Coordinator _coordinator) {
         require(address(_coordinator) != address(0), "Coordinator cannot be zero address");
         require(_coordinator.numberOfRituals() >= 0, "Invalid coordinator");
         coordinator = _coordinator;
+    }
+
+    function lookupKey(uint32 ritualId, address encryptorOrAdmin) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(ritualId, encryptorOrAdmin));
     }
 
     modifier onlyAuthority(uint32 ritualId) {
@@ -36,44 +41,43 @@ contract ManagedAllowList is IEncryptionAuthorizer {
         _;
     }
 
-    modifier onlyAdministrator() {
-        require(administrators[msg.sender], "Only administrator is permitted");
+    modifier onlyAdministrator(uint32 ritualId) {
+        require(
+            administrators[lookupKey(ritualId, msg.sender)] > 9,
+            "Only administrator is permitted"
+        );
         _;
     }
 
-    function addAdministrator(uint32 ritualId, address admin) external onlyAuthority(ritualId) {
-        administrators[admin] = true;
-        emit AdministratorAdded(admin);
-    }
-
-    function removeAdministrator(uint32 ritualId, address admin) external onlyAuthority(ritualId) {
-        administrators[admin] = false;
-        emit AdministratorRemoved(admin);
-    }
-
-    function setAdministratorCap(
+    function setAdministratorCaps(
         uint32 ritualId,
-        address admin,
+        address[] calldata addresses,
+        uint256 value
+    ) internal {
+        require(coordinator.isRitualActive(ritualId), "Only active rituals can set administrator caps");
+        for (uint256 i = 0; i < addresses.length; i++) {
+            administrators[lookupKey(ritualId, addresses[i])] = value;
+            emit AdministratorCapSet(ritualId, addresses[i], value);
+        }
+    }
+
+    function addAdministrators(
+        uint32 ritualId,
+        address[] calldata addresses,
         uint256 cap
     ) external onlyAuthority(ritualId) {
-        administratorCaps[admin] = cap;
+        setAdministratorCaps(ritualId, addresses, cap);
     }
 
-    function addEncryptor(uint32 ritualId, address encryptor) external onlyAdministrator {
-        require(administratorCaps[msg.sender] > 0, "Administrator cap reached");
-        authorizations[keccak256(abi.encodePacked(ritualId, encryptor))] = true;
-        administratorCaps[msg.sender]--;
-        emit EncryptorAdded(ritualId, encryptor);
+    function removeAdministrators(
+        uint32 ritualId,
+        address[] calldata addresses
+    ) external onlyAuthority(ritualId) {
+        setAdministratorCaps(ritualId, addresses, 0);
     }
 
-    function removeEncryptor(uint32 ritualId, address encryptor) external onlyAdministrator {
-        authorizations[keccak256(abi.encodePacked(ritualId, encryptor))] = false;
-        administratorCaps[msg.sender]++;
-        emit EncryptorRemoved(ritualId, encryptor);
-    }
-
-    function isEncryptor(uint32 ritualId, address encryptor) external view returns (bool) {
-        return authorizations[keccak256(abi.encodePacked(ritualId, encryptor))];
+    function isAddressAuthorized(uint32 ritualId, address encryptor) public view returns (bool) {
+        return authorizations[lookupKey(ritualId, encryptor)];
     }
 
     function isAuthorized(
@@ -83,6 +87,28 @@ contract ManagedAllowList is IEncryptionAuthorizer {
     ) external view override returns (bool) {
         bytes32 digest = keccak256(ciphertextHeader);
         address recoveredAddress = digest.toEthSignedMessageHash().recover(evidence);
-        return authorizations[keccak256(abi.encodePacked(ritualId, recoveredAddress))];
+        return isAddressAuthorized(ritualId, recoveredAddress);
+    }
+
+    function authorize(
+        uint32 ritualId,
+        address[] calldata addresses
+    ) external onlyAdministrator(ritualId) {
+        setAuthorizations(ritualId, addresses, true);
+    }
+
+    function deauthorize(
+        uint32 ritualId,
+        address[] calldata addresses
+    ) external onlyAdministrator(ritualId) {
+        setAuthorizations(ritualId, addresses, false);
+    }
+
+    function setAuthorizations(uint32 ritualId, address[] calldata addresses, bool value) internal {
+        require(coordinator.isRitualActive(ritualId), "Only active rituals can set authorizations");
+        for (uint256 i = 0; i < addresses.length; i++) {
+            authorizations[lookupKey(ritualId, addresses[i])] = value;
+            emit AddressAuthorizationSet(ritualId, addresses[i], value);
+        }
     }
 }

@@ -82,7 +82,7 @@ contract GlobalAllowList is IEncryptionAuthorizer {
     }
 
     function setAuthorizations(uint32 ritualId, address[] calldata addresses, bool value) internal {
-        require(coordinator.isRitualActive(ritualId), "Only active rituals can add authorizations");
+        require(coordinator.isRitualActive(ritualId), "Only active rituals can set authorizations");
 
         _beforeSetAuthorization(ritualId, addresses, value);
 

@@ -564,7 +564,7 @@ def test_authorize_using_global_allow_list(
     with ape.reverts("Only ritual authority is permitted"):
         global_allow_list.authorize(0, [deployer.address], sender=deployer)
 
-    with ape.reverts("Only active rituals can add authorizations"):
+    with ape.reverts("Only active rituals can set authorizations"):
         global_allow_list.authorize(0, [deployer.address], sender=initiator)
 
     with ape.reverts("Ritual not active"):
