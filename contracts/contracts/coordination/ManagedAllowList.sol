@@ -29,7 +29,10 @@ contract ManagedAllowList is IEncryptionAuthorizer {
     }
 
     modifier onlyAuthority(uint32 ritualId) {
-        require(coordinator.getAuthority(ritualId) == msg.sender, "Only ritual authority is permitted");
+        require(
+            coordinator.getAuthority(ritualId) == msg.sender,
+            "Only ritual authority is permitted"
+        );
         _;
     }
 
@@ -48,7 +51,11 @@ contract ManagedAllowList is IEncryptionAuthorizer {
         emit AdministratorRemoved(admin);
     }
 
-    function setAdministratorCap(uint32 ritualId, address admin, uint256 cap) external onlyAuthority(ritualId) {
+    function setAdministratorCap(
+        uint32 ritualId,
+        address admin,
+        uint256 cap
+    ) external onlyAuthority(ritualId) {
         administratorCaps[admin] = cap;
     }
 
@@ -63,6 +70,10 @@ contract ManagedAllowList is IEncryptionAuthorizer {
         authorizations[keccak256(abi.encodePacked(ritualId, encryptor))] = false;
         administratorCaps[msg.sender]++;
         emit EncryptorRemoved(ritualId, encryptor);
+    }
+
+    function isEncryptor(uint32 ritualId, address encryptor) external view returns (bool) {
+        return authorizations[keccak256(abi.encodePacked(ritualId, encryptor))];
     }
 
     function isAuthorized(
