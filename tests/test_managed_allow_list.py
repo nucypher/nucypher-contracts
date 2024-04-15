@@ -74,7 +74,7 @@ def coordinator(project, deployer, application, erc20, initiator, oz_dependency)
 # My fixtures
 
 RITUAL_ID = 1
-ENCRYPTOR_CAP = 5
+ADMIN_CAP = 5
 
 
 @pytest.fixture()
@@ -99,66 +99,60 @@ def managed_allow_list(project, coordinator, authority):
 
 def test_initial_parameters(managed_allow_list, coordinator, authority, admin, encryptor):
     assert managed_allow_list.coordinator() == coordinator.address
-    assert managed_allow_list.administratorCaps(admin.address) == 0
     assert not managed_allow_list.administrators(admin.address)
-    assert not managed_allow_list.isEncryptor(encryptor.address)
+    assert not managed_allow_list.authorizations(encryptor.address)
 
 
 def test_add_administrator(managed_allow_list, authority, admin):
-    managed_allow_list.addAdministrator(RITUAL_ID, admin, sender=authority)
-    assert managed_allow_list.administrators(admin)
+    managed_allow_list.addAdministrators(RITUAL_ID, [admin], ADMIN_CAP, sender=authority)
+    assert managed_allow_list.administrators(admin) == ADMIN_CAP
 
 
 def test_remove_administrator(managed_allow_list, authority, admin):
-    managed_allow_list.addAdministrator(RITUAL_ID, admin, sender=authority)
-    managed_allow_list.removeAdministrator(RITUAL_ID, admin, sender=authority)
+    managed_allow_list.addAdministrators(RITUAL_ID, [admin], ADMIN_CAP, sender=authority)
+    managed_allow_list.removeAdministrators(RITUAL_ID, [admin], sender=authority)
     assert not managed_allow_list.administrators(admin)
 
 
-def test_set_administrator_cap(managed_allow_list, authority, admin):
-    managed_allow_list.setAdministratorCap(RITUAL_ID, admin, ENCRYPTOR_CAP, sender=authority)
-    assert managed_allow_list.administratorCaps(admin) == ENCRYPTOR_CAP
+def test_authorize(managed_allow_list, authority, admin, encryptor):
+    managed_allow_list.addAdministrators(RITUAL_ID, [admin], ADMIN_CAP, sender=authority)
+    managed_allow_list.authorize(RITUAL_ID, [encryptor], sender=admin)
+    assert managed_allow_list.authorizations(encryptor)
 
 
-def test_add_encryptor(managed_allow_list, authority, admin, encryptor):
-    managed_allow_list.setAdministratorCap(RITUAL_ID, admin, ENCRYPTOR_CAP, sender=authority)
-    managed_allow_list.addEncryptor(RITUAL_ID, encryptor, sender=admin)
-    assert managed_allow_list.isEncryptor(encryptor)
-
-
-def test_remove_encryptor(managed_allow_list, admin, authority, encryptor):
-    managed_allow_list.setAdministratorCap(RITUAL_ID, admin, ENCRYPTOR_CAP, sender=authority)
-    managed_allow_list.addEncryptor(RITUAL_ID, encryptor, sender=admin)
-    managed_allow_list.removeEncryptor(RITUAL_ID, encryptor, sender=admin)
-    assert not managed_allow_list.isEncryptor(encryptor)
+def test_deauthorize(managed_allow_list, admin, authority, encryptor):
+    managed_allow_list.addAdministrators(RITUAL_ID, [admin], ADMIN_CAP, sender=authority)
+    managed_allow_list.authorize(RITUAL_ID, [encryptor], sender=admin)
+    managed_allow_list.deauthorize(RITUAL_ID, [encryptor], sender=admin)
+    assert not managed_allow_list.authorizations(encryptor)
 
 
 def test_only_authority_can_add_administrator(managed_allow_list, admin, authority, encryptor):
     with pytest.raises(Exception):
-        managed_allow_list.addAdministrator(RITUAL_ID, admin, sender=authority)
-    managed_allow_list.addAdministrator(RITUAL_ID, admin, sender=authority)
+        managed_allow_list.addAdministrators(RITUAL_ID, [admin], ADMIN_CAP, sender=admin)
+    managed_allow_list.addAdministrators(RITUAL_ID, [admin], sender=authority)
     assert managed_allow_list.administrators(admin)
 
 
 def test_only_authority_can_remove_administrator(managed_allow_list, admin, authority):
     managed_allow_list.addAdministrator(RITUAL_ID, admin, sender=authority)
     with pytest.raises(Exception):
-        managed_allow_list.removeAdministrator(RITUAL_ID, admin, sender=authority)
-    managed_allow_list.removeAdministrator(RITUAL_ID, admin, sender=authority)
+        managed_allow_list.removeAdministrators(RITUAL_ID, [admin], sender=admin)
+    managed_allow_list.removeAdministrators(RITUAL_ID, [admin], sender=authority)
     assert not managed_allow_list.administrators(admin)
 
 
-def test_only_administrator_can_add_encryptor(managed_allow_list, admin, authority, encryptor):
-    managed_allow_list.setAdministratorCap(RITUAL_ID, admin, ENCRYPTOR_CAP, sender=authority)
+def test_only_administrator_can_authorize(managed_allow_list, admin, authority, encryptor):
+    managed_allow_list.addAdministrators(RITUAL_ID, [admin], ADMIN_CAP, sender=authority)
     with pytest.raises(Exception):
-        managed_allow_list.addEncryptor(RITUAL_ID, encryptor, sender=encryptor)
-    managed_allow_list.addEncryptor(RITUAL_ID, admin, sender=admin)
-    assert managed_allow_list.isEncryptor(admin)
+        managed_allow_list.authorize(RITUAL_ID, [encryptor], sender=encryptor)
+    managed_allow_list.authorize(RITUAL_ID, [encryptor], sender=admin)
+    assert managed_allow_list.authorizations(admin)
 
 
-def test_only_administrator_can_remove_encryptor(managed_allow_list, admin, authority, encryptor):
-    managed_allow_list.setAdministratorCap(RITUAL_ID, admin, ENCRYPTOR_CAP, sender=authority)
-    managed_allow_list.addEncryptor(RITUAL_ID, encryptor, sender=admin)
+def test_only_administrator_can_deauthorize(managed_allow_list, admin, authority, encryptor):
+    managed_allow_list.addAdministrators(RITUAL_ID, [admin], ADMIN_CAP, sender=authority)
     with pytest.raises(Exception):
-        managed_allow_list.removeEncrypt(RITUAL_ID, encryptor, sender=encryptor)
-    assert not managed_allow_list.isEncryptor(encryptor)
+        managed_allow_list.deauthorize(RITUAL_ID, [encryptor], sender=encryptor)
+    managed_allow_list.deauthorize(RITUAL_ID, [encryptor], sender=admin)
+    assert not managed_allow_list.authorizations(admin)
