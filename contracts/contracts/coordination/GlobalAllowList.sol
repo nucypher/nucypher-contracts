@@ -27,7 +27,7 @@ contract GlobalAllowList is IEncryptionAuthorizer {
         coordinator = _coordinator;
     }
 
-    modifier onlyAuthority(uint32 ritualId) {
+    modifier canSetAuthorizations(uint32 ritualId) virtual {
         require(
             coordinator.getAuthority(ritualId) == msg.sender,
             "Only ritual authority is permitted"
@@ -70,14 +70,14 @@ contract GlobalAllowList is IEncryptionAuthorizer {
     function authorize(
         uint32 ritualId,
         address[] calldata addresses
-    ) external onlyAuthority(ritualId) {
+    ) external canSetAuthorizations(ritualId) {
         setAuthorizations(ritualId, addresses, true);
     }
 
     function deauthorize(
         uint32 ritualId,
         address[] calldata addresses
-    ) external onlyAuthority(ritualId) {
+    ) external canSetAuthorizations(ritualId) {
         setAuthorizations(ritualId, addresses, false);
     }
 
