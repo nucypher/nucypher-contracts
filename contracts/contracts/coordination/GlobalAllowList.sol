@@ -87,7 +87,6 @@ contract GlobalAllowList is IEncryptionAuthorizer {
         require(coordinator.isRitualActive(ritualId), "Only active rituals can set authorizations");
 
         _beforeSetAuthorization(ritualId, addresses, value);
-
         for (uint256 i = 0; i < addresses.length; i++) {
             authorizations[lookupKey(ritualId, addresses[i])] = value;
             emit AddressAuthorizationSet(ritualId, addresses[i], value);
