@@ -33,6 +33,16 @@ contract ManagedAllowList is GlobalAllowList {
         return allowance[lookupKey(ritualId, admin)];
     }
 
+    function _beforeSetAuthorization(
+        uint32 ritualId,
+        address[] calldata addresses,
+        bool value
+    ) internal view override {
+        // FIXME: How to match ritual ID with subscription ID?
+        require(authActions[ritualId] < subscription.authorizationActionsCap(ritualId));
+    }
+
+
     function setAdministratorCaps(
         uint32 ritualId,
         address[] calldata addresses,
@@ -43,6 +53,7 @@ contract ManagedAllowList is GlobalAllowList {
             allowance[lookupKey(ritualId, addresses[i])] = value;
             emit AdministratorCapSet(ritualId, addresses[i], value);
         }
+        authActions[ritualId] += addresses.length;
     }
 
     function addAdministrators(
