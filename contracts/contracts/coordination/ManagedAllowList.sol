@@ -6,7 +6,6 @@ import "./GlobalAllowList.sol";
 import "./Coordinator.sol";
 
 contract ManagedAllowList is GlobalAllowList {
-
     mapping(bytes32 => uint256) internal allowance;
 
     event AdministratorCapSet(uint32 indexed ritualId, address indexed _address, uint256 cap);
@@ -42,13 +41,15 @@ contract ManagedAllowList is GlobalAllowList {
         require(authActions[ritualId] < subscription.authorizationActionsCap(ritualId));
     }
 
-
     function setAdministratorCaps(
         uint32 ritualId,
         address[] calldata addresses,
         uint256 value
     ) internal {
-        require(coordinator.isRitualActive(ritualId), "Only active rituals can set administrator caps");
+        require(
+            coordinator.isRitualActive(ritualId),
+            "Only active rituals can set administrator caps"
+        );
         for (uint256 i = 0; i < addresses.length; i++) {
             allowance[lookupKey(ritualId, addresses[i])] = value;
             emit AdministratorCapSet(ritualId, addresses[i], value);
@@ -70,5 +71,4 @@ contract ManagedAllowList is GlobalAllowList {
     ) external onlyCohortAuthority(ritualId) {
         setAdministratorCaps(ritualId, addresses, 0);
     }
-
 }
