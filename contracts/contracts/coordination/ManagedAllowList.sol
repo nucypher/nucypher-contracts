@@ -7,7 +7,7 @@ import "./Coordinator.sol";
 
 contract ManagedAllowList is GlobalAllowList {
 
-    mapping(bytes32 => uint256) public administrators; // TODO: Rename to allowances?
+    mapping(bytes32 => uint256) internal allowance;
 
     event AdministratorCapSet(uint32 indexed ritualId, address indexed _address, uint256 cap);
 
@@ -23,10 +23,14 @@ contract ManagedAllowList is GlobalAllowList {
 
     modifier canSetAuthorizations(uint32 ritualId) override {
         require(
-            administrators[lookupKey(ritualId, msg.sender)] > 9,
+            getAllowance(ritualId, msg.sender) > 0,
             "Only administrator is permitted"
         );
         _;
+    }
+
+    function getAllowance(uint32 ritualId, address admin) public view returns(uint256) {
+        return allowance[lookupKey(ritualId, admin)];
     }
 
     function setAdministratorCaps(
@@ -36,7 +40,7 @@ contract ManagedAllowList is GlobalAllowList {
     ) internal {
         require(coordinator.isRitualActive(ritualId), "Only active rituals can set administrator caps");
         for (uint256 i = 0; i < addresses.length; i++) {
-            administrators[lookupKey(ritualId, addresses[i])] = value;
+            allowance[lookupKey(ritualId, addresses[i])] = value;
             emit AdministratorCapSet(ritualId, addresses[i], value);
         }
     }
