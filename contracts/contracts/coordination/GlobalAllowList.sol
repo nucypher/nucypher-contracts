@@ -15,6 +15,8 @@ contract GlobalAllowList is IEncryptionAuthorizer {
 
     mapping(bytes32 => bool) internal authorizations;
 
+    mapping(uint32 => uint256) public authActions;
+
     event AddressAuthorizationSet(
         uint32 indexed ritualId,
         address indexed _address,
@@ -90,5 +92,7 @@ contract GlobalAllowList is IEncryptionAuthorizer {
             authorizations[lookupKey(ritualId, addresses[i])] = value;
             emit AddressAuthorizationSet(ritualId, addresses[i], value);
         }
+
+        authActions[ritualId] += addresses.length;
     }
 }
