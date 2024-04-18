@@ -36,7 +36,9 @@ def test_authorization_parameters(taco_application):
     assert parameters[2] == DEAUTHORIZATION_DURATION
 
 
-def test_authorization_increase(accounts, threshold_staking, taco_application, child_application):
+def test_authorization_increase(
+    accounts, threshold_staking, taco_application, child_application, chain
+):
     """
     Tests for authorization method: authorizationIncreased
     """
@@ -103,6 +105,25 @@ def test_authorization_increase(accounts, threshold_staking, taco_application, c
         )
     ]
 
+    # Increase authorization for staker with penalty (no confirmation)
+    child_application.penalize(staking_provider, sender=staking_provider)
+    tx = threshold_staking.authorizationIncreased(
+        staking_provider, value // 4, 2 * value, sender=creator
+    )
+    assert taco_application.stakingProviderInfo(staking_provider)[AUTHORIZATION_SLOT] == 2 * value
+    assert taco_application.authorizedOverall() == 0
+    assert taco_application.authorizedStake(staking_provider) == 2 * value
+    assert child_application.stakingProviderInfo(staking_provider) == (2 * value, 0, 0)
+    assert taco_application.isAuthorized(staking_provider)
+
+    events = taco_application.AuthorizationIncreased.from_receipt(tx)
+    assert events == [
+        taco_application.AuthorizationIncreased(
+            stakingProvider=staking_provider, fromAmount=value // 4, toAmount=2 * value
+        )
+    ]
+    chain.pending_timestamp += PENALTY_DURATION
+
     # Confirm operator address and try to increase authorization again
     taco_application.bondOperator(staking_provider, staking_provider, sender=staking_provider)
     child_application.confirmOperatorAddress(staking_provider, sender=staking_provider)
@@ -126,12 +147,55 @@ def test_authorization_increase(accounts, threshold_staking, taco_application, c
         )
     ]
 
+    # Increase authorization for staker with penalty
+    authorization = 3 * value
+    child_application.penalize(staking_provider, sender=staking_provider)
+    tx = threshold_staking.authorizationIncreased(
+        staking_provider, 2 * value + 1, authorization, sender=creator
+    )
+    assert (
+        taco_application.stakingProviderInfo(staking_provider)[AUTHORIZATION_SLOT] == authorization
+    )
+    assert taco_application.authorizedOverall() == authorization * 9 // 10
+    assert taco_application.authorizedStake(staking_provider) == authorization
+    assert child_application.stakingProviderInfo(staking_provider) == (authorization, 0, 0)
+    assert taco_application.isAuthorized(staking_provider)
+
+    events = taco_application.AuthorizationIncreased.from_receipt(tx)
+    assert events == [
+        taco_application.AuthorizationIncreased(
+            stakingProvider=staking_provider, fromAmount=2 * value + 1, toAmount=authorization
+        )
+    ]
+    chain.pending_timestamp += PENALTY_DURATION
+
     # Emulate slash and desync by sending smaller fromAmount
     tx = threshold_staking.authorizationIncreased(
         staking_provider, value // 2, value, sender=creator
     )
     assert taco_application.stakingProviderInfo(staking_provider)[AUTHORIZATION_SLOT] == value
     assert taco_application.authorizedOverall() == value
+    assert taco_application.authorizedStake(staking_provider) == value
+    assert child_application.stakingProviderInfo(staking_provider) == (value, 0, 0)
+    assert taco_application.isAuthorized(staking_provider)
+
+    events = taco_application.AuthorizationIncreased.from_receipt(tx)
+    assert events == [
+        taco_application.AuthorizationIncreased(
+            stakingProvider=staking_provider, fromAmount=value // 2, toAmount=value
+        )
+    ]
+
+    # Desync again for staker with penalty
+    tx = threshold_staking.authorizationIncreased(
+        staking_provider, value, authorization, sender=creator
+    )
+    child_application.penalize(staking_provider, sender=staking_provider)
+    tx = threshold_staking.authorizationIncreased(
+        staking_provider, value // 2, value, sender=creator
+    )
+    assert taco_application.stakingProviderInfo(staking_provider)[AUTHORIZATION_SLOT] == value
+    assert taco_application.authorizedOverall() == value * 9 // 10
     assert taco_application.authorizedStake(staking_provider) == value
     assert child_application.stakingProviderInfo(staking_provider) == (value, 0, 0)
     assert taco_application.isAuthorized(staking_provider)
@@ -186,6 +250,17 @@ def test_involuntary_authorization_decrease(
             stakingProvider=staking_provider, fromAmount=value, toAmount=authorization
         )
     ]
+
+    # Decrease again for staker with penalty
+    child_application.penalize(staking_provider, sender=staking_provider)
+    threshold_staking.authorizationIncreased(staking_provider, authorization, value, sender=creator)
+    threshold_staking.involuntaryAuthorizationDecrease(
+        staking_provider, value, authorization, sender=creator
+    )
+    assert taco_application.authorizedOverall() == 0
+    assert taco_application.authorizedStake(staking_provider) == authorization
+    assert child_application.stakingProviderInfo(staking_provider) == (authorization, 0, 0)
+    chain.pending_timestamp += PENALTY_DURATION
 
     # Prepare request to decrease before involuntary decrease
     threshold_staking.authorizationDecreaseRequested(
@@ -254,6 +329,25 @@ def test_involuntary_authorization_decrease(
         )
     ]
 
+    # Decrease again for staker with penalty
+    child_application.penalize(staking_provider, sender=staking_provider)
+    threshold_staking.authorizationIncreased(staking_provider, authorization, value, sender=creator)
+    threshold_staking.involuntaryAuthorizationDecrease(
+        staking_provider, value, authorization, sender=creator
+    )
+    assert (
+        taco_application.stakingProviderInfo(staking_provider)[AUTHORIZATION_SLOT] == authorization
+    )
+    assert taco_application.pendingAuthorizationDecrease(staking_provider) == authorization
+    assert taco_application.authorizedOverall() == authorization * 9 // 10
+    assert taco_application.authorizedStake(staking_provider) == authorization
+    assert child_application.stakingProviderInfo(staking_provider) == (
+        authorization,
+        authorization,
+        end_deauthorization,
+    )
+    chain.pending_timestamp += PENALTY_DURATION
+
     # Decrease everything
     tx = threshold_staking.involuntaryAuthorizationDecrease(
         staking_provider, authorization, 0, sender=creator
@@ -301,6 +395,22 @@ def test_involuntary_authorization_decrease(
             stakingProvider=staking_provider, fromAmount=value, toAmount=authorization
         )
     ]
+
+    # Another desync for staker with penalty
+    child_application.penalize(staking_provider, sender=staking_provider)
+    threshold_staking.authorizationIncreased(
+        staking_provider, authorization, 2 * value, sender=creator
+    )
+    threshold_staking.involuntaryAuthorizationDecrease(
+        staking_provider, value, value // 2, sender=creator
+    )
+    assert (
+        taco_application.stakingProviderInfo(staking_provider)[AUTHORIZATION_SLOT] == authorization
+    )
+    assert taco_application.authorizedOverall() == authorization * 9 // 10
+    assert taco_application.authorizedStake(staking_provider) == authorization
+    assert child_application.stakingProviderInfo(staking_provider) == (authorization, 0, 0)
+    chain.pending_timestamp += PENALTY_DURATION
 
     # Decrease everything again with previous commitment
     commitment_duration = taco_application.commitmentDurationOption1()
@@ -439,6 +549,25 @@ def test_authorization_decrease_request(
         )
     ]
 
+    # Emulate desync for staker with penalty
+    chain.pending_timestamp += deauthorization_duration
+    child_application.penalize(staking_provider, sender=staking_provider)
+    assert taco_application.authorizedOverall() == value // 2 * 9 // 10
+    taco_application.approveAuthorizationDecrease(staking_provider, sender=creator)
+    assert taco_application.authorizedOverall() == 0
+    threshold_staking.authorizationIncreased(staking_provider, 0, value, sender=creator)
+    assert taco_application.authorizedOverall() == 0
+    taco_application.bondOperator(staking_provider, staking_provider, sender=staking_provider)
+    child_application.confirmOperatorAddress(staking_provider, sender=staking_provider)
+    assert taco_application.authorizedOverall() == value * 9 // 10
+    threshold_staking.authorizationDecreaseRequested(
+        staking_provider, value // 2, 0, sender=creator
+    )
+    assert taco_application.stakingProviderInfo(staking_provider)[AUTHORIZATION_SLOT] == value // 2
+    assert taco_application.pendingAuthorizationDecrease(staking_provider) == value // 2
+    assert taco_application.authorizedOverall() == value // 2 * 9 // 10
+    chain.pending_timestamp += PENALTY_DURATION
+
     # Try to request decrease before ending of commitment
     chain.pending_timestamp += deauthorization_duration
     taco_application.approveAuthorizationDecrease(staking_provider, sender=creator)
@@ -491,11 +620,22 @@ def test_finish_authorization_decrease(
     assert taco_application.stakingProviderInfo(staking_provider)[AUTHORIZATION_SLOT] == new_value
     assert taco_application.pendingAuthorizationDecrease(staking_provider) == 0
     assert taco_application.stakingProviderInfo(staking_provider)[END_DEAUTHORIZATION_SLOT] == 0
+    assert taco_application.authorizedOverall() == 0
     assert tx.events == [
         taco_application.AuthorizationDecreaseApproved(
             stakingProvider=staking_provider, fromAmount=value, toAmount=new_value
         )
     ]
+
+    # Try again with penalty
+    child_application.penalize(staking_provider, sender=staking_provider)
+    threshold_staking.authorizationIncreased(staking_provider, new_value, value, sender=creator)
+    threshold_staking.authorizationDecreaseRequested(
+        staking_provider, value, new_value, sender=creator
+    )
+    taco_application.approveAuthorizationDecrease(staking_provider, sender=creator)
+    assert taco_application.authorizedOverall() == 0
+    chain.pending_timestamp += PENALTY_DURATION
 
     # Bond operator and request decrease again
     taco_application.bondOperator(staking_provider, staking_provider, sender=staking_provider)
@@ -571,6 +711,19 @@ def test_finish_authorization_decrease(
             stakingProvider=staking_provider, fromAmount=value, toAmount=new_value
         )
     ]
+
+    # Decrease again for staker with penalty
+    threshold_staking.authorizationIncreased(staking_provider, new_value, value, sender=creator)
+    threshold_staking.authorizationDecreaseRequested(
+        staking_provider, value, minimum_authorization, sender=creator
+    )
+    threshold_staking.setDecreaseRequest(staking_provider, new_value, sender=creator)
+    chain.pending_timestamp += deauthorization_duration
+    child_application.penalize(staking_provider, sender=staking_provider)
+    taco_application.approveAuthorizationDecrease(staking_provider, sender=creator)
+    assert taco_application.stakingProviderInfo(staking_provider)[AUTHORIZATION_SLOT] == new_value
+    assert taco_application.authorizedOverall() == new_value * 9 // 10
+    chain.pending_timestamp += PENALTY_DURATION
 
     # Decrease everything
     value = new_value
@@ -656,6 +809,15 @@ def test_resync(accounts, threshold_staking, taco_application, child_application
         )
     ]
 
+    # Resync again for staker with penalty
+    new_value = 3 * minimum_authorization // 2
+    child_application.penalize(staking_provider, sender=staking_provider)
+    threshold_staking.setAuthorized(staking_provider, new_value, sender=creator)
+    taco_application.resynchronizeAuthorization(staking_provider, sender=creator)
+    assert taco_application.authorizedOverall() == 0
+    assert taco_application.authorizedStake(staking_provider) == new_value
+    chain.pending_timestamp += PENALTY_DURATION
+
     # Confirm operator and change authorized amount again
     value = new_value
     taco_application.bondOperator(staking_provider, staking_provider, sender=staking_provider)
@@ -683,6 +845,15 @@ def test_resync(accounts, threshold_staking, taco_application, child_application
             stakingProvider=staking_provider, fromAmount=value, toAmount=new_value
         )
     ]
+
+    # Resync again for staker with penalty
+    new_value = 3 * minimum_authorization // 4
+    child_application.penalize(staking_provider, sender=staking_provider)
+    threshold_staking.setAuthorized(staking_provider, new_value, sender=creator)
+    taco_application.resynchronizeAuthorization(staking_provider, sender=creator)
+    assert taco_application.authorizedOverall() == new_value * 9 // 10
+    assert taco_application.authorizedStake(staking_provider) == new_value
+    chain.pending_timestamp += PENALTY_DURATION
 
     # Request decrease and change authorized amount again
     value = new_value

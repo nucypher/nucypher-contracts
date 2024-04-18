@@ -29,7 +29,7 @@ DEAUTHORIZATION_DURATION = 60 * 60 * 24 * 60  # 60 days in seconds
 COMMITMENT_DURATION_1 = 182 * 60 * 24 * 60  # 182 days in seconds
 COMMITMENT_DURATION_2 = 2 * COMMITMENT_DURATION_1  # 365 days in seconds
 COMMITMENT_DURATION_3 = 3 * COMMITMENT_DURATION_1  # 365 days in seconds
-COMMITMENT_DEADLINE = 60 * 60 * 24 * 100  # 100 days after deploymwent
+COMMITMENT_DEADLINE = 60 * 60 * 24 * 200  # 200 days after deploymwent
 
 PENALTY_DEFAULT = 1000  # 10% penalty
 PENALTY_DURATION = 60 * 60 * 24  # 1 day in seconds
