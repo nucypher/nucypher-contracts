@@ -23,8 +23,8 @@ abstract contract Subscription {
         address subscriber;
     }
 
-    Coordinator coordinator;
-    IERC20 feeToken;
+    Coordinator public coordinator;
+    IERC20 public feeToken;
 
     // Mapping from subscription ID to subscription info
     mapping(uint32 => SubscriptionInfo) public subscriptions;
@@ -122,7 +122,7 @@ abstract contract Subscription {
      * @return True if the spender can spend from the subscription, false otherwise
      */
     function canSpendFromSubscription(
-        uint32 subscriptionId,
+        uint32 subscriptionId, // TODO: Currently unused
         address spender
     ) public returns (bool) {
         // By default, only coordinator can spend from subscription
@@ -135,7 +135,7 @@ abstract contract Subscription {
      * @param amount The amount to spend
      */
     function spendFromSubscription(uint32 subscriptionId, uint256 amount) external {
-        require(canSpendFromSubscription(subscriptionId, msg.sender));
+        require(canSpendFromSubscription(subscriptionId, msg.sender), "Unauthorized spender");
         feeToken.safeTransferFrom(address(this), msg.sender, amount);
     }
 
@@ -175,10 +175,10 @@ abstract contract Subscription {
  * @dev This contract extends the Subscription contract and introduces a cap on the number of encryptors.
  */
 contract UpfrontSubscriptionWithEncryptorsCap is Subscription {
-    uint256 constant DEFAULT_CAP = 1000;
+    uint256 public constant DEFAULT_CAP = 1000;
 
     // Mapping from subscription ID to the number of authorization actions
-    mapping(uint32 => uint256) authorizationActionCaps;
+    mapping(uint32 => uint256) public authorizationActionCaps;
 
     /**
      * @notice Sets the coordinator and fee token contracts

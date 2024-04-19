@@ -87,7 +87,9 @@ contract GlobalAllowList is IEncryptionAuthorizer {
         uint32 ritualId,
         bytes memory evidence,
         bytes memory ciphertextHeader
-    ) internal view virtual {}
+    ) internal view virtual {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     /**
      * @notice Checks if an address is authorized for a ritual
@@ -119,7 +121,9 @@ contract GlobalAllowList is IEncryptionAuthorizer {
         uint32 ritualId,
         address[] calldata addresses,
         bool value
-    ) internal view virtual {}
+    ) internal view virtual {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     /**
      * @notice Authorizes a list of addresses for a ritual
