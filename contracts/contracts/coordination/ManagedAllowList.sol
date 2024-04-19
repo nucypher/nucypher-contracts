@@ -91,7 +91,9 @@ contract ManagedAllowList is GlobalAllowList {
     ) internal view override {
         for (uint256 i = 0; i < addresses.length; i++) {
             require(
-                authActions[ritualId] < subscription.authorizationActionsCap(ritualId, addresses[i])
+                authActions[ritualId] <
+                    subscription.authorizationActionsCap(ritualId, addresses[i]),
+                "Authorization cap exceeded"
             );
         }
     }

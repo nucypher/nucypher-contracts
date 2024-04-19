@@ -93,6 +93,9 @@ abstract contract Subscription {
         subscribers[lookupKey(ritualId, msg.sender)] = subscriptionId;
 
         numberOfSubscriptions += 1;
+
+        // TODO: Emit event?
+
         return subscriptionId;
     }
 
@@ -108,6 +111,8 @@ abstract contract Subscription {
         sub.expiration += baseExpiration();
 
         feeToken.safeTransferFrom(msg.sender, address(this), amount);
+
+        // TODO: Emit event?
     }
 
     /**
