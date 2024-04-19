@@ -90,8 +90,11 @@ contract ManagedAllowList is GlobalAllowList {
         bool value
     ) internal view override {
         for (uint256 i = 0; i < addresses.length; i++) {
+            // If we want to authorize an address, we need to check if the authorization cap has been exceeded
+            // If we want to deauthorize an address, we don't need to check the authorization cap
             require(
-                authActions[ritualId] <
+                !value ||
+                    authActions[ritualId] <
                     subscription.authorizationActionsCap(ritualId, addresses[i]),
                 "Authorization cap exceeded"
             );

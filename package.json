@@ -17,8 +17,10 @@
     "prepublishOnly": "npm run build",
     "test": "vitest run",
     "solhint": "solhint 'contracts/**/*.sol'",
+    "solhint:fix": "solhint 'contracts/**/*.sol' --fix",
     "lint": "eslint src test --ext .ts",
-    "lint:fix": "eslint src test --ext .ts --fix"
+    "lint:fix": "eslint src test --ext .ts --fix",
+    "prettier:fix": "prettier --write contracts"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^6.9.0",
