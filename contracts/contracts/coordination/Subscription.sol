@@ -166,6 +166,8 @@ abstract contract Subscription {
         feeToken.safeTransfer(msg.sender, refundAmount);
         delete subscriptions[subscriptionId];
         delete subscribers[lookupKey(ritualId, msg.sender)];
+
+        // TODO: Emit event?
     }
 }
 
