@@ -100,7 +100,9 @@ def test_remove_administrators(managed_allow_list, authority, admin):
     assert managed_allow_list.authActions(RITUAL_ID) == 2
 
 
-def test_authorize(managed_allow_list, subscription, fee_token, authority, admin, encryptor):
+def test_authorize(
+    managed_allow_list, subscription, fee_token, deployer, authority, admin, encryptor
+):
     managed_allow_list.addAdministrators(RITUAL_ID, [admin], ADMIN_CAP, sender=authority)
     assert managed_allow_list.getAllowance(RITUAL_ID, admin) == ADMIN_CAP
 
@@ -109,24 +111,38 @@ def test_authorize(managed_allow_list, subscription, fee_token, authority, admin
         managed_allow_list.authorize(RITUAL_ID, [encryptor], sender=admin)
 
     cost = subscription.subscriptionFee()
-    fee_token.approve(subscription.address, cost, sender=authority)
-    # subscription_id = subscription.newSubscription(RITUAL_ID, sender=authority)
-    # assert subscription_id == 0
-    # assert subscription.subscription.authorizationActionsCap(RITUAL_ID, admin) == 1
-    # assert tx1.events == [managed_allow_list.AddressAuthorizationSet(RITUAL_ID, admin, True)]
+    fee_token.approve(subscription.address, cost, sender=deployer)
+    tx = subscription.newSubscription(RITUAL_ID, sender=deployer)
+    assert subscription.numberOfSubscriptions() == 1
+    # TODO: Fix this - Currently fails because fee_token is a mock contract
+    # assert tx.events == [
+    #     fee_token.Transfer(admin, subscription.address, cost),
+    #     managed_allow_list.AddressAuthorizationSet(RITUAL_ID, admin, True)
+    # ]
+    assert len(tx.events) == 1
+    assert subscription.authorizationActionsCap(RITUAL_ID, admin) == 1000
 
-    # # Only administrators can authorize encryptors
-    # with ape.reverts("Only administrator is permitted"):
-    #     managed_allow_list.authorize(RITUAL_ID, [encryptor], sender=encryptor)
+    # Only administrators can authorize encryptors
+    with ape.reverts("Only administrator is permitted"):
+        managed_allow_list.authorize(RITUAL_ID, [encryptor], sender=encryptor)
 
-    # tx = managed_allow_list.authorize(RITUAL_ID, [encryptor], sender=admin)
-    # assert tx.events == [managed_allow_list.AddressAuthorizationSet(RITUAL_ID, encryptor, True)]
-    #
-    # assert managed_allow_list.isAddressAuthorized(RITUAL_ID, encryptor)
+    tx = managed_allow_list.authorize(RITUAL_ID, [encryptor], sender=admin)
+    assert tx.events == [managed_allow_list.AddressAuthorizationSet(RITUAL_ID, encryptor, True)]
+    assert managed_allow_list.isAddressAuthorized(RITUAL_ID, encryptor)
 
 
-# def test_deauthorize(managed_allow_list, admin, authority, encryptor):
-#     managed_allow_list.addAdministrators(RITUAL_ID, [admin], ADMIN_CAP, sender=authority)
-#     managed_allow_list.authorize(RITUAL_ID, [encryptor], sender=admin)
-#     managed_allow_list.deauthorize(RITUAL_ID, [encryptor], sender=admin)
-#     assert not managed_allow_list.isAddressAuthorized(RITUAL_ID, encryptor)
+def test_deauthorize(
+    managed_allow_list, subscription, fee_token, deployer, authority, admin, encryptor
+):
+    managed_allow_list.addAdministrators(RITUAL_ID, [admin], ADMIN_CAP, sender=authority)
+    cost = subscription.subscriptionFee()
+    fee_token.approve(subscription.address, cost, sender=deployer)
+    subscription.newSubscription(RITUAL_ID, sender=deployer)
+    assert subscription.authorizationActionsCap(RITUAL_ID, admin) == 1000
+
+    with ape.reverts("Only administrator is permitted"):
+        managed_allow_list.deauthorize(RITUAL_ID, [encryptor], sender=encryptor)
+
+    tx = managed_allow_list.deauthorize(RITUAL_ID, [encryptor], sender=admin)
+    assert tx.events == [managed_allow_list.AddressAuthorizationSet(RITUAL_ID, encryptor, False)]
+    assert not managed_allow_list.isAddressAuthorized(RITUAL_ID, encryptor)
