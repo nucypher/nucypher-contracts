@@ -29,6 +29,9 @@ contract ChildApplicationForCoordinatorMock is ITACoChildApplication {
     function confirmOperatorAddress(address _operator) external {
         confirmations[_operator] = true;
     }
+
+    // solhint-disable-next-line no-empty-blocks
+    function penalize(address _stakingProvider) external {}
 }
 
 // /**

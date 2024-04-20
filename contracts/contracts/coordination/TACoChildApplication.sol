@@ -14,6 +14,12 @@ import "./Coordinator.sol";
  * @notice TACoChildApplication
  */
 contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initializable {
+    /**
+     * @notice Signals that the staking provider was penalized
+     * @param stakingProvider Staking provider address
+     */
+    event Penalized(address indexed stakingProvider);
+
     struct StakingProviderInfo {
         address operator;
         uint96 authorized;
@@ -25,6 +31,7 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
 
     ITACoChildToRoot public immutable rootApplication;
     address public coordinator;
+    address public adjudicator;
 
     uint96 public immutable minimumAuthorization;
 
@@ -54,14 +61,18 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
     /**
      * @notice Initialize function for using with OpenZeppelin proxy
      */
-    function initialize(address _coordinator) external initializer {
-        require(coordinator == address(0), "Coordinator already set");
-        require(_coordinator != address(0), "Coordinator must be specified");
+    function initialize(address _coordinator, address _adjudicator) external initializer {
+        require(coordinator == address(0) || _adjudicator == address(0), "Contracts already set");
+        require(
+            _coordinator != address(0) && _adjudicator != address(0),
+            "Contracts must be specified"
+        );
         require(
             address(Coordinator(_coordinator).application()) == address(this),
             "Invalid coordinator"
         );
         coordinator = _coordinator;
+        adjudicator = _adjudicator;
     }
 
     function authorizedStake(address _stakingProvider) external view returns (uint96) {
@@ -182,6 +193,16 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         info.operatorConfirmed = true;
         emit OperatorConfirmed(stakingProvider, _operator);
         rootApplication.confirmOperatorAddress(_operator);
+    }
+
+    /**
+     * @notice Penalize the staking provider's future reward
+     * @param _stakingProvider Staking provider address
+     */
+    function penalize(address _stakingProvider) external override {
+        require(msg.sender == address(adjudicator), "Only adjudicator allowed to penalize");
+        rootApplication.penalize(_stakingProvider);
+        emit Penalized(_stakingProvider);
     }
 
     /**
