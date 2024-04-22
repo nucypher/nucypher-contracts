@@ -529,7 +529,7 @@ def test_reset_reward(accounts, threshold_staking, taco_application, child_appli
     min_authorization = MIN_AUTHORIZATION
 
     # This method only for penalized staking providers
-    with ape.reverts("There are no any penalties"):
+    with ape.reverts("There is no penalty"):
         taco_application.resetReward(staking_provider, sender=creator)
 
     # Penalize staking provider

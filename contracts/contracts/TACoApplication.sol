@@ -173,7 +173,7 @@ contract TACoApplication is
      * @param penaltyPercent Percent of reward that was penalized
      * @param endPenalty End of penalty
      */
-    event Penalized(address indexed stakingProvider, uint256 penaltyPercent, uint256 endPenalty);
+    event Penalized(address indexed stakingProvider, uint256 penaltyPercent, uint64 endPenalty);
 
     /**
      * @notice Signals that reward was reset after penalty
@@ -242,7 +242,7 @@ contract TACoApplication is
      * @param _deauthorizationDuration Duration of decreasing authorization in seconds
      * @param _commitmentDurationOptions Options for commitment duration
      * @param _commitmentDeadline Last date to make a commitment
-     * @param _penaltyDefault Default penalty percentage
+     * @param _penaltyDefault Default penalty percentage (as a value out of 10000)
      * @param _penaltyDuration Duration of penalty
      */
     constructor(
@@ -484,7 +484,9 @@ contract TACoApplication is
         return uint96((_authorized * (PENALTY_BASE - _penaltyPercent)) / PENALTY_BASE);
     }
 
-    /// @dev This view should be called after updateReward modifier
+    /// @dev In case that a penalty period already ended, this view method may produce
+    ///      outdated results if the penalty hasn't been reset, either by calling
+    ///      `resetReward` explicitly or any function with the `updateReward` modifier.
     function effectiveAuthorized(
         uint96 _authorized,
         StakingProviderInfo storage _info
@@ -495,7 +497,9 @@ contract TACoApplication is
         return effectiveAuthorized(_authorized, _info.penaltyPercent);
     }
 
-    /// @dev This view should be called after updateReward modifier
+    /// @dev In case that a penalty period already ended, this view method may produce
+    ///      outdated results if the penalty hasn't been reset, either by calling
+    ///      `resetReward` explicitly or any function with the `updateReward` modifier.
     function effectiveDifference(
         uint96 _from,
         uint96 _to,
@@ -1077,12 +1081,15 @@ contract TACoApplication is
     }
 
     /**
-     * @notice Resets future reward back to 100%
+     * @notice Resets future reward back to 100%.
+     *         Either this method or any method with `updateReward` modifier should be called
+     *         to stop penalties. Otherwise, reward will be still subtracted
+     *         even after the end of penalties.
      * @param _stakingProvider Staking provider address
      */
     function resetReward(address _stakingProvider) external {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
-        require(info.endPenalty != 0, "There are no any penalties");
+        require(info.endPenalty != 0, "There is no penalty");
         require(info.endPenalty <= block.timestamp, "Penalty is still ongoing");
         updateRewardInternal(_stakingProvider);
     }

@@ -62,7 +62,7 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
      * @notice Initialize function for using with OpenZeppelin proxy
      */
     function initialize(address _coordinator, address _adjudicator) external initializer {
-        require(coordinator == address(0) || _adjudicator == address(0), "Contracts already set");
+        require(coordinator == address(0) || adjudicator == address(0), "Contracts already set");
         require(
             _coordinator != address(0) && _adjudicator != address(0),
             "Contracts must be specified"
