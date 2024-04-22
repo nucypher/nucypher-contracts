@@ -1,4 +1,3 @@
-import ape
 import os
 import pytest
 from hexbytes import HexBytes

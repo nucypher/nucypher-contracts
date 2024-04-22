@@ -38,6 +38,42 @@ abstract contract Subscription {
     address public beneficiary;
 
     /**
+     * @notice Emitted when a subscription is created
+     * @param subscriptionId The ID of the subscription
+     * @param subscriber The address of the subscriber
+     * @param ritualId The ID of the ritual
+     */
+    event SubscriptionCreated(
+        uint32 indexed subscriptionId,
+        address indexed subscriber,
+        uint32 indexed ritualId
+    );
+
+    /**
+     * @notice Emitted when a subscription is cancelled
+     * @param subscriptionId The ID of the subscription
+     * @param subscriber The address of the subscriber
+     * @param ritualId The ID of the ritual
+     */
+    event SubscriptionCancelled(
+        uint32 indexed subscriptionId,
+        address indexed subscriber,
+        uint32 indexed ritualId
+    );
+
+    /**
+     * @notice Emitted when a subscription is paid
+     * @param subscriptionId The ID of the subscription
+     * @param subscriber The address of the subscriber
+     * @param amount The amount paid
+     */
+    event SubscriptionPaid(
+        uint32 indexed subscriptionId,
+        address indexed subscriber,
+        uint256 amount
+    );
+
+    /**
      * @notice Sets the coordinator and fee token contracts
      * @dev The coordinator and fee token contracts cannot be zero addresses
      * @param _coordinator The address of the coordinator contract
@@ -82,21 +118,17 @@ abstract contract Subscription {
     /**
      * @notice Creates a new subscription
      * @param ritualId The ID of the ritual
-     * @return The ID of the new subscription
      */
-    function newSubscription(uint32 ritualId) external returns (uint256) {
+    function newSubscription(uint32 ritualId) external {
         uint32 subscriptionId = numberOfSubscriptions;
         SubscriptionInfo storage sub = subscriptions[subscriptionId];
         sub.subscriber = msg.sender;
         paySubscriptionFor(subscriptionId);
 
         subscribers[lookupKey(ritualId, msg.sender)] = subscriptionId;
-
         numberOfSubscriptions += 1;
 
-        // TODO: Emit event?
-
-        return subscriptionId;
+        emit SubscriptionCreated(subscriptionId, msg.sender, ritualId);
     }
 
     /**
@@ -112,7 +144,8 @@ abstract contract Subscription {
 
         feeToken.safeTransferFrom(msg.sender, address(this), amount);
 
-        // TODO: Emit event?
+        // TODO: We already emit SubscriptionCreated, do we need this?
+        emit SubscriptionPaid(subscriptionId, msg.sender, amount);
     }
 
     /**
@@ -122,7 +155,9 @@ abstract contract Subscription {
      * @return True if the spender can spend from the subscription, false otherwise
      */
     function canSpendFromSubscription(
-        uint32 subscriptionId, // TODO: Currently unused
+        // TODO: Currently unused, remove?
+        // solhint-disable-next-line no-unused-vars
+        uint32 subscriptionId,
         address spender
     ) public returns (bool) {
         // By default, only coordinator can spend from subscription
@@ -138,8 +173,6 @@ abstract contract Subscription {
         require(canSpendFromSubscription(subscriptionId, msg.sender), "Unauthorized spender");
         feeToken.safeTransferFrom(address(this), msg.sender, amount);
     }
-
-    // TODO: Withdraw methods for DAO Treasury, cancel subscription, etc
 
     /**
      * @notice Withdraws the contract balance to the beneficiary
@@ -157,7 +190,7 @@ abstract contract Subscription {
      * @param ritualId The ID of the ritual
      * @param subscriptionId The ID of the subscription
      */
-    function cancelSubscription(uint32 ritualId, uint32 subscriptionId) external {
+    function cancelSubscription(uint32 ritualId, uint32 subscriptionId) public virtual {
         require(
             msg.sender == subscriptions[subscriptionId].subscriber,
             "Only the subscriber can cancel the subscription"
@@ -167,7 +200,7 @@ abstract contract Subscription {
         delete subscriptions[subscriptionId];
         delete subscribers[lookupKey(ritualId, msg.sender)];
 
-        // TODO: Emit event?
+        emit SubscriptionCancelled(subscriptionId, msg.sender, ritualId);
     }
 }
 
@@ -214,5 +247,15 @@ contract UpfrontSubscriptionWithEncryptorsCap is Subscription {
         address spender
     ) public view returns (uint256) {
         return authorizationActionCaps[subscribers[lookupKey(ritualId, spender)]];
+    }
+
+    /**
+     * @notice Cancels a subscription and deletes the authorization actions cap
+     * @param ritualId The ID of the ritual
+     * @param subscriptionId The ID of the subscription
+     */
+    function cancelSubscription(uint32 ritualId, uint32 subscriptionId) public virtual override {
+        super.cancelSubscription(ritualId, subscriptionId);
+        delete authorizationActionCaps[subscriptionId];
     }
 }
