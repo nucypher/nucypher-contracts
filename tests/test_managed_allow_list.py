@@ -52,11 +52,7 @@ def subscription(project, coordinator, fee_token, beneficiary, authority):
 
 
 @pytest.fixture()
-def brand_new_managed_allow_list(project, compilers, coordinator, subscription, deployer, authority):
-    lookup_key_lib = project.LookupKey.deploy(sender=deployer)
-    # TODO: Library linking doesn't work
-    # https://github.com/ApeWorX/ape-solidity#library-linking
-    compilers.solidity.add_library(lookup_key_lib)
+def brand_new_managed_allow_list(project, coordinator, subscription, deployer, authority):
     return project.ManagedAllowList.deploy(
         coordinator.address, subscription.address, sender=authority
     )
@@ -123,7 +119,7 @@ def test_authorize(
     #     fee_token.Transfer(admin, subscription.address, cost),
     #     managed_allow_list.AddressAuthorizationSet(RITUAL_ID, admin, True)
     # ]
-    assert len(tx.events) == 1
+    assert len(tx.events) == 3
     assert subscription.authorizationActionsCap(RITUAL_ID, admin) == 1000
 
     # Only administrators can authorize encryptors

@@ -180,7 +180,16 @@ abstract contract Subscription {
      */
     function withdrawToBeneficiary(uint256 amount) external {
         require(msg.sender == beneficiary, "Only the beneficiary can withdraw");
-        uint256 contractBalance = feeToken.balanceOf(address(this));
+
+        uint256 availableAmount = 0;
+        for (uint32 i = 0; i < numberOfSubscriptions; i++) {
+            SubscriptionInfo storage sub = subscriptions[i];
+            if (block.timestamp >= sub.expiration) {
+                availableAmount += sub.paidFor - sub.spent;
+            }
+        }
+        require(amount <= availableAmount, "Insufficient available amount");
+
         feeToken.safeTransfer(beneficiary, amount);
 
         emit WithdrawalToBeneficiary(beneficiary, amount);

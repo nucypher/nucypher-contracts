@@ -8,7 +8,7 @@ library LookupKey {
      * @param encryptor The address of the encryptor
      * @return The key used to lookup authorizations
      */
-    function lookupKey(uint32 ritualId, address encryptor) external pure returns (bytes32) {
+    function lookupKey(uint32 ritualId, address encryptor) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(ritualId, encryptor));
     }
 }

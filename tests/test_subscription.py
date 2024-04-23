@@ -160,6 +160,6 @@ def test_withdraw_to_beneficiary(subscription, fee_token, deployer, subscriber, 
     assert not fee_token.balanceOf(beneficiary)
     tx = subscription.withdrawToBeneficiary(subscription_balance, sender=beneficiary)
     assert len(tx.events) == 2
-    assert tx[1] == subscription.WithdrawalToBeneficiary(beneficiary, subscription_balance)
+    assert tx.events[1] == subscription.WithdrawalToBeneficiary(beneficiary, subscription_balance)
     assert fee_token.balanceOf(beneficiary) == subscription_balance
     assert not fee_token.balanceOf(subscription.address)
