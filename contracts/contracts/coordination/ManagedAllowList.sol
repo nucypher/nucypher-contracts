@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.0;
 
+import "../lib/LookupKey.sol";
 import "./GlobalAllowList.sol";
 import "./Coordinator.sol";
 import {UpfrontSubscriptionWithEncryptorsCap} from "./Subscription.sol";
@@ -19,7 +20,8 @@ contract ManagedAllowList is GlobalAllowList {
     /**
      * @notice The Subscription contract used to manage authorization caps
      */
-    UpfrontSubscriptionWithEncryptorsCap public subscription;
+    // TODO: Should it be updatable?
+    UpfrontSubscriptionWithEncryptorsCap public immutable subscription;
 
     /**
      * @notice Emitted when an administrator cap is set
@@ -46,7 +48,6 @@ contract ManagedAllowList is GlobalAllowList {
 
     /**
      * @notice Checks if the sender is the authority of the ritual
-     * @dev This function overrides the canSetAuthorizations modifier in the GlobalAllowList contract
      * @param ritualId The ID of the ritual
      */
     modifier onlyCohortAuthority(uint32 ritualId) {
@@ -74,11 +75,10 @@ contract ManagedAllowList is GlobalAllowList {
      * @return The allowance of the administrator
      */
     function getAllowance(uint32 ritualId, address admin) public view returns (uint256) {
-        return allowance[lookupKey(ritualId, admin)];
+        return allowance[LookupKey.lookupKey(ritualId, admin)];
     }
 
     /**
-     * @notice Checks if an address is authorized for a ritual
      * @dev This function is called before the setAuthorizations function
      * @param ritualId The ID of the ritual
      * @param addresses The addresses to be authorized
@@ -92,9 +92,9 @@ contract ManagedAllowList is GlobalAllowList {
         for (uint256 i = 0; i < addresses.length; i++) {
             // If we want to authorize an address, we need to check if the authorization cap has been exceeded
             // If we want to deauthorize an address, we don't need to check the authorization cap
+            require(!value, "Cannot deauthorize an address");
             require(
-                !value ||
-                    authActions[ritualId] <
+                authActions[ritualId] <
                     subscription.authorizationActionsCap(ritualId, addresses[i]),
                 "Authorization cap exceeded"
             );
@@ -118,7 +118,7 @@ contract ManagedAllowList is GlobalAllowList {
             "Only active rituals can set administrator caps"
         );
         for (uint256 i = 0; i < addresses.length; i++) {
-            allowance[lookupKey(ritualId, addresses[i])] = value;
+            allowance[LookupKey.lookupKey(ritualId, addresses[i])] = value;
             emit AdministratorCapSet(ritualId, addresses[i], value);
         }
         authActions[ritualId] += addresses.length;

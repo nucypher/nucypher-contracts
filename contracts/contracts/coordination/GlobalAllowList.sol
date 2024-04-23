@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "../lib/LookupKey.sol";
 import "./IEncryptionAuthorizer.sol";
 import "./Coordinator.sol";
 
@@ -20,6 +21,8 @@ contract GlobalAllowList is IEncryptionAuthorizer {
     mapping(bytes32 => bool) internal authorizations;
 
     mapping(uint32 => uint256) public authActions;
+
+    uint32 public MAX_AUTH_ACTIONS = 100;
 
     /**
      * @notice Emitted when an address authorization is set
@@ -57,27 +60,16 @@ contract GlobalAllowList is IEncryptionAuthorizer {
     }
 
     /**
-     * @notice Returns the key used to lookup authorizations
-     * @param ritualId The ID of the ritual
-     * @param encryptor The address of the encryptor
-     * @return The key used to lookup authorizations
-     */
-    function lookupKey(uint32 ritualId, address encryptor) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(ritualId, encryptor));
-    }
-
-    /**
      * @notice Checks if an address is authorized for a ritual
      * @param ritualId The ID of the ritual
      * @param encryptor The address of the encryptor
      * @return The authorization status
      */
     function isAddressAuthorized(uint32 ritualId, address encryptor) public view returns (bool) {
-        return authorizations[lookupKey(ritualId, encryptor)];
+        return authorizations[LookupKey.lookupKey(ritualId, encryptor)];
     }
 
     /**
-     * @notice Checks if an address is authorized for a ritual
      * @dev This function is called before the isAuthorized function
      * @param ritualId The ID of the ritual
      * @param evidence The evidence provided
@@ -111,7 +103,6 @@ contract GlobalAllowList is IEncryptionAuthorizer {
     }
 
     /**
-     * @notice Checks if an address is authorized for a ritual
      * @dev This function is called before the setAuthorizations function
      * @param ritualId The ID of the ritual
      * @param addresses The addresses to be authorized
@@ -159,9 +150,11 @@ contract GlobalAllowList is IEncryptionAuthorizer {
     function setAuthorizations(uint32 ritualId, address[] calldata addresses, bool value) internal {
         require(coordinator.isRitualActive(ritualId), "Only active rituals can set authorizations");
 
+        require(addresses.length <= MAX_AUTH_ACTIONS, "Too many addresses");
+
         _beforeSetAuthorization(ritualId, addresses, value);
         for (uint256 i = 0; i < addresses.length; i++) {
-            authorizations[lookupKey(ritualId, addresses[i])] = value;
+            authorizations[LookupKey.lookupKey(ritualId, addresses[i])] = value;
             emit AddressAuthorizationSet(ritualId, addresses[i], value);
         }
 
