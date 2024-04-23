@@ -4,8 +4,9 @@ pragma solidity ^0.8.0;
 // Assuming the use of OpenZeppelin contracts for secure cryptographic operations
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "../threshold/ITACoChildApplication.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract TACoEvidence {
+contract TACoEvidence is Ownable {
     using ECDSA for bytes32;
 
     // Event declarations for logging
@@ -32,28 +33,19 @@ contract TACoEvidence {
 
     ITACoChildApplication public immutable application;
 
-    uint256 public submissionWindow = 1 hours;
+    uint256 public immutable submissionWindow = 1 hours;
     Collection[] public collections;
 
-    constructor() {
-        admin = msg.sender;
-    }
-
-    // Modifier to restrict certain functions to the contract admin
-    modifier onlyAdmin() {
-        require(msg.sender == admin, "Not authorized");
-        _;
-    }
+    constructor() Ownable(msg.sender) {};
 
     // Function to initiate a new submission period by the admin
-    function initiateCollection() public onlyAdmin {
+    function initiateCollection() public onlyOwner {
         uint32 id = uint32(collections.length);
         Collection storage collection = collections.push();
         collection.initTimestamp = uint32(block.timestamp);
         collection.endTimestamp = collection.initTimestamp + submissionWindow;
         collection.nonce =
-            uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty))) %
-            10 ** 18;
+            uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty)));
         emit CollectionStarted(
             id,
             collection.initTimestamp,
@@ -63,7 +55,7 @@ contract TACoEvidence {
     }
 
     // Function for nodes to submit their online status with evidence
-    function submitEvidence(uint32 id, bytes[] memory signatures, address[] memory peers) public {
+    function submitEvidence(uint32 id, bytes[] memory signatures) public {
         address provider = application.operatorToStakingProvider(msg.sender);
         require(application.authorizedStake(provider) > 0, "Not enough authorization");
 
@@ -78,17 +70,13 @@ contract TACoEvidence {
 
         // Verify each signature
         for (uint256 i = 0; i < signatures.length; i++) {
-            address peerProvider = application.operatorToStakingProvider(peers[i]);
-            // is this a require?? maybe just a condition check
-            require(
-                application.authorizedStake(peerProvider) > 0,
-                "Not enough authorization for peer evidence"
-            );
+
             bytes32 message = keccak256(abi.encodePacked(msg.sender, collection.nonce))
                 .toEthSignedMessageHash();
             address signer = message.recover(signatures[i]);
-            if (signer == peers[i]) {
-                collection.submissions[msg.sender][peers[i]] = true;
+            address peerProvider = application.operatorToStakingProvider(signer);
+            if (application.authorizedStake(peerProvider) > 0) && (peerProvider != provider) {
+                collection.submissions[msg.sender][peerProvider] = true;
             }
         }
     }
