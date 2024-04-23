@@ -52,7 +52,11 @@ def subscription(project, coordinator, fee_token, beneficiary, authority):
 
 
 @pytest.fixture()
-def brand_new_managed_allow_list(project, coordinator, subscription, authority):
+def brand_new_managed_allow_list(project, compilers, coordinator, subscription, deployer, authority):
+    lookup_key_lib = project.LookupKey.deploy(sender=deployer)
+    # TODO: Library linking doesn't work
+    # https://github.com/ApeWorX/ape-solidity#library-linking
+    compilers.solidity.add_library(lookup_key_lib)
     return project.ManagedAllowList.deploy(
         coordinator.address, subscription.address, sender=authority
     )

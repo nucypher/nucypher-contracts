@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "../lib/LookupKey.sol";
 import "./Coordinator.sol";
 
 using SafeERC20 for IERC20;
@@ -23,8 +24,8 @@ abstract contract Subscription {
         address subscriber;
     }
 
-    Coordinator public coordinator;
-    IERC20 public feeToken;
+    Coordinator public immutable coordinator;
+    IERC20 public immutable feeToken;
 
     // Mapping from subscription ID to subscription info
     mapping(uint32 => SubscriptionInfo) public subscriptions;
@@ -35,7 +36,8 @@ abstract contract Subscription {
     uint32 public numberOfSubscriptions;
 
     // TODO: DAO Treasury
-    address public beneficiary;
+    // TODO: Should it be updatable?
+    address public immutable beneficiary;
 
     /**
      * @notice Emitted when a subscription is created
@@ -74,6 +76,14 @@ abstract contract Subscription {
     );
 
     /**
+     * @notice Emitted when a subscription is spent
+     * @param beneficiary The address of the beneficiary
+     * @param amount The amount withdrawn
+     * @param amount The amount spent
+     */
+    event WithdrawalToBeneficiary(address indexed beneficiary, uint256 amount);
+
+    /**
      * @notice Sets the coordinator and fee token contracts
      * @dev The coordinator and fee token contracts cannot be zero addresses
      * @param _coordinator The address of the coordinator contract
@@ -106,16 +116,6 @@ abstract contract Subscription {
     }
 
     /**
-     * @notice Returns the key used to lookup authorizations
-     * @param ritualId The ID of the ritual
-     * @param encryptor The address of the encryptor
-     * @return The key used to lookup authorizations
-     */
-    function lookupKey(uint32 ritualId, address encryptor) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(ritualId, encryptor));
-    }
-
-    /**
      * @notice Creates a new subscription
      * @param ritualId The ID of the ritual
      */
@@ -125,7 +125,7 @@ abstract contract Subscription {
         sub.subscriber = msg.sender;
         paySubscriptionFor(subscriptionId);
 
-        subscribers[lookupKey(ritualId, msg.sender)] = subscriptionId;
+        subscribers[LookupKey.lookupKey(ritualId, msg.sender)] = subscriptionId;
         numberOfSubscriptions += 1;
 
         emit SubscriptionCreated(subscriptionId, msg.sender, ritualId);
@@ -181,8 +181,9 @@ abstract contract Subscription {
     function withdrawToBeneficiary(uint256 amount) external {
         require(msg.sender == beneficiary, "Only the beneficiary can withdraw");
         uint256 contractBalance = feeToken.balanceOf(address(this));
-        require(contractBalance >= amount, "Insufficient contract balance");
         feeToken.safeTransfer(beneficiary, amount);
+
+        emit WithdrawalToBeneficiary(beneficiary, amount);
     }
 
     /**
@@ -198,7 +199,7 @@ abstract contract Subscription {
         uint256 refundAmount = subscriptions[subscriptionId].paidFor;
         feeToken.safeTransfer(msg.sender, refundAmount);
         delete subscriptions[subscriptionId];
-        delete subscribers[lookupKey(ritualId, msg.sender)];
+        delete subscribers[LookupKey.lookupKey(ritualId, msg.sender)];
 
         emit SubscriptionCancelled(subscriptionId, msg.sender, ritualId);
     }
@@ -246,7 +247,7 @@ contract UpfrontSubscriptionWithEncryptorsCap is Subscription {
         uint32 ritualId,
         address spender
     ) public view returns (uint256) {
-        return authorizationActionCaps[subscribers[lookupKey(ritualId, spender)]];
+        return authorizationActionCaps[subscribers[LookupKey.lookupKey(ritualId, spender)]];
     }
 
     /**
