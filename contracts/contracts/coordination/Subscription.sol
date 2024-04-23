@@ -175,12 +175,10 @@ abstract contract Subscription {
     }
 
     /**
-     * @notice Withdraws the contract balance to the beneficiary
-     * @param amount The amount to withdraw
+     * @notice Calculates the available amount of fees that can be withdrawn be the beneficiary
+     * @return The available amount of fees
      */
-    function withdrawToBeneficiary(uint256 amount) external {
-        require(msg.sender == beneficiary, "Only the beneficiary can withdraw");
-
+    function calculateAvailableAmountForBeneficiary() public view returns (uint256) {
         uint256 availableAmount = 0;
         for (uint32 i = 0; i < numberOfSubscriptions; i++) {
             SubscriptionInfo storage sub = subscriptions[i];
@@ -188,10 +186,17 @@ abstract contract Subscription {
                 availableAmount += sub.paidFor - sub.spent;
             }
         }
-        require(amount <= availableAmount, "Insufficient available amount");
+        return availableAmount;
+    }
 
+    /**
+     * @notice Withdraws the contract balance to the beneficiary
+     * @param amount The amount to withdraw
+     */
+    function withdrawToBeneficiary(uint256 amount) external {
+        require(msg.sender == beneficiary, "Only the beneficiary can withdraw");
+        require(amount <= calculateAvailableAmountForBeneficiary(), "Insufficient available amount");
         feeToken.safeTransfer(beneficiary, amount);
-
         emit WithdrawalToBeneficiary(beneficiary, amount);
     }
 
