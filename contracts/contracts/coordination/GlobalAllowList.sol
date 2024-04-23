@@ -84,7 +84,6 @@ contract GlobalAllowList is IEncryptionAuthorizer {
     }
 
     /**
-     * @notice Checks if an address is authorized for a ritual
      * @param ritualId The ID of the ritual
      * @param evidence The evidence provided
      * @param ciphertextHeader The header of the ciphertext
