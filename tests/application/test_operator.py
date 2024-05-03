@@ -24,6 +24,7 @@ MIN_AUTHORIZATION = Web3.to_wei(40_000, "ether")
 MIN_OPERATOR_SECONDS = 24 * 60 * 60
 PENALTY_DEFAULT = 1000  # 10% penalty
 PENALTY_DURATION = 60 * 60 * 24  # 1 day in seconds
+PENALTY_INCREMENT = 2500
 
 
 def test_bond_operator(accounts, threshold_staking, taco_application, child_application, chain):
@@ -497,12 +498,35 @@ def test_penalize(accounts, threshold_staking, taco_application, child_applicati
     tx = child_application.penalize(staking_provider, sender=staking_provider)
     timestamp = tx.timestamp
     end_of_penalty = timestamp + PENALTY_DURATION
-    assert taco_application.getPenalty(staking_provider) == [PENALTY_DEFAULT, end_of_penalty]
-    assert taco_application.authorizedOverall() == min_authorization * 9 / 10
+    assert taco_application.getPenalty(staking_provider) == [
+        PENALTY_DEFAULT + PENALTY_INCREMENT,
+        end_of_penalty,
+    ]
+    assert taco_application.authorizedOverall() == min_authorization * 65 / 100  # 65%
     assert tx.events == [
         taco_application.Penalized(
             stakingProvider=staking_provider,
-            penaltyPercent=PENALTY_DEFAULT,
+            penaltyPercent=PENALTY_DEFAULT + PENALTY_INCREMENT,
+            endPenalty=end_of_penalty,
+        )
+    ]
+
+    # Penalize several times in a row
+    chain.pending_timestamp += PENALTY_DURATION
+    child_application.penalize(staking_provider, sender=staking_provider)  # 90%
+    child_application.penalize(staking_provider, sender=staking_provider)  # 65%
+    child_application.penalize(staking_provider, sender=staking_provider)  # 40%
+    child_application.penalize(staking_provider, sender=staking_provider)  # 15%
+    tx = child_application.penalize(staking_provider, sender=staking_provider)  # 0%
+    timestamp = tx.timestamp
+    end_of_penalty = timestamp + PENALTY_DURATION
+    penalty_base = taco_application.PENALTY_BASE()
+    assert taco_application.getPenalty(staking_provider) == [penalty_base, end_of_penalty]
+    assert taco_application.authorizedOverall() == 0
+    assert tx.events == [
+        taco_application.Penalized(
+            stakingProvider=staking_provider,
+            penaltyPercent=penalty_base,
             endPenalty=end_of_penalty,
         )
     ]
