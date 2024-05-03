@@ -28,6 +28,7 @@ REWARD_DURATION = 60 * 60 * 24 * 7  # one week in seconds
 DEAUTHORIZATION_DURATION = 60 * 60 * 24 * 60  # 60 days in seconds
 FLOATING_POINT_DIVISOR = 10**21
 REWARD_PORTION = MIN_AUTHORIZATION * 10**3
+PENALTY_DURATION = 60 * 60 * 24  # 1 day in seconds
 
 
 def test_push_reward(
@@ -248,6 +249,15 @@ def test_update_reward(
     taco_application.resynchronizeAuthorization(staking_provider_2, sender=creator)
     check_reward_no_confirmation()
 
+    # Penalize staking provider, no confirmed operator
+    child_application.penalize(staking_provider_2, sender=creator)
+    check_reward_no_confirmation()
+
+    # Reset reward after penalty, no confirmed operator
+    chain.pending_timestamp += PENALTY_DURATION
+    taco_application.resetReward(staking_provider_2, sender=creator)
+    check_reward_no_confirmation()
+
     # Wait and confirm operator
     taco_application.pushReward(reward_portion, sender=distributor)
     chain.pending_timestamp += reward_duration // 2
@@ -287,6 +297,15 @@ def test_update_reward(
     chain.pending_timestamp += reward_duration // 2
     threshold_staking.setAuthorized(staking_provider_2, value, sender=creator)
     taco_application.resynchronizeAuthorization(staking_provider_2, sender=creator)
+    check_reward_with_confirmation()
+
+    # Penalize staking provider with confirmation
+    child_application.penalize(staking_provider_2, sender=creator)
+    check_reward_with_confirmation()
+
+    # Reset reward after penalty, with confirmation
+    chain.pending_timestamp += PENALTY_DURATION
+    taco_application.resetReward(staking_provider_2, sender=creator)
     check_reward_with_confirmation()
 
     # Bond operator with confirmation (confirmation will be dropped)

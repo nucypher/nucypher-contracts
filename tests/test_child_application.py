@@ -56,7 +56,7 @@ def coordinator(project, child_application, creator):
     contract = project.CoordinatorForTACoChildApplicationMock.deploy(
         child_application, sender=creator
     )
-    child_application.initialize(contract.address, sender=creator)
+    child_application.initialize(contract.address, creator, sender=creator)
     return contract
 
 
@@ -321,3 +321,19 @@ def test_confirm_address(accounts, root_application, child_application, coordina
     all_locked, staking_providers = child_application.getActiveStakingProviders(0, 0)
     assert all_locked == 0
     assert len(staking_providers) == 0
+
+
+def test_penalize(accounts, root_application, child_application, coordinator):
+    (
+        creator,
+        staking_provider,
+        *everyone_else,
+    ) = accounts[0:]
+
+    # Penalize can be done only from adjudicator address
+    with ape.reverts("Only adjudicator allowed to penalize"):
+        child_application.penalize(staking_provider, sender=staking_provider)
+
+    tx = child_application.penalize(staking_provider, sender=creator)
+    assert root_application.penalties(staking_provider)
+    assert tx.events == [child_application.Penalized(stakingProvider=staking_provider)]

@@ -15,4 +15,6 @@ interface ITACoChildToRoot {
     event OperatorConfirmed(address indexed stakingProvider, address indexed operator);
 
     function confirmOperatorAddress(address operator) external;
+
+    function penalize(address stakingProvider) external;
 }

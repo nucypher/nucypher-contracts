@@ -12,6 +12,7 @@ contract RootApplicationForTACoChildApplicationMock {
     ITACoRootToChild public childApplication;
 
     mapping(address => bool) public confirmations;
+    mapping(address => bool) public penalties;
 
     function setChildApplication(ITACoRootToChild _childApplication) external {
         childApplication = _childApplication;
@@ -41,6 +42,10 @@ contract RootApplicationForTACoChildApplicationMock {
 
     function confirmOperatorAddress(address _operator) external {
         confirmations[_operator] = true;
+    }
+
+    function penalize(address _stakingProvider) external {
+        penalties[_stakingProvider] = true;
     }
 
     function resetConfirmation(address _operator) external {
