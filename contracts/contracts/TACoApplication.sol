@@ -245,7 +245,7 @@ contract TACoApplication is
      * @param _commitmentDeadline Last date to make a commitment
      * @param _penaltyDefault Default penalty percentage (as a value out of 10000)
      * @param _penaltyDuration Duration of penalty
-     * @param _penaltyIncrement Increment of penalty if it happens during previous penalty duration
+     * @param _penaltyIncrement Increment of penalty if violation occurs during an existing penalty period
      */
     constructor(
         IERC20 _token,
