@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../contracts/coordination/IEncryptionAuthorizer.sol";
 import "../contracts/coordination/Coordinator.sol";
+import "../contracts/coordination/IFeeModel.sol";
 
 contract CoordinatorForBetaProgramInitiatorMock {
     using SafeERC20 for IERC20;
@@ -15,33 +16,15 @@ contract CoordinatorForBetaProgramInitiatorMock {
         address[] providers;
         address authority;
         uint32 duration;
-        IEncryptionAuthorizer accessController;
         Coordinator.RitualState state;
         uint256 ritualCost;
+        IFeeModel feeModel;
     }
 
-    IERC20 public immutable currency;
-
-    uint256 public feeRatePerSecond = 10 ** 18;
     Ritual[] public rituals;
-
-    constructor(IERC20 _currency) {
-        currency = _currency;
-    }
-
-    function setFeeRatePerSecond(uint256 _feeRatePerSecond) external {
-        feeRatePerSecond = _feeRatePerSecond;
-    }
 
     function getRitualsLength() external view returns (uint256) {
         return rituals.length;
-    }
-
-    function getRitualInitiationCost(
-        address[] calldata _providers,
-        uint32 _duration
-    ) public view returns (uint256) {
-        return feeRatePerSecond * _providers.length * _duration;
     }
 
     function getRitualState(uint32 _ritualId) external view returns (Coordinator.RitualState) {
@@ -61,44 +44,33 @@ contract CoordinatorForBetaProgramInitiatorMock {
     }
 
     function initiateRitual(
+        IFeeModel _feeModel,
         address[] calldata _providers,
         address _authority,
-        uint32 _duration,
-        IEncryptionAuthorizer accessController
+        uint32 _duration
     ) external returns (uint32 ritualId) {
         Ritual storage ritual = rituals.push();
         ritual.initiator = msg.sender;
         ritual.providers = _providers;
         ritual.authority = _authority;
         ritual.duration = _duration;
-        ritual.accessController = accessController;
+        ritual.feeModel = _feeModel;
         ritual.state = Coordinator.RitualState.DKG_AWAITING_TRANSCRIPTS;
 
-        ritual.ritualCost = getRitualInitiationCost(_providers, _duration);
-        currency.safeTransferFrom(msg.sender, address(this), ritual.ritualCost);
+        uint32 id = uint32(rituals.length - 1);
+        _feeModel.processRitualPayment(msg.sender, id, _providers.length, _duration);
 
-        return uint32(rituals.length - 1);
+        return id;
     }
 
-    function feeDeduction(uint256 pending, uint256) public pure returns (uint256) {
-        return pending / 10;
+    function getInitiator(uint32 ritualId) external view returns (address) {
+        return rituals[ritualId].initiator;
     }
 
-    function pendingFees(uint256 _ritualId) external view returns (uint256) {
-        return rituals[_ritualId].ritualCost;
-    }
-
-    function processPendingFee(uint32 _ritualId) public returns (uint256) {
-        Ritual storage ritual = rituals[_ritualId];
-        uint256 refundableFee = 0;
-        if (
-            ritual.state == Coordinator.RitualState.DKG_TIMEOUT ||
-            ritual.state == Coordinator.RitualState.DKG_INVALID
-        ) {
-            refundableFee = ritual.ritualCost - feeDeduction(ritual.ritualCost, 0);
-            currency.safeTransfer(ritual.initiator, refundableFee);
-        }
-        ritual.ritualCost = 0;
-        return refundableFee;
+    function getTimestamps(
+        uint32 ritualId
+    ) external view returns (uint32 initTimestamp, uint32 endTimestamp) {
+        initTimestamp = uint32(block.timestamp);
+        endTimestamp = uint32(block.timestamp + rituals[ritualId].duration);
     }
 }

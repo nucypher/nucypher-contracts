@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "./FlatRateFeeModel.sol";
 
 import "./Coordinator.sol";
 
@@ -16,7 +17,6 @@ contract BetaProgramInitiator {
         address[] providers,
         address authority,
         uint32 duration,
-        IEncryptionAuthorizer accessController,
         uint256 payment
     );
 
@@ -30,7 +30,6 @@ contract BetaProgramInitiator {
         address[] providers;
         address authority;
         uint32 duration;
-        IEncryptionAuthorizer accessController;
         address sender;
         uint32 ritualId;
         uint256 payment;
@@ -41,14 +40,16 @@ contract BetaProgramInitiator {
     Coordinator public immutable coordinator;
     IERC20 public immutable currency;
     address public immutable executor; // TODO transferable role?
+    FlatRateFeeModel public immutable feeModel;
 
     InitiationRequest[] public requests;
 
-    constructor(Coordinator _coordinator, address _executor) {
+    constructor(Coordinator _coordinator, address _executor, FlatRateFeeModel _feeModel) {
         require(_executor != address(0), "Invalid parameters");
         coordinator = _coordinator;
-        currency = coordinator.currency();
+        currency = _feeModel.currency();
         executor = _executor;
+        feeModel = _feeModel;
     }
 
     function getRequestsLength() external view returns (uint256) {
@@ -63,17 +64,15 @@ contract BetaProgramInitiator {
     function registerInitiationRequest(
         address[] calldata providers,
         address authority,
-        uint32 duration,
-        IEncryptionAuthorizer accessController
+        uint32 duration
     ) external returns (uint256 requestIndex) {
-        uint256 ritualCost = coordinator.getRitualInitiationCost(providers, duration);
+        uint256 ritualCost = feeModel.getRitualInitiationCost(providers.length, duration);
 
         requestIndex = requests.length;
         InitiationRequest storage request = requests.push();
         request.providers = providers;
         request.authority = authority;
         request.duration = duration;
-        request.accessController = accessController;
         request.sender = msg.sender;
         request.ritualId = NO_RITUAL;
         request.payment = ritualCost;
@@ -84,7 +83,6 @@ contract BetaProgramInitiator {
             providers,
             authority,
             duration,
-            accessController,
             ritualCost
         );
         currency.safeTransferFrom(msg.sender, address(this), ritualCost);
@@ -119,15 +117,15 @@ contract BetaProgramInitiator {
 
         address[] memory providers = request.providers;
         uint32 duration = request.duration;
-        uint256 ritualCost = coordinator.getRitualInitiationCost(providers, duration);
+        uint256 ritualCost = feeModel.getRitualInitiationCost(providers.length, duration);
         require(ritualCost == request.payment, "Ritual initiation cost has changed");
-        currency.approve(address(coordinator), ritualCost);
+        currency.approve(address(feeModel), ritualCost);
 
         uint32 ritualId = coordinator.initiateRitual(
+            feeModel,
             providers,
             request.authority,
-            duration,
-            request.accessController
+            duration
         );
         request.ritualId = ritualId;
         emit RequestExecuted(requestIndex, ritualId);
@@ -149,9 +147,9 @@ contract BetaProgramInitiator {
 
         // Process pending fees in Coordinator, if necessary
         uint256 refundAmount = request.payment;
-        refundAmount -= coordinator.feeDeduction(request.payment, request.duration);
-        if (coordinator.pendingFees(ritualId) > 0) {
-            coordinator.processPendingFee(ritualId);
+        refundAmount -= feeModel.feeDeduction(request.payment, request.duration);
+        if (feeModel.pendingFees(ritualId) > 0) {
+            feeModel.processPendingFee(ritualId);
         }
 
         // Erase payment and transfer refund to original sender
