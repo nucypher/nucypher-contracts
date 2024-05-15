@@ -53,6 +53,7 @@ contract FlatRateFeeModel is IFeeModel, Ownable {
         uint256 numberOfProviders,
         uint32 duration
     ) external override {
+        require(msg.sender == address(coordinator), "Only coordinator can call process payment");
         uint256 ritualCost = getRitualInitiationCost(numberOfProviders, duration);
         require(ritualCost > 0, "Invalid ritual cost");
         totalPendingFees += ritualCost;
