@@ -195,7 +195,10 @@ abstract contract Subscription {
      */
     function withdrawToBeneficiary(uint256 amount) external {
         require(msg.sender == beneficiary, "Only the beneficiary can withdraw");
-        require(amount <= calculateAvailableAmountForBeneficiary(), "Insufficient available amount");
+        require(
+            amount <= calculateAvailableAmountForBeneficiary(),
+            "Insufficient available amount"
+        );
         feeToken.safeTransfer(beneficiary, amount);
         emit WithdrawalToBeneficiary(beneficiary, amount);
     }
