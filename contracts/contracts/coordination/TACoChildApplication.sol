@@ -45,6 +45,7 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
 
     ITACoChildToRoot public immutable rootApplication;
     address public coordinator;
+    address public infractionCollector;
 
     uint96 public immutable minimumAuthorization;
 
@@ -77,10 +78,13 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
     /**
      * @notice Initialize function for using with OpenZeppelin proxy
      */
-    function initialize(address _coordinator, address _adjudicator) external initializer {
-        require(coordinator == address(0) || adjudicator == address(0), "Contracts already set");
+    function initialize(address _coordinator, address _infractionCollector) external initializer {
         require(
-            _coordinator != address(0) && _adjudicator != address(0),
+            coordinator == address(0) || infractionCollector == address(0),
+            "Contracts already set"
+        );
+        require(
+            _coordinator != address(0) && _infractionCollector != address(0),
             "Contracts must be specified"
         );
         require(
@@ -88,7 +92,7 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
             "Invalid coordinator"
         );
         coordinator = _coordinator;
-        adjudicator = _adjudicator;
+        infractionCollector = _infractionCollector;
     }
 
     function setBlockingRitualsAdmin(address _blockingRitualsAdmin) external reinitializer(3) {
@@ -228,7 +232,10 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
      * @param _stakingProvider Staking provider address
      */
     function penalize(address _stakingProvider) external override {
-        require(msg.sender == address(adjudicator), "Only adjudicator allowed to penalize");
+        require(
+            msg.sender == address(infractionCollector),
+            "Only infractionCollector allowed to penalize"
+        );
         rootApplication.penalize(_stakingProvider);
         emit Penalized(_stakingProvider);
     }
