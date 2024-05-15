@@ -87,6 +87,8 @@ contract ManagedAllowList is GlobalAllowList {
     function _beforeSetAuthorization(
         uint32 ritualId,
         address[] calldata addresses,
+        // TODO: Currently unused, remove?
+        // solhint-disable-next-line no-unused-vars
         bool value
     ) internal view override {
         for (uint256 i = 0; i < addresses.length; i++) {

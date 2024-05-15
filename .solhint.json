@@ -32,7 +32,6 @@
     "check-send-result": "error",
     "func-visibility": ["error", { "ignoreConstructors": true }],
     "multiple-sends": "error",
-    "no-complex-fallback": "error",
     "no-inline-assembly": "off",
     "no-unused-import": "error",
     "not-rely-on-block-hash": "error",
