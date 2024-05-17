@@ -14,8 +14,8 @@ TAPIR = ARTIFACTS_DIR / "tapir.json"
 
 def main():
     deployer = Deployer.from_yaml(filepath=CONSTRUCTOR_PARAMS_FILEPATH, verify=VERIFY)
-    mnaged_allow_list = deployer.deploy(project.ManagedAllowList)
-    deployments = [mnaged_allow_list]
+    managed_allow_list = deployer.deploy(project.ManagedAllowList)
+    deployments = [managed_allow_list]
     deployer.finalize(deployments=deployments)
 
     for domain in (LYNX, TAPIR):
