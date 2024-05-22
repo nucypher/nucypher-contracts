@@ -98,4 +98,18 @@ contract FlatRateFeeModel is IFeeModel, Ownable {
         );
         currency.safeTransfer(msg.sender, amount);
     }
+
+    /**
+     * @dev This function is called before the setAuthorizations function
+     * @param ritualId The ID of the ritual
+     * @param addresses The addresses to be authorized
+     * @param value The authorization status
+     */
+    function beforeSetAuthorization(
+        uint32 ritualId,
+        address[] calldata addresses,
+        bool value
+    ) external view {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 }

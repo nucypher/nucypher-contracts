@@ -22,4 +22,16 @@ interface IFeeModel {
         uint256 numberOfProviders,
         uint32 duration
     ) external;
+
+    /**
+     * @dev This function is called before the setAuthorizations function
+     * @param ritualId The ID of the ritual
+     * @param addresses The addresses to be authorized
+     * @param value The authorization status
+     */
+    function beforeSetAuthorization(
+        uint32 ritualId,
+        address[] calldata addresses,
+        bool value
+    ) external;
 }
