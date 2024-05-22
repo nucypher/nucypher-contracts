@@ -39,9 +39,9 @@ contract ManagedAllowList is GlobalAllowList {
      */
     constructor(
         Coordinator _coordinator,
+        IFeeModel _feeModel,
         UpfrontSubscriptionWithEncryptorsCap _subscription
-    ) GlobalAllowList(_coordinator) {
-        require(address(_coordinator) != address(0), "Coordinator cannot be the zero address");
+    ) GlobalAllowList(_coordinator, _feeModel) {
         require(address(_subscription) != address(0), "Subscription cannot be the zero address");
         subscription = _subscription;
     }
@@ -88,9 +88,9 @@ contract ManagedAllowList is GlobalAllowList {
         uint32 ritualId,
         address[] calldata addresses,
         // TODO: Currently unused, remove?
-        // solhint-disable-next-line no-unused-vars
         bool value
-    ) internal view override {
+    ) internal override {
+        super._beforeSetAuthorization(ritualId, addresses, value);
         for (uint256 i = 0; i < addresses.length; i++) {
             require(
                 authActions[ritualId] <
