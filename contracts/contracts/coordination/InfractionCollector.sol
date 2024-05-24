@@ -6,10 +6,10 @@ import "./Coordinator.sol";
 import "./TACoChildApplication.sol";
 
 contract InfractionCollector is OwnableUpgradeable {
-    Coordinator private coordinator;
+    Coordinator public coordinator;
 
     // Reference to the TACoChildApplication contract
-    TACoChildApplication private tacoChildApplication;
+    TACoChildApplication public tacoChildApplication;
 
     // Mapping to keep track of reported infractions
     mapping(uint32 => mapping(address => bool)) private infractions;
