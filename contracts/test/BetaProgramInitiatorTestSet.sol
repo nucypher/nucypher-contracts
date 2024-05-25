@@ -16,6 +16,7 @@ contract CoordinatorForBetaProgramInitiatorMock {
         address[] providers;
         address authority;
         uint32 duration;
+        IEncryptionAuthorizer accessController;
         Coordinator.RitualState state;
         uint256 ritualCost;
         IFeeModel feeModel;
@@ -47,13 +48,15 @@ contract CoordinatorForBetaProgramInitiatorMock {
         IFeeModel _feeModel,
         address[] calldata _providers,
         address _authority,
-        uint32 _duration
+        uint32 _duration,
+        IEncryptionAuthorizer _accessController
     ) external returns (uint32 ritualId) {
         Ritual storage ritual = rituals.push();
         ritual.initiator = msg.sender;
         ritual.providers = _providers;
         ritual.authority = _authority;
         ritual.duration = _duration;
+        ritual.accessController = _accessController;
         ritual.feeModel = _feeModel;
         ritual.state = Coordinator.RitualState.DKG_AWAITING_TRANSCRIPTS;
 

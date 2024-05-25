@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./FlatRateFeeModel.sol";
-
+import "./IEncryptionAuthorizer.sol";
 import "./Coordinator.sol";
 
 contract BetaProgramInitiator {
@@ -17,6 +17,7 @@ contract BetaProgramInitiator {
         address[] providers,
         address authority,
         uint32 duration,
+        IEncryptionAuthorizer accessController,
         uint256 payment
     );
 
@@ -30,6 +31,7 @@ contract BetaProgramInitiator {
         address[] providers;
         address authority;
         uint32 duration;
+        IEncryptionAuthorizer accessController;
         address sender;
         uint32 ritualId;
         uint256 payment;
@@ -64,7 +66,8 @@ contract BetaProgramInitiator {
     function registerInitiationRequest(
         address[] calldata providers,
         address authority,
-        uint32 duration
+        uint32 duration,
+        IEncryptionAuthorizer accessController
     ) external returns (uint256 requestIndex) {
         uint256 ritualCost = feeModel.getRitualInitiationCost(providers.length, duration);
 
@@ -73,6 +76,7 @@ contract BetaProgramInitiator {
         request.providers = providers;
         request.authority = authority;
         request.duration = duration;
+        request.accessController = accessController;
         request.sender = msg.sender;
         request.ritualId = NO_RITUAL;
         request.payment = ritualCost;
@@ -83,6 +87,7 @@ contract BetaProgramInitiator {
             providers,
             authority,
             duration,
+            accessController,
             ritualCost
         );
         currency.safeTransferFrom(msg.sender, address(this), ritualCost);
@@ -125,7 +130,8 @@ contract BetaProgramInitiator {
             feeModel,
             providers,
             request.authority,
-            duration
+            duration,
+            request.accessController
         );
         request.ritualId = ritualId;
         emit RequestExecuted(requestIndex, ritualId);

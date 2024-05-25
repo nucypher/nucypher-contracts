@@ -121,7 +121,7 @@ def global_allow_list(project, deployer, coordinator):
     return contract
 
 
-def initiate_ritual(coordinator, fee_model, erc20, authority, nodes):
+def initiate_ritual(coordinator, fee_model, erc20, authority, nodes, allow_logic):
     for node in nodes:
         public_key = gen_public_key()
         assert not coordinator.isProviderPublicKeySet(node)
@@ -130,7 +130,9 @@ def initiate_ritual(coordinator, fee_model, erc20, authority, nodes):
 
     cost = fee_model.getRitualInitiationCost(len(nodes), DURATION)
     erc20.approve(fee_model.address, cost, sender=authority)
-    tx = coordinator.initiateRitual(fee_model, nodes, authority, DURATION, sender=authority)
+    tx = coordinator.initiateRitual(
+        fee_model, nodes, authority, DURATION, allow_logic.address, sender=authority
+    )
     return authority, tx
 
 
@@ -143,6 +145,7 @@ def test_authorize_using_global_allow_list(
         erc20=erc20,
         authority=initiator,
         nodes=nodes,
+        allow_logic=global_allow_list,
     )
 
     # This block mocks the signature of a threshold decryption request

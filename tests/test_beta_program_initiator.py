@@ -23,9 +23,10 @@ DAY_IN_SECONDS = 60 * 60 * 24
 
 AUTHORITY_SLOT = 0
 DURATION_SLOT = 1
-SENDER_SLOT = 2
-RITUAL_ID_SLOT = 3
-PAYMENT_SLOT = 4
+ACCESS_CONTROLLER_SLOT = 2
+SENDER_SLOT = 3
+RITUAL_ID_SLOT = 4
+PAYMENT_SLOT = 5
 FEE_RATE = 42
 
 RitualState = IntEnum(
@@ -83,6 +84,7 @@ def test_register(accounts, beta_program_initiator, token, fee_model):
         authority,
         node_1,
         node_2,
+        access_controller,
         *everyone_else,
     ) = accounts[2:]
     no_ritual = beta_program_initiator.NO_RITUAL()
@@ -94,20 +96,21 @@ def test_register(accounts, beta_program_initiator, token, fee_model):
     # Can't register request without token transfer approval
     with ape.reverts():
         beta_program_initiator.registerInitiationRequest(
-            nodes, authority, duration, sender=initiator_1
+            nodes, authority, duration, access_controller, sender=initiator_1
         )
 
     # Register request
     token.mint(initiator_1, 10 * ritual_cost, sender=initiator_1)
     token.approve(beta_program_initiator.address, 10 * ritual_cost, sender=initiator_1)
     tx = beta_program_initiator.registerInitiationRequest(
-        nodes, authority, duration, sender=initiator_1
+        nodes, authority, duration, access_controller, sender=initiator_1
     )
     assert beta_program_initiator.getRequestsLength() == 1
     assert beta_program_initiator.getProviders(0) == nodes
     request = beta_program_initiator.requests(0)
     assert request[AUTHORITY_SLOT] == authority
     assert request[DURATION_SLOT] == duration
+    assert request[ACCESS_CONTROLLER_SLOT] == access_controller
     assert request[SENDER_SLOT] == initiator_1
     assert request[RITUAL_ID_SLOT] == no_ritual
     assert request[PAYMENT_SLOT] == ritual_cost
@@ -121,6 +124,7 @@ def test_register(accounts, beta_program_initiator, token, fee_model):
     assert event.providers == [n.address for n in nodes]
     assert event.authority == authority
     assert event.duration == duration
+    assert event.accessController == access_controller
     assert event.payment == ritual_cost
 
     # Register another request
@@ -131,13 +135,14 @@ def test_register(accounts, beta_program_initiator, token, fee_model):
     token.mint(initiator_2, ritual_cost_2, sender=initiator_2)
     token.approve(beta_program_initiator.address, ritual_cost_2, sender=initiator_2)
     tx = beta_program_initiator.registerInitiationRequest(
-        nodes, authority, duration, sender=initiator_2
+        nodes, authority, duration, access_controller, sender=initiator_2
     )
     assert beta_program_initiator.getRequestsLength() == 2
     assert beta_program_initiator.getProviders(1) == nodes
     request = beta_program_initiator.requests(1)
     assert request[AUTHORITY_SLOT] == authority
     assert request[DURATION_SLOT] == duration
+    assert request[ACCESS_CONTROLLER_SLOT] == access_controller
     assert request[SENDER_SLOT] == initiator_2
     assert request[RITUAL_ID_SLOT] == no_ritual
     assert request[PAYMENT_SLOT] == ritual_cost_2
@@ -151,6 +156,7 @@ def test_register(accounts, beta_program_initiator, token, fee_model):
     assert event.providers == [n.address for n in nodes]
     assert event.authority == authority
     assert event.duration == duration
+    assert event.accessController == access_controller
     assert event.payment == ritual_cost_2
 
 
@@ -161,6 +167,7 @@ def test_cancel(accounts, beta_program_initiator, token, executor, fee_model):
         authority,
         node_1,
         node_2,
+        access_controller,
         *everyone_else,
     ) = accounts[2:]
 
@@ -178,9 +185,15 @@ def test_cancel(accounts, beta_program_initiator, token, executor, fee_model):
         beta_program_initiator.cancelInitiationRequest(0, sender=executor)
 
     # Register three requests
-    beta_program_initiator.registerInitiationRequest(nodes, authority, duration, sender=initiator_1)
-    beta_program_initiator.registerInitiationRequest(nodes, authority, duration, sender=initiator_1)
-    beta_program_initiator.registerInitiationRequest(nodes, authority, duration, sender=initiator_2)
+    beta_program_initiator.registerInitiationRequest(
+        nodes, authority, duration, access_controller, sender=initiator_1
+    )
+    beta_program_initiator.registerInitiationRequest(
+        nodes, authority, duration, access_controller, sender=initiator_1
+    )
+    beta_program_initiator.registerInitiationRequest(
+        nodes, authority, duration, access_controller, sender=initiator_2
+    )
 
     # Only initiator or executor can cancel request
     with ape.reverts("Not allowed to cancel"):
@@ -228,6 +241,8 @@ def test_execute(accounts, beta_program_initiator, token, coordinator, executor,
         authority_2,
         node_1,
         node_2,
+        access_controller_1,
+        access_controller_2,
         *everyone_else,
     ) = accounts[2:]
     no_ritual = beta_program_initiator.NO_RITUAL()
@@ -250,13 +265,13 @@ def test_execute(accounts, beta_program_initiator, token, coordinator, executor,
 
     # Register three requests
     beta_program_initiator.registerInitiationRequest(
-        nodes_1, authority_1, duration_1, sender=initiator_1
+        nodes_1, authority_1, duration_1, access_controller_1, sender=initiator_1
     )
     beta_program_initiator.registerInitiationRequest(
-        nodes_2, authority_2, duration_2, sender=initiator_2
+        nodes_2, authority_2, duration_2, access_controller_2, sender=initiator_2
     )
     beta_program_initiator.registerInitiationRequest(
-        nodes_2, authority_1, duration_1, sender=initiator_1
+        nodes_2, authority_1, duration_1, access_controller_2, sender=initiator_1
     )
 
     # Only executor can execute request
@@ -283,9 +298,10 @@ def test_execute(accounts, beta_program_initiator, token, coordinator, executor,
     assert ritual[0] == beta_program_initiator.address
     assert ritual[1] == authority_2
     assert ritual[2] == duration_2
-    assert ritual[3] == 1
-    # assert ritual[4] == ritual_cost_2
-    assert ritual[5] == fee_model.address
+    assert ritual[3] == access_controller_2
+    assert ritual[4] == 1
+    # assert ritual[5] == ritual_cost_2
+    assert ritual[6] == fee_model.address
 
     events = beta_program_initiator.RequestExecuted.from_receipt(tx)
     assert events == [beta_program_initiator.RequestExecuted(1, 0)]
@@ -319,9 +335,10 @@ def test_execute(accounts, beta_program_initiator, token, coordinator, executor,
     assert ritual[0] == beta_program_initiator.address
     assert ritual[1] == authority_1
     assert ritual[2] == duration_1
-    assert ritual[3] == 1
-    # assert ritual[4] == ritual_cost_1
-    assert ritual[5] == fee_model.address
+    assert ritual[3] == access_controller_1
+    assert ritual[4] == 1
+    # assert ritual[5] == ritual_cost_1
+    assert ritual[6] == fee_model.address
 
     events = beta_program_initiator.RequestExecuted.from_receipt(tx)
     assert events == [beta_program_initiator.RequestExecuted(0, 1)]
@@ -334,6 +351,7 @@ def test_refund(accounts, beta_program_initiator, token, coordinator, executor, 
         authority,
         node_1,
         node_2,
+        access_controller,
         *everyone_else,
     ) = accounts[2:]
 
@@ -354,13 +372,13 @@ def test_refund(accounts, beta_program_initiator, token, coordinator, executor, 
 
     # Register three requests
     beta_program_initiator.registerInitiationRequest(
-        nodes, authority, duration_1, sender=initiator_1
+        nodes, authority, duration_1, access_controller, sender=initiator_1
     )
     beta_program_initiator.registerInitiationRequest(
-        nodes, authority, duration_2, sender=initiator_2
+        nodes, authority, duration_2, access_controller, sender=initiator_2
     )
     beta_program_initiator.registerInitiationRequest(
-        nodes, authority, duration_2, sender=initiator_1
+        nodes, authority, duration_2, access_controller, sender=initiator_1
     )
 
     # Can't refund not executed request
