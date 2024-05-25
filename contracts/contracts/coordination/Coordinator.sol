@@ -8,6 +8,7 @@ import "./IFeeModel.sol";
 import "./IReimbursementPool.sol";
 import "../lib/BLS12381.sol";
 import "../../threshold/ITACoChildApplication.sol";
+import "./IEncryptionAuthorizer.sol";
 
 /**
  * @title Coordinator
@@ -74,7 +75,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         uint16 threshold;
         bool aggregationMismatch;
         //
-        address stub1; // former accessController
+        IEncryptionAuthorizer accessController;
         BLS12381.G1Point publicKey;
         bytes aggregatedTranscript;
         Participant[] participant;
@@ -89,14 +90,14 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     bytes32 public constant TREASURY_ROLE = keccak256("TREASURY_ROLE");
 
     ITACoChildApplication public immutable application;
-    uint96 private immutable minAuthorization; // todo remove
+    uint96 private immutable minAuthorization; // TODO use child app for checking eligibility
 
     Ritual[] public rituals;
     uint32 public timeout;
     uint16 public maxDkgSize;
     bool public isInitiationPublic;
 
-    uint256 public stub1; // former totalPendingFees
+    uint256 private stub1; // former totalPendingFees
     mapping(uint256 => uint256) private stub2; // former pendingFees
     address private stub3; // former feeModel
 
@@ -113,7 +114,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
     constructor(ITACoChildApplication _application) {
         application = _application;
-        minAuthorization = _application.minimumAuthorization(); // TODO remove
+        minAuthorization = _application.minimumAuthorization(); // TODO use child app for checking eligibility
     }
 
     /**
@@ -267,7 +268,8 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         IFeeModel feeModel,
         address[] calldata providers,
         address authority,
-        uint32 duration
+        uint32 duration,
+        IEncryptionAuthorizer accessController
     ) external returns (uint32) {
         require(authority != address(0), "Invalid authority");
 
@@ -288,6 +290,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         ritual.threshold = getThresholdForRitualSize(length);
         ritual.initTimestamp = uint32(block.timestamp);
         ritual.endTimestamp = ritual.initTimestamp + duration;
+        ritual.accessController = accessController;
 
         address previous = address(0);
         for (uint256 i = 0; i < length; i++) {

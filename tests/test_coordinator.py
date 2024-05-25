@@ -116,27 +116,51 @@ def fee_model(project, deployer, coordinator, erc20, treasury):
     return contract
 
 
+@pytest.fixture()
+def global_allow_list(project, deployer, coordinator):
+    contract = project.GlobalAllowList.deploy(coordinator.address, sender=deployer)
+    return contract
+
+
 def test_initial_parameters(coordinator):
     assert coordinator.maxDkgSize() == MAX_DKG_SIZE
     assert coordinator.timeout() == TIMEOUT
     assert coordinator.numberOfRituals() == 0
 
 
-def test_invalid_initiate_ritual(project, coordinator, nodes, accounts, initiator, fee_model):
+def test_invalid_initiate_ritual(
+    project, coordinator, nodes, accounts, initiator, fee_model, global_allow_list
+):
     with ape.reverts("Sender can't initiate ritual"):
         sender = accounts[3]
-        coordinator.initiateRitual(fee_model.address, nodes, sender, DURATION, sender=sender)
+        coordinator.initiateRitual(
+            fee_model.address, nodes, sender, DURATION, global_allow_list.address, sender=sender
+        )
 
     with ape.reverts("Invalid number of nodes"):
         coordinator.initiateRitual(
-            fee_model.address, nodes[:5] * 20, initiator, DURATION, sender=initiator
+            fee_model.address,
+            nodes[:5] * 20,
+            initiator,
+            DURATION,
+            global_allow_list.address,
+            sender=initiator,
         )
 
     with ape.reverts("Invalid ritual duration"):
-        coordinator.initiateRitual(fee_model.address, nodes, initiator, 0, sender=initiator)
+        coordinator.initiateRitual(
+            fee_model.address, nodes, initiator, 0, global_allow_list.address, sender=initiator
+        )
 
     with ape.reverts("Provider has not set their public key"):
-        coordinator.initiateRitual(fee_model.address, nodes, initiator, DURATION, sender=initiator)
+        coordinator.initiateRitual(
+            fee_model.address,
+            nodes,
+            initiator,
+            DURATION,
+            global_allow_list.address,
+            sender=initiator,
+        )
 
     for node in nodes:
         public_key = gen_public_key()
@@ -144,15 +168,27 @@ def test_invalid_initiate_ritual(project, coordinator, nodes, accounts, initiato
 
     with ape.reverts("Providers must be sorted"):
         coordinator.initiateRitual(
-            fee_model.address, nodes[1:] + [nodes[0]], initiator, DURATION, sender=initiator
+            fee_model.address,
+            nodes[1:] + [nodes[0]],
+            initiator,
+            DURATION,
+            global_allow_list.address,
+            sender=initiator,
         )
 
     with ape.reverts(project.NuCypherToken.ERC20InsufficientAllowance):
         # Sender didn't approve enough tokens
-        coordinator.initiateRitual(fee_model.address, nodes, initiator, DURATION, sender=initiator)
+        coordinator.initiateRitual(
+            fee_model.address,
+            nodes,
+            initiator,
+            DURATION,
+            global_allow_list.address,
+            sender=initiator,
+        )
 
 
-def initiate_ritual(coordinator, fee_model, erc20, authority, nodes):
+def initiate_ritual(coordinator, fee_model, erc20, authority, nodes, allow_logic):
     for node in nodes:
         public_key = gen_public_key()
         assert not coordinator.isProviderPublicKeySet(node)
@@ -161,17 +197,22 @@ def initiate_ritual(coordinator, fee_model, erc20, authority, nodes):
 
     cost = fee_model.getRitualInitiationCost(len(nodes), DURATION)
     erc20.approve(fee_model.address, cost, sender=authority)
-    tx = coordinator.initiateRitual(fee_model, nodes, authority, DURATION, sender=authority)
+    tx = coordinator.initiateRitual(
+        fee_model, nodes, authority, DURATION, allow_logic.address, sender=authority
+    )
     return authority, tx
 
 
-def test_initiate_ritual(coordinator, nodes, initiator, erc20, fee_model, deployer, treasury):
+def test_initiate_ritual(
+    coordinator, nodes, initiator, erc20, fee_model, deployer, treasury, global_allow_list
+):
     authority, tx = initiate_ritual(
         coordinator=coordinator,
         fee_model=fee_model,
         erc20=erc20,
         authority=initiator,
         nodes=nodes,
+        allow_logic=global_allow_list,
     )
 
     ritualID = 0
@@ -194,7 +235,7 @@ def test_initiate_ritual(coordinator, nodes, initiator, erc20, fee_model, deploy
     assert ritual_struct[6] == len(nodes)
     assert ritual_struct[7] == 1 + len(nodes) // 2  # threshold
     assert not ritual_struct[8]  # aggregationMismatch
-    # assert ritual_struct[9] == global_allow_list.address  # accessController
+    assert ritual_struct[9] == global_allow_list.address  # accessController
     assert ritual_struct[10] == (b"\x00" * 32, b"\x00" * 16)  # publicKey
     assert not ritual_struct[11]  # aggregatedTranscript
 
@@ -229,13 +270,14 @@ def test_provider_public_key(coordinator, nodes):
     assert coordinator.getProviderPublicKey(selected_provider, ritual_id) == public_key
 
 
-def test_post_transcript(coordinator, nodes, initiator, erc20, fee_model):
+def test_post_transcript(coordinator, nodes, initiator, erc20, fee_model, global_allow_list):
     initiate_ritual(
         coordinator=coordinator,
         fee_model=fee_model,
         erc20=erc20,
         authority=initiator,
         nodes=nodes,
+        allow_logic=global_allow_list,
     )
     transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
 
@@ -259,13 +301,16 @@ def test_post_transcript(coordinator, nodes, initiator, erc20, fee_model):
     assert coordinator.getRitualState(0) == RitualState.DKG_AWAITING_AGGREGATIONS
 
 
-def test_post_transcript_but_not_part_of_ritual(coordinator, nodes, initiator, erc20, fee_model):
+def test_post_transcript_but_not_part_of_ritual(
+    coordinator, nodes, initiator, erc20, fee_model, global_allow_list
+):
     initiate_ritual(
         coordinator=coordinator,
         fee_model=fee_model,
         erc20=erc20,
         authority=initiator,
         nodes=nodes,
+        allow_logic=global_allow_list,
     )
 
     transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
@@ -274,7 +319,7 @@ def test_post_transcript_but_not_part_of_ritual(coordinator, nodes, initiator, e
 
 
 def test_post_transcript_but_already_posted_transcript(
-    coordinator, nodes, initiator, erc20, fee_model
+    coordinator, nodes, initiator, erc20, fee_model, global_allow_list
 ):
     initiate_ritual(
         coordinator=coordinator,
@@ -282,6 +327,7 @@ def test_post_transcript_but_already_posted_transcript(
         erc20=erc20,
         authority=initiator,
         nodes=nodes,
+        allow_logic=global_allow_list,
     )
     transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
     coordinator.postTranscript(0, transcript, sender=nodes[0])
@@ -290,7 +336,7 @@ def test_post_transcript_but_already_posted_transcript(
 
 
 def test_post_transcript_but_not_waiting_for_transcripts(
-    coordinator, nodes, initiator, erc20, fee_model
+    coordinator, nodes, initiator, erc20, fee_model, global_allow_list
 ):
     initiate_ritual(
         coordinator=coordinator,
@@ -298,6 +344,7 @@ def test_post_transcript_but_not_waiting_for_transcripts(
         erc20=erc20,
         authority=initiator,
         nodes=nodes,
+        allow_logic=global_allow_list,
     )
     transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
     for node in nodes:
@@ -307,13 +354,14 @@ def test_post_transcript_but_not_waiting_for_transcripts(
         coordinator.postTranscript(0, transcript, sender=nodes[1])
 
 
-def test_get_participants(coordinator, nodes, initiator, erc20, fee_model):
+def test_get_participants(coordinator, nodes, initiator, erc20, fee_model, global_allow_list):
     initiate_ritual(
         coordinator=coordinator,
         fee_model=fee_model,
         erc20=erc20,
         authority=initiator,
         nodes=nodes,
+        allow_logic=global_allow_list,
     )
     transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
 
@@ -360,13 +408,14 @@ def test_get_participants(coordinator, nodes, initiator, erc20, fee_model):
         assert index == len(nodes)
 
 
-def test_get_participant(nodes, coordinator, initiator, erc20, fee_model):
+def test_get_participant(nodes, coordinator, initiator, erc20, fee_model, global_allow_list):
     initiate_ritual(
         coordinator=coordinator,
         fee_model=fee_model,
         erc20=erc20,
         authority=initiator,
         nodes=nodes,
+        allow_logic=global_allow_list,
     )
     transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
 
@@ -406,13 +455,16 @@ def test_get_participant(nodes, coordinator, initiator, erc20, fee_model):
             coordinator.getParticipantFromProvider(0, new_account.address)
 
 
-def test_post_aggregation(coordinator, nodes, initiator, erc20, fee_model, treasury, deployer):
+def test_post_aggregation(
+    coordinator, nodes, initiator, erc20, fee_model, treasury, deployer, global_allow_list
+):
     initiate_ritual(
         coordinator=coordinator,
         fee_model=fee_model,
         erc20=erc20,
         authority=initiator,
         nodes=nodes,
+        allow_logic=global_allow_list,
     )
     ritualID = 0
     transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
@@ -460,7 +512,7 @@ def test_post_aggregation(coordinator, nodes, initiator, erc20, fee_model, treas
 
 
 def test_post_aggregation_fails(
-    coordinator, nodes, initiator, erc20, fee_model, treasury, deployer
+    coordinator, nodes, initiator, erc20, fee_model, treasury, deployer, global_allow_list
 ):
     initiator_balance_before_payment = erc20.balanceOf(initiator)
 
@@ -470,6 +522,7 @@ def test_post_aggregation_fails(
         erc20=erc20,
         authority=initiator,
         nodes=nodes,
+        allow_logic=global_allow_list,
     )
     ritualID = 0
     transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
