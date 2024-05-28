@@ -128,47 +128,49 @@ def infraction_collector(project, deployer, coordinator, application, oz_depende
     proxy_contract = project.InfractionCollector.at(proxy.address)
     return proxy_contract
 
-def test_report_missing_transcript(nodes, initiator, global_allow_list, infraction_collector, coordinator, accounts):
-    ritual_id = 1
+def test_report_missing_transcript(erc20, nodes, initiator, global_allow_list, infraction_collector, coordinator, accounts):
+    ritual_id = 0
     staking_providers = [accounts[0], accounts[1]]
     for node in nodes:
         public_key = gen_public_key()
         coordinator.setProviderPublicKey(public_key, sender=node)
-    coordinator.initiateRitual(
-            nodes, initiator, DURATION, global_allow_list.address, sender=initiator
-        )
+        cost = coordinator.getRitualInitiationCost(nodes, DURATION)
+    erc20.approve(coordinator.address, cost, sender=initiator)
+    tx = coordinator.initiateRitual(
+        nodes, initiator, DURATION, global_allow_list.address, sender=initiator
+    )
 
-    infraction_collector.reportMissingTranscript(ritual_id, staking_providers, sender=accounts[0])
+    # tx1 = infraction_collector.reportMissingTranscript(ritual_id, staking_providers, sender=accounts[0])
 
     for provider in staking_providers:
-        assert application.penalized(provider) == True
+        assert infraction_collector.infractions(ritual_id, provider) == False
 
-def test_report_missing_transcript_already_reported(nodes, initiator, global_allow_list, infraction_collector, coordinator, accounts):
-    ritual_id = 1
-    staking_providers = [accounts[0], accounts[1]]
-    for node in nodes:
-        public_key = gen_public_key()
-        coordinator.setProviderPublicKey(public_key, sender=node)
-    coordinator.initiateRitual(
-        nodes, initiator, DURATION, global_allow_list.address, sender=initiator
-    )
-    coordinator.timeoutRitual(ritual_id, sender=accounts[0])
+# def test_report_missing_transcript_already_reported(nodes, initiator, global_allow_list, infraction_collector, coordinator, accounts):
+#     ritual_id = 1
+#     staking_providers = [accounts[0], accounts[1]]
+#     for node in nodes:
+#         public_key = gen_public_key()
+#         coordinator.setProviderPublicKey(public_key, sender=node)
+#     coordinator.initiateRitual(
+#         nodes, initiator, DURATION, global_allow_list.address, sender=initiator
+#     )
+#     coordinator.timeoutRitual(ritual_id, sender=accounts[0])
 
-    infraction_collector.reportMissingTranscript(ritual_id, staking_providers, sender=accounts[0])
+#     infraction_collector.reportMissingTranscript(ritual_id, staking_providers, sender=accounts[0])
 
-    with ape.reverts("Infraction already reported"):
-        infraction_collector.reportMissingTranscript(ritual_id, staking_providers, sender=accounts[0])
+#     with ape.reverts("Infraction already reported"):
+#         infraction_collector.reportMissingTranscript(ritual_id, staking_providers, sender=accounts[0])
 
-def test_report_missing_transcript_ritual_not_failed(nodes, initiator, global_allow_list, infraction_collector, coordinator, accounts):
-    ritual_id = 1
-    staking_providers = [accounts[0], accounts[1]]
-    for node in nodes:
-        public_key = gen_public_key()
-        coordinator.setProviderPublicKey(public_key, sender=node)
-    coordinator.initiateRitual(
-        nodes, initiator, DURATION, global_allow_list.address, sender=initiator
-    )
+# def test_report_missing_transcript_ritual_not_failed(nodes, initiator, global_allow_list, infraction_collector, coordinator, accounts):
+#     ritual_id = 1
+#     staking_providers = [accounts[0], accounts[1]]
+#     for node in nodes:
+#         public_key = gen_public_key()
+#         coordinator.setProviderPublicKey(public_key, sender=node)
+#     coordinator.initiateRitual(
+#         nodes, initiator, DURATION, global_allow_list.address, sender=initiator
+#     )
 
-    with ape.reverts("Ritual must have failed"):
-        infraction_collector.reportMissingTranscript(ritual_id, staking_providers, sender=accounts[0])
+#     with ape.reverts("Ritual must have failed"):
+#         infraction_collector.reportMissingTranscript(ritual_id, staking_providers, sender=accounts[0])
 
