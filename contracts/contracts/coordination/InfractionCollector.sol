@@ -13,7 +13,7 @@ contract InfractionCollector is OwnableUpgradeable {
     TACoChildApplication public tacoChildApplication;
 
     // Mapping to keep track of reported infractions
-    mapping(uint32 => mapping(address => bool)) private infractions;
+    mapping(uint32 => mapping(address => bool)) public infractions;
 
     function initialize(
         Coordinator _coordinator,
