@@ -9,13 +9,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @notice IFeeModel
  */
 interface IFeeModel {
-    function currency() external view returns (IERC20);
-
-    function getRitualInitiationCost(
-        uint256 numberOfProviders,
-        uint32 duration
-    ) external view returns (uint256);
-
     function processRitualPayment(
         address initiator,
         uint32 ritualId,
@@ -33,5 +26,5 @@ interface IFeeModel {
         uint32 ritualId,
         address[] calldata addresses,
         bool value
-    ) external;
+    ) external; // TODO consider to move into implementation
 }
