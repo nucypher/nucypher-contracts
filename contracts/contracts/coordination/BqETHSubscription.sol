@@ -25,6 +25,8 @@ contract BqETHSubscription is IFeeModel {
     uint256 public immutable feeRate;
     uint256 public immutable maxNodes;
     uint32 public immutable maxDuration;
+    uint32 public immutable yellowPeriodDuration;
+    uint32 public immutable redPeriodDuration;
 
     uint32 public endOfSubscription;
     uint32 public acttiveRitualId;
@@ -53,6 +55,8 @@ contract BqETHSubscription is IFeeModel {
      * @param _feeRate Fee rate per node per second
      * @param _maxNodes Maximum nodes in the package
      * @param _maxDuration Maximum duration of ritual
+     * @param _yellowPeriodDuration Duration of yellow period
+     * @param _redPeriodDuration Duration of red period
      */
     constructor(
         Coordinator _coordinator,
@@ -61,7 +65,9 @@ contract BqETHSubscription is IFeeModel {
         address _adopter,
         uint256 _feeRate,
         uint256 _maxNodes,
-        uint32 _maxDuration
+        uint32 _maxDuration,
+        uint32 _yellowPeriodDuration,
+        uint32 _redPeriodDuration
     ) {
         require(address(_coordinator) != address(0), "Coordinator cannot be the zero address");
         require(address(_feeToken) != address(0), "Fee token cannot be the zero address");
@@ -74,6 +80,13 @@ contract BqETHSubscription is IFeeModel {
         feeRate = _feeRate;
         maxNodes = _maxNodes;
         maxDuration = _maxDuration;
+        yellowPeriodDuration = _yellowPeriodDuration;
+        redPeriodDuration = _redPeriodDuration;
+    }
+
+    modifier onlyCoordinator() {
+        require(msg.sender == beneficiary, "Only the Coordinator can call this method");
+        _;
     }
 
     modifier onlyBeneficiary() {
@@ -94,9 +107,12 @@ contract BqETHSubscription is IFeeModel {
      * @notice Pays for a subscription
      */
     function paySubscriptionFor() external {
-        require(endOfSubscription == 0, "Subscription already payed");
+        // require(endOfSubscription == 0, "Subscription already payed");
         uint256 amount = packageFees();
-        endOfSubscription = uint32(block.timestamp + maxDuration);
+        if (endOfSubscription == 0) {
+            endOfSubscription = uint32(block.timestamp);
+        }
+        endOfSubscription += uint32(maxDuration);
 
         feeToken.safeTransferFrom(msg.sender, address(this), amount);
         emit SubscriptionPaid(msg.sender, amount);
@@ -117,35 +133,47 @@ contract BqETHSubscription is IFeeModel {
         uint32 ritualId,
         uint256 numberOfProviders,
         uint32 duration
-    ) external override {
+    ) external override onlyCoordinator {
         require(initiator == adopter, "Only adopter can initiate ritual");
         require(endOfSubscription != 0, "Subscription has to be payed first");
         require(
-            endOfSubscription >= block.timestamp + duration && numberOfProviders <= maxNodes,
+            endOfSubscription + yellowPeriodDuration + redPeriodDuration >=
+                block.timestamp + duration &&
+                numberOfProviders <= maxNodes,
             "Ritual parameters exceed available in package"
         );
         if (acttiveRitualId != 0) {
             Coordinator.RitualState state = coordinator.getRitualState(ritualId);
             require(
                 state == Coordinator.RitualState.DKG_INVALID ||
-                    state == Coordinator.RitualState.DKG_TIMEOUT,
+                    state == Coordinator.RitualState.DKG_TIMEOUT ||
+                    state == Coordinator.RitualState.EXPIRED, // TODO check if it's ok
                 "Only failed rituals allowed to be reinitiate"
             );
         }
         acttiveRitualId = ritualId;
     }
 
+    function processRitualExtending(
+        address,
+        uint32 ritualId,
+        uint256,
+        uint32
+    ) external view override onlyCoordinator {
+        (, uint32 endTimestamp) = coordinator.getTimestamps(ritualId);
+        require(
+            endOfSubscription + yellowPeriodDuration + redPeriodDuration >= endTimestamp,
+            "Ritual parameters exceed available in package"
+        );
+    }
+
     /**
      * @dev This function is called before the setAuthorizations function
-     * @param ritualId The ID of the ritual
-     * @param addresses The addresses to be authorized
-     * @param value The authorization status
      */
-    function beforeSetAuthorization(
-        uint32 ritualId,
-        address[] calldata addresses,
-        bool value
-    ) external override {
-        // solhint-disable-previous-line no-empty-blocks
+    function beforeSetAuthorization(uint32, address[] calldata, bool) external view override {
+        require(
+            block.timestamp <= endOfSubscription + yellowPeriodDuration,
+            "Yellow period of subscription has expired"
+        );
     }
 }

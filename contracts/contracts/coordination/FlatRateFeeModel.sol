@@ -33,7 +33,7 @@ contract FlatRateFeeModel is IFeeModel, Ownable {
         coordinator = _coordinator;
     }
 
-    function getRitualInitiationCost(
+    function getRitualCost(
         uint256 numberOfProviders,
         uint32 duration
     ) public view returns (uint256) {
@@ -53,11 +53,29 @@ contract FlatRateFeeModel is IFeeModel, Ownable {
         uint256 numberOfProviders,
         uint32 duration
     ) external override {
+        processPayment(initiator, ritualId, numberOfProviders, duration);
+    }
+
+    function processRitualExtending(
+        address initiator,
+        uint32 ritualId,
+        uint256 numberOfProviders,
+        uint32 duration
+    ) external override {
+        processPayment(initiator, ritualId, numberOfProviders, duration);
+    }
+
+    function processPayment(
+        address initiator,
+        uint32 ritualId,
+        uint256 numberOfProviders,
+        uint32 duration
+    ) internal {
         require(msg.sender == address(coordinator), "Only coordinator can call process payment");
-        uint256 ritualCost = getRitualInitiationCost(numberOfProviders, duration);
+        uint256 ritualCost = getRitualCost(numberOfProviders, duration);
         require(ritualCost > 0, "Invalid ritual cost");
         totalPendingFees += ritualCost;
-        pendingFees[ritualId] = ritualCost;
+        pendingFees[ritualId] += ritualCost;
         currency.safeTransferFrom(initiator, address(this), ritualCost);
     }
 
