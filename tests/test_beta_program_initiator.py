@@ -91,7 +91,7 @@ def test_register(accounts, beta_program_initiator, token, fee_model):
 
     nodes = [node_1, node_2]
     duration = DAY_IN_SECONDS
-    ritual_cost = fee_model.getRitualInitiationCost(len(nodes), duration)
+    ritual_cost = fee_model.getRitualCost(len(nodes), duration)
 
     # Can't register request without token transfer approval
     with ape.reverts():
@@ -130,7 +130,7 @@ def test_register(accounts, beta_program_initiator, token, fee_model):
     # Register another request
     nodes = [node_1]
     duration = 3 * DAY_IN_SECONDS
-    ritual_cost_2 = fee_model.getRitualInitiationCost(len(nodes), duration)
+    ritual_cost_2 = fee_model.getRitualCost(len(nodes), duration)
 
     token.mint(initiator_2, ritual_cost_2, sender=initiator_2)
     token.approve(beta_program_initiator.address, ritual_cost_2, sender=initiator_2)
@@ -173,7 +173,7 @@ def test_cancel(accounts, beta_program_initiator, token, executor, fee_model):
 
     nodes = [node_1, node_2]
     duration = DAY_IN_SECONDS
-    ritual_cost = fee_model.getRitualInitiationCost(len(nodes), duration)
+    ritual_cost = fee_model.getRitualCost(len(nodes), duration)
 
     token.mint(initiator_1, 10 * ritual_cost, sender=initiator_1)
     token.approve(beta_program_initiator.address, 10 * ritual_cost, sender=initiator_1)
@@ -249,10 +249,10 @@ def test_execute(accounts, beta_program_initiator, token, coordinator, executor,
 
     nodes_1 = [node_1, node_2]
     duration_1 = DAY_IN_SECONDS
-    ritual_cost_1 = fee_model.getRitualInitiationCost(len(nodes_1), duration_1)
+    ritual_cost_1 = fee_model.getRitualCost(len(nodes_1), duration_1)
     nodes_2 = [node_1]
     duration_2 = 2 * duration_1
-    ritual_cost_2 = fee_model.getRitualInitiationCost(len(nodes_2), duration_2)
+    ritual_cost_2 = fee_model.getRitualCost(len(nodes_2), duration_2)
 
     token.mint(initiator_1, 10 * ritual_cost_1, sender=initiator_1)
     token.approve(beta_program_initiator.address, 10 * ritual_cost_1, sender=initiator_1)
@@ -357,9 +357,9 @@ def test_refund(accounts, beta_program_initiator, token, coordinator, executor, 
 
     nodes = [node_1, node_2]
     duration_1 = DAY_IN_SECONDS
-    ritual_cost_1 = fee_model.getRitualInitiationCost(len(nodes), duration_1)
+    ritual_cost_1 = fee_model.getRitualCost(len(nodes), duration_1)
     duration_2 = 3 * duration_1
-    ritual_cost_2 = fee_model.getRitualInitiationCost(len(nodes), duration_2)
+    ritual_cost_2 = fee_model.getRitualCost(len(nodes), duration_2)
 
     token.mint(initiator_1, 10 * ritual_cost_1, sender=initiator_1)
     token.approve(beta_program_initiator.address, 10 * ritual_cost_1, sender=initiator_1)

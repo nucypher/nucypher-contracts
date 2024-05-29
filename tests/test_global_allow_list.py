@@ -130,7 +130,7 @@ def initiate_ritual(coordinator, fee_model, erc20, authority, nodes, allow_logic
         coordinator.setProviderPublicKey(public_key, sender=node)
         assert coordinator.isProviderPublicKeySet(node)
 
-    cost = fee_model.getRitualInitiationCost(len(nodes), DURATION)
+    cost = fee_model.getRitualCost(len(nodes), DURATION)
     erc20.approve(fee_model.address, cost, sender=authority)
     tx = coordinator.initiateRitual(
         fee_model, nodes, authority, DURATION, allow_logic.address, sender=authority

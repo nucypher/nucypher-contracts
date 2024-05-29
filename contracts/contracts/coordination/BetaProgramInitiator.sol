@@ -69,7 +69,7 @@ contract BetaProgramInitiator {
         uint32 duration,
         IEncryptionAuthorizer accessController
     ) external returns (uint256 requestIndex) {
-        uint256 ritualCost = feeModel.getRitualInitiationCost(providers.length, duration);
+        uint256 ritualCost = feeModel.getRitualCost(providers.length, duration);
 
         requestIndex = requests.length;
         InitiationRequest storage request = requests.push();
@@ -122,7 +122,7 @@ contract BetaProgramInitiator {
 
         address[] memory providers = request.providers;
         uint32 duration = request.duration;
-        uint256 ritualCost = feeModel.getRitualInitiationCost(providers.length, duration);
+        uint256 ritualCost = feeModel.getRitualCost(providers.length, duration);
         require(ritualCost == request.payment, "Ritual initiation cost has changed");
         currency.approve(address(feeModel), ritualCost);
 

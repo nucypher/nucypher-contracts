@@ -16,6 +16,13 @@ interface IFeeModel {
         uint32 duration
     ) external;
 
+    function processRitualExtending(
+        address initiator,
+        uint32 ritualId,
+        uint256 numberOfProviders,
+        uint32 duration
+    ) external;
+
     /**
      * @dev This function is called before the setAuthorizations function
      * @param ritualId The ID of the ritual
@@ -26,5 +33,5 @@ interface IFeeModel {
         uint32 ritualId,
         address[] calldata addresses,
         bool value
-    ) external; // TODO consider to move into implementation
+    ) external;
 }
