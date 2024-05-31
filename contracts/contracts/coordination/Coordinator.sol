@@ -139,6 +139,10 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         endTimestamp = rituals[ritualId].endTimestamp;
     }
 
+    function getAccessController(uint32 ritualId) external view returns (IEncryptionAuthorizer) {
+        return rituals[ritualId].accessController;
+    }
+
     function getRitualState(uint32 ritualId) external view returns (RitualState) {
         return getRitualState(rituals[ritualId]);
     }

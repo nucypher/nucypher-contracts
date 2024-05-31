@@ -28,6 +28,8 @@ contract BqETHSubscription is IFeeModel {
     uint32 public immutable yellowPeriodDuration;
     uint32 public immutable redPeriodDuration;
 
+    IEncryptionAuthorizer public immutable accessController;
+
     uint32 public endOfSubscription;
     uint32 public acttiveRitualId;
 
@@ -57,6 +59,7 @@ contract BqETHSubscription is IFeeModel {
      * @param _maxDuration Maximum duration of ritual
      * @param _yellowPeriodDuration Duration of yellow period
      * @param _redPeriodDuration Duration of red period
+     * @param _accessController Address of allowed access controller
      */
     constructor(
         Coordinator _coordinator,
@@ -67,12 +70,17 @@ contract BqETHSubscription is IFeeModel {
         uint256 _maxNodes,
         uint32 _maxDuration,
         uint32 _yellowPeriodDuration,
-        uint32 _redPeriodDuration
+        uint32 _redPeriodDuration,
+        IEncryptionAuthorizer _accessController
     ) {
         require(address(_coordinator) != address(0), "Coordinator cannot be the zero address");
         require(address(_feeToken) != address(0), "Fee token cannot be the zero address");
         require(_beneficiary != address(0), "Beneficiary cannot be the zero address");
         require(_adopter != address(0), "Adopter cannot be the zero address");
+        require(
+            address(_accessController) != address(0),
+            "Access controller cannot be the zero address"
+        );
         coordinator = _coordinator;
         feeToken = _feeToken;
         beneficiary = _beneficiary;
@@ -82,6 +90,7 @@ contract BqETHSubscription is IFeeModel {
         maxDuration = _maxDuration;
         yellowPeriodDuration = _yellowPeriodDuration;
         redPeriodDuration = _redPeriodDuration;
+        accessController = _accessController;
     }
 
     modifier onlyCoordinator() {
@@ -142,6 +151,11 @@ contract BqETHSubscription is IFeeModel {
                 numberOfProviders <= maxNodes,
             "Ritual parameters exceed available in package"
         );
+        require(
+            accessController == coordinator.getAccessController(ritualId),
+            "Access controller ofr ritual must be approved"
+        );
+
         if (acttiveRitualId != 0) {
             Coordinator.RitualState state = coordinator.getRitualState(ritualId);
             require(
