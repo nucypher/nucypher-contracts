@@ -2,15 +2,11 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../contracts/coordination/IEncryptionAuthorizer.sol";
 import "../contracts/coordination/Coordinator.sol";
 import "../contracts/coordination/IFeeModel.sol";
 
 contract CoordinatorForBetaProgramInitiatorMock {
-    using SafeERC20 for IERC20;
-
     struct Ritual {
         address initiator;
         address[] providers;
