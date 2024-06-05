@@ -83,10 +83,12 @@ contract GlobalAllowList is IEncryptionAuthorizer {
      */
     function _beforeIsAuthorized(
         uint32 ritualId,
+        // solhint-disable-next-line no-unused-vars
         bytes memory evidence,
+        // solhint-disable-next-line no-unused-vars
         bytes memory ciphertextHeader
     ) internal view virtual {
-        // solhint-disable-previous-line no-empty-blocks
+        feeModel.beforeIsAuthorized(ritualId);
     }
 
     /**

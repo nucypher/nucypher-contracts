@@ -34,4 +34,10 @@ interface IFeeModel {
         address[] calldata addresses,
         bool value
     ) external;
+
+    /**
+     * @dev This function is called before the isAuthorized function
+     * @param ritualId The ID of the ritual
+     */
+    function beforeIsAuthorized(uint32 ritualId) external view;
 }

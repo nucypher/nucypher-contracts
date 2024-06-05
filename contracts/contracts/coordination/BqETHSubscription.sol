@@ -7,13 +7,13 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./Coordinator.sol";
 import "./IFeeModel.sol";
 
-using SafeERC20 for IERC20;
-
 /**
  * @title BqETH Subscription
  * @notice Manages the subscription information for rituals.
  */
 contract BqETHSubscription is IFeeModel {
+    using SafeERC20 for IERC20;
+
     Coordinator public immutable coordinator;
     IERC20 public immutable feeToken;
 
@@ -206,5 +206,18 @@ contract BqETHSubscription is IFeeModel {
         bool
     ) external view override onlyAccessController onlyActiveRitual(ritualId) {
         require(block.timestamp <= endOfSubscription, "Subscription has expired");
+    }
+
+    /**
+     * @dev This function is called before the isAuthorized function
+     * @param ritualId The ID of the ritual
+     */
+    function beforeIsAuthorized(
+        uint32 ritualId
+    ) external view override onlyAccessController onlyActiveRitual(ritualId) {
+        require(
+            block.timestamp <= endOfSubscription + yellowPeriodDuration,
+            "Yellow period has expired"
+        );
     }
 }

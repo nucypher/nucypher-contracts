@@ -14,10 +14,13 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with nucypher.  If not, see <https://www.gnu.org/licenses/>.
 """
+import os
 from enum import IntEnum
 
 import ape
 import pytest
+from eth_account.messages import encode_defunct
+from web3 import Web3
 
 FEE_RATE = 42
 MAX_NODES = 10
@@ -363,3 +366,45 @@ def test_before_set_authorization(
 
     subscription.paySubscriptionFor(sender=adopter)
     global_allow_list.authorize(ritual_id, [creator.address], sender=adopter)
+
+
+def test_before_is_authorized(
+    erc20, subscription, coordinator, adopter, global_allow_list, treasury, creator, chain
+):
+    ritual_id = 6
+
+    w3 = Web3()
+    data = os.urandom(32)
+    digest = Web3.keccak(data)
+    signable_message = encode_defunct(digest)
+    signed_digest = w3.eth.account.sign_message(signable_message, private_key=adopter.private_key)
+    signature = signed_digest.signature
+
+    assert subscription.address == global_allow_list.feeModel()
+
+    with ape.reverts("Only Access Controller can call this method"):
+        subscription.beforeIsAuthorized(0, sender=adopter)
+
+    with ape.reverts("Ritual must be active"):
+        global_allow_list.isAuthorized(0, bytes(signature), bytes(data))
+
+    erc20.approve(subscription.address, 10 * FEE, sender=adopter)
+    subscription.paySubscriptionFor(sender=adopter)
+    coordinator.setRitual(
+        ritual_id, RitualState.ACTIVE, 0, global_allow_list.address, sender=treasury
+    )
+    coordinator.processRitualPayment(adopter, ritual_id, MAX_NODES, DURATION, sender=treasury)
+    global_allow_list.authorize(ritual_id, [adopter.address], sender=adopter)
+
+    with ape.reverts("Ritual must be active"):
+        global_allow_list.isAuthorized(0, bytes(signature), bytes(data))
+    assert global_allow_list.isAuthorized(ritual_id, bytes(signature), bytes(data))
+
+    end_subscription = subscription.endOfSubscription()
+    chain.pending_timestamp = end_subscription + YELLOW_PERIOD + 2
+
+    with ape.reverts("Yellow period has expired"):
+        global_allow_list.isAuthorized(ritual_id, bytes(signature), bytes(data))
+
+    subscription.paySubscriptionFor(sender=adopter)
+    assert global_allow_list.isAuthorized(ritual_id, bytes(signature), bytes(data))

@@ -130,4 +130,12 @@ contract FlatRateFeeModel is IFeeModel, Ownable {
     ) external view {
         // solhint-disable-previous-line no-empty-blocks
     }
+
+    /**
+     * @dev This function is called before the isAuthorized function
+     * @param ritualId The ID of the ritual
+     */
+    function beforeIsAuthorized(uint32 ritualId) external view {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 }
