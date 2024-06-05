@@ -4,20 +4,20 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import "./Coordinator.sol";
-import "./TACoChildApplication.sol";
+import "../../threshold/ITACoChildApplication.sol";
 
 contract InfractionCollector is OwnableUpgradeable {
     Coordinator public coordinator;
 
     // Reference to the TACoChildApplication contract
-    TACoChildApplication public tacoChildApplication;
+    ITACoChildApplication public tacoChildApplication;
 
     // Mapping to keep track of reported infractions
     mapping(uint32 => mapping(address => bool)) public infractions;
 
     function initialize(
         Coordinator _coordinator,
-        TACoChildApplication _tacoChildApplication
+        ITACoChildApplication _tacoChildApplication
     ) public initializer {
         __Ownable_init(msg.sender);
         coordinator = _coordinator;
