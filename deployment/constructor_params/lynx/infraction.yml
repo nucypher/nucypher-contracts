@@ -15,4 +15,4 @@ contracts:
   - InfractionCollector:
       proxy:
         constructor:
-          _data: $encode:initialize,$COORDINATOR_PROXY,$TACO_CHILD_PROX
+          _data: $encode:initialize,$COORDINATOR_PROXY,$TACO_CHILD_PROXY
