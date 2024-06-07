@@ -46,8 +46,9 @@ contract BqETHSubscription is IFeeModel {
      * @notice Emitted when a subscription is paid
      * @param subscriber The address of the subscriber
      * @param amount The amount paid
+     * @param endOfSubscription End timestamp of subscription
      */
-    event SubscriptionPaid(address indexed subscriber, uint256 amount);
+    event SubscriptionPaid(address indexed subscriber, uint256 amount, uint32 endOfSubscription);
 
     /**
      * @notice Sets the coordinator and fee token contracts
@@ -117,7 +118,7 @@ contract BqETHSubscription is IFeeModel {
     function initialize(IEncryptionAuthorizer _accessController) external {
         require(
             address(accessController) == address(0) && address(_accessController) != address(0),
-            "Access controller cannot be the zero address"
+            "Access controller not already set and parameter cannot be the zero address"
         );
         accessController = _accessController;
         activeRitualId = INACTIVE_RITUAL_ID;
@@ -130,7 +131,7 @@ contract BqETHSubscription is IFeeModel {
     /**
      * @notice Pays for a subscription
      */
-    function paySubscriptionFor() external {
+    function payForSubscription() external {
         // require(endOfSubscription == 0, "Subscription already payed");
         uint256 amount = packageFees();
         if (endOfSubscription == 0) {
@@ -139,7 +140,7 @@ contract BqETHSubscription is IFeeModel {
         endOfSubscription += uint32(maxDuration);
 
         feeToken.safeTransferFrom(msg.sender, address(this), amount);
-        emit SubscriptionPaid(msg.sender, amount);
+        emit SubscriptionPaid(msg.sender, amount, endOfSubscription);
     }
 
     /**
@@ -147,7 +148,7 @@ contract BqETHSubscription is IFeeModel {
      * @param amount The amount to withdraw
      */
     function withdrawToBeneficiary(uint256 amount) external onlyBeneficiary {
-        require(amount <= feeToken.balanceOf(address(this)), "Insufficient available amount");
+        require(amount <= feeToken.balanceOf(address(this)), "Insufficient balance available");
         feeToken.safeTransfer(beneficiary, amount);
         emit WithdrawalToBeneficiary(beneficiary, amount);
     }
@@ -159,7 +160,7 @@ contract BqETHSubscription is IFeeModel {
         uint32 duration
     ) external override onlyCoordinator {
         require(initiator == adopter, "Only adopter can initiate ritual");
-        require(endOfSubscription != 0, "Subscription has to be payed first");
+        require(endOfSubscription != 0, "Subscription has to be paid first");
         require(
             endOfSubscription + yellowPeriodDuration + redPeriodDuration >=
                 block.timestamp + duration &&
@@ -178,7 +179,7 @@ contract BqETHSubscription is IFeeModel {
                 state == Coordinator.RitualState.DKG_INVALID ||
                     state == Coordinator.RitualState.DKG_TIMEOUT ||
                     state == Coordinator.RitualState.EXPIRED, // TODO check if it's ok
-                "Only failed rituals allowed to be reinitiate"
+                "Only failed rituals allowed to be reinitiated"
             );
         }
         activeRitualId = ritualId;
