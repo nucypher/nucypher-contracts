@@ -175,7 +175,7 @@ abstract contract Subscription {
     }
 
     /**
-     * @notice Calculates the available amount of fees that can be withdrawn by the beneficiary
+     * @notice Calculates the available fees that can be withdrawn by the beneficiary
      * @return The available amount of fees
      */
     function calculateAvailableAmountForBeneficiary() public view returns (uint256) {

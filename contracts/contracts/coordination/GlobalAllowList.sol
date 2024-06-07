@@ -46,7 +46,7 @@ contract GlobalAllowList is IEncryptionAuthorizer {
     constructor(Coordinator _coordinator, IFeeModel _feeModel) {
         require(
             address(_coordinator) != address(0) && address(_feeModel) != address(0),
-            "Coordinator cannot be zero address"
+            "Contracts cannot be zero addresses"
         );
         require(_coordinator.numberOfRituals() >= 0, "Invalid coordinator");
         coordinator = _coordinator;
