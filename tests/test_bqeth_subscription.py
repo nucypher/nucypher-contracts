@@ -109,7 +109,7 @@ def test_pay_subscription(erc20, subscription, adopter, chain):
     balance_before = erc20.balanceOf(adopter)
     assert subscription.packageFees() == FEE
 
-    tx = subscription.paySubscriptionFor(sender=adopter)
+    tx = subscription.payForSubscription(sender=adopter)
     timestamp = chain.pending_timestamp - 1
     assert subscription.endOfSubscription() == timestamp + MAX_DURATION
     balance_after = erc20.balanceOf(adopter)
@@ -117,18 +117,26 @@ def test_pay_subscription(erc20, subscription, adopter, chain):
     assert erc20.balanceOf(subscription.address) == FEE
 
     events = subscription.SubscriptionPaid.from_receipt(tx)
-    assert events == [subscription.SubscriptionPaid(subscriber=adopter, amount=FEE)]
+    assert events == [
+        subscription.SubscriptionPaid(
+            subscriber=adopter, amount=FEE, endOfSubscription=timestamp + MAX_DURATION
+        )
+    ]
 
     # Top up
     balance_before = erc20.balanceOf(adopter)
-    tx = subscription.paySubscriptionFor(sender=adopter)
+    tx = subscription.payForSubscription(sender=adopter)
     assert subscription.endOfSubscription() == timestamp + 2 * MAX_DURATION
     balance_after = erc20.balanceOf(adopter)
     assert balance_after + FEE == balance_before
     assert erc20.balanceOf(subscription.address) == 2 * FEE
 
     events = subscription.SubscriptionPaid.from_receipt(tx)
-    assert events == [subscription.SubscriptionPaid(subscriber=adopter, amount=FEE)]
+    assert events == [
+        subscription.SubscriptionPaid(
+            subscriber=adopter, amount=FEE, endOfSubscription=timestamp + 2 * MAX_DURATION
+        )
+    ]
 
 
 def test_withdraw(erc20, subscription, adopter, treasury):
@@ -137,12 +145,12 @@ def test_withdraw(erc20, subscription, adopter, treasury):
     with ape.reverts("Only the beneficiary can call this method"):
         subscription.withdrawToBeneficiary(1, sender=adopter)
 
-    with ape.reverts("Insufficient available amount"):
+    with ape.reverts("Insufficient balance available"):
         subscription.withdrawToBeneficiary(1, sender=treasury)
 
-    subscription.paySubscriptionFor(sender=adopter)
+    subscription.payForSubscription(sender=adopter)
 
-    with ape.reverts("Insufficient available amount"):
+    with ape.reverts("Insufficient balance available"):
         subscription.withdrawToBeneficiary(FEE + 1, sender=treasury)
 
     tx = subscription.withdrawToBeneficiary(FEE, sender=treasury)
@@ -167,13 +175,13 @@ def test_process_ritual_payment(
         coordinator.processRitualPayment(
             treasury, ritual_id, number_of_providers, DURATION, sender=treasury
         )
-    with ape.reverts("Subscription has to be payed first"):
+    with ape.reverts("Subscription has to be paid first"):
         coordinator.processRitualPayment(
             adopter, ritual_id, number_of_providers, DURATION, sender=treasury
         )
 
     erc20.approve(subscription.address, 10 * FEE, sender=adopter)
-    subscription.paySubscriptionFor(sender=adopter)
+    subscription.payForSubscription(sender=adopter)
 
     with ape.reverts("Ritual parameters exceed available in package"):
         coordinator.processRitualPayment(
@@ -216,7 +224,7 @@ def test_process_ritual_payment(
     coordinator.setRitual(
         new_ritual_id, RitualState.ACTIVE, 0, global_allow_list.address, sender=treasury
     )
-    with ape.reverts("Only failed rituals allowed to be reinitiate"):
+    with ape.reverts("Only failed rituals allowed to be reinitiated"):
         coordinator.processRitualPayment(
             adopter, new_ritual_id, number_of_providers, DURATION, sender=treasury
         )
@@ -272,7 +280,7 @@ def test_process_ritual_extending(
         )
 
     erc20.approve(subscription.address, 10 * FEE, sender=adopter)
-    subscription.paySubscriptionFor(sender=adopter)
+    subscription.payForSubscription(sender=adopter)
     coordinator.setRitual(
         ritual_id, RitualState.ACTIVE, 0, global_allow_list.address, sender=treasury
     )
@@ -346,7 +354,7 @@ def test_before_set_authorization(
         global_allow_list.authorize(0, [creator.address], sender=adopter)
 
     erc20.approve(subscription.address, 10 * FEE, sender=adopter)
-    subscription.paySubscriptionFor(sender=adopter)
+    subscription.payForSubscription(sender=adopter)
     coordinator.setRitual(
         ritual_id, RitualState.ACTIVE, 0, global_allow_list.address, sender=treasury
     )
@@ -364,7 +372,7 @@ def test_before_set_authorization(
     with ape.reverts("Subscription has expired"):
         global_allow_list.authorize(ritual_id, [creator.address], sender=adopter)
 
-    subscription.paySubscriptionFor(sender=adopter)
+    subscription.payForSubscription(sender=adopter)
     global_allow_list.authorize(ritual_id, [creator.address], sender=adopter)
 
 
@@ -389,7 +397,7 @@ def test_before_is_authorized(
         global_allow_list.isAuthorized(0, bytes(signature), bytes(data))
 
     erc20.approve(subscription.address, 10 * FEE, sender=adopter)
-    subscription.paySubscriptionFor(sender=adopter)
+    subscription.payForSubscription(sender=adopter)
     coordinator.setRitual(
         ritual_id, RitualState.ACTIVE, 0, global_allow_list.address, sender=treasury
     )
@@ -406,5 +414,5 @@ def test_before_is_authorized(
     with ape.reverts("Yellow period has expired"):
         global_allow_list.isAuthorized(ritual_id, bytes(signature), bytes(data))
 
-    subscription.paySubscriptionFor(sender=adopter)
+    subscription.payForSubscription(sender=adopter)
     assert global_allow_list.isAuthorized(ritual_id, bytes(signature), bytes(data))
