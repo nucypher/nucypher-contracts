@@ -4,17 +4,15 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./Coordinator.sol";
-import "./IFeeModel.sol";
+import "./AbstractSubscription.sol";
 
 /**
  * @title BqETH Subscription
  * @notice Manages the subscription information for rituals.
  */
-contract BqETHSubscription is IFeeModel {
+contract BqETHSubscription is AbstractSubscription {
     using SafeERC20 for IERC20;
 
-    Coordinator public immutable coordinator;
     IERC20 public immutable feeToken;
 
     uint32 public constant INACTIVE_RITUAL_ID = type(uint32).max;
@@ -26,13 +24,10 @@ contract BqETHSubscription is IFeeModel {
 
     uint256 public immutable feeRate;
     uint256 public immutable maxNodes;
-    uint32 public immutable maxDuration;
-    uint32 public immutable yellowPeriodDuration;
-    uint32 public immutable redPeriodDuration;
 
     IEncryptionAuthorizer public accessController;
 
-    uint32 public endOfSubscription;
+    uint32 internal _endOfSubscription;
     uint32 public activeRitualId;
 
     /**
@@ -73,25 +68,15 @@ contract BqETHSubscription is IFeeModel {
         uint32 _maxDuration,
         uint32 _yellowPeriodDuration,
         uint32 _redPeriodDuration
-    ) {
-        require(address(_coordinator) != address(0), "Coordinator cannot be the zero address");
+    ) AbstractSubscription(_coordinator, _maxDuration, _yellowPeriodDuration, _redPeriodDuration) {
         require(address(_feeToken) != address(0), "Fee token cannot be the zero address");
         require(_beneficiary != address(0), "Beneficiary cannot be the zero address");
         require(_adopter != address(0), "Adopter cannot be the zero address");
-        coordinator = _coordinator;
         feeToken = _feeToken;
         beneficiary = _beneficiary;
         adopter = _adopter;
         feeRate = _feeRate;
         maxNodes = _maxNodes;
-        maxDuration = _maxDuration;
-        yellowPeriodDuration = _yellowPeriodDuration;
-        redPeriodDuration = _redPeriodDuration;
-    }
-
-    modifier onlyCoordinator() {
-        require(msg.sender == address(coordinator), "Only the Coordinator can call this method");
-        _;
     }
 
     modifier onlyBeneficiary() {
@@ -99,7 +84,7 @@ contract BqETHSubscription is IFeeModel {
         _;
     }
 
-    modifier onlyAccessController() {
+    modifier onlyAccessController() override {
         require(
             msg.sender == address(accessController),
             "Only Access Controller can call this method"
@@ -107,12 +92,16 @@ contract BqETHSubscription is IFeeModel {
         _;
     }
 
-    modifier onlyActiveRitual(uint32 ritualId) {
+    modifier onlyActiveRitual(uint32 ritualId) override {
         require(
             activeRitualId != INACTIVE_RITUAL_ID && ritualId == activeRitualId,
             "Ritual must be active"
         );
         _;
+    }
+
+    function getEndOfSubscription() public view override returns (uint32) {
+        return _endOfSubscription;
     }
 
     function initialize(IEncryptionAuthorizer _accessController) external {
@@ -134,13 +123,13 @@ contract BqETHSubscription is IFeeModel {
     function payForSubscription() external {
         // require(endOfSubscription == 0, "Subscription already payed");
         uint256 amount = packageFees();
-        if (endOfSubscription == 0) {
-            endOfSubscription = uint32(block.timestamp);
+        if (_endOfSubscription == 0) {
+            _endOfSubscription = uint32(block.timestamp);
         }
-        endOfSubscription += uint32(maxDuration);
+        _endOfSubscription += uint32(maxDuration);
 
         feeToken.safeTransferFrom(msg.sender, address(this), amount);
-        emit SubscriptionPaid(msg.sender, amount, endOfSubscription);
+        emit SubscriptionPaid(msg.sender, amount, _endOfSubscription);
     }
 
     /**
@@ -160,9 +149,9 @@ contract BqETHSubscription is IFeeModel {
         uint32 duration
     ) external override onlyCoordinator {
         require(initiator == adopter, "Only adopter can initiate ritual");
-        require(endOfSubscription != 0, "Subscription has to be paid first");
+        require(_endOfSubscription != 0, "Subscription has to be paid first");
         require(
-            endOfSubscription + yellowPeriodDuration + redPeriodDuration >=
+            _endOfSubscription + yellowPeriodDuration + redPeriodDuration >=
                 block.timestamp + duration &&
                 numberOfProviders <= maxNodes,
             "Ritual parameters exceed available in package"
@@ -183,42 +172,5 @@ contract BqETHSubscription is IFeeModel {
             );
         }
         activeRitualId = ritualId;
-    }
-
-    function processRitualExtending(
-        address,
-        uint32 ritualId,
-        uint256,
-        uint32
-    ) external view override onlyCoordinator onlyActiveRitual(ritualId) {
-        (, uint32 endTimestamp) = coordinator.getTimestamps(ritualId);
-        require(
-            endOfSubscription + yellowPeriodDuration + redPeriodDuration >= endTimestamp,
-            "Ritual parameters exceed available in package"
-        );
-    }
-
-    /**
-     * @dev This function is called before the setAuthorizations function
-     */
-    function beforeSetAuthorization(
-        uint32 ritualId,
-        address[] calldata,
-        bool
-    ) external view override onlyAccessController onlyActiveRitual(ritualId) {
-        require(block.timestamp <= endOfSubscription, "Subscription has expired");
-    }
-
-    /**
-     * @dev This function is called before the isAuthorized function
-     * @param ritualId The ID of the ritual
-     */
-    function beforeIsAuthorized(
-        uint32 ritualId
-    ) external view override onlyAccessController onlyActiveRitual(ritualId) {
-        require(
-            block.timestamp <= endOfSubscription + yellowPeriodDuration,
-            "Yellow period has expired"
-        );
     }
 }
