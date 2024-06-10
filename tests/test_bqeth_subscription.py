@@ -111,7 +111,7 @@ def test_pay_subscription(erc20, subscription, adopter, chain):
 
     tx = subscription.payForSubscription(sender=adopter)
     timestamp = chain.pending_timestamp - 1
-    assert subscription.endOfSubscription() == timestamp + MAX_DURATION
+    assert subscription.getEndOfSubscription() == timestamp + MAX_DURATION
     balance_after = erc20.balanceOf(adopter)
     assert balance_after + FEE == balance_before
     assert erc20.balanceOf(subscription.address) == FEE
@@ -126,7 +126,7 @@ def test_pay_subscription(erc20, subscription, adopter, chain):
     # Top up
     balance_before = erc20.balanceOf(adopter)
     tx = subscription.payForSubscription(sender=adopter)
-    assert subscription.endOfSubscription() == timestamp + 2 * MAX_DURATION
+    assert subscription.getEndOfSubscription() == timestamp + 2 * MAX_DURATION
     balance_after = erc20.balanceOf(adopter)
     assert balance_after + FEE == balance_before
     assert erc20.balanceOf(subscription.address) == 2 * FEE
@@ -287,7 +287,7 @@ def test_process_ritual_extending(
     coordinator.processRitualPayment(
         adopter, ritual_id, number_of_providers, DURATION, sender=treasury
     )
-    end_subscription = subscription.endOfSubscription()
+    end_subscription = subscription.getEndOfSubscription()
     max_end_timestamp = end_subscription + YELLOW_PERIOD + RED_PERIOD
 
     new_ritual_id = ritual_id + 1
@@ -366,7 +366,7 @@ def test_before_set_authorization(
         global_allow_list.authorize(0, [creator.address], sender=adopter)
     global_allow_list.authorize(ritual_id, [creator.address], sender=adopter)
 
-    end_subscription = subscription.endOfSubscription()
+    end_subscription = subscription.getEndOfSubscription()
     chain.pending_timestamp = end_subscription + 1
 
     with ape.reverts("Subscription has expired"):
@@ -408,7 +408,7 @@ def test_before_is_authorized(
         global_allow_list.isAuthorized(0, bytes(signature), bytes(data))
     assert global_allow_list.isAuthorized(ritual_id, bytes(signature), bytes(data))
 
-    end_subscription = subscription.endOfSubscription()
+    end_subscription = subscription.getEndOfSubscription()
     chain.pending_timestamp = end_subscription + YELLOW_PERIOD + 2
 
     with ape.reverts("Yellow period has expired"):
