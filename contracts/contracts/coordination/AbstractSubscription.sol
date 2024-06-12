@@ -12,7 +12,7 @@ import "./IFeeModel.sol";
 abstract contract AbstractSubscription is IFeeModel {
     Coordinator public immutable coordinator;
 
-    uint32 public immutable maxDuration;
+    uint32 public immutable packageDuration;
     uint32 public immutable yellowPeriodDuration;
     uint32 public immutable redPeriodDuration;
 
@@ -20,19 +20,19 @@ abstract contract AbstractSubscription is IFeeModel {
      * @notice Sets subscription parameters
      * @dev The coordinator and fee token contracts cannot be zero addresses
      * @param _coordinator The address of the coordinator contract
-     * @param _maxDuration Maximum duration of ritual
+     * @param _packageDuration Maximum duration of ritual
      * @param _yellowPeriodDuration Duration of yellow period
      * @param _redPeriodDuration Duration of red period
      */
     constructor(
         Coordinator _coordinator,
-        uint32 _maxDuration,
+        uint32 _packageDuration,
         uint32 _yellowPeriodDuration,
         uint32 _redPeriodDuration
     ) {
         require(address(_coordinator) != address(0), "Coordinator cannot be the zero address");
         coordinator = _coordinator;
-        maxDuration = _maxDuration;
+        packageDuration = _packageDuration;
         yellowPeriodDuration = _yellowPeriodDuration;
         redPeriodDuration = _redPeriodDuration;
     }
@@ -68,7 +68,7 @@ abstract contract AbstractSubscription is IFeeModel {
         uint32 ritualId,
         address[] calldata,
         bool
-    ) external view override onlyAccessController onlyActiveRitual(ritualId) {
+    ) public virtual override onlyAccessController onlyActiveRitual(ritualId) {
         require(block.timestamp <= getEndOfSubscription(), "Subscription has expired");
     }
 
@@ -78,7 +78,7 @@ abstract contract AbstractSubscription is IFeeModel {
      */
     function beforeIsAuthorized(
         uint32 ritualId
-    ) external view override onlyAccessController onlyActiveRitual(ritualId) {
+    ) public view virtual override onlyAccessController onlyActiveRitual(ritualId) {
         require(
             block.timestamp <= getEndOfSubscription() + yellowPeriodDuration,
             "Yellow period has expired"
