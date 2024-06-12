@@ -117,6 +117,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     constructor(ITACoChildApplication _application) {
         application = _application;
         minAuthorization = _application.minimumAuthorization(); // TODO use child app for checking eligibility
+        _disableInitializers();
     }
 
     /**
