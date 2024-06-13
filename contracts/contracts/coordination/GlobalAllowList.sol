@@ -161,7 +161,10 @@ contract GlobalAllowList is IEncryptionAuthorizer {
 
         _beforeSetAuthorization(ritualId, addresses, value);
         for (uint256 i = 0; i < addresses.length; i++) {
-            authorizations[LookupKey.lookupKey(ritualId, addresses[i])] = value;
+            bytes32 lookupKey = LookupKey.lookupKey(ritualId, addresses[i]);
+            // prevent reusing same address
+            require(authorizations[lookupKey] != value, "Authorization already set");
+            authorizations[lookupKey] = value;
             emit AddressAuthorizationSet(ritualId, addresses[i], value);
         }
 
