@@ -194,7 +194,9 @@ contract BqETHSubscription is AbstractSubscription {
         uint256 currentPeriodNumber = getCurrentPeriodNumber();
         require(!billingInfo[currentPeriodNumber + 1].paid, "Next billing period already paid"); // TODO until we will have refunds
         require(
-            getEndOfSubscription() + yellowPeriodDuration + redPeriodDuration >= block.timestamp,
+            startOfSubscription == 0 ||
+                getEndOfSubscription() + yellowPeriodDuration + redPeriodDuration >=
+                block.timestamp,
             "Subscription is over"
         );
 

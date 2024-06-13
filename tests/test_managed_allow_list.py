@@ -148,6 +148,7 @@ def test_deauthorize(
     fee_token.approve(subscription.address, cost, sender=deployer)
     subscription.newSubscription(RITUAL_ID, sender=deployer)
     assert subscription.authorizationActionsCap(RITUAL_ID, admin) == 1000
+    managed_allow_list.authorize(RITUAL_ID, [encryptor], sender=admin)
 
     with ape.reverts("Only administrator is permitted"):
         managed_allow_list.deauthorize(RITUAL_ID, [encryptor], sender=encryptor)
