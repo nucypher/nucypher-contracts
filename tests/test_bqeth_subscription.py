@@ -77,11 +77,10 @@ def coordinator(project, creator):
 
 
 @pytest.fixture()
-def subscription(project, creator, coordinator, erc20, treasury, adopter):
+def subscription(project, creator, coordinator, erc20, adopter, oz_dependency):
     contract = project.BqETHSubscription.deploy(
         coordinator.address,
         erc20.address,
-        treasury,
         adopter,
         BASE_FEE_RATE,
         ENCRYPTORS_FEE_RATE,
@@ -91,8 +90,17 @@ def subscription(project, creator, coordinator, erc20, treasury, adopter):
         RED_PERIOD,
         sender=creator,
     )
-    coordinator.setFeeModel(contract.address, sender=creator)
-    return contract
+
+    encoded_initializer_function = b""
+    proxy = oz_dependency.TransparentUpgradeableProxy.deploy(
+        contract.address,
+        creator,
+        encoded_initializer_function,
+        sender=creator,
+    )
+    proxy_contract = project.BqETHSubscription.at(proxy.address)
+    coordinator.setFeeModel(proxy_contract.address, sender=creator)
+    return proxy_contract
 
 
 @pytest.fixture()
@@ -100,7 +108,7 @@ def global_allow_list(project, creator, coordinator, subscription, treasury):
     contract = project.GlobalAllowList.deploy(
         coordinator.address, subscription.address, sender=creator
     )
-    subscription.initialize(contract.address, sender=treasury)
+    subscription.initialize(treasury.address, contract.address, sender=treasury)
     return contract
 
 
@@ -297,10 +305,10 @@ def test_pay_encryptor_slots(
         subscription.payForEncryptorSlots(encryptor_slots, sender=adopter)
 
 
-def test_withdraw(erc20, subscription, adopter, treasury):
+def test_withdraw(erc20, subscription, adopter, treasury, global_allow_list):
     erc20.approve(subscription.address, 10 * BASE_FEE, sender=adopter)
 
-    with ape.reverts("Only the beneficiary can call this method"):
+    with ape.reverts():
         subscription.withdrawToBeneficiary(1, sender=adopter)
 
     with ape.reverts("Insufficient balance available"):

@@ -16,6 +16,8 @@ abstract contract AbstractSubscription is IFeeModel {
     uint32 public immutable yellowPeriodDuration;
     uint32 public immutable redPeriodDuration;
 
+    uint256[20] private gap;
+
     /**
      * @notice Sets subscription parameters
      * @dev The coordinator and fee token contracts cannot be zero addresses
