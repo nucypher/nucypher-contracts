@@ -4,13 +4,15 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
+import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import "./AbstractSubscription.sol";
 
 /**
  * @title BqETH Subscription
  * @notice Manages the subscription information for rituals.
  */
-contract BqETHSubscription is AbstractSubscription {
+contract BqETHSubscription is AbstractSubscription, Initializable, OwnableUpgradeable {
     using SafeERC20 for IERC20;
 
     struct Billing {
@@ -22,9 +24,6 @@ contract BqETHSubscription is AbstractSubscription {
 
     uint32 public constant INACTIVE_RITUAL_ID = type(uint32).max;
 
-    // TODO: DAO Treasury
-    // TODO: Should it be updatable?
-    address public immutable beneficiary;
     address public immutable adopter;
 
     uint256 public immutable baseFeeRate;
@@ -38,6 +37,8 @@ contract BqETHSubscription is AbstractSubscription {
 
     uint256 public usedEncryptorSlots;
     mapping(uint256 periodNumber => Billing billing) public billingInfo;
+
+    uint256[20] private gap;
 
     /**
      * @notice Emitted when a subscription is spent
@@ -79,7 +80,6 @@ contract BqETHSubscription is AbstractSubscription {
      * @dev The coordinator and fee token contracts cannot be zero addresses
      * @param _coordinator The address of the coordinator contract
      * @param _feeToken The address of the fee token contract
-     * @param _beneficiary The address of the beneficiary
      * @param _adopter The address of the adopter
      * @param _baseFeeRate Fee rate per node per second
      * @param _encryptorFeeRate Fee rate per encryptor per second
@@ -91,7 +91,6 @@ contract BqETHSubscription is AbstractSubscription {
     constructor(
         Coordinator _coordinator,
         IERC20 _feeToken,
-        address _beneficiary,
         address _adopter,
         uint256 _baseFeeRate,
         uint256 _encryptorFeeRate,
@@ -108,19 +107,13 @@ contract BqETHSubscription is AbstractSubscription {
         )
     {
         require(address(_feeToken) != address(0), "Fee token cannot be the zero address");
-        require(_beneficiary != address(0), "Beneficiary cannot be the zero address");
         require(_adopter != address(0), "Adopter cannot be the zero address");
         feeToken = _feeToken;
-        beneficiary = _beneficiary;
         adopter = _adopter;
         baseFeeRate = _baseFeeRate;
         encryptorFeeRate = _encryptorFeeRate;
         maxNodes = _maxNodes;
-    }
-
-    modifier onlyBeneficiary() {
-        require(msg.sender == beneficiary, "Only the beneficiary can call this method");
-        _;
+        _disableInitializers();
     }
 
     modifier onlyAccessController() override {
@@ -174,13 +167,20 @@ contract BqETHSubscription is AbstractSubscription {
         );
     }
 
-    function initialize(IEncryptionAuthorizer _accessController) external {
+    /**
+     * @notice Initialize function for using with OpenZeppelin proxy
+     */
+    function initialize(
+        address _beneficiary,
+        IEncryptionAuthorizer _accessController
+    ) external initializer {
         require(
             address(accessController) == address(0) && address(_accessController) != address(0),
             "Access controller not already set and parameter cannot be the zero address"
         );
         accessController = _accessController;
         activeRitualId = INACTIVE_RITUAL_ID;
+        __Ownable_init(_beneficiary);
     }
 
     function baseFees() public view returns (uint256) {
@@ -247,10 +247,10 @@ contract BqETHSubscription is AbstractSubscription {
      * @notice Withdraws the contract balance to the beneficiary
      * @param amount The amount to withdraw
      */
-    function withdrawToBeneficiary(uint256 amount) external onlyBeneficiary {
+    function withdrawToBeneficiary(uint256 amount) external onlyOwner {
         require(amount <= feeToken.balanceOf(address(this)), "Insufficient balance available");
-        feeToken.safeTransfer(beneficiary, amount);
-        emit WithdrawalToBeneficiary(beneficiary, amount);
+        feeToken.safeTransfer(msg.sender, amount);
+        emit WithdrawalToBeneficiary(msg.sender, amount);
     }
 
     function processRitualPayment(
