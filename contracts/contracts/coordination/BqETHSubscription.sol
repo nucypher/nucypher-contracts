@@ -42,10 +42,10 @@ contract BqETHSubscription is AbstractSubscription, Initializable, OwnableUpgrad
 
     /**
      * @notice Emitted when a subscription is spent
-     * @param beneficiary The address of the beneficiary
+     * @param treasury The address of the treasury
      * @param amount The amount withdrawn
      */
-    event WithdrawalToBeneficiary(address indexed beneficiary, uint256 amount);
+    event WithdrawalToTreasury(address indexed treasury, uint256 amount);
 
     /**
      * @notice Emitted when a subscription is paid
@@ -171,7 +171,7 @@ contract BqETHSubscription is AbstractSubscription, Initializable, OwnableUpgrad
      * @notice Initialize function for using with OpenZeppelin proxy
      */
     function initialize(
-        address _beneficiary,
+        address _treasury,
         IEncryptionAuthorizer _accessController
     ) external initializer {
         require(
@@ -180,7 +180,7 @@ contract BqETHSubscription is AbstractSubscription, Initializable, OwnableUpgrad
         );
         accessController = _accessController;
         activeRitualId = INACTIVE_RITUAL_ID;
-        __Ownable_init(_beneficiary);
+        __Ownable_init(_treasury);
     }
 
     function baseFees() public view returns (uint256) {
@@ -244,13 +244,13 @@ contract BqETHSubscription is AbstractSubscription, Initializable, OwnableUpgrad
     }
 
     /**
-     * @notice Withdraws the contract balance to the beneficiary
+     * @notice Withdraws the contract balance to the treasury
      * @param amount The amount to withdraw
      */
-    function withdrawToBeneficiary(uint256 amount) external onlyOwner {
+    function withdrawToTreasury(uint256 amount) external onlyOwner {
         require(amount <= feeToken.balanceOf(address(this)), "Insufficient balance available");
         feeToken.safeTransfer(msg.sender, amount);
-        emit WithdrawalToBeneficiary(msg.sender, amount);
+        emit WithdrawalToTreasury(msg.sender, amount);
     }
 
     function processRitualPayment(
