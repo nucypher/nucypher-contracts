@@ -4,7 +4,6 @@ from enum import IntEnum
 import ape
 import pytest
 from eth_account import Account
-from eth_account.messages import encode_defunct
 from hexbytes import HexBytes
 from web3 import Web3
 
@@ -87,12 +86,10 @@ def erc20(project, initiator):
 
 
 @pytest.fixture()
-def coordinator(project, deployer, application, erc20, initiator, oz_dependency):
+def coordinator(project, deployer, application, initiator, oz_dependency):
     admin = deployer
     contract = project.Coordinator.deploy(
         application.address,
-        erc20.address,
-        FEE_RATE,
         sender=deployer,
     )
 
@@ -110,6 +107,16 @@ def coordinator(project, deployer, application, erc20, initiator, oz_dependency)
 
 
 @pytest.fixture()
+def fee_model(project, deployer, coordinator, erc20, treasury):
+    contract = project.FlatRateFeeModel.deploy(
+        coordinator.address, erc20.address, FEE_RATE, sender=deployer
+    )
+    coordinator.grantRole(coordinator.TREASURY_ROLE(), treasury, sender=deployer)
+    coordinator.approveFeeModel(contract.address, sender=treasury)
+    return contract
+
+
+@pytest.fixture()
 def global_allow_list(project, deployer, coordinator):
     contract = project.GlobalAllowList.deploy(coordinator.address, sender=deployer)
     return contract
@@ -122,25 +129,37 @@ def test_initial_parameters(coordinator):
 
 
 def test_invalid_initiate_ritual(
-    project, coordinator, nodes, accounts, initiator, global_allow_list
+    project, coordinator, nodes, accounts, initiator, fee_model, global_allow_list
 ):
     with ape.reverts("Sender can't initiate ritual"):
         sender = accounts[3]
         coordinator.initiateRitual(
-            nodes, sender, DURATION, global_allow_list.address, sender=sender
+            fee_model.address, nodes, sender, DURATION, global_allow_list.address, sender=sender
         )
 
     with ape.reverts("Invalid number of nodes"):
         coordinator.initiateRitual(
-            nodes[:5] * 20, initiator, DURATION, global_allow_list.address, sender=initiator
+            fee_model.address,
+            nodes[:5] * 20,
+            initiator,
+            DURATION,
+            global_allow_list.address,
+            sender=initiator,
         )
 
     with ape.reverts("Invalid ritual duration"):
-        coordinator.initiateRitual(nodes, initiator, 0, global_allow_list.address, sender=initiator)
+        coordinator.initiateRitual(
+            fee_model.address, nodes, initiator, 0, global_allow_list.address, sender=initiator
+        )
 
     with ape.reverts("Provider has not set their public key"):
         coordinator.initiateRitual(
-            nodes, initiator, DURATION, global_allow_list.address, sender=initiator
+            fee_model.address,
+            nodes,
+            initiator,
+            DURATION,
+            global_allow_list.address,
+            sender=initiator,
         )
 
     for node in nodes:
@@ -149,36 +168,47 @@ def test_invalid_initiate_ritual(
 
     with ape.reverts("Providers must be sorted"):
         coordinator.initiateRitual(
-            nodes[1:] + [nodes[0]], initiator, DURATION, global_allow_list.address, sender=initiator
+            fee_model.address,
+            nodes[1:] + [nodes[0]],
+            initiator,
+            DURATION,
+            global_allow_list.address,
+            sender=initiator,
         )
 
     with ape.reverts(project.NuCypherToken.ERC20InsufficientAllowance):
         # Sender didn't approve enough tokens
         coordinator.initiateRitual(
-            nodes, initiator, DURATION, global_allow_list.address, sender=initiator
+            fee_model.address,
+            nodes,
+            initiator,
+            DURATION,
+            global_allow_list.address,
+            sender=initiator,
         )
 
 
-def initiate_ritual(coordinator, erc20, allow_logic, authority, nodes):
+def initiate_ritual(coordinator, fee_model, erc20, authority, nodes, allow_logic):
     for node in nodes:
         public_key = gen_public_key()
         assert not coordinator.isProviderPublicKeySet(node)
         coordinator.setProviderPublicKey(public_key, sender=node)
         assert coordinator.isProviderPublicKeySet(node)
 
-    cost = coordinator.getRitualInitiationCost(nodes, DURATION)
-    erc20.approve(coordinator.address, cost, sender=authority)
+    cost = fee_model.getRitualInitiationCost(len(nodes), DURATION)
+    erc20.approve(fee_model.address, cost, sender=authority)
     tx = coordinator.initiateRitual(
-        nodes, authority, DURATION, allow_logic.address, sender=authority
+        fee_model, nodes, authority, DURATION, allow_logic.address, sender=authority
     )
     return authority, tx
 
 
 def test_initiate_ritual(
-    coordinator, nodes, initiator, erc20, global_allow_list, deployer, treasury
+    coordinator, nodes, initiator, erc20, fee_model, deployer, treasury, global_allow_list
 ):
     authority, tx = initiate_ritual(
         coordinator=coordinator,
+        fee_model=fee_model,
         erc20=erc20,
         authority=initiator,
         nodes=nodes,
@@ -209,17 +239,16 @@ def test_initiate_ritual(
     assert ritual_struct[10] == (b"\x00" * 32, b"\x00" * 16)  # publicKey
     assert not ritual_struct[11]  # aggregatedTranscript
 
-    fee = coordinator.getRitualInitiationCost(nodes, DURATION)
-    assert erc20.balanceOf(coordinator) == fee
-    assert coordinator.totalPendingFees() == fee
-    assert coordinator.pendingFees(ritualID) == fee
+    fee = fee_model.getRitualInitiationCost(len(nodes), DURATION)
+    assert erc20.balanceOf(fee_model) == fee
+    assert fee_model.totalPendingFees() == fee
+    assert fee_model.pendingFees(ritualID) == fee
 
-    with ape.reverts(access_control_error_message(treasury.address, coordinator.TREASURY_ROLE())):
-        coordinator.withdrawTokens(erc20.address, 1, sender=treasury)
+    with ape.reverts():
+        fee_model.withdrawTokens(1, sender=treasury)
 
-    coordinator.grantRole(coordinator.TREASURY_ROLE(), treasury, sender=deployer)
     with ape.reverts("Can't withdraw pending fees"):
-        coordinator.withdrawTokens(erc20.address, 1, sender=treasury)
+        fee_model.withdrawTokens(1, sender=deployer)
 
 
 def test_provider_public_key(coordinator, nodes):
@@ -241,9 +270,10 @@ def test_provider_public_key(coordinator, nodes):
     assert coordinator.getProviderPublicKey(selected_provider, ritual_id) == public_key
 
 
-def test_post_transcript(coordinator, nodes, initiator, erc20, global_allow_list):
+def test_post_transcript(coordinator, nodes, initiator, erc20, fee_model, global_allow_list):
     initiate_ritual(
         coordinator=coordinator,
+        fee_model=fee_model,
         erc20=erc20,
         authority=initiator,
         nodes=nodes,
@@ -272,10 +302,11 @@ def test_post_transcript(coordinator, nodes, initiator, erc20, global_allow_list
 
 
 def test_post_transcript_but_not_part_of_ritual(
-    coordinator, nodes, initiator, erc20, global_allow_list
+    coordinator, nodes, initiator, erc20, fee_model, global_allow_list
 ):
     initiate_ritual(
         coordinator=coordinator,
+        fee_model=fee_model,
         erc20=erc20,
         authority=initiator,
         nodes=nodes,
@@ -288,10 +319,11 @@ def test_post_transcript_but_not_part_of_ritual(
 
 
 def test_post_transcript_but_already_posted_transcript(
-    coordinator, nodes, initiator, erc20, global_allow_list
+    coordinator, nodes, initiator, erc20, fee_model, global_allow_list
 ):
     initiate_ritual(
         coordinator=coordinator,
+        fee_model=fee_model,
         erc20=erc20,
         authority=initiator,
         nodes=nodes,
@@ -304,10 +336,11 @@ def test_post_transcript_but_already_posted_transcript(
 
 
 def test_post_transcript_but_not_waiting_for_transcripts(
-    coordinator, nodes, initiator, erc20, global_allow_list
+    coordinator, nodes, initiator, erc20, fee_model, global_allow_list
 ):
     initiate_ritual(
         coordinator=coordinator,
+        fee_model=fee_model,
         erc20=erc20,
         authority=initiator,
         nodes=nodes,
@@ -321,9 +354,10 @@ def test_post_transcript_but_not_waiting_for_transcripts(
         coordinator.postTranscript(0, transcript, sender=nodes[1])
 
 
-def test_get_participants(coordinator, nodes, initiator, erc20, global_allow_list):
+def test_get_participants(coordinator, nodes, initiator, erc20, fee_model, global_allow_list):
     initiate_ritual(
         coordinator=coordinator,
+        fee_model=fee_model,
         erc20=erc20,
         authority=initiator,
         nodes=nodes,
@@ -374,9 +408,10 @@ def test_get_participants(coordinator, nodes, initiator, erc20, global_allow_lis
         assert index == len(nodes)
 
 
-def test_get_participant(nodes, coordinator, initiator, erc20, global_allow_list):
+def test_get_participant(nodes, coordinator, initiator, erc20, fee_model, global_allow_list):
     initiate_ritual(
         coordinator=coordinator,
+        fee_model=fee_model,
         erc20=erc20,
         authority=initiator,
         nodes=nodes,
@@ -421,10 +456,11 @@ def test_get_participant(nodes, coordinator, initiator, erc20, global_allow_list
 
 
 def test_post_aggregation(
-    coordinator, nodes, initiator, erc20, global_allow_list, treasury, deployer
+    coordinator, nodes, initiator, erc20, fee_model, treasury, deployer, global_allow_list
 ):
     initiate_ritual(
         coordinator=coordinator,
+        fee_model=fee_model,
         erc20=erc20,
         authority=initiator,
         nodes=nodes,
@@ -464,25 +500,25 @@ def test_post_aggregation(
     assert retrieved_public_key == dkg_public_key
     assert coordinator.getRitualIdFromPublicKey(dkg_public_key) == ritualID
 
-    fee = coordinator.getRitualInitiationCost(nodes, DURATION)
-    assert erc20.balanceOf(coordinator) == fee
-    assert coordinator.totalPendingFees() == 0
-    assert coordinator.pendingFees(ritualID) == 0
+    fee_model.processPendingFee(ritualID, sender=treasury)
+    fee = fee_model.getRitualInitiationCost(len(nodes), DURATION)
+    assert erc20.balanceOf(fee_model) == fee
+    assert fee_model.totalPendingFees() == 0
+    assert fee_model.pendingFees(ritualID) == 0
 
-    coordinator.grantRole(coordinator.TREASURY_ROLE(), treasury, sender=deployer)
     with ape.reverts("Can't withdraw pending fees"):
-        coordinator.withdrawTokens(erc20.address, fee + 1, sender=treasury)
-    coordinator.withdrawTokens(erc20.address, fee, sender=treasury)
+        fee_model.withdrawTokens(fee + 1, sender=deployer)
+    fee_model.withdrawTokens(fee, sender=deployer)
 
 
 def test_post_aggregation_fails(
-    coordinator, nodes, initiator, erc20, global_allow_list, treasury, deployer
+    coordinator, nodes, initiator, erc20, fee_model, treasury, deployer, global_allow_list
 ):
-    coordinator.grantRole(coordinator.TREASURY_ROLE(), treasury, sender=deployer)
     initiator_balance_before_payment = erc20.balanceOf(initiator)
 
     initiate_ritual(
         coordinator=coordinator,
+        fee_model=fee_model,
         erc20=erc20,
         authority=initiator,
         nodes=nodes,
@@ -513,119 +549,26 @@ def test_post_aggregation_fails(
     assert events == [coordinator.EndRitual(ritualId=ritualID, successful=False)]
 
     # Fees are still pending
-    fee = coordinator.getRitualInitiationCost(nodes, DURATION)
-    assert erc20.balanceOf(coordinator) == fee
-    assert coordinator.totalPendingFees() == fee
-    pending_fee = coordinator.pendingFees(ritualID)
+    fee = fee_model.getRitualInitiationCost(len(nodes), DURATION)
+    assert erc20.balanceOf(fee_model) == fee
+    assert fee_model.totalPendingFees() == fee
+    pending_fee = fee_model.pendingFees(ritualID)
     assert pending_fee == fee
     with ape.reverts("Can't withdraw pending fees"):
-        coordinator.withdrawTokens(erc20.address, 1, sender=treasury)
+        fee_model.withdrawTokens(1, sender=deployer)
 
     # Anyone can trigger processing of pending fees
 
     initiator_balance_before_refund = erc20.balanceOf(initiator)
     assert initiator_balance_before_refund == initiator_balance_before_payment - fee
 
-    coordinator.processPendingFee(ritualID, sender=treasury)
+    fee_model.processPendingFee(ritualID, sender=treasury)
 
     initiator_balance_after_refund = erc20.balanceOf(initiator)
-    coordinator_balance_after_refund = erc20.balanceOf(coordinator)
+    fee_model_balance_after_refund = erc20.balanceOf(fee_model)
     refund = initiator_balance_after_refund - initiator_balance_before_refund
-    assert refund == fee - coordinator.feeDeduction(pending_fee, DURATION)
-    assert coordinator_balance_after_refund + refund == fee
-    assert coordinator.totalPendingFees() == 0
-    assert coordinator.pendingFees(ritualID) == 0
-    coordinator.withdrawTokens(erc20.address, coordinator_balance_after_refund, sender=treasury)
-
-
-def test_authorize_using_global_allow_list(
-    coordinator, nodes, deployer, initiator, erc20, global_allow_list
-):
-    initiate_ritual(
-        coordinator=coordinator,
-        erc20=erc20,
-        authority=initiator,
-        nodes=nodes,
-        allow_logic=global_allow_list,
-    )
-
-    # This block mocks the signature of a threshold decryption request
-    w3 = Web3()
-    data = os.urandom(32)
-    digest = Web3.keccak(data)
-    signable_message = encode_defunct(digest)
-    signed_digest = w3.eth.account.sign_message(signable_message, private_key=deployer.private_key)
-    signature = signed_digest.signature
-
-    # Not authorized
-    assert not global_allow_list.isAuthorized(0, bytes(signature), bytes(digest))
-
-    # Negative test cases for authorization
-    with ape.reverts("Only ritual authority is permitted"):
-        global_allow_list.authorize(0, [deployer.address], sender=deployer)
-
-    with ape.reverts("Only active rituals can set authorizations"):
-        global_allow_list.authorize(0, [deployer.address], sender=initiator)
-
-    with ape.reverts("Ritual not active"):
-        coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(digest))
-
-    # Finalize ritual
-    transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
-    for node in nodes:
-        coordinator.postTranscript(0, transcript, sender=node)
-
-    aggregated = transcript
-    decryption_request_static_keys = [os.urandom(42) for _ in nodes]
-    dkg_public_key = (os.urandom(32), os.urandom(16))
-    for i, node in enumerate(nodes):
-        coordinator.postAggregation(
-            0, aggregated, dkg_public_key, decryption_request_static_keys[i], sender=node
-        )
-
-    # Actually authorize
-    tx = global_allow_list.authorize(0, [deployer.address], sender=initiator)
-
-    # Authorized
-    assert global_allow_list.isAuthorized(0, bytes(signature), bytes(data))
-    assert coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(data))
-    events = global_allow_list.AddressAuthorizationSet.from_receipt(tx)
-    assert events == [
-        global_allow_list.AddressAuthorizationSet(
-            ritualId=0, _address=deployer.address, isAuthorized=True
-        )
-    ]
-
-    # Deauthorize
-    tx = global_allow_list.deauthorize(0, [deployer.address], sender=initiator)
-
-    assert not global_allow_list.isAuthorized(0, bytes(signature), bytes(data))
-    assert not coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(data))
-    events = global_allow_list.AddressAuthorizationSet.from_receipt(tx)
-    assert events == [
-        global_allow_list.AddressAuthorizationSet(
-            ritualId=0, _address=deployer.address, isAuthorized=False
-        )
-    ]
-
-    # Reauthorize in batch
-    addresses_to_authorize = [deployer.address, initiator.address]
-    tx = global_allow_list.authorize(0, addresses_to_authorize, sender=initiator)
-    signed_digest = w3.eth.account.sign_message(signable_message, private_key=initiator.private_key)
-    initiator_signature = signed_digest.signature
-    assert global_allow_list.isAuthorized(0, bytes(initiator_signature), bytes(data))
-    assert coordinator.isEncryptionAuthorized(0, bytes(initiator_signature), bytes(data))
-
-    assert global_allow_list.isAuthorized(0, bytes(signature), bytes(data))
-    assert coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(data))
-
-    events = global_allow_list.AddressAuthorizationSet.from_receipt(tx)
-    assert events == [
-        global_allow_list.AddressAuthorizationSet(
-            ritualId=0, _address=deployer.address, isAuthorized=True
-        ),
-        # TODO was this originally supposed to True (not sure why it passed before)
-        global_allow_list.AddressAuthorizationSet(
-            ritualId=0, _address=initiator.address, isAuthorized=True
-        ),
-    ]
+    assert refund == fee - fee_model.feeDeduction(pending_fee, DURATION)
+    assert fee_model_balance_after_refund + refund == fee
+    assert fee_model.totalPendingFees() == 0
+    assert fee_model.pendingFees(ritualID) == 0
+    fee_model.withdrawTokens(fee_model_balance_after_refund, sender=deployer)

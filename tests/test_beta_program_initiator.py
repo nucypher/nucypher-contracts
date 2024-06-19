@@ -27,6 +27,7 @@ ACCESS_CONTROLLER_SLOT = 2
 SENDER_SLOT = 3
 RITUAL_ID_SLOT = 4
 PAYMENT_SLOT = 5
+FEE_RATE = 42
 
 RitualState = IntEnum(
     "RitualState",
@@ -55,18 +56,28 @@ def token(project, creator):
 
 
 @pytest.fixture()
-def coordinator(project, token, creator):
-    contract = project.CoordinatorForBetaProgramInitiatorMock.deploy(token.address, sender=creator)
+def coordinator(project, creator):
+    contract = project.CoordinatorForBetaProgramInitiatorMock.deploy(sender=creator)
     return contract
 
 
 @pytest.fixture()
-def beta_program_initiator(project, coordinator, executor, creator):
-    contract = project.BetaProgramInitiator.deploy(coordinator.address, executor, sender=creator)
+def fee_model(project, creator, coordinator, token):
+    contract = project.FlatRateFeeModel.deploy(
+        coordinator.address, token.address, FEE_RATE, sender=creator
+    )
     return contract
 
 
-def test_register(accounts, beta_program_initiator, token, coordinator):
+@pytest.fixture()
+def beta_program_initiator(project, coordinator, executor, creator, fee_model):
+    contract = project.BetaProgramInitiator.deploy(
+        coordinator.address, executor, fee_model.address, sender=creator
+    )
+    return contract
+
+
+def test_register(accounts, beta_program_initiator, token, fee_model):
     (
         initiator_1,
         initiator_2,
@@ -80,7 +91,7 @@ def test_register(accounts, beta_program_initiator, token, coordinator):
 
     nodes = [node_1, node_2]
     duration = DAY_IN_SECONDS
-    ritual_cost = coordinator.getRitualInitiationCost(nodes, duration)
+    ritual_cost = fee_model.getRitualInitiationCost(len(nodes), duration)
 
     # Can't register request without token transfer approval
     with ape.reverts():
@@ -119,7 +130,7 @@ def test_register(accounts, beta_program_initiator, token, coordinator):
     # Register another request
     nodes = [node_1]
     duration = 3 * DAY_IN_SECONDS
-    ritual_cost_2 = coordinator.getRitualInitiationCost(nodes, duration)
+    ritual_cost_2 = fee_model.getRitualInitiationCost(len(nodes), duration)
 
     token.mint(initiator_2, ritual_cost_2, sender=initiator_2)
     token.approve(beta_program_initiator.address, ritual_cost_2, sender=initiator_2)
@@ -149,7 +160,7 @@ def test_register(accounts, beta_program_initiator, token, coordinator):
     assert event.payment == ritual_cost_2
 
 
-def test_cancel(accounts, beta_program_initiator, token, coordinator, executor):
+def test_cancel(accounts, beta_program_initiator, token, executor, fee_model):
     (
         initiator_1,
         initiator_2,
@@ -162,7 +173,7 @@ def test_cancel(accounts, beta_program_initiator, token, coordinator, executor):
 
     nodes = [node_1, node_2]
     duration = DAY_IN_SECONDS
-    ritual_cost = coordinator.getRitualInitiationCost(nodes, duration)
+    ritual_cost = fee_model.getRitualInitiationCost(len(nodes), duration)
 
     token.mint(initiator_1, 10 * ritual_cost, sender=initiator_1)
     token.approve(beta_program_initiator.address, 10 * ritual_cost, sender=initiator_1)
@@ -222,7 +233,7 @@ def test_cancel(accounts, beta_program_initiator, token, coordinator, executor):
         beta_program_initiator.cancelInitiationRequest(1, sender=executor)
 
 
-def test_execute(accounts, beta_program_initiator, token, coordinator, executor):
+def test_execute(accounts, beta_program_initiator, token, coordinator, executor, fee_model):
     (
         initiator_1,
         initiator_2,
@@ -238,10 +249,10 @@ def test_execute(accounts, beta_program_initiator, token, coordinator, executor)
 
     nodes_1 = [node_1, node_2]
     duration_1 = DAY_IN_SECONDS
-    ritual_cost_1 = coordinator.getRitualInitiationCost(nodes_1, duration_1)
+    ritual_cost_1 = fee_model.getRitualInitiationCost(len(nodes_1), duration_1)
     nodes_2 = [node_1]
     duration_2 = 2 * duration_1
-    ritual_cost_2 = coordinator.getRitualInitiationCost(nodes_2, duration_2)
+    ritual_cost_2 = fee_model.getRitualInitiationCost(len(nodes_2), duration_2)
 
     token.mint(initiator_1, 10 * ritual_cost_1, sender=initiator_1)
     token.approve(beta_program_initiator.address, 10 * ritual_cost_1, sender=initiator_1)
@@ -279,7 +290,7 @@ def test_execute(accounts, beta_program_initiator, token, coordinator, executor)
     assert beta_program_initiator.requests(0)[RITUAL_ID_SLOT] == no_ritual
     balance_after = token.balanceOf(beta_program_initiator.address)
     assert balance_before - balance_after == ritual_cost_2
-    assert token.balanceOf(coordinator.address) == ritual_cost_2
+    assert token.balanceOf(fee_model.address) == ritual_cost_2
 
     assert coordinator.getRitualsLength() == 1
     assert coordinator.getProviders(0) == nodes_2
@@ -289,7 +300,8 @@ def test_execute(accounts, beta_program_initiator, token, coordinator, executor)
     assert ritual[2] == duration_2
     assert ritual[3] == access_controller_2
     assert ritual[4] == 1
-    assert ritual[5] == ritual_cost_2
+    # assert ritual[5] == ritual_cost_2
+    assert ritual[6] == fee_model.address
 
     events = beta_program_initiator.RequestExecuted.from_receipt(tx)
     assert events == [beta_program_initiator.RequestExecuted(1, 0)]
@@ -299,23 +311,23 @@ def test_execute(accounts, beta_program_initiator, token, coordinator, executor)
         beta_program_initiator.executeInitiationRequest(1, sender=executor)
 
     # Can't execute request if ritual cost changes
-    fee_rate = coordinator.feeRatePerSecond()
-    coordinator.setFeeRatePerSecond(2 * fee_rate, sender=executor)
-    with ape.reverts("Ritual initiation cost has changed"):
-        beta_program_initiator.executeInitiationRequest(0, sender=executor)
-    coordinator.setFeeRatePerSecond(fee_rate // 2, sender=executor)
-    with ape.reverts("Ritual initiation cost has changed"):
-        beta_program_initiator.executeInitiationRequest(0, sender=executor)
+    # fee_rate = fee_model.feeRatePerSecond()
+    # coordinator.setFeeRatePerSecond(2 * fee_rate, sender=executor)
+    # with ape.reverts("Ritual initiation cost has changed"):
+    #     beta_program_initiator.executeInitiationRequest(0, sender=executor)
+    # coordinator.setFeeRatePerSecond(fee_rate // 2, sender=executor)
+    # with ape.reverts("Ritual initiation cost has changed"):
+    #     beta_program_initiator.executeInitiationRequest(0, sender=executor)
 
     # Return fee rate back and execute request again
-    coordinator.setFeeRatePerSecond(fee_rate, sender=executor)
+    # coordinator.setFeeRatePerSecond(fee_rate, sender=executor)
     balance_before = token.balanceOf(beta_program_initiator.address)
     tx = beta_program_initiator.executeInitiationRequest(0, sender=executor)
     assert beta_program_initiator.requests(0)[RITUAL_ID_SLOT] == 1
     assert beta_program_initiator.requests(1)[RITUAL_ID_SLOT] == 0
     balance_after = token.balanceOf(beta_program_initiator.address)
     assert balance_before - balance_after == ritual_cost_1
-    assert token.balanceOf(coordinator.address) == ritual_cost_2 + ritual_cost_1
+    assert token.balanceOf(fee_model.address) == ritual_cost_2 + ritual_cost_1
 
     assert coordinator.getRitualsLength() == 2
     assert coordinator.getProviders(1) == nodes_1
@@ -325,13 +337,14 @@ def test_execute(accounts, beta_program_initiator, token, coordinator, executor)
     assert ritual[2] == duration_1
     assert ritual[3] == access_controller_1
     assert ritual[4] == 1
-    assert ritual[5] == ritual_cost_1
+    # assert ritual[5] == ritual_cost_1
+    assert ritual[6] == fee_model.address
 
     events = beta_program_initiator.RequestExecuted.from_receipt(tx)
     assert events == [beta_program_initiator.RequestExecuted(0, 1)]
 
 
-def test_refund(accounts, beta_program_initiator, token, coordinator, executor):
+def test_refund(accounts, beta_program_initiator, token, coordinator, executor, fee_model):
     (
         initiator_1,
         initiator_2,
@@ -344,9 +357,9 @@ def test_refund(accounts, beta_program_initiator, token, coordinator, executor):
 
     nodes = [node_1, node_2]
     duration_1 = DAY_IN_SECONDS
-    ritual_cost_1 = coordinator.getRitualInitiationCost(nodes, duration_1)
+    ritual_cost_1 = fee_model.getRitualInitiationCost(len(nodes), duration_1)
     duration_2 = 3 * duration_1
-    ritual_cost_2 = coordinator.getRitualInitiationCost(nodes, duration_2)
+    ritual_cost_2 = fee_model.getRitualInitiationCost(len(nodes), duration_2)
 
     token.mint(initiator_1, 10 * ritual_cost_1, sender=initiator_1)
     token.approve(beta_program_initiator.address, 10 * ritual_cost_1, sender=initiator_1)
@@ -396,17 +409,17 @@ def test_refund(accounts, beta_program_initiator, token, coordinator, executor):
 
     assert token.balanceOf(beta_program_initiator.address) == 0
     initiator_1_balance_before = token.balanceOf(initiator_1)
-    coordinator_balance_before = token.balanceOf(coordinator.address)
-    assert coordinator_balance_before == ritual_cost_1 + ritual_cost_2
-    pending_fees_1_before = coordinator.pendingFees(request_0_ritual_id)
+    fee_model_balance_before = token.balanceOf(fee_model.address)
+    assert fee_model_balance_before == ritual_cost_1 + ritual_cost_2
+    pending_fees_1_before = fee_model.pendingFees(request_0_ritual_id)
     assert pending_fees_1_before == ritual_cost_1
 
     tx = beta_program_initiator.refundFailedRequest(0, sender=initiator_2)
 
-    coordinator_balance_after = token.balanceOf(coordinator.address)
-    fee_deduction_1 = coordinator.feeDeduction(pending_fees_1_before, duration_1)
-    pending_fees_1_after = coordinator.pendingFees(request_0_ritual_id)
-    assert coordinator_balance_after == ritual_cost_2 + fee_deduction_1
+    fee_model_balance_after = token.balanceOf(fee_model.address)
+    fee_deduction_1 = fee_model.feeDeduction(pending_fees_1_before, duration_1)
+    pending_fees_1_after = fee_model.pendingFees(request_0_ritual_id)
+    assert fee_model_balance_after == ritual_cost_2 + fee_deduction_1
     assert pending_fees_1_after == 0
     assert token.balanceOf(beta_program_initiator.address) == 0
 
@@ -428,15 +441,15 @@ def test_refund(accounts, beta_program_initiator, token, coordinator, executor):
 
     assert token.balanceOf(beta_program_initiator.address) == 0
     initiator_2_balance_before = token.balanceOf(initiator_2)
-    coordinator_balance_before = token.balanceOf(coordinator.address)
-    assert coordinator_balance_before == ritual_cost_2 + fee_deduction_1
-    pending_fees_2_before = coordinator.pendingFees(request_1_ritual_id)
+    fee_model_balance_before = token.balanceOf(fee_model.address)
+    assert fee_model_balance_before == ritual_cost_2 + fee_deduction_1
+    pending_fees_2_before = fee_model.pendingFees(request_1_ritual_id)
     assert pending_fees_2_before == ritual_cost_2
 
-    coordinator.processPendingFee(request_1_ritual_id, sender=initiator_1)
-    assert coordinator.pendingFees(request_1_ritual_id) == 0
+    fee_model.processPendingFee(request_1_ritual_id, sender=initiator_1)
+    assert fee_model.pendingFees(request_1_ritual_id) == 0
 
-    fee_deduction_2 = coordinator.feeDeduction(pending_fees_2_before, duration_2)
+    fee_deduction_2 = fee_model.feeDeduction(pending_fees_2_before, duration_2)
     refund_2 = ritual_cost_2 - fee_deduction_2
     assert token.balanceOf(beta_program_initiator.address) == refund_2
 

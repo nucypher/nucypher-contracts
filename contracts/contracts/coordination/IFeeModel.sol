@@ -12,7 +12,14 @@ interface IFeeModel {
     function currency() external view returns (IERC20);
 
     function getRitualInitiationCost(
-        address[] calldata providers,
+        uint256 numberOfProviders,
         uint32 duration
     ) external view returns (uint256);
+
+    function processRitualPayment(
+        address initiator,
+        uint32 ritualId,
+        uint256 numberOfProviders,
+        uint32 duration
+    ) external;
 }
