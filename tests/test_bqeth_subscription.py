@@ -309,22 +309,22 @@ def test_withdraw(erc20, subscription, adopter, treasury, global_allow_list):
     erc20.approve(subscription.address, 10 * BASE_FEE, sender=adopter)
 
     with ape.reverts():
-        subscription.withdrawToBeneficiary(1, sender=adopter)
+        subscription.withdrawToTreasury(1, sender=adopter)
 
     with ape.reverts("Insufficient balance available"):
-        subscription.withdrawToBeneficiary(1, sender=treasury)
+        subscription.withdrawToTreasury(1, sender=treasury)
 
     subscription.payForSubscription(0, sender=adopter)
 
     with ape.reverts("Insufficient balance available"):
-        subscription.withdrawToBeneficiary(BASE_FEE + 1, sender=treasury)
+        subscription.withdrawToTreasury(BASE_FEE + 1, sender=treasury)
 
-    tx = subscription.withdrawToBeneficiary(BASE_FEE, sender=treasury)
+    tx = subscription.withdrawToTreasury(BASE_FEE, sender=treasury)
     assert erc20.balanceOf(treasury) == BASE_FEE
     assert erc20.balanceOf(subscription.address) == 0
 
-    events = subscription.WithdrawalToBeneficiary.from_receipt(tx)
-    assert events == [subscription.WithdrawalToBeneficiary(beneficiary=treasury, amount=BASE_FEE)]
+    events = subscription.WithdrawalToTreasury.from_receipt(tx)
+    assert events == [subscription.WithdrawalToTreasury(treasury=treasury, amount=BASE_FEE)]
 
 
 def test_process_ritual_payment(
