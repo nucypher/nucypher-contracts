@@ -117,6 +117,12 @@ def main():
     deployer.finalize(deployments=deployments)
 ```
 
+To run a deployment locally:
+
+```bash
+ape run lynx deploy_infraction --network ethereum:local:test
+```
+
 ##### 3. Setup Deployment Account (production only)
 
 In order to deploy to **production** you will need to import an account into ape:
