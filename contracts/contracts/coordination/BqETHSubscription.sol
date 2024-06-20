@@ -29,7 +29,6 @@ contract BqETHSubscription is AbstractSubscription {
 
     uint256 public immutable baseFeeRate;
     uint256 public immutable encryptorFeeRate;
-    uint256 public immutable enryptorsFeeRate;
     uint256 public immutable maxNodes;
 
     IEncryptionAuthorizer public accessController;
@@ -154,6 +153,10 @@ contract BqETHSubscription is AbstractSubscription {
 
         uint256 currentPeriodNumber = getCurrentPeriodNumber();
         Billing storage billing = billingInfo[currentPeriodNumber];
+        if (currentPeriodNumber == 0 && !billing.paid) {
+            return 0;
+        }
+
         if (billing.paid) {
             while (billing.paid) {
                 currentPeriodNumber++;
@@ -202,9 +205,6 @@ contract BqETHSubscription is AbstractSubscription {
 
         uint256 fees = baseFees() + encryptorFees(encryptorSlots, packageDuration);
         uint256 periodNumber = currentPeriodNumber;
-        if (startOfSubscription == 0) {
-            startOfSubscription = uint32(block.timestamp);
-        }
         if (billingInfo[periodNumber].paid) {
             periodNumber++;
         }
@@ -217,22 +217,28 @@ contract BqETHSubscription is AbstractSubscription {
     }
 
     /**
-     * @notice Pays for additional encryptor slots
-     * @param encryptorSlots Number of slots for encryptors
+     * @notice Pays for additional encryptor slots in the current period
+     * @param additionalEncryptorSlots Additional number of slots for encryptors
      */
-    function payForEncryptorSlots(uint128 encryptorSlots) external {
+    function payForEncryptorSlots(uint128 additionalEncryptorSlots) external {
         uint256 currentPeriodNumber = getCurrentPeriodNumber();
         Billing storage billing = billingInfo[currentPeriodNumber];
         require(billing.paid, "Current billing period must be paid");
 
-        uint32 endOfCurrentPeriod = uint32(
-            startOfSubscription + (currentPeriodNumber + 1) * packageDuration
-        );
-        uint256 fees = encryptorFees(encryptorSlots, endOfCurrentPeriod - uint32(block.timestamp));
-        billing.encryptorSlots += encryptorSlots;
+        uint32 duration = packageDuration;
+        uint32 endOfCurrentPeriod = 0;
+        if (startOfSubscription != 0) {
+            endOfCurrentPeriod = uint32(
+                startOfSubscription + (currentPeriodNumber + 1) * packageDuration
+            );
+            duration = endOfCurrentPeriod - uint32(block.timestamp);
+        }
+
+        uint256 fees = encryptorFees(additionalEncryptorSlots, duration);
+        billing.encryptorSlots += additionalEncryptorSlots;
 
         feeToken.safeTransferFrom(msg.sender, address(this), fees);
-        emit EncryptorSlotsPaid(msg.sender, fees, encryptorSlots, endOfCurrentPeriod);
+        emit EncryptorSlotsPaid(msg.sender, fees, additionalEncryptorSlots, endOfCurrentPeriod);
     }
 
     /**
@@ -252,6 +258,9 @@ contract BqETHSubscription is AbstractSubscription {
         uint32 duration
     ) external override onlyCoordinator {
         require(initiator == adopter, "Only adopter can initiate ritual");
+        if (startOfSubscription == 0) {
+            startOfSubscription = uint32(block.timestamp);
+        }
         uint32 endOfSubscription = getEndOfSubscription();
         require(endOfSubscription != 0, "Subscription has to be paid first");
         require(
