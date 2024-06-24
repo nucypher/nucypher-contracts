@@ -595,4 +595,8 @@ def test_before_is_authorized(
         global_allow_list.isAuthorized(ritual_id, bytes(signature), bytes(data))
 
     subscription.payForSubscription(0, sender=adopter)
+    with ape.reverts("Encryptors slots filled up"):
+        global_allow_list.isAuthorized(ritual_id, bytes(signature), bytes(data))
+
+    subscription.payForEncryptorSlots(1, sender=adopter)
     assert global_allow_list.isAuthorized(ritual_id, bytes(signature), bytes(data))
