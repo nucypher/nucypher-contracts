@@ -51,7 +51,8 @@ def main():
     ritual_token = deployer.deploy(project.LynxRitualToken)
 
     coordinator = deployer.deploy(project.Coordinator)
-    deployer.transact(taco_child_application.initialize, coordinator.address)
+    infraction = deployer.deploy(project.InfractionCollector)
+    deployer.transact(taco_child_application.initialize, coordinator.address, infraction.address)
 
     global_allow_list = deployer.deploy(project.GlobalAllowList)
 
@@ -61,6 +62,7 @@ def main():
         ritual_token,
         coordinator,
         global_allow_list,
+        infraction,
     ]
 
     deployer.finalize(deployments=deployments)
