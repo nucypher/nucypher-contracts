@@ -303,4 +303,14 @@ contract BqETHSubscription is AbstractSubscription {
             usedEncryptorSlots -= addresses.length;
         }
     }
+
+    function beforeIsAuthorized(uint32 ritualId) public view override {
+        super.beforeIsAuthorized(ritualId);
+        // used encryptor slots must be paid
+        if (block.timestamp <= getEndOfSubscription()) {
+            uint256 currentPeriodNumber = getCurrentPeriodNumber();
+            Billing storage billing = billingInfo[currentPeriodNumber];
+            require(usedEncryptorSlots <= billing.encryptorSlots, "Encryptors slots filled up");
+        }
+    }
 }
