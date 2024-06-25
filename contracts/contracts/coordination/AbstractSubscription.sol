@@ -12,7 +12,7 @@ import "./IFeeModel.sol";
 abstract contract AbstractSubscription is IFeeModel {
     Coordinator public immutable coordinator;
 
-    uint32 public immutable packageDuration;
+    uint32 public immutable subscriptionPeriodDuration;
     uint32 public immutable yellowPeriodDuration;
     uint32 public immutable redPeriodDuration;
 
@@ -20,19 +20,19 @@ abstract contract AbstractSubscription is IFeeModel {
      * @notice Sets subscription parameters
      * @dev The coordinator and fee token contracts cannot be zero addresses
      * @param _coordinator The address of the coordinator contract
-     * @param _packageDuration Maximum duration of ritual
+     * @param _subscriptionPeriodDuration Maximum duration of subscription period
      * @param _yellowPeriodDuration Duration of yellow period
      * @param _redPeriodDuration Duration of red period
      */
     constructor(
         Coordinator _coordinator,
-        uint32 _packageDuration,
+        uint32 _subscriptionPeriodDuration,
         uint32 _yellowPeriodDuration,
         uint32 _redPeriodDuration
     ) {
         require(address(_coordinator) != address(0), "Coordinator cannot be the zero address");
         coordinator = _coordinator;
-        packageDuration = _packageDuration;
+        subscriptionPeriodDuration = _subscriptionPeriodDuration;
         yellowPeriodDuration = _yellowPeriodDuration;
         redPeriodDuration = _redPeriodDuration;
     }

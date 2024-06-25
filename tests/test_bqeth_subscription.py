@@ -250,7 +250,7 @@ def test_pay_encryptor_slots(
     events = subscription.EncryptorSlotsPaid.from_receipt(tx)
     assert events == [
         subscription.EncryptorSlotsPaid(
-            subscriber=adopter,
+            sponsor=adopter,
             amount=encryptor_fees,
             encryptorSlots=encryptor_slots,
             endOfCurrentPeriod=0,
@@ -285,7 +285,7 @@ def test_pay_encryptor_slots(
     events = subscription.EncryptorSlotsPaid.from_receipt(tx)
     assert events == [
         subscription.EncryptorSlotsPaid(
-            subscriber=adopter,
+            sponsor=adopter,
             amount=encryptor_fees,
             encryptorSlots=encryptor_slots,
             endOfCurrentPeriod=timestamp + 2 * PACKAGE_DURATION,
