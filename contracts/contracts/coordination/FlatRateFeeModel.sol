@@ -33,7 +33,7 @@ contract FlatRateFeeModel is IFeeModel, Ownable {
         coordinator = _coordinator;
     }
 
-    function getRitualInitiationCost(
+    function getRitualCost(
         uint256 numberOfProviders,
         uint32 duration
     ) public view returns (uint256) {
@@ -53,11 +53,29 @@ contract FlatRateFeeModel is IFeeModel, Ownable {
         uint256 numberOfProviders,
         uint32 duration
     ) external override {
+        processPayment(initiator, ritualId, numberOfProviders, duration);
+    }
+
+    function processRitualExtending(
+        address initiator,
+        uint32 ritualId,
+        uint256 numberOfProviders,
+        uint32 duration
+    ) external override {
+        processPayment(initiator, ritualId, numberOfProviders, duration);
+    }
+
+    function processPayment(
+        address initiator,
+        uint32 ritualId,
+        uint256 numberOfProviders,
+        uint32 duration
+    ) internal {
         require(msg.sender == address(coordinator), "Only coordinator can call process payment");
-        uint256 ritualCost = getRitualInitiationCost(numberOfProviders, duration);
+        uint256 ritualCost = getRitualCost(numberOfProviders, duration);
         require(ritualCost > 0, "Invalid ritual cost");
         totalPendingFees += ritualCost;
-        pendingFees[ritualId] = ritualCost;
+        pendingFees[ritualId] += ritualCost;
         currency.safeTransferFrom(initiator, address(this), ritualCost);
     }
 
@@ -97,5 +115,27 @@ contract FlatRateFeeModel is IFeeModel, Ownable {
             "Can't withdraw pending fees"
         );
         currency.safeTransfer(msg.sender, amount);
+    }
+
+    /**
+     * @dev This function is called before the setAuthorizations function
+     * @param ritualId The ID of the ritual
+     * @param addresses The addresses to be authorized
+     * @param value The authorization status
+     */
+    function beforeSetAuthorization(
+        uint32 ritualId,
+        address[] calldata addresses,
+        bool value
+    ) external view {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    /**
+     * @dev This function is called before the isAuthorized function
+     * @param ritualId The ID of the ritual
+     */
+    function beforeIsAuthorized(uint32 ritualId) external view {
+        // solhint-disable-previous-line no-empty-blocks
     }
 }

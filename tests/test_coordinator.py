@@ -117,8 +117,10 @@ def fee_model(project, deployer, coordinator, erc20, treasury):
 
 
 @pytest.fixture()
-def global_allow_list(project, deployer, coordinator):
-    contract = project.GlobalAllowList.deploy(coordinator.address, sender=deployer)
+def global_allow_list(project, deployer, coordinator, fee_model):
+    contract = project.GlobalAllowList.deploy(
+        coordinator.address, fee_model.address, sender=deployer
+    )
     return contract
 
 
@@ -195,7 +197,7 @@ def initiate_ritual(coordinator, fee_model, erc20, authority, nodes, allow_logic
         coordinator.setProviderPublicKey(public_key, sender=node)
         assert coordinator.isProviderPublicKeySet(node)
 
-    cost = fee_model.getRitualInitiationCost(len(nodes), DURATION)
+    cost = fee_model.getRitualCost(len(nodes), DURATION)
     erc20.approve(fee_model.address, cost, sender=authority)
     tx = coordinator.initiateRitual(
         fee_model, nodes, authority, DURATION, allow_logic.address, sender=authority
@@ -239,7 +241,7 @@ def test_initiate_ritual(
     assert ritual_struct[10] == (b"\x00" * 32, b"\x00" * 16)  # publicKey
     assert not ritual_struct[11]  # aggregatedTranscript
 
-    fee = fee_model.getRitualInitiationCost(len(nodes), DURATION)
+    fee = fee_model.getRitualCost(len(nodes), DURATION)
     assert erc20.balanceOf(fee_model) == fee
     assert fee_model.totalPendingFees() == fee
     assert fee_model.pendingFees(ritualID) == fee
@@ -501,7 +503,7 @@ def test_post_aggregation(
     assert coordinator.getRitualIdFromPublicKey(dkg_public_key) == ritualID
 
     fee_model.processPendingFee(ritualID, sender=treasury)
-    fee = fee_model.getRitualInitiationCost(len(nodes), DURATION)
+    fee = fee_model.getRitualCost(len(nodes), DURATION)
     assert erc20.balanceOf(fee_model) == fee
     assert fee_model.totalPendingFees() == 0
     assert fee_model.pendingFees(ritualID) == 0
@@ -549,7 +551,7 @@ def test_post_aggregation_fails(
     assert events == [coordinator.EndRitual(ritualId=ritualID, successful=False)]
 
     # Fees are still pending
-    fee = fee_model.getRitualInitiationCost(len(nodes), DURATION)
+    fee = fee_model.getRitualCost(len(nodes), DURATION)
     assert erc20.balanceOf(fee_model) == fee
     assert fee_model.totalPendingFees() == fee
     pending_fee = fee_model.pendingFees(ritualID)

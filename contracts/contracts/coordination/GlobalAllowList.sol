@@ -17,6 +17,7 @@ contract GlobalAllowList is IEncryptionAuthorizer {
     using ECDSA for bytes32;
 
     Coordinator public immutable coordinator;
+    IFeeModel public immutable feeModel;
 
     mapping(bytes32 => bool) internal authorizations;
 
@@ -40,11 +41,16 @@ contract GlobalAllowList is IEncryptionAuthorizer {
      * @notice Sets the coordinator contract
      * @dev The coordinator contract cannot be a zero address and must have a valid number of rituals
      * @param _coordinator The address of the coordinator contract
+     * @param _feeModel The address of the fee model contract
      */
-    constructor(Coordinator _coordinator) {
-        require(address(_coordinator) != address(0), "Coordinator cannot be zero address");
+    constructor(Coordinator _coordinator, IFeeModel _feeModel) {
+        require(
+            address(_coordinator) != address(0) && address(_feeModel) != address(0),
+            "Contracts cannot be zero addresses"
+        );
         require(_coordinator.numberOfRituals() >= 0, "Invalid coordinator");
         coordinator = _coordinator;
+        feeModel = _feeModel;
     }
 
     /**
@@ -77,10 +83,12 @@ contract GlobalAllowList is IEncryptionAuthorizer {
      */
     function _beforeIsAuthorized(
         uint32 ritualId,
+        // solhint-disable-next-line no-unused-vars
         bytes memory evidence,
+        // solhint-disable-next-line no-unused-vars
         bytes memory ciphertextHeader
     ) internal view virtual {
-        // solhint-disable-previous-line no-empty-blocks
+        feeModel.beforeIsAuthorized(ritualId);
     }
 
     /**
@@ -111,8 +119,8 @@ contract GlobalAllowList is IEncryptionAuthorizer {
         uint32 ritualId,
         address[] calldata addresses,
         bool value
-    ) internal view virtual {
-        // solhint-disable-previous-line no-empty-blocks
+    ) internal virtual {
+        feeModel.beforeSetAuthorization(ritualId, addresses, value);
     }
 
     /**

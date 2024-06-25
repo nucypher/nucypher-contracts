@@ -43,6 +43,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         BLS12381.G2Point publicKey
     );
     event FeeModelApproved(IFeeModel feeModel);
+    event RitualExtended(uint32 indexed ritualId, uint32 indexed duration);
 
     enum RitualState {
         NON_INITIATED,
@@ -79,6 +80,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         BLS12381.G1Point publicKey;
         bytes aggregatedTranscript;
         Participant[] participant;
+        IFeeModel feeModel;
     }
 
     struct ParticipantKey {
@@ -135,6 +137,10 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     ) external view returns (uint32 initTimestamp, uint32 endTimestamp) {
         initTimestamp = rituals[ritualId].initTimestamp;
         endTimestamp = rituals[ritualId].endTimestamp;
+    }
+
+    function getAccessController(uint32 ritualId) external view returns (IEncryptionAuthorizer) {
+        return rituals[ritualId].accessController;
     }
 
     function getRitualState(uint32 ritualId) external view returns (RitualState) {
@@ -291,6 +297,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         ritual.initTimestamp = uint32(block.timestamp);
         ritual.endTimestamp = ritual.initTimestamp + duration;
         ritual.accessController = accessController;
+        ritual.feeModel = feeModel;
 
         address previous = address(0);
         for (uint256 i = 0; i < length; i++) {
@@ -556,5 +563,19 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         require(!feeModelsRegistry[feeModel], "Fee model already approved");
         feeModelsRegistry[feeModel] = true;
         emit FeeModelApproved(feeModel);
+    }
+
+    function extendRitual(uint32 ritualId, uint32 duration) external {
+        Ritual storage ritual = rituals[ritualId];
+        require(msg.sender == ritual.initiator, "Only initiator can extend ritual");
+        require(getRitualState(ritual) == RitualState.ACTIVE, "Only active ritual can be extended");
+        ritual.endTimestamp += duration;
+        ritual.feeModel.processRitualExtending(
+            ritual.initiator,
+            ritualId,
+            ritual.participant.length,
+            duration
+        );
+        emit RitualExtended(ritualId, duration);
     }
 }

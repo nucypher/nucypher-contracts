@@ -4,6 +4,7 @@ import pytest
 RITUAL_ID = 0
 ADMIN_CAP = 5
 ERC20_SUPPLY = 10**24
+FEE_RATE = 42
 
 
 @pytest.fixture(scope="module")
@@ -52,9 +53,17 @@ def subscription(project, coordinator, fee_token, beneficiary, authority):
 
 
 @pytest.fixture()
-def brand_new_managed_allow_list(project, coordinator, subscription, deployer, authority):
+def fee_model(project, deployer, coordinator, fee_token):
+    contract = project.FlatRateFeeModel.deploy(
+        coordinator.address, fee_token.address, FEE_RATE, sender=deployer
+    )
+    return contract
+
+
+@pytest.fixture()
+def brand_new_managed_allow_list(project, coordinator, subscription, fee_model, authority):
     return project.ManagedAllowList.deploy(
-        coordinator.address, subscription.address, sender=authority
+        coordinator.address, fee_model.address, subscription.address, sender=authority
     )
 
 
