@@ -61,14 +61,14 @@ contract BqETHSubscription is AbstractSubscription {
     );
 
     /**
-     * @notice Emitted when a subscription is paid
-     * @param subscriber The address of the subscriber
+     * @notice Emitted when additional encryptor slots are paid
+     * @param sponsor The address that paid for the slots
      * @param amount The amount paid
      * @param encryptorSlots Number of encryptor slots
      * @param endOfCurrentPeriod End timestamp of the current billing period
      */
     event EncryptorSlotsPaid(
-        address indexed subscriber,
+        address indexed sponsor,
         uint256 amount,
         uint128 encryptorSlots,
         uint32 endOfCurrentPeriod
@@ -84,7 +84,7 @@ contract BqETHSubscription is AbstractSubscription {
      * @param _baseFeeRate Fee rate per node per second
      * @param _encryptorFeeRate Fee rate per encryptor per second
      * @param _maxNodes Maximum nodes in the package
-     * @param _packageDuration Maximum duration of ritual
+     * @param _subscriptionPeriodDuration Maximum duration of subscription period
      * @param _yellowPeriodDuration Duration of yellow period
      * @param _redPeriodDuration Duration of red period
      */
@@ -96,13 +96,13 @@ contract BqETHSubscription is AbstractSubscription {
         uint256 _baseFeeRate,
         uint256 _encryptorFeeRate,
         uint256 _maxNodes,
-        uint32 _packageDuration,
+        uint32 _subscriptionPeriodDuration,
         uint32 _yellowPeriodDuration,
         uint32 _redPeriodDuration
     )
         AbstractSubscription(
             _coordinator,
-            _packageDuration,
+            _subscriptionPeriodDuration,
             _yellowPeriodDuration,
             _redPeriodDuration
         )
@@ -143,7 +143,7 @@ contract BqETHSubscription is AbstractSubscription {
         if (startOfSubscription == 0) {
             return 0;
         }
-        return (block.timestamp - startOfSubscription) / packageDuration;
+        return (block.timestamp - startOfSubscription) / subscriptionPeriodDuration;
     }
 
     function getEndOfSubscription() public view override returns (uint32 endOfSubscription) {
@@ -169,7 +169,9 @@ contract BqETHSubscription is AbstractSubscription {
             }
             currentPeriodNumber++;
         }
-        endOfSubscription = uint32(startOfSubscription + currentPeriodNumber * packageDuration);
+        endOfSubscription = uint32(
+            startOfSubscription + currentPeriodNumber * subscriptionPeriodDuration
+        );
     }
 
     function initialize(IEncryptionAuthorizer _accessController) external {
@@ -182,7 +184,7 @@ contract BqETHSubscription is AbstractSubscription {
     }
 
     function baseFees() public view returns (uint256) {
-        return baseFeeRate * packageDuration * maxNodes;
+        return baseFeeRate * subscriptionPeriodDuration * maxNodes;
     }
 
     function encryptorFees(uint128 encryptorSlots, uint32 duration) public view returns (uint256) {
@@ -190,7 +192,7 @@ contract BqETHSubscription is AbstractSubscription {
     }
 
     /**
-     * @notice Pays for a subscription
+     * @notice Pays for the closest unpaid subscription period (either the current or the next)
      * @param encryptorSlots Number of slots for encryptors
      */
     function payForSubscription(uint128 encryptorSlots) external {
@@ -203,7 +205,7 @@ contract BqETHSubscription is AbstractSubscription {
             "Subscription is over"
         );
 
-        uint256 fees = baseFees() + encryptorFees(encryptorSlots, packageDuration);
+        uint256 fees = baseFees() + encryptorFees(encryptorSlots, subscriptionPeriodDuration);
         uint256 periodNumber = currentPeriodNumber;
         if (billingInfo[periodNumber].paid) {
             periodNumber++;
@@ -225,11 +227,11 @@ contract BqETHSubscription is AbstractSubscription {
         Billing storage billing = billingInfo[currentPeriodNumber];
         require(billing.paid, "Current billing period must be paid");
 
-        uint32 duration = packageDuration;
+        uint32 duration = subscriptionPeriodDuration;
         uint32 endOfCurrentPeriod = 0;
         if (startOfSubscription != 0) {
             endOfCurrentPeriod = uint32(
-                startOfSubscription + (currentPeriodNumber + 1) * packageDuration
+                startOfSubscription + (currentPeriodNumber + 1) * subscriptionPeriodDuration
             );
             duration = endOfCurrentPeriod - uint32(block.timestamp);
         }
