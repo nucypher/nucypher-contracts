@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.0;
 
-import "./Coordinator.sol";
-import "./IFeeModel.sol";
+import "../Coordinator.sol";
+import "../IFeeModel.sol";
 
 /**
  * @title Base Subscription contract

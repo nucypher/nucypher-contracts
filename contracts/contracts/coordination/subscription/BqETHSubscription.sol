@@ -6,13 +6,13 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
-import "./AbstractSubscription.sol";
+import "./EncryptorSlotsSubscription.sol";
 
 /**
  * @title BqETH Subscription
  * @notice Manages the subscription information for rituals.
  */
-contract BqETHSubscription is AbstractSubscription, Initializable, OwnableUpgradeable {
+contract BqETHSubscription is EncryptorSlotsSubscription, Initializable, OwnableUpgradeable {
     using SafeERC20 for IERC20;
 
     struct Billing {
@@ -31,11 +31,7 @@ contract BqETHSubscription is AbstractSubscription, Initializable, OwnableUpgrad
     uint256 public immutable maxNodes;
 
     IEncryptionAuthorizer public accessController;
-
-    uint32 public startOfSubscription;
     uint32 public activeRitualId;
-
-    uint256 public usedEncryptorSlots;
     mapping(uint256 periodNumber => Billing billing) public billingInfo;
 
     uint256[20] private gap;
@@ -99,7 +95,7 @@ contract BqETHSubscription is AbstractSubscription, Initializable, OwnableUpgrad
         uint32 _yellowPeriodDuration,
         uint32 _redPeriodDuration
     )
-        AbstractSubscription(
+        EncryptorSlotsSubscription(
             _coordinator,
             _subscriptionPeriodDuration,
             _yellowPeriodDuration,
@@ -132,41 +128,6 @@ contract BqETHSubscription is AbstractSubscription, Initializable, OwnableUpgrad
         _;
     }
 
-    function getCurrentPeriodNumber() public view returns (uint256) {
-        if (startOfSubscription == 0) {
-            return 0;
-        }
-        return (block.timestamp - startOfSubscription) / subscriptionPeriodDuration;
-    }
-
-    function getEndOfSubscription() public view override returns (uint32 endOfSubscription) {
-        if (startOfSubscription == 0) {
-            return 0;
-        }
-
-        uint256 currentPeriodNumber = getCurrentPeriodNumber();
-        Billing storage billing = billingInfo[currentPeriodNumber];
-        if (currentPeriodNumber == 0 && !billing.paid) {
-            return 0;
-        }
-
-        if (billing.paid) {
-            while (billing.paid) {
-                currentPeriodNumber++;
-                billing = billingInfo[currentPeriodNumber];
-            }
-        } else {
-            while (!billing.paid) {
-                currentPeriodNumber--;
-                billing = billingInfo[currentPeriodNumber];
-            }
-            currentPeriodNumber++;
-        }
-        endOfSubscription = uint32(
-            startOfSubscription + currentPeriodNumber * subscriptionPeriodDuration
-        );
-    }
-
     /**
      * @notice Initialize function for using with OpenZeppelin proxy
      */
@@ -191,7 +152,16 @@ contract BqETHSubscription is AbstractSubscription, Initializable, OwnableUpgrad
         return encryptorFeeRate * duration * encryptorSlots;
     }
 
+    function isPeriodPaid(uint256 periodNumber) public view override returns (bool) {
+        return billingInfo[periodNumber].paid;
+    }
+
+    function getPaidEncryptorSlots(uint256 periodNumber) public view override returns (uint256) {
+        return billingInfo[periodNumber].encryptorSlots;
+    }
+
     /**
+     *
      * @notice Pays for the closest unpaid subscription period (either the current or the next)
      * @param encryptorSlots Number of slots for encryptors
      */
@@ -287,32 +257,5 @@ contract BqETHSubscription is AbstractSubscription, Initializable, OwnableUpgrad
             );
         }
         activeRitualId = ritualId;
-    }
-
-    function beforeSetAuthorization(
-        uint32 ritualId,
-        address[] calldata addresses,
-        bool value
-    ) public override {
-        super.beforeSetAuthorization(ritualId, addresses, value);
-        if (value) {
-            uint256 currentPeriodNumber = getCurrentPeriodNumber();
-            Billing storage billing = billingInfo[currentPeriodNumber];
-            uint128 encryptorSlots = billing.paid ? billing.encryptorSlots : 0;
-            usedEncryptorSlots += addresses.length;
-            require(usedEncryptorSlots <= encryptorSlots, "Encryptors slots filled up");
-        } else {
-            usedEncryptorSlots -= addresses.length;
-        }
-    }
-
-    function beforeIsAuthorized(uint32 ritualId) public view override {
-        super.beforeIsAuthorized(ritualId);
-        // used encryptor slots must be paid
-        if (block.timestamp <= getEndOfSubscription()) {
-            uint256 currentPeriodNumber = getCurrentPeriodNumber();
-            Billing storage billing = billingInfo[currentPeriodNumber];
-            require(usedEncryptorSlots <= billing.encryptorSlots, "Encryptors slots filled up");
-        }
     }
 }
