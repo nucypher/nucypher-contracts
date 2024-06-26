@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 import "../lib/LookupKey.sol";
 import "./GlobalAllowList.sol";
 import "./Coordinator.sol";
-import {UpfrontSubscriptionWithEncryptorsCap} from "./Subscription.sol";
+import {UpfrontSubscriptionWithEncryptorsCap} from "./subscription/Subscription.sol";
 
 /**
  * @title ManagedAllowList
