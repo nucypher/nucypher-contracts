@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.0;
 
-import "./Coordinator.sol";
-import "./IFeeModel.sol";
+import "../Coordinator.sol";
+import "../IFeeModel.sol";
 
 /**
  * @title Base Subscription contract
@@ -15,6 +15,8 @@ abstract contract AbstractSubscription is IFeeModel {
     uint32 public immutable subscriptionPeriodDuration;
     uint32 public immutable yellowPeriodDuration;
     uint32 public immutable redPeriodDuration;
+
+    uint256[20] private gap;
 
     /**
      * @notice Sets subscription parameters
