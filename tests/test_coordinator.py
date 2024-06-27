@@ -101,8 +101,6 @@ def coordinator(project, deployer, application, initiator, oz_dependency):
         sender=deployer,
     )
     proxy_contract = project.Coordinator.at(proxy.address)
-
-    proxy_contract.grantRole(contract.INITIATOR_ROLE(), initiator, sender=admin)
     return proxy_contract
 
 
@@ -133,12 +131,6 @@ def test_initial_parameters(coordinator):
 def test_invalid_initiate_ritual(
     project, coordinator, nodes, accounts, initiator, fee_model, global_allow_list
 ):
-    with ape.reverts("Sender can't initiate ritual"):
-        sender = accounts[3]
-        coordinator.initiateRitual(
-            fee_model.address, nodes, sender, DURATION, global_allow_list.address, sender=sender
-        )
-
     with ape.reverts("Invalid number of nodes"):
         coordinator.initiateRitual(
             fee_model.address,
