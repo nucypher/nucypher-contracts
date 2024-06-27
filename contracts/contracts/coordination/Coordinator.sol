@@ -43,7 +43,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         BLS12381.G2Point publicKey
     );
     event FeeModelApproved(IFeeModel feeModel);
-    event RitualExtended(uint32 indexed ritualId, uint32 indexed duration);
+    event RitualExtended(uint32 indexed ritualId, uint32 endTimestamp);
 
     enum RitualState {
         NON_INITIATED,
@@ -577,6 +577,6 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
             ritual.participant.length,
             duration
         );
-        emit RitualExtended(ritualId, duration);
+        emit RitualExtended(ritualId, ritual.endTimestamp);
     }
 }
