@@ -100,8 +100,6 @@ def coordinator(project, deployer, application, initiator, oz_dependency):
         sender=deployer,
     )
     proxy_contract = project.Coordinator.at(proxy.address)
-
-    proxy_contract.grantRole(contract.INITIATOR_ROLE(), initiator, sender=admin)
     return proxy_contract
 
 
