@@ -390,7 +390,7 @@ def test_process_ritual_payment(
     coordinator.setRitual(
         new_ritual_id, RitualState.ACTIVE, 0, global_allow_list.address, sender=treasury
     )
-    with ape.reverts("Only failed rituals allowed to be reinitiated"):
+    with ape.reverts("Only failed/expired rituals allowed to be reinitiated"):
         coordinator.processRitualPayment(
             adopter, new_ritual_id, number_of_providers, DURATION, sender=treasury
         )

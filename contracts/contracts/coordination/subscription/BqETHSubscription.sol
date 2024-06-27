@@ -253,7 +253,7 @@ contract BqETHSubscription is EncryptorSlotsSubscription, Initializable, Ownable
                 state == Coordinator.RitualState.DKG_INVALID ||
                     state == Coordinator.RitualState.DKG_TIMEOUT ||
                     state == Coordinator.RitualState.EXPIRED, // TODO check if it's ok
-                "Only failed rituals allowed to be reinitiated"
+                "Only failed/expired rituals allowed to be reinitiated"
             );
         }
         activeRitualId = ritualId;
