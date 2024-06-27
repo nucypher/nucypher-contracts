@@ -4,17 +4,20 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./Coordinator.sol";
-import "./IFeeModel.sol";
+import "./AbstractSubscription.sol";
 
 /**
  * @title BqETH Subscription
  * @notice Manages the subscription information for rituals.
  */
-contract BqETHSubscription is IFeeModel {
+contract BqETHSubscription is AbstractSubscription {
     using SafeERC20 for IERC20;
 
-    Coordinator public immutable coordinator;
+    struct Billing {
+        bool paid;
+        uint128 encryptorSlots; // pre-paid encryptor slots for the billing period
+    }
+
     IERC20 public immutable feeToken;
 
     uint32 public constant INACTIVE_RITUAL_ID = type(uint32).max;
@@ -24,16 +27,17 @@ contract BqETHSubscription is IFeeModel {
     address public immutable beneficiary;
     address public immutable adopter;
 
-    uint256 public immutable feeRate;
+    uint256 public immutable baseFeeRate;
+    uint256 public immutable encryptorFeeRate;
     uint256 public immutable maxNodes;
-    uint32 public immutable maxDuration;
-    uint32 public immutable yellowPeriodDuration;
-    uint32 public immutable redPeriodDuration;
 
     IEncryptionAuthorizer public accessController;
 
-    uint32 public endOfSubscription;
+    uint32 public startOfSubscription;
     uint32 public activeRitualId;
+
+    uint256 public usedEncryptorSlots;
+    mapping(uint256 periodNumber => Billing billing) public billingInfo;
 
     /**
      * @notice Emitted when a subscription is spent
@@ -46,9 +50,29 @@ contract BqETHSubscription is IFeeModel {
      * @notice Emitted when a subscription is paid
      * @param subscriber The address of the subscriber
      * @param amount The amount paid
+     * @param encryptorSlots Number of encryptor slots
      * @param endOfSubscription End timestamp of subscription
      */
-    event SubscriptionPaid(address indexed subscriber, uint256 amount, uint32 endOfSubscription);
+    event SubscriptionPaid(
+        address indexed subscriber,
+        uint256 amount,
+        uint128 encryptorSlots,
+        uint32 endOfSubscription
+    );
+
+    /**
+     * @notice Emitted when additional encryptor slots are paid
+     * @param sponsor The address that paid for the slots
+     * @param amount The amount paid
+     * @param encryptorSlots Number of encryptor slots
+     * @param endOfCurrentPeriod End timestamp of the current billing period
+     */
+    event EncryptorSlotsPaid(
+        address indexed sponsor,
+        uint256 amount,
+        uint128 encryptorSlots,
+        uint32 endOfCurrentPeriod
+    );
 
     /**
      * @notice Sets the coordinator and fee token contracts
@@ -57,9 +81,10 @@ contract BqETHSubscription is IFeeModel {
      * @param _feeToken The address of the fee token contract
      * @param _beneficiary The address of the beneficiary
      * @param _adopter The address of the adopter
-     * @param _feeRate Fee rate per node per second
+     * @param _baseFeeRate Fee rate per node per second
+     * @param _encryptorFeeRate Fee rate per encryptor per second
      * @param _maxNodes Maximum nodes in the package
-     * @param _maxDuration Maximum duration of ritual
+     * @param _subscriptionPeriodDuration Maximum duration of subscription period
      * @param _yellowPeriodDuration Duration of yellow period
      * @param _redPeriodDuration Duration of red period
      */
@@ -68,30 +93,29 @@ contract BqETHSubscription is IFeeModel {
         IERC20 _feeToken,
         address _beneficiary,
         address _adopter,
-        uint256 _feeRate,
+        uint256 _baseFeeRate,
+        uint256 _encryptorFeeRate,
         uint256 _maxNodes,
-        uint32 _maxDuration,
+        uint32 _subscriptionPeriodDuration,
         uint32 _yellowPeriodDuration,
         uint32 _redPeriodDuration
-    ) {
-        require(address(_coordinator) != address(0), "Coordinator cannot be the zero address");
+    )
+        AbstractSubscription(
+            _coordinator,
+            _subscriptionPeriodDuration,
+            _yellowPeriodDuration,
+            _redPeriodDuration
+        )
+    {
         require(address(_feeToken) != address(0), "Fee token cannot be the zero address");
         require(_beneficiary != address(0), "Beneficiary cannot be the zero address");
         require(_adopter != address(0), "Adopter cannot be the zero address");
-        coordinator = _coordinator;
         feeToken = _feeToken;
         beneficiary = _beneficiary;
         adopter = _adopter;
-        feeRate = _feeRate;
+        baseFeeRate = _baseFeeRate;
+        encryptorFeeRate = _encryptorFeeRate;
         maxNodes = _maxNodes;
-        maxDuration = _maxDuration;
-        yellowPeriodDuration = _yellowPeriodDuration;
-        redPeriodDuration = _redPeriodDuration;
-    }
-
-    modifier onlyCoordinator() {
-        require(msg.sender == address(coordinator), "Only the Coordinator can call this method");
-        _;
     }
 
     modifier onlyBeneficiary() {
@@ -99,7 +123,7 @@ contract BqETHSubscription is IFeeModel {
         _;
     }
 
-    modifier onlyAccessController() {
+    modifier onlyAccessController() override {
         require(
             msg.sender == address(accessController),
             "Only Access Controller can call this method"
@@ -107,12 +131,47 @@ contract BqETHSubscription is IFeeModel {
         _;
     }
 
-    modifier onlyActiveRitual(uint32 ritualId) {
+    modifier onlyActiveRitual(uint32 ritualId) override {
         require(
             activeRitualId != INACTIVE_RITUAL_ID && ritualId == activeRitualId,
             "Ritual must be active"
         );
         _;
+    }
+
+    function getCurrentPeriodNumber() public view returns (uint256) {
+        if (startOfSubscription == 0) {
+            return 0;
+        }
+        return (block.timestamp - startOfSubscription) / subscriptionPeriodDuration;
+    }
+
+    function getEndOfSubscription() public view override returns (uint32 endOfSubscription) {
+        if (startOfSubscription == 0) {
+            return 0;
+        }
+
+        uint256 currentPeriodNumber = getCurrentPeriodNumber();
+        Billing storage billing = billingInfo[currentPeriodNumber];
+        if (currentPeriodNumber == 0 && !billing.paid) {
+            return 0;
+        }
+
+        if (billing.paid) {
+            while (billing.paid) {
+                currentPeriodNumber++;
+                billing = billingInfo[currentPeriodNumber];
+            }
+        } else {
+            while (!billing.paid) {
+                currentPeriodNumber--;
+                billing = billingInfo[currentPeriodNumber];
+            }
+            currentPeriodNumber++;
+        }
+        endOfSubscription = uint32(
+            startOfSubscription + currentPeriodNumber * subscriptionPeriodDuration
+        );
     }
 
     function initialize(IEncryptionAuthorizer _accessController) external {
@@ -124,23 +183,64 @@ contract BqETHSubscription is IFeeModel {
         activeRitualId = INACTIVE_RITUAL_ID;
     }
 
-    function packageFees() public view returns (uint256) {
-        return feeRate * maxDuration * maxNodes;
+    function baseFees() public view returns (uint256) {
+        return baseFeeRate * subscriptionPeriodDuration * maxNodes;
+    }
+
+    function encryptorFees(uint128 encryptorSlots, uint32 duration) public view returns (uint256) {
+        return encryptorFeeRate * duration * encryptorSlots;
     }
 
     /**
-     * @notice Pays for a subscription
+     * @notice Pays for the closest unpaid subscription period (either the current or the next)
+     * @param encryptorSlots Number of slots for encryptors
      */
-    function payForSubscription() external {
-        // require(endOfSubscription == 0, "Subscription already payed");
-        uint256 amount = packageFees();
-        if (endOfSubscription == 0) {
-            endOfSubscription = uint32(block.timestamp);
-        }
-        endOfSubscription += uint32(maxDuration);
+    function payForSubscription(uint128 encryptorSlots) external {
+        uint256 currentPeriodNumber = getCurrentPeriodNumber();
+        require(!billingInfo[currentPeriodNumber + 1].paid, "Next billing period already paid"); // TODO until we will have refunds
+        require(
+            startOfSubscription == 0 ||
+                getEndOfSubscription() + yellowPeriodDuration + redPeriodDuration >=
+                block.timestamp,
+            "Subscription is over"
+        );
 
-        feeToken.safeTransferFrom(msg.sender, address(this), amount);
-        emit SubscriptionPaid(msg.sender, amount, endOfSubscription);
+        uint256 fees = baseFees() + encryptorFees(encryptorSlots, subscriptionPeriodDuration);
+        uint256 periodNumber = currentPeriodNumber;
+        if (billingInfo[periodNumber].paid) {
+            periodNumber++;
+        }
+        Billing storage billing = billingInfo[periodNumber];
+        billing.paid = true;
+        billing.encryptorSlots = encryptorSlots;
+
+        feeToken.safeTransferFrom(msg.sender, address(this), fees);
+        emit SubscriptionPaid(msg.sender, fees, encryptorSlots, getEndOfSubscription());
+    }
+
+    /**
+     * @notice Pays for additional encryptor slots in the current period
+     * @param additionalEncryptorSlots Additional number of slots for encryptors
+     */
+    function payForEncryptorSlots(uint128 additionalEncryptorSlots) external {
+        uint256 currentPeriodNumber = getCurrentPeriodNumber();
+        Billing storage billing = billingInfo[currentPeriodNumber];
+        require(billing.paid, "Current billing period must be paid");
+
+        uint32 duration = subscriptionPeriodDuration;
+        uint32 endOfCurrentPeriod = 0;
+        if (startOfSubscription != 0) {
+            endOfCurrentPeriod = uint32(
+                startOfSubscription + (currentPeriodNumber + 1) * subscriptionPeriodDuration
+            );
+            duration = endOfCurrentPeriod - uint32(block.timestamp);
+        }
+
+        uint256 fees = encryptorFees(additionalEncryptorSlots, duration);
+        billing.encryptorSlots += additionalEncryptorSlots;
+
+        feeToken.safeTransferFrom(msg.sender, address(this), fees);
+        emit EncryptorSlotsPaid(msg.sender, fees, additionalEncryptorSlots, endOfCurrentPeriod);
     }
 
     /**
@@ -160,6 +260,10 @@ contract BqETHSubscription is IFeeModel {
         uint32 duration
     ) external override onlyCoordinator {
         require(initiator == adopter, "Only adopter can initiate ritual");
+        if (startOfSubscription == 0) {
+            startOfSubscription = uint32(block.timestamp);
+        }
+        uint32 endOfSubscription = getEndOfSubscription();
         require(endOfSubscription != 0, "Subscription has to be paid first");
         require(
             endOfSubscription + yellowPeriodDuration + redPeriodDuration >=
@@ -185,40 +289,30 @@ contract BqETHSubscription is IFeeModel {
         activeRitualId = ritualId;
     }
 
-    function processRitualExtending(
-        address,
-        uint32 ritualId,
-        uint256,
-        uint32
-    ) external view override onlyCoordinator onlyActiveRitual(ritualId) {
-        (, uint32 endTimestamp) = coordinator.getTimestamps(ritualId);
-        require(
-            endOfSubscription + yellowPeriodDuration + redPeriodDuration >= endTimestamp,
-            "Ritual parameters exceed available in package"
-        );
-    }
-
-    /**
-     * @dev This function is called before the setAuthorizations function
-     */
     function beforeSetAuthorization(
         uint32 ritualId,
-        address[] calldata,
-        bool
-    ) external view override onlyAccessController onlyActiveRitual(ritualId) {
-        require(block.timestamp <= endOfSubscription, "Subscription has expired");
+        address[] calldata addresses,
+        bool value
+    ) public override {
+        super.beforeSetAuthorization(ritualId, addresses, value);
+        if (value) {
+            uint256 currentPeriodNumber = getCurrentPeriodNumber();
+            Billing storage billing = billingInfo[currentPeriodNumber];
+            uint128 encryptorSlots = billing.paid ? billing.encryptorSlots : 0;
+            usedEncryptorSlots += addresses.length;
+            require(usedEncryptorSlots <= encryptorSlots, "Encryptors slots filled up");
+        } else {
+            usedEncryptorSlots -= addresses.length;
+        }
     }
 
-    /**
-     * @dev This function is called before the isAuthorized function
-     * @param ritualId The ID of the ritual
-     */
-    function beforeIsAuthorized(
-        uint32 ritualId
-    ) external view override onlyAccessController onlyActiveRitual(ritualId) {
-        require(
-            block.timestamp <= endOfSubscription + yellowPeriodDuration,
-            "Yellow period has expired"
-        );
+    function beforeIsAuthorized(uint32 ritualId) public view override {
+        super.beforeIsAuthorized(ritualId);
+        // used encryptor slots must be paid
+        if (block.timestamp <= getEndOfSubscription()) {
+            uint256 currentPeriodNumber = getCurrentPeriodNumber();
+            Billing storage billing = billingInfo[currentPeriodNumber];
+            require(usedEncryptorSlots <= billing.encryptorSlots, "Encryptors slots filled up");
+        }
     }
 }

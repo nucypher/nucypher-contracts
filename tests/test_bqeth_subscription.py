@@ -22,19 +22,20 @@ import pytest
 from eth_account.messages import encode_defunct
 from web3 import Web3
 
-FEE_RATE = 42
+BASE_FEE_RATE = 42
 MAX_NODES = 10
+ENCRYPTORS_FEE_RATE = 77
 
 
 ERC20_SUPPLY = 10**24
-DURATION = 48 * 60 * 60
 ONE_DAY = 24 * 60 * 60
+DURATION = 10 * ONE_DAY
 
-MAX_DURATION = 3 * DURATION
+PACKAGE_DURATION = 3 * DURATION
 YELLOW_PERIOD = ONE_DAY
 RED_PERIOD = 5 * ONE_DAY
 
-FEE = FEE_RATE * MAX_DURATION * MAX_NODES
+BASE_FEE = BASE_FEE_RATE * PACKAGE_DURATION * MAX_NODES
 
 RitualState = IntEnum(
     "RitualState",
@@ -82,9 +83,10 @@ def subscription(project, creator, coordinator, erc20, treasury, adopter):
         erc20.address,
         treasury,
         adopter,
-        FEE_RATE,
+        BASE_FEE_RATE,
+        ENCRYPTORS_FEE_RATE,
         MAX_NODES,
-        MAX_DURATION,
+        PACKAGE_DURATION,
         YELLOW_PERIOD,
         RED_PERIOD,
         sender=creator,
@@ -102,45 +104,201 @@ def global_allow_list(project, creator, coordinator, subscription, treasury):
     return contract
 
 
-def test_pay_subscription(erc20, subscription, adopter, chain):
-    erc20.approve(subscription.address, 10 * FEE, sender=adopter)
+def test_pay_subscription(
+    erc20, subscription, coordinator, global_allow_list, adopter, treasury, chain
+):
+    erc20.approve(subscription.address, 10 * BASE_FEE, sender=adopter)
 
     # First payment
     balance_before = erc20.balanceOf(adopter)
-    assert subscription.packageFees() == FEE
+    assert subscription.baseFees() == BASE_FEE
+    assert subscription.startOfSubscription() == 0
+    assert subscription.getEndOfSubscription() == 0
+    assert subscription.getCurrentPeriodNumber() == 0
+    assert subscription.billingInfo(0) == (False, 0)
 
-    tx = subscription.payForSubscription(sender=adopter)
-    timestamp = chain.pending_timestamp - 1
-    assert subscription.endOfSubscription() == timestamp + MAX_DURATION
+    tx = subscription.payForSubscription(0, sender=adopter)
+    end_subscription = 0
+    assert subscription.startOfSubscription() == 0
+    assert subscription.getEndOfSubscription() == 0
+    assert subscription.getCurrentPeriodNumber() == 0
+    assert subscription.billingInfo(0) == (True, 0)
+    assert subscription.billingInfo(1) == (False, 0)
     balance_after = erc20.balanceOf(adopter)
-    assert balance_after + FEE == balance_before
-    assert erc20.balanceOf(subscription.address) == FEE
+    assert balance_after + BASE_FEE == balance_before
+    assert erc20.balanceOf(subscription.address) == BASE_FEE
 
     events = subscription.SubscriptionPaid.from_receipt(tx)
     assert events == [
         subscription.SubscriptionPaid(
-            subscriber=adopter, amount=FEE, endOfSubscription=timestamp + MAX_DURATION
+            subscriber=adopter,
+            amount=BASE_FEE,
+            encryptorSlots=0,
+            endOfSubscription=end_subscription,
         )
     ]
 
     # Top up
+    encryptor_slots = 10
+    encryptor_fees = ENCRYPTORS_FEE_RATE * PACKAGE_DURATION * encryptor_slots
     balance_before = erc20.balanceOf(adopter)
-    tx = subscription.payForSubscription(sender=adopter)
-    assert subscription.endOfSubscription() == timestamp + 2 * MAX_DURATION
+    tx = subscription.payForSubscription(encryptor_slots, sender=adopter)
+    end_subscription = 0
+    assert subscription.getEndOfSubscription() == end_subscription
     balance_after = erc20.balanceOf(adopter)
-    assert balance_after + FEE == balance_before
-    assert erc20.balanceOf(subscription.address) == 2 * FEE
+    assert balance_after + BASE_FEE + encryptor_fees == balance_before
+    assert erc20.balanceOf(subscription.address) == 2 * BASE_FEE + encryptor_fees
+    assert subscription.getCurrentPeriodNumber() == 0
+    assert subscription.billingInfo(0) == (True, 0)
+    assert subscription.billingInfo(1) == (True, encryptor_slots)
 
     events = subscription.SubscriptionPaid.from_receipt(tx)
     assert events == [
         subscription.SubscriptionPaid(
-            subscriber=adopter, amount=FEE, endOfSubscription=timestamp + 2 * MAX_DURATION
+            subscriber=adopter,
+            amount=BASE_FEE + encryptor_fees,
+            encryptorSlots=encryptor_slots,
+            endOfSubscription=end_subscription,
         )
     ]
 
+    # Can't pay in advance more than one time cycle
+    with ape.reverts("Next billing period already paid"):
+        subscription.payForSubscription(0, sender=adopter)
+
+    ritual_id = 1
+    coordinator.setRitual(
+        ritual_id,
+        RitualState.DKG_AWAITING_TRANSCRIPTS,
+        0,
+        global_allow_list.address,
+        sender=treasury,
+    )
+    coordinator.processRitualPayment(adopter, ritual_id, MAX_NODES, DURATION, sender=treasury)
+    timestamp = chain.pending_timestamp - 1
+    end_subscription = timestamp + 2 * PACKAGE_DURATION
+    assert subscription.startOfSubscription() == timestamp
+    assert subscription.getEndOfSubscription() == end_subscription
+
+    chain.pending_timestamp = timestamp + PACKAGE_DURATION + 1
+
+    # Top up
+    balance_before = erc20.balanceOf(adopter)
+    tx = subscription.payForSubscription(encryptor_slots, sender=adopter)
+    end_subscription = timestamp + 3 * PACKAGE_DURATION
+    assert subscription.startOfSubscription() == timestamp
+    assert subscription.getEndOfSubscription() == end_subscription
+    balance_after = erc20.balanceOf(adopter)
+    assert balance_after + BASE_FEE + encryptor_fees == balance_before
+    assert erc20.balanceOf(subscription.address) == 3 * BASE_FEE + 2 * encryptor_fees
+    assert subscription.getCurrentPeriodNumber() == 1
+    assert subscription.billingInfo(0) == (True, 0)
+    assert subscription.billingInfo(1) == (True, encryptor_slots)
+    assert subscription.billingInfo(2) == (True, encryptor_slots)
+
+    events = subscription.SubscriptionPaid.from_receipt(tx)
+    assert events == [
+        subscription.SubscriptionPaid(
+            subscriber=adopter,
+            amount=BASE_FEE + encryptor_fees,
+            encryptorSlots=encryptor_slots,
+            endOfSubscription=end_subscription,
+        )
+    ]
+
+    # Can't pay after red period is over
+    chain.pending_timestamp = end_subscription + YELLOW_PERIOD + RED_PERIOD + 1
+    assert subscription.getCurrentPeriodNumber() == 3
+    with ape.reverts("Subscription is over"):
+        subscription.payForSubscription(0, sender=adopter)
+
+
+def test_pay_encryptor_slots(
+    erc20, subscription, coordinator, global_allow_list, adopter, treasury, chain
+):
+    encryptor_slots = 10
+    assert (
+        subscription.encryptorFees(encryptor_slots, PACKAGE_DURATION)
+        == encryptor_slots * PACKAGE_DURATION * ENCRYPTORS_FEE_RATE
+    )
+
+    erc20.approve(subscription.address, 10 * BASE_FEE, sender=adopter)
+
+    with ape.reverts("Current billing period must be paid"):
+        subscription.payForEncryptorSlots(encryptor_slots, sender=adopter)
+
+    subscription.payForSubscription(encryptor_slots, sender=adopter)
+    subscription.payForSubscription(0, sender=adopter)
+    assert subscription.billingInfo(0) == (True, encryptor_slots)
+    assert subscription.billingInfo(1) == (True, 0)
+
+    duration = PACKAGE_DURATION // 3
+    chain.pending_timestamp += duration
+    encryptor_fees = encryptor_slots * PACKAGE_DURATION * ENCRYPTORS_FEE_RATE
+    assert subscription.encryptorFees(encryptor_slots, PACKAGE_DURATION) == encryptor_fees
+
+    adopter_balance_before = erc20.balanceOf(adopter)
+    subscription_balance_before = erc20.balanceOf(subscription.address)
+    tx = subscription.payForEncryptorSlots(encryptor_slots, sender=adopter)
+    adopter_balance_after = erc20.balanceOf(adopter)
+    subscription_balance_after = erc20.balanceOf(subscription.address)
+    assert adopter_balance_after + encryptor_fees == adopter_balance_before
+    assert subscription_balance_before + encryptor_fees == subscription_balance_after
+    assert subscription.billingInfo(0) == (True, 2 * encryptor_slots)
+    assert subscription.billingInfo(1) == (True, 0)
+
+    events = subscription.EncryptorSlotsPaid.from_receipt(tx)
+    assert events == [
+        subscription.EncryptorSlotsPaid(
+            sponsor=adopter,
+            amount=encryptor_fees,
+            encryptorSlots=encryptor_slots,
+            endOfCurrentPeriod=0,
+        )
+    ]
+
+    ritual_id = 1
+    coordinator.setRitual(
+        ritual_id,
+        RitualState.DKG_AWAITING_TRANSCRIPTS,
+        0,
+        global_allow_list.address,
+        sender=treasury,
+    )
+    coordinator.processRitualPayment(adopter, ritual_id, MAX_NODES, DURATION, sender=treasury)
+    timestamp = chain.pending_timestamp - 1
+
+    duration = PACKAGE_DURATION // 5
+    chain.pending_timestamp = timestamp + PACKAGE_DURATION + duration
+    encryptor_fees = encryptor_slots * (PACKAGE_DURATION - duration) * ENCRYPTORS_FEE_RATE
+
+    adopter_balance_before = erc20.balanceOf(adopter)
+    subscription_balance_before = erc20.balanceOf(subscription.address)
+    tx = subscription.payForEncryptorSlots(encryptor_slots, sender=adopter)
+    adopter_balance_after = erc20.balanceOf(adopter)
+    subscription_balance_after = erc20.balanceOf(subscription.address)
+    assert adopter_balance_after + encryptor_fees == adopter_balance_before
+    assert subscription_balance_before + encryptor_fees == subscription_balance_after
+    assert subscription.billingInfo(0) == (True, 2 * encryptor_slots)
+    assert subscription.billingInfo(1) == (True, encryptor_slots)
+
+    events = subscription.EncryptorSlotsPaid.from_receipt(tx)
+    assert events == [
+        subscription.EncryptorSlotsPaid(
+            sponsor=adopter,
+            amount=encryptor_fees,
+            encryptorSlots=encryptor_slots,
+            endOfCurrentPeriod=timestamp + 2 * PACKAGE_DURATION,
+        )
+    ]
+
+    chain.pending_timestamp = timestamp + 2 * PACKAGE_DURATION + duration
+    with ape.reverts("Current billing period must be paid"):
+        subscription.payForEncryptorSlots(encryptor_slots, sender=adopter)
+
 
 def test_withdraw(erc20, subscription, adopter, treasury):
-    erc20.approve(subscription.address, 10 * FEE, sender=adopter)
+    erc20.approve(subscription.address, 10 * BASE_FEE, sender=adopter)
 
     with ape.reverts("Only the beneficiary can call this method"):
         subscription.withdrawToBeneficiary(1, sender=adopter)
@@ -148,17 +306,17 @@ def test_withdraw(erc20, subscription, adopter, treasury):
     with ape.reverts("Insufficient balance available"):
         subscription.withdrawToBeneficiary(1, sender=treasury)
 
-    subscription.payForSubscription(sender=adopter)
+    subscription.payForSubscription(0, sender=adopter)
 
     with ape.reverts("Insufficient balance available"):
-        subscription.withdrawToBeneficiary(FEE + 1, sender=treasury)
+        subscription.withdrawToBeneficiary(BASE_FEE + 1, sender=treasury)
 
-    tx = subscription.withdrawToBeneficiary(FEE, sender=treasury)
-    assert erc20.balanceOf(treasury) == FEE
+    tx = subscription.withdrawToBeneficiary(BASE_FEE, sender=treasury)
+    assert erc20.balanceOf(treasury) == BASE_FEE
     assert erc20.balanceOf(subscription.address) == 0
 
     events = subscription.WithdrawalToBeneficiary.from_receipt(tx)
-    assert events == [subscription.WithdrawalToBeneficiary(beneficiary=treasury, amount=FEE)]
+    assert events == [subscription.WithdrawalToBeneficiary(beneficiary=treasury, amount=BASE_FEE)]
 
 
 def test_process_ritual_payment(
@@ -180,8 +338,8 @@ def test_process_ritual_payment(
             adopter, ritual_id, number_of_providers, DURATION, sender=treasury
         )
 
-    erc20.approve(subscription.address, 10 * FEE, sender=adopter)
-    subscription.payForSubscription(sender=adopter)
+    erc20.approve(subscription.address, 10 * BASE_FEE, sender=adopter)
+    subscription.payForSubscription(0, sender=adopter)
 
     with ape.reverts("Ritual parameters exceed available in package"):
         coordinator.processRitualPayment(
@@ -192,7 +350,7 @@ def test_process_ritual_payment(
             adopter,
             ritual_id,
             number_of_providers,
-            MAX_DURATION + YELLOW_PERIOD + RED_PERIOD + 1,
+            PACKAGE_DURATION + YELLOW_PERIOD + RED_PERIOD + 1,
             sender=treasury,
         )
 
@@ -203,7 +361,7 @@ def test_process_ritual_payment(
             adopter,
             ritual_id,
             MAX_NODES,
-            MAX_DURATION + YELLOW_PERIOD + RED_PERIOD - 4,
+            PACKAGE_DURATION + YELLOW_PERIOD + RED_PERIOD - 4,
             sender=treasury,
         )
 
@@ -279,15 +437,15 @@ def test_process_ritual_extending(
             treasury, ritual_id, number_of_providers, DURATION, sender=treasury
         )
 
-    erc20.approve(subscription.address, 10 * FEE, sender=adopter)
-    subscription.payForSubscription(sender=adopter)
+    erc20.approve(subscription.address, 10 * BASE_FEE, sender=adopter)
+    subscription.payForSubscription(0, sender=adopter)
     coordinator.setRitual(
         ritual_id, RitualState.ACTIVE, 0, global_allow_list.address, sender=treasury
     )
     coordinator.processRitualPayment(
         adopter, ritual_id, number_of_providers, DURATION, sender=treasury
     )
-    end_subscription = subscription.endOfSubscription()
+    end_subscription = subscription.getEndOfSubscription()
     max_end_timestamp = end_subscription + YELLOW_PERIOD + RED_PERIOD
 
     new_ritual_id = ritual_id + 1
@@ -348,13 +506,13 @@ def test_before_set_authorization(
     assert subscription.address == global_allow_list.feeModel()
 
     with ape.reverts("Only Access Controller can call this method"):
-        subscription.beforeSetAuthorization(0, [creator.address], True, sender=adopter)
+        subscription.beforeSetAuthorization(0, [creator], True, sender=adopter)
 
     with ape.reverts("Ritual must be active"):
-        global_allow_list.authorize(0, [creator.address], sender=adopter)
+        global_allow_list.authorize(0, [creator], sender=adopter)
 
-    erc20.approve(subscription.address, 10 * FEE, sender=adopter)
-    subscription.payForSubscription(sender=adopter)
+    erc20.approve(subscription.address, 10 * BASE_FEE, sender=adopter)
+    subscription.payForSubscription(0, sender=adopter)
     coordinator.setRitual(
         ritual_id, RitualState.ACTIVE, 0, global_allow_list.address, sender=treasury
     )
@@ -363,17 +521,39 @@ def test_before_set_authorization(
     )
 
     with ape.reverts("Ritual must be active"):
-        global_allow_list.authorize(0, [creator.address], sender=adopter)
-    global_allow_list.authorize(ritual_id, [creator.address], sender=adopter)
+        global_allow_list.authorize(0, [creator], sender=adopter)
 
-    end_subscription = subscription.endOfSubscription()
+    with ape.reverts("Encryptors slots filled up"):
+        global_allow_list.authorize(ritual_id, [creator], sender=adopter)
+
+    subscription.payForEncryptorSlots(2, sender=adopter)
+    global_allow_list.authorize(ritual_id, [creator], sender=adopter)
+    assert subscription.usedEncryptorSlots() == 1
+
+    with ape.reverts("Encryptors slots filled up"):
+        global_allow_list.authorize(ritual_id, [creator, adopter], sender=adopter)
+
+    global_allow_list.deauthorize(ritual_id, [creator], sender=adopter)
+    assert subscription.usedEncryptorSlots() == 0
+
+    global_allow_list.authorize(ritual_id, [creator, adopter], sender=adopter)
+    assert subscription.usedEncryptorSlots() == 2
+
+    end_subscription = subscription.getEndOfSubscription()
     chain.pending_timestamp = end_subscription + 1
 
     with ape.reverts("Subscription has expired"):
-        global_allow_list.authorize(ritual_id, [creator.address], sender=adopter)
+        global_allow_list.authorize(ritual_id, [creator], sender=adopter)
 
-    subscription.payForSubscription(sender=adopter)
-    global_allow_list.authorize(ritual_id, [creator.address], sender=adopter)
+    subscription.payForSubscription(0, sender=adopter)
+    with ape.reverts("Encryptors slots filled up"):
+        global_allow_list.authorize(ritual_id, [creator], sender=adopter)
+
+    subscription.payForEncryptorSlots(3, sender=adopter)
+    with ape.reverts("Encryptors slots filled up"):
+        global_allow_list.authorize(ritual_id, [treasury, subscription.address], sender=adopter)
+    global_allow_list.authorize(ritual_id, [treasury], sender=adopter)
+    assert subscription.usedEncryptorSlots() == 3
 
 
 def test_before_is_authorized(
@@ -396,8 +576,8 @@ def test_before_is_authorized(
     with ape.reverts("Ritual must be active"):
         global_allow_list.isAuthorized(0, bytes(signature), bytes(data))
 
-    erc20.approve(subscription.address, 10 * FEE, sender=adopter)
-    subscription.payForSubscription(sender=adopter)
+    erc20.approve(subscription.address, 10 * BASE_FEE, sender=adopter)
+    subscription.payForSubscription(1, sender=adopter)
     coordinator.setRitual(
         ritual_id, RitualState.ACTIVE, 0, global_allow_list.address, sender=treasury
     )
@@ -408,11 +588,15 @@ def test_before_is_authorized(
         global_allow_list.isAuthorized(0, bytes(signature), bytes(data))
     assert global_allow_list.isAuthorized(ritual_id, bytes(signature), bytes(data))
 
-    end_subscription = subscription.endOfSubscription()
+    end_subscription = subscription.getEndOfSubscription()
     chain.pending_timestamp = end_subscription + YELLOW_PERIOD + 2
 
     with ape.reverts("Yellow period has expired"):
         global_allow_list.isAuthorized(ritual_id, bytes(signature), bytes(data))
 
-    subscription.payForSubscription(sender=adopter)
+    subscription.payForSubscription(0, sender=adopter)
+    with ape.reverts("Encryptors slots filled up"):
+        global_allow_list.isAuthorized(ritual_id, bytes(signature), bytes(data))
+
+    subscription.payForEncryptorSlots(1, sender=adopter)
     assert global_allow_list.isAuthorized(ritual_id, bytes(signature), bytes(data))
