@@ -59,6 +59,10 @@ contract CoordinatorForBqETHSubscriptionMock {
         return rituals[_ritualId].state;
     }
 
+    function getFeeModel(uint32) external view returns (IFeeModel) {
+        return feeModel;
+    }
+
     function getTimestamps(
         uint32 _ritualId
     ) external view returns (uint32 initTimestamp, uint32 endTimestamp) {
