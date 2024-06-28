@@ -539,6 +539,16 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         return found;
     }
 
+    function isEncryptionAuthorized(
+        uint32 ritualId,
+        bytes memory evidence,
+        bytes memory ciphertextHeader
+    ) external view returns (bool) {
+        Ritual storage ritual = rituals[ritualId];
+        require(getRitualState(ritual) == RitualState.ACTIVE, "Ritual not active");
+        return ritual.accessController.isAuthorized(ritualId, evidence, ciphertextHeader);
+    }
+
     function processReimbursement(uint256 initialGasLeft) internal {
         if (address(reimbursementPool) != address(0)) {
             uint256 gasUsed = initialGasLeft - gasleft();
