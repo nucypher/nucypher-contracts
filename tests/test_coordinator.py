@@ -115,10 +115,8 @@ def fee_model(project, deployer, coordinator, erc20, treasury):
 
 
 @pytest.fixture()
-def global_allow_list(project, deployer, coordinator, fee_model):
-    contract = project.GlobalAllowList.deploy(
-        coordinator.address, fee_model.address, sender=deployer
-    )
+def global_allow_list(project, deployer, coordinator):
+    contract = project.GlobalAllowList.deploy(coordinator.address, sender=deployer)
     return contract
 
 

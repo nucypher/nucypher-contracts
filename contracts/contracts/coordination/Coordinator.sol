@@ -143,6 +143,10 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         return rituals[ritualId].accessController;
     }
 
+    function getFeeModel(uint32 ritualId) external view returns (IFeeModel) {
+        return rituals[ritualId].feeModel;
+    }
+
     function getRitualState(uint32 ritualId) external view returns (RitualState) {
         return getRitualState(rituals[ritualId]);
     }
