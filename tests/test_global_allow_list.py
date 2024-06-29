@@ -100,8 +100,6 @@ def coordinator(project, deployer, application, initiator, oz_dependency):
         sender=deployer,
     )
     proxy_contract = project.Coordinator.at(proxy.address)
-
-    proxy_contract.grantRole(contract.INITIATOR_ROLE(), initiator, sender=admin)
     return proxy_contract
 
 
@@ -116,10 +114,8 @@ def fee_model(project, deployer, coordinator, erc20, treasury):
 
 
 @pytest.fixture()
-def global_allow_list(project, deployer, coordinator, fee_model):
-    contract = project.GlobalAllowList.deploy(
-        coordinator.address, fee_model.address, sender=deployer
-    )
+def global_allow_list(project, deployer, coordinator):
+    contract = project.GlobalAllowList.deploy(coordinator.address, sender=deployer)
     return contract
 
 
@@ -168,6 +164,9 @@ def test_authorize_using_global_allow_list(
     with ape.reverts("Only active rituals can set authorizations"):
         global_allow_list.authorize(0, [deployer.address], sender=initiator)
 
+    with ape.reverts("Ritual not active"):
+        coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(digest))
+
     # Finalize ritual
     transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
     for node in nodes:
@@ -186,6 +185,7 @@ def test_authorize_using_global_allow_list(
 
     # Authorized
     assert global_allow_list.isAuthorized(0, bytes(signature), bytes(data))
+    assert coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(data))
     events = global_allow_list.AddressAuthorizationSet.from_receipt(tx)
     assert events == [
         global_allow_list.AddressAuthorizationSet(
@@ -197,6 +197,7 @@ def test_authorize_using_global_allow_list(
     tx = global_allow_list.deauthorize(0, [deployer.address], sender=initiator)
 
     assert not global_allow_list.isAuthorized(0, bytes(signature), bytes(data))
+    assert not coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(data))
     events = global_allow_list.AddressAuthorizationSet.from_receipt(tx)
     assert events == [
         global_allow_list.AddressAuthorizationSet(
@@ -210,8 +211,10 @@ def test_authorize_using_global_allow_list(
     signed_digest = w3.eth.account.sign_message(signable_message, private_key=initiator.private_key)
     initiator_signature = signed_digest.signature
     assert global_allow_list.isAuthorized(0, bytes(initiator_signature), bytes(data))
+    assert coordinator.isEncryptionAuthorized(0, bytes(initiator_signature), bytes(data))
 
     assert global_allow_list.isAuthorized(0, bytes(signature), bytes(data))
+    assert coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(data))
 
     events = global_allow_list.AddressAuthorizationSet.from_receipt(tx)
     assert events == [
