@@ -105,9 +105,7 @@ def subscription(project, creator, coordinator, erc20, adopter, oz_dependency):
 
 @pytest.fixture()
 def global_allow_list(project, creator, coordinator, subscription, treasury):
-    contract = project.GlobalAllowList.deploy(
-        coordinator.address, subscription.address, sender=creator
-    )
+    contract = project.GlobalAllowList.deploy(coordinator.address, sender=creator)
     subscription.initialize(treasury.address, contract.address, sender=treasury)
     return contract
 
@@ -511,8 +509,6 @@ def test_before_set_authorization(
     ritual_id = 6
     number_of_providers = 7
 
-    assert subscription.address == global_allow_list.feeModel()
-
     with ape.reverts("Only Access Controller can call this method"):
         subscription.beforeSetAuthorization(0, [creator], True, sender=adopter)
 
@@ -575,8 +571,6 @@ def test_before_is_authorized(
     signable_message = encode_defunct(digest)
     signed_digest = w3.eth.account.sign_message(signable_message, private_key=adopter.private_key)
     signature = signed_digest.signature
-
-    assert subscription.address == global_allow_list.feeModel()
 
     with ape.reverts("Only Access Controller can call this method"):
         subscription.beforeIsAuthorized(0, sender=adopter)

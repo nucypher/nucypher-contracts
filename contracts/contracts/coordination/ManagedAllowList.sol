@@ -39,9 +39,8 @@ contract ManagedAllowList is GlobalAllowList {
      */
     constructor(
         Coordinator _coordinator,
-        IFeeModel _feeModel,
-        UpfrontSubscriptionWithEncryptorsCap _subscription
-    ) GlobalAllowList(_coordinator, _feeModel) {
+        UpfrontSubscriptionWithEncryptorsCap _subscription // TODO replace with IFeeModel subscription
+    ) GlobalAllowList(_coordinator) {
         require(address(_subscription) != address(0), "Subscription cannot be the zero address");
         subscription = _subscription;
     }
