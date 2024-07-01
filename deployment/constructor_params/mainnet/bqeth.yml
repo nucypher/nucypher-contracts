@@ -1,0 +1,41 @@
+deployment:
+  name: bqeth-mainnet
+  chain_id: 137
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: bqeth-mainnet.json
+
+constants:
+  # See deployment/artifacts/mainnet.json
+  COORDINATOR_PROXY: "0xE74259e3dafe30bAA8700238e324b47aC98FE755"
+  
+  BQETH_ADOPTER: "TBD"
+
+  # DAI Token on Polygon PoS - References:
+  # - https://polygonscan.com/token/0x8f3cf7ad23cd3cadbd9735aff958023239c6a063
+  # - https://github.com/search?q=0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063&type=code
+  DAI_ON_POLYGON: "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063"
+
+  # See https://github.com/nucypher/tdec/issues/169
+  BASE_FEE_RATE: 4050925925925  # $0.35 per day, in DAI units per second (in Python: 35*10**16 // 86400)
+  ENCRYPTOR_FEE_RATE: 63419583967  # $2 per year, in DAI units per second (in Python: 2 * 10**18 // 86400 // 365)
+  MAX_NODES: 30
+
+  # TODO: Are these good period durations for testing in Lynx?
+  PERIOD: 172800  # 2 days
+  YELLOW_PERIOD: 86400  # 1 day
+  RED_PERIOD: 86400  # 1 day
+
+contracts:
+  - BqETHSubscription:
+      constructor:
+        _coordinator: $COORDINATOR_PROXY
+        _feeToken: $DAI_ON_POLYGON
+        _adopter: $BQETH_ADOPTER
+        _baseFeeRate: $BASE_FEE_RATE
+        _encryptorFeeRate: $ENCRYPTOR_FEE_RATE
+        _maxNodes: $MAX_NODES
+        _subscriptionPeriodDuration: $PERIOD
+        _yellowPeriodDuration: $YELLOW_PERIOD
+        _redPeriodDuration: $RED_PERIOD
