@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import "./EncryptorSlotsSubscription.sol";
+import "../GlobalAllowList.sol";
 
 /**
  * @title BqETH Subscription
@@ -30,7 +31,7 @@ contract BqETHSubscription is EncryptorSlotsSubscription, Initializable, Ownable
     uint256 public immutable encryptorFeeRate;
     uint256 public immutable maxNodes;
 
-    IEncryptionAuthorizer public accessController;
+    GlobalAllowList public immutable accessController;
     uint32 public activeRitualId;
     mapping(uint256 periodNumber => Billing billing) public billingInfo;
 
@@ -75,6 +76,7 @@ contract BqETHSubscription is EncryptorSlotsSubscription, Initializable, Ownable
      * @notice Sets the coordinator and fee token contracts
      * @dev The coordinator and fee token contracts cannot be zero addresses
      * @param _coordinator The address of the coordinator contract
+     * @param _accessController The address of the global allow list
      * @param _feeToken The address of the fee token contract
      * @param _adopter The address of the adopter
      * @param _baseFeeRate Fee rate per node per second
@@ -86,6 +88,7 @@ contract BqETHSubscription is EncryptorSlotsSubscription, Initializable, Ownable
      */
     constructor(
         Coordinator _coordinator,
+        GlobalAllowList _accessController,
         IERC20 _feeToken,
         address _adopter,
         uint256 _baseFeeRate,
@@ -104,11 +107,16 @@ contract BqETHSubscription is EncryptorSlotsSubscription, Initializable, Ownable
     {
         require(address(_feeToken) != address(0), "Fee token cannot be the zero address");
         require(_adopter != address(0), "Adopter cannot be the zero address");
+        require(
+            address(_accessController) != address(0),
+            "Access controller cannot be the zero address"
+        );
         feeToken = _feeToken;
         adopter = _adopter;
         baseFeeRate = _baseFeeRate;
         encryptorFeeRate = _encryptorFeeRate;
         maxNodes = _maxNodes;
+        accessController = _accessController;
         _disableInitializers();
     }
 
@@ -131,15 +139,7 @@ contract BqETHSubscription is EncryptorSlotsSubscription, Initializable, Ownable
     /**
      * @notice Initialize function for using with OpenZeppelin proxy
      */
-    function initialize(
-        address _treasury,
-        IEncryptionAuthorizer _accessController
-    ) external initializer {
-        require(
-            address(accessController) == address(0) && address(_accessController) != address(0),
-            "Access controller not already set and parameter cannot be the zero address"
-        );
-        accessController = _accessController;
+    function initialize(address _treasury) external initializer {
         activeRitualId = INACTIVE_RITUAL_ID;
         __Ownable_init(_treasury);
     }
