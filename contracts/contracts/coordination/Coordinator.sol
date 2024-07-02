@@ -543,6 +543,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         return found;
     }
 
+    /// @dev Deprecated, see issue #195
     function isEncryptionAuthorized(
         uint32 ritualId,
         bytes memory evidence,
