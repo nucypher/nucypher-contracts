@@ -88,7 +88,6 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         BLS12381.G2Point publicKey;
     }
 
-    bytes32 public constant INITIATOR_ROLE = keccak256("INITIATOR_ROLE");
     bytes32 public constant TREASURY_ROLE = keccak256("TREASURY_ROLE");
 
     ITACoChildApplication public immutable application;
@@ -97,11 +96,11 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     Ritual[] public rituals;
     uint32 public timeout;
     uint16 public maxDkgSize;
-    bool public isInitiationPublic;
+    bool private stub1; // former isInitiationPublic
 
-    uint256 private stub1; // former totalPendingFees
-    mapping(uint256 => uint256) private stub2; // former pendingFees
-    address private stub3; // former feeModel
+    uint256 private stub2; // former totalPendingFees
+    mapping(uint256 => uint256) private stub3; // former pendingFees
+    address private stub4; // former feeModel
 
     IReimbursementPool internal reimbursementPool;
     mapping(address => ParticipantKey[]) internal participantKeysHistory;
@@ -142,6 +141,10 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
     function getAccessController(uint32 ritualId) external view returns (IEncryptionAuthorizer) {
         return rituals[ritualId].accessController;
+    }
+
+    function getFeeModel(uint32 ritualId) external view returns (IFeeModel) {
+        return rituals[ritualId].feeModel;
     }
 
     function getRitualState(uint32 ritualId) external view returns (RitualState) {
@@ -188,11 +191,6 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
             //   - Still within the deadline
             revert("Ambiguous ritual state");
         }
-    }
-
-    function makeInitiationPublic() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        isInitiationPublic = true;
-        _setRoleAdmin(INITIATOR_ROLE, bytes32(0));
     }
 
     function setProviderPublicKey(BLS12381.G2Point calldata publicKey) external {
@@ -280,10 +278,6 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     ) external returns (uint32) {
         require(authority != address(0), "Invalid authority");
 
-        require(
-            isInitiationPublic || hasRole(INITIATOR_ROLE, msg.sender),
-            "Sender can't initiate ritual"
-        );
         require(feeModelsRegistry[feeModel], "Fee model must be approved");
         uint16 length = uint16(providers.length);
         require(2 <= length && length <= maxDkgSize, "Invalid number of nodes");
@@ -547,6 +541,17 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         Ritual storage ritual = rituals[ritualId];
         (bool found, ) = findParticipant(ritual, provider);
         return found;
+    }
+
+    /// @dev Deprecated, see issue #195
+    function isEncryptionAuthorized(
+        uint32 ritualId,
+        bytes memory evidence,
+        bytes memory ciphertextHeader
+    ) external view returns (bool) {
+        Ritual storage ritual = rituals[ritualId];
+        require(getRitualState(ritual) == RitualState.ACTIVE, "Ritual not active");
+        return ritual.accessController.isAuthorized(ritualId, evidence, ciphertextHeader);
     }
 
     function processReimbursement(uint256 initialGasLeft) internal {

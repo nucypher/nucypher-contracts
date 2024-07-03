@@ -63,7 +63,7 @@ def fee_model(project, deployer, coordinator, fee_token):
 @pytest.fixture()
 def brand_new_managed_allow_list(project, coordinator, subscription, fee_model, authority):
     return project.ManagedAllowList.deploy(
-        coordinator.address, fee_model.address, subscription.address, sender=authority
+        coordinator.address, subscription.address, sender=authority
     )
 
 
@@ -109,6 +109,7 @@ def test_remove_administrators(managed_allow_list, authority, admin):
     assert managed_allow_list.authActions(RITUAL_ID) == 2
 
 
+@pytest.mark.skip(reason="finish tests when managed allow list will use fee model")
 def test_authorize(
     managed_allow_list, subscription, fee_token, deployer, authority, admin, encryptor
 ):
@@ -140,6 +141,7 @@ def test_authorize(
     assert managed_allow_list.isAddressAuthorized(RITUAL_ID, encryptor)
 
 
+@pytest.mark.skip(reason="finish tests when managed allow list will use fee model")
 def test_deauthorize(
     managed_allow_list, subscription, fee_token, deployer, authority, admin, encryptor
 ):

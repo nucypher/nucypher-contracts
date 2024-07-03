@@ -77,9 +77,18 @@ def coordinator(project, creator):
 
 
 @pytest.fixture()
-def subscription(project, creator, coordinator, erc20, adopter, oz_dependency):
+def global_allow_list(project, creator, coordinator):
+    contract = project.GlobalAllowList.deploy(coordinator.address, sender=creator)
+    return contract
+
+
+@pytest.fixture()
+def subscription(
+    project, creator, coordinator, global_allow_list, erc20, adopter, treasury, oz_dependency
+):
     contract = project.BqETHSubscription.deploy(
         coordinator.address,
+        global_allow_list.address,
         erc20.address,
         adopter,
         BASE_FEE_RATE,
@@ -100,16 +109,8 @@ def subscription(project, creator, coordinator, erc20, adopter, oz_dependency):
     )
     proxy_contract = project.BqETHSubscription.at(proxy.address)
     coordinator.setFeeModel(proxy_contract.address, sender=creator)
+    proxy_contract.initialize(treasury.address, sender=treasury)
     return proxy_contract
-
-
-@pytest.fixture()
-def global_allow_list(project, creator, coordinator, subscription, treasury):
-    contract = project.GlobalAllowList.deploy(
-        coordinator.address, subscription.address, sender=creator
-    )
-    subscription.initialize(treasury.address, contract.address, sender=treasury)
-    return contract
 
 
 def test_pay_subscription(
@@ -511,8 +512,6 @@ def test_before_set_authorization(
     ritual_id = 6
     number_of_providers = 7
 
-    assert subscription.address == global_allow_list.feeModel()
-
     with ape.reverts("Only Access Controller can call this method"):
         subscription.beforeSetAuthorization(0, [creator], True, sender=adopter)
 
@@ -575,8 +574,6 @@ def test_before_is_authorized(
     signable_message = encode_defunct(digest)
     signed_digest = w3.eth.account.sign_message(signable_message, private_key=adopter.private_key)
     signature = signed_digest.signature
-
-    assert subscription.address == global_allow_list.feeModel()
 
     with ape.reverts("Only Access Controller can call this method"):
         subscription.beforeIsAuthorized(0, sender=adopter)
