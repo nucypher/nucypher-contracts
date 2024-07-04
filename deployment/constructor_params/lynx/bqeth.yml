@@ -16,9 +16,12 @@ constants:
   # lynx deployer account
   LYNX_DEPLOYER: "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
 
-  BASE_FEE_RATE: 1
-  ENCRYPTOR_FEE_RATE: 99
   MAX_NODES: 4
+
+  # Let's use proposed values for mainnet. See https://github.com/nucypher/tdec/issues/169
+  INITIAL_BASE_FEE_RATE: 4050925925925  # $0.35 per day, in DAI units per second (in Python: 35*10**16 // 86400)
+  ENCRYPTOR_FEE_RATE: 63419583967  # $2 per year, in DAI units per second (in Python: 2 * 10**18 // 86400 // 365)  
+  BASE_FEE_RATE_INCREASE: 500  # 5%, expressed as parts on 10,000
 
   # TODO: Are these good period durations for testing in Lynx?
   PERIOD: 172800  # 2 days
@@ -26,12 +29,21 @@ constants:
   RED_PERIOD: 86400  # 1 day
 
 contracts:
-  - BqETHSubscription:
+  - GlobalAllowList:
       constructor:
         _coordinator: $COORDINATOR_PROXY
+  - BqETHSubscription:
+      proxy:
+        constructor:
+          initialOwner: $LYNX_DEPLOYER  # Upgrades owner
+          _data: $encode:initialize,$LYNX_DEPLOYER
+      constructor:
+        _coordinator: $COORDINATOR_PROXY
+        _accessController: $GlobalAllowList
         _feeToken: $LYNX_RITUAL_TOKEN
         _adopter: $LYNX_DEPLOYER
-        _baseFeeRate: $BASE_FEE_RATE
+        _initialBaseFeeRate: $INITIAL_BASE_FEE_RATE
+        _baseFeeRateIncrease: $BASE_FEE_RATE_INCREASE
         _encryptorFeeRate: $ENCRYPTOR_FEE_RATE
         _maxNodes: $MAX_NODES
         _subscriptionPeriodDuration: $PERIOD
