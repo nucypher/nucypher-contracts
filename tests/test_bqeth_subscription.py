@@ -40,10 +40,10 @@ RED_PERIOD = 5 * ONE_DAY
 def base_fee(period_number):
     return (
         BASE_FEE_RATE
-        * (100 + BASE_FEE_RATE_INCREASE * period_number)
+        * pow(100 + BASE_FEE_RATE_INCREASE, period_number)
         * PACKAGE_DURATION
         * MAX_NODES
-        // 100
+        // pow(100, period_number)
     )
 
 

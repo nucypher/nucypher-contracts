@@ -22,17 +22,16 @@ contract BqETHSubscription is EncryptorSlotsSubscription, Initializable, Ownable
     }
 
     uint32 public constant INACTIVE_RITUAL_ID = type(uint32).max;
-    uint192 public constant INCREASE_BASE = 10000;
+    uint256 public constant INCREASE_BASE = 10000;
 
     GlobalAllowList public immutable accessController;
     IERC20 public immutable feeToken;
     address public immutable adopter;
 
     uint256 public immutable initialBaseFeeRate;
+    uint256 public immutable baseFeeRateIncrease;
     uint256 public immutable encryptorFeeRate;
     uint256 public immutable maxNodes;
-
-    uint256 public immutable baseFeeRateIncrease;
 
     uint32 public activeRitualId;
     mapping(uint256 periodNumber => Billing billing) public billingInfo;
@@ -115,6 +114,10 @@ contract BqETHSubscription is EncryptorSlotsSubscription, Initializable, Ownable
             address(_accessController) != address(0),
             "Access controller cannot be the zero address"
         );
+        require(
+            _baseFeeRateIncrease < INCREASE_BASE,
+            "Base fee rate increase must be fraction of INCREASE_BASE"
+        );
         feeToken = _feeToken;
         adopter = _adopter;
         initialBaseFeeRate = _initialBaseFeeRate;
@@ -156,8 +159,9 @@ contract BqETHSubscription is EncryptorSlotsSubscription, Initializable, Ownable
 
     function baseFees(uint256 periodNumber) public view returns (uint256) {
         uint256 baseFeeRate = initialBaseFeeRate *
-            (INCREASE_BASE + baseFeeRateIncrease * periodNumber);
-        return (baseFeeRate * subscriptionPeriodDuration * maxNodes) / INCREASE_BASE;
+            (INCREASE_BASE + baseFeeRateIncrease) ** periodNumber;
+        return
+            (baseFeeRate * subscriptionPeriodDuration * maxNodes) / (INCREASE_BASE ** periodNumber);
     }
 
     function encryptorFees(uint128 encryptorSlots, uint32 duration) public view returns (uint256) {
