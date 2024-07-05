@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional
 
 from ape.contracts import ContractInstance
+from ape import chain
 from eth_typing import ChecksumAddress
 from eth_utils import to_checksum_address
 from web3.types import ABI
@@ -59,7 +60,7 @@ def _get_entry(
 ) -> RegistryEntry:
     contract_abi = _get_abi(contract_instance)
     contract_name = _get_name(contract_instance=contract_instance, registry_names=registry_names)
-    receipt = contract_instance.receipt
+    receipt = chain.get_receipt(contract_instance.txn_hash)
     entry = RegistryEntry(
         name=contract_name,
         address=to_checksum_address(contract_instance.address),
