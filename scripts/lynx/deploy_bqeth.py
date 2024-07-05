@@ -21,7 +21,7 @@ def main():
     bqeth_subscription = deployer.deploy(project.BqETHSubscription)
 
     deployments = [global_allow_list, bqeth_subscription]
-    
+
     deployer.finalize(deployments=deployments)
     merge_registries(
         registry_1_filepath=LYNX_REGISTRY,
