@@ -1,0 +1,10 @@
+deployment:
+  name: lynx-free-fee-model
+  chain_id: 80002
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: free-fee-model.json
+
+contracts:
+  - FreeFeeModel
