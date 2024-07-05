@@ -1,9 +1,9 @@
 import json
 import os
+import time
 
 import requests
 from dotenv import load_dotenv
-from eth_account.messages import encode_defunct
 from web3 import Web3
 from web3.middleware import geth_poa_middleware
 
@@ -72,10 +72,11 @@ tx = erc20_contract.functions.approve(
     }
 )
 signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
-tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
 tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
 nonce += 1
 print(f"Approved ERC20 token for subscription contract. Transaction receipt: {tx_receipt}")
+time.sleep(5)
 
 """Pay for a new subscription period"""
 tx = subscription_contract.functions.payForSubscription(0).build_transaction(
@@ -85,7 +86,7 @@ tx = subscription_contract.functions.payForSubscription(0).build_transaction(
     }
 )
 signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
-tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
 tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
 nonce += 1
 print(f"Paid for a new subscription period. Transaction receipt: {tx_receipt}")
@@ -99,7 +100,7 @@ tx = subscription_contract.functions.payForEncryptorSlots(encryptor_slots).build
     }
 )
 signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
-tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
 tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
 nonce += 1
 print(f"Paid for {encryptor_slots} encryptor slots. Transaction receipt: {tx_receipt}")
@@ -107,7 +108,7 @@ print(f"Paid for {encryptor_slots} encryptor slots. Transaction receipt: {tx_rec
 """Initiate a ritual"""
 ritual_id = 1
 number_of_providers = 7
-duration = PACKAGE_DURATION
+duration = PACKAGE_DURATION + YELLOW_PERIOD + RED_PERIOD
 tx = coordinator_contract.functions.processRitualPayment(
     account.address, ritual_id, number_of_providers, duration
 ).build_transaction(
@@ -117,7 +118,7 @@ tx = coordinator_contract.functions.processRitualPayment(
     }
 )
 signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
-tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
 tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
 nonce += 1
 print(
