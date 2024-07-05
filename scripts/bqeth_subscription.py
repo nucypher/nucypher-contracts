@@ -43,6 +43,7 @@ GLOBAL_ALLOW_LIST_CONTRACT_ABI = registry[CHAIN]["GlobalAllowList"]["abi"]
 w3 = Web3(Web3.HTTPProvider(PROVIDER_URL))
 w3.middleware_onion.inject(geth_poa_middleware, layer=0)
 account = w3.eth.account.from_key(PRIVATE_KEY)
+nonce = w3.eth.get_transaction_count(account.address)
 
 """Set up contract instances"""
 erc20_contract = w3.eth.contract(address=ERC20_CONTRACT_ADDRESS, abi=ERC20_CONTRACT_ABI)
@@ -62,41 +63,66 @@ RED_PERIOD = subscription_contract.functions.redPeriodDuration().call()
 
 
 """Approve ERC20 token for subscription contract"""
-erc20_contract.functions.approve(
+tx = erc20_contract.functions.approve(
     SUBSCRIPTION_CONTRACT_ADDRESS, 10 * BASE_FEE_RATE * PACKAGE_DURATION * MAX_NODES
-).transact({"from": account.address})
+).build_transaction(
+    {
+        "from": account.address,
+        "nonce": nonce,
+    }
+)
+signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
+tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+nonce += 1
+print(f"Approved ERC20 token for subscription contract. Transaction receipt: {tx_receipt}")
 
 """Pay for a new subscription period"""
-tx_hash = subscription_contract.functions.payForSubscription(0).transact({"from": account.address})
+tx = subscription_contract.functions.payForSubscription(0).build_transaction(
+    {
+        "from": account.address,
+        "nonce": nonce,
+    }
+)
+signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
+tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
 tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+nonce += 1
 print(f"Paid for a new subscription period. Transaction receipt: {tx_receipt}")
 
 """Pay for encryptor slots"""
 encryptor_slots = 5
-tx_hash = subscription_contract.functions.payForEncryptorSlots(encryptor_slots).transact(
-    {"from": account.address}
+tx = subscription_contract.functions.payForEncryptorSlots(encryptor_slots).build_transaction(
+    {
+        "from": account.address,
+        "nonce": nonce,
+    }
 )
+signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
+tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
 tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+nonce += 1
 print(f"Paid for {encryptor_slots} encryptor slots. Transaction receipt: {tx_receipt}")
 
 """Initiate a ritual"""
-url = f"{PORTER_ENDPOINT}/get_ursulas?quantity={NUM_NODES}"
-response = requests.get(url)
-if response.status_code == 200:
-    data = response.json()
-    print("Porter Response Data:")
-    print(data)
-    providers = [u["checksum_address"] for u in data["result"]["ursulas"]]
-else:
-    print(f"Error: {response.status_code} - {response.text}")
-ritual_id = coordinator_contract.functions.initiateRitual(
-    fee_model=SUBSCRIPTION_CONTRACT_ADDRESS,
-    providers=providers,
-    authority=account.address,
-    duration=PACKAGE_DURATION,  # yellow period, red period, _subscriptionPeriodDuration
-    access_controller=GLOBAL_ALLOW_LIST_CONTRACT_ADDRESS,
-).transact({"from": account.address})
-print(f"Initiated ritual with ID: {ritual_id}")
+ritual_id = 1
+number_of_providers = 7
+duration = PACKAGE_DURATION
+tx = coordinator_contract.functions.processRitualPayment(
+    account.address, ritual_id, number_of_providers, duration
+).build_transaction(
+    {
+        "from": account.address,
+        "nonce": nonce,
+    }
+)
+signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
+tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+nonce += 1
+print(
+    f"Initiated ritual {ritual_id} with {number_of_providers} providers for {duration} seconds. Transaction receipt: {tx_receipt}"
+)
 
 
 # # Test operations during Yellow period
