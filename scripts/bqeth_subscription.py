@@ -9,6 +9,7 @@ from web3 import Web3
 """
 Read from a .env file
 """
+load_dotenv()
 PROVIDER_URL = os.environ.get("PROVIDER_URL")
 PRIVATE_KEY = os.environ.get("PRIVATE_KEY")
 PUBLIC_ADDRESS = os.environ.get("PUBLIC_ADDRESS")
@@ -25,7 +26,7 @@ CHAIN = "80002"
 PORTER_ENDPOINT = "https://lynx-tapir.nucypher.io"
 NUM_NODES = 2
 
-with open("deployment/artifacts/tapir.json", "r") as f:
+with open(f"deployment/artifacts/{NUCYPHER_DOMAIN}.json", "r") as f:
     registry = json.load(f)
 
 SUBSCRIPTION_CONTRACT_ADDRESS = registry[CHAIN]["BqETHSubscription"]["address"]
@@ -53,6 +54,7 @@ global_allow_list_contract = w3.eth.contract(
     address=GLOBAL_ALLOW_LIST_CONTRACT_ADDRESS, abi=GLOBAL_ALLOW_LIST_CONTRACT_ABI
 )
 
+
 YELLOW_PERIOD = subscription_contract.functions.yellowPeriodDuration().call()
 RED_PERIOD = subscription_contract.functions.redPeriodDuration().call()
 
@@ -60,7 +62,7 @@ RED_PERIOD = subscription_contract.functions.redPeriodDuration().call()
 """Approve ERC20 token for subscription contract"""
 erc20_contract.functions.approve(
     SUBSCRIPTION_CONTRACT_ADDRESS, 10 * BASE_FEE_RATE * PACKAGE_DURATION * MAX_NODES
-).transact({"from": ADOPTER_ADDRESS})
+).transact({"from": PUBLIC_ADDRESS})
 
 """Pay for a new subscription period"""
 tx_hash = subscription_contract.functions.payForSubscription(0).transact({"from": PUBLIC_ADDRESS})
