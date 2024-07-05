@@ -5,6 +5,7 @@ import requests
 from dotenv import load_dotenv
 from eth_account.messages import encode_defunct
 from web3 import Web3
+from web3.middleware import geth_poa_middleware
 
 """
 Read from a .env file
@@ -12,7 +13,6 @@ Read from a .env file
 load_dotenv()
 PROVIDER_URL = os.environ.get("PROVIDER_URL")
 PRIVATE_KEY = os.environ.get("PRIVATE_KEY")
-PUBLIC_ADDRESS = os.environ.get("PUBLIC_ADDRESS")
 
 """Constants"""
 BASE_FEE_RATE = 42
@@ -23,7 +23,7 @@ PACKAGE_DURATION = 10 * 24 * 60 * 60  # 10 days
 
 NUCYPHER_DOMAIN = "lynx"
 CHAIN = "80002"
-PORTER_ENDPOINT = "https://lynx-tapir.nucypher.io"
+PORTER_ENDPOINT = f"https://porter-{NUCYPHER_DOMAIN}.nucypher.io"
 NUM_NODES = 2
 
 with open(f"deployment/artifacts/{NUCYPHER_DOMAIN}.json", "r") as f:
@@ -41,6 +41,8 @@ GLOBAL_ALLOW_LIST_CONTRACT_ABI = registry[CHAIN]["GlobalAllowList"]["abi"]
 
 """Connect to the testnet"""
 w3 = Web3(Web3.HTTPProvider(PROVIDER_URL))
+w3.middleware_onion.inject(geth_poa_middleware, layer=0)
+account = w3.eth.account.from_key(PRIVATE_KEY)
 
 """Set up contract instances"""
 erc20_contract = w3.eth.contract(address=ERC20_CONTRACT_ADDRESS, abi=ERC20_CONTRACT_ABI)
@@ -62,17 +64,17 @@ RED_PERIOD = subscription_contract.functions.redPeriodDuration().call()
 """Approve ERC20 token for subscription contract"""
 erc20_contract.functions.approve(
     SUBSCRIPTION_CONTRACT_ADDRESS, 10 * BASE_FEE_RATE * PACKAGE_DURATION * MAX_NODES
-).transact({"from": PUBLIC_ADDRESS})
+).transact({"from": account.address})
 
 """Pay for a new subscription period"""
-tx_hash = subscription_contract.functions.payForSubscription(0).transact({"from": PUBLIC_ADDRESS})
+tx_hash = subscription_contract.functions.payForSubscription(0).transact({"from": account.address})
 tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
 print(f"Paid for a new subscription period. Transaction receipt: {tx_receipt}")
 
 """Pay for encryptor slots"""
 encryptor_slots = 5
 tx_hash = subscription_contract.functions.payForEncryptorSlots(encryptor_slots).transact(
-    {"from": PUBLIC_ADDRESS}
+    {"from": account.address}
 )
 tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
 print(f"Paid for {encryptor_slots} encryptor slots. Transaction receipt: {tx_receipt}")
@@ -90,10 +92,10 @@ else:
 ritual_id = coordinator_contract.functions.initiateRitual(
     fee_model=SUBSCRIPTION_CONTRACT_ADDRESS,
     providers=providers,
-    authority=PUBLIC_ADDRESS,
+    authority=account.address,
     duration=PACKAGE_DURATION,  # yellow period, red period, _subscriptionPeriodDuration
     access_controller=GLOBAL_ALLOW_LIST_CONTRACT_ADDRESS,
-).transact({"from": PUBLIC_ADDRESS})
+).transact({"from": account.address})
 print(f"Initiated ritual with ID: {ritual_id}")
 
 
