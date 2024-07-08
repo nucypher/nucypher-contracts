@@ -36,7 +36,7 @@ def _get_abi(contract_instance: ContractInstance) -> ABI:
     """Returns the ABI of a contract instance."""
     contract_abi = list()
     for entry in contract_instance.contract_type.abi:
-        contract_abi.append(entry.dict())
+        contract_abi.append(entry.model_dump())
     return contract_abi
 
 
