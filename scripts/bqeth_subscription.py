@@ -15,10 +15,8 @@ PROVIDER_URL = os.environ.get("PROVIDER_URL")
 PRIVATE_KEY = os.environ.get("PRIVATE_KEY")
 
 """Constants"""
-BASE_FEE_RATE = 42
+BASE_FEE_RATE = 2799999999999360000
 MAX_NODES = 10
-ENCRYPTORS_FEE_RATE = 77
-PACKAGE_DURATION = 10 * 24 * 60 * 60  # 10 days
 
 
 NUCYPHER_DOMAIN = "lynx"
@@ -57,14 +55,16 @@ global_allow_list_contract = w3.eth.contract(
     address=GLOBAL_ALLOW_LIST_CONTRACT_ADDRESS, abi=GLOBAL_ALLOW_LIST_CONTRACT_ABI
 )
 
-
+SUBSCRIPTION_PERIOD = subscription_contract.functions.subscriptionPeriodDuration().call()
 YELLOW_PERIOD = subscription_contract.functions.yellowPeriodDuration().call()
 RED_PERIOD = subscription_contract.functions.redPeriodDuration().call()
 
 
+base_fees = subscription_contract.functions.baseFees(0).call()
+encryptor_fees = subscription_contract.functions.encryptorFees(MAX_NODES, SUBSCRIPTION_PERIOD).call()
 """Approve ERC20 token for subscription contract"""
 tx = erc20_contract.functions.approve(
-    SUBSCRIPTION_CONTRACT_ADDRESS, 10 * BASE_FEE_RATE * PACKAGE_DURATION * MAX_NODES
+    SUBSCRIPTION_CONTRACT_ADDRESS, base_fees + encryptor_fees
 ).build_transaction(
     {
         "from": account.address,
@@ -72,35 +72,35 @@ tx = erc20_contract.functions.approve(
     }
 )
 signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
-tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
 tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
 nonce += 1
 print(f"Approved ERC20 token for subscription contract. Transaction receipt: {tx_receipt}")
-time.sleep(5)
 
-"""Pay for a new subscription period"""
-tx = subscription_contract.functions.payForSubscription(0).build_transaction(
+"""Pay for a new subscription period and initial encryptor slots"""
+encryptor_slots = 2
+tx = subscription_contract.functions.payForSubscription(encryptor_slots).build_transaction(
     {
         "from": account.address,
         "nonce": nonce,
     }
 )
 signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
-tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
 tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
 nonce += 1
 print(f"Paid for a new subscription period. Transaction receipt: {tx_receipt}")
 
-"""Pay for encryptor slots"""
-encryptor_slots = 5
-tx = subscription_contract.functions.payForEncryptorSlots(encryptor_slots).build_transaction(
+"""Pay for additional encryptor slots"""
+extra_encryptor_slots = 1
+tx = subscription_contract.functions.payForEncryptorSlots(extra_encryptor_slots).build_transaction(
     {
         "from": account.address,
         "nonce": nonce,
     }
 )
 signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
-tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
 tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
 nonce += 1
 print(f"Paid for {encryptor_slots} encryptor slots. Transaction receipt: {tx_receipt}")
@@ -108,7 +108,7 @@ print(f"Paid for {encryptor_slots} encryptor slots. Transaction receipt: {tx_rec
 """Initiate a ritual"""
 ritual_id = 1
 number_of_providers = 7
-duration = PACKAGE_DURATION + YELLOW_PERIOD + RED_PERIOD
+duration = SUBSCRIPTION_PERIOD + YELLOW_PERIOD + RED_PERIOD
 tx = coordinator_contract.functions.processRitualPayment(
     account.address, ritual_id, number_of_providers, duration
 ).build_transaction(
@@ -118,7 +118,7 @@ tx = coordinator_contract.functions.processRitualPayment(
     }
 )
 signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
-tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
 tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
 nonce += 1
 print(
