@@ -21,17 +21,18 @@ contract BqETHSubscription is EncryptorSlotsSubscription, Initializable, Ownable
         uint128 encryptorSlots; // pre-paid encryptor slots for the billing period
     }
 
-    IERC20 public immutable feeToken;
-
     uint32 public constant INACTIVE_RITUAL_ID = type(uint32).max;
+    uint256 public constant INCREASE_BASE = 10000;
 
+    GlobalAllowList public immutable accessController;
+    IERC20 public immutable feeToken;
     address public immutable adopter;
 
-    uint256 public immutable baseFeeRate;
+    uint256 public immutable initialBaseFeeRate;
+    uint256 public immutable baseFeeRateIncrease;
     uint256 public immutable encryptorFeeRate;
     uint256 public immutable maxNodes;
 
-    GlobalAllowList public immutable accessController;
     uint32 public activeRitualId;
     mapping(uint256 periodNumber => Billing billing) public billingInfo;
 
@@ -79,7 +80,8 @@ contract BqETHSubscription is EncryptorSlotsSubscription, Initializable, Ownable
      * @param _accessController The address of the global allow list
      * @param _feeToken The address of the fee token contract
      * @param _adopter The address of the adopter
-     * @param _baseFeeRate Fee rate per node per second
+     * @param _initialBaseFeeRate Fee rate per node per second
+     * @param _baseFeeRateIncrease Increase of base fee rate per each period (fraction of INCREASE_BASE)
      * @param _encryptorFeeRate Fee rate per encryptor per second
      * @param _maxNodes Maximum nodes in the package
      * @param _subscriptionPeriodDuration Maximum duration of subscription period
@@ -91,7 +93,8 @@ contract BqETHSubscription is EncryptorSlotsSubscription, Initializable, Ownable
         GlobalAllowList _accessController,
         IERC20 _feeToken,
         address _adopter,
-        uint256 _baseFeeRate,
+        uint256 _initialBaseFeeRate,
+        uint256 _baseFeeRateIncrease,
         uint256 _encryptorFeeRate,
         uint256 _maxNodes,
         uint32 _subscriptionPeriodDuration,
@@ -111,9 +114,14 @@ contract BqETHSubscription is EncryptorSlotsSubscription, Initializable, Ownable
             address(_accessController) != address(0),
             "Access controller cannot be the zero address"
         );
+        require(
+            _baseFeeRateIncrease < INCREASE_BASE,
+            "Base fee rate increase must be fraction of INCREASE_BASE"
+        );
         feeToken = _feeToken;
         adopter = _adopter;
-        baseFeeRate = _baseFeeRate;
+        initialBaseFeeRate = _initialBaseFeeRate;
+        baseFeeRateIncrease = _baseFeeRateIncrease;
         encryptorFeeRate = _encryptorFeeRate;
         maxNodes = _maxNodes;
         accessController = _accessController;
@@ -145,7 +153,16 @@ contract BqETHSubscription is EncryptorSlotsSubscription, Initializable, Ownable
     }
 
     function baseFees() public view returns (uint256) {
-        return baseFeeRate * subscriptionPeriodDuration * maxNodes;
+        uint256 currentPeriodNumber = getCurrentPeriodNumber();
+        return baseFees(currentPeriodNumber);
+    }
+
+    /// @dev optential overflow after 15-16 periods
+    function baseFees(uint256 periodNumber) public view returns (uint256) {
+        uint256 baseFeeRate = initialBaseFeeRate *
+            (INCREASE_BASE + baseFeeRateIncrease) ** periodNumber;
+        return
+            (baseFeeRate * subscriptionPeriodDuration * maxNodes) / (INCREASE_BASE ** periodNumber);
     }
 
     function encryptorFees(uint128 encryptorSlots, uint32 duration) public view returns (uint256) {
@@ -175,7 +192,6 @@ contract BqETHSubscription is EncryptorSlotsSubscription, Initializable, Ownable
             "Subscription is over"
         );
 
-        uint256 fees = baseFees() + encryptorFees(encryptorSlots, subscriptionPeriodDuration);
         uint256 periodNumber = currentPeriodNumber;
         if (billingInfo[periodNumber].paid) {
             periodNumber++;
@@ -184,6 +200,8 @@ contract BqETHSubscription is EncryptorSlotsSubscription, Initializable, Ownable
         billing.paid = true;
         billing.encryptorSlots = encryptorSlots;
 
+        uint256 fees = baseFees(periodNumber) +
+            encryptorFees(encryptorSlots, subscriptionPeriodDuration);
         feeToken.safeTransferFrom(msg.sender, address(this), fees);
         emit SubscriptionPaid(msg.sender, fees, encryptorSlots, getEndOfSubscription());
     }
