@@ -2304,68 +2304,57 @@
                         {
                             "name": "_coordinator",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "contract Coordinator"
+                            "internalType": "contract Coordinator"
                         },
                         {
                             "name": "_accessController",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "contract GlobalAllowList"
+                            "internalType": "contract GlobalAllowList"
                         },
                         {
                             "name": "_feeToken",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "contract IERC20"
+                            "internalType": "contract IERC20"
                         },
                         {
                             "name": "_adopter",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "address"
+                            "internalType": "address"
                         },
                         {
                             "name": "_initialBaseFeeRate",
                             "type": "uint256",
-                            "components": null,
-                            "internal_type": "uint256"
+                            "internalType": "uint256"
                         },
                         {
                             "name": "_baseFeeRateIncrease",
                             "type": "uint256",
-                            "components": null,
-                            "internal_type": "uint256"
+                            "internalType": "uint256"
                         },
                         {
                             "name": "_encryptorFeeRate",
                             "type": "uint256",
-                            "components": null,
-                            "internal_type": "uint256"
+                            "internalType": "uint256"
                         },
                         {
                             "name": "_maxNodes",
                             "type": "uint256",
-                            "components": null,
-                            "internal_type": "uint256"
+                            "internalType": "uint256"
                         },
                         {
                             "name": "_subscriptionPeriodDuration",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32"
+                            "internalType": "uint32"
                         },
                         {
                             "name": "_yellowPeriodDuration",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32"
+                            "internalType": "uint32"
                         },
                         {
                             "name": "_redPeriodDuration",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32"
+                            "internalType": "uint32"
                         }
                     ]
                 },
@@ -2376,8 +2365,7 @@
                         {
                             "name": "target",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "address"
+                            "internalType": "address"
                         }
                     ]
                 },
@@ -2388,8 +2376,7 @@
                         {
                             "name": "account",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "address"
+                            "internalType": "address"
                         }
                     ]
                 },
@@ -2415,8 +2402,7 @@
                         {
                             "name": "owner",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "address"
+                            "internalType": "address"
                         }
                     ]
                 },
@@ -2427,8 +2413,7 @@
                         {
                             "name": "account",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "address"
+                            "internalType": "address"
                         }
                     ]
                 },
@@ -2439,8 +2424,7 @@
                         {
                             "name": "token",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "address"
+                            "internalType": "address"
                         }
                     ]
                 },
@@ -2451,29 +2435,25 @@
                         {
                             "name": "sponsor",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "address",
+                            "internalType": "address",
                             "indexed": true
                         },
                         {
                             "name": "amount",
                             "type": "uint256",
-                            "components": null,
-                            "internal_type": "uint256",
+                            "internalType": "uint256",
                             "indexed": false
                         },
                         {
                             "name": "encryptorSlots",
                             "type": "uint128",
-                            "components": null,
-                            "internal_type": "uint128",
+                            "internalType": "uint128",
                             "indexed": false
                         },
                         {
                             "name": "endOfCurrentPeriod",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32",
+                            "internalType": "uint32",
                             "indexed": false
                         }
                     ],
@@ -2486,8 +2466,7 @@
                         {
                             "name": "version",
                             "type": "uint64",
-                            "components": null,
-                            "internal_type": "uint64",
+                            "internalType": "uint64",
                             "indexed": false
                         }
                     ],
@@ -2500,15 +2479,13 @@
                         {
                             "name": "previousOwner",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "address",
+                            "internalType": "address",
                             "indexed": true
                         },
                         {
                             "name": "newOwner",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "address",
+                            "internalType": "address",
                             "indexed": true
                         }
                     ],
@@ -2521,29 +2498,25 @@
                         {
                             "name": "subscriber",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "address",
+                            "internalType": "address",
                             "indexed": true
                         },
                         {
                             "name": "amount",
                             "type": "uint256",
-                            "components": null,
-                            "internal_type": "uint256",
+                            "internalType": "uint256",
                             "indexed": false
                         },
                         {
                             "name": "encryptorSlots",
                             "type": "uint128",
-                            "components": null,
-                            "internal_type": "uint128",
+                            "internalType": "uint128",
                             "indexed": false
                         },
                         {
                             "name": "endOfSubscription",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32",
+                            "internalType": "uint32",
                             "indexed": false
                         }
                     ],
@@ -2556,15 +2529,13 @@
                         {
                             "name": "treasury",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "address",
+                            "internalType": "address",
                             "indexed": true
                         },
                         {
                             "name": "amount",
                             "type": "uint256",
-                            "components": null,
-                            "internal_type": "uint256",
+                            "internalType": "uint256",
                             "indexed": false
                         }
                     ],
@@ -2579,8 +2550,7 @@
                         {
                             "name": "",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32"
+                            "internalType": "uint32"
                         }
                     ]
                 },
@@ -2593,8 +2563,7 @@
                         {
                             "name": "",
                             "type": "uint256",
-                            "components": null,
-                            "internal_type": "uint256"
+                            "internalType": "uint256"
                         }
                     ]
                 },
@@ -2607,8 +2576,7 @@
                         {
                             "name": "",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "contract GlobalAllowList"
+                            "internalType": "contract GlobalAllowList"
                         }
                     ]
                 },
@@ -2621,8 +2589,7 @@
                         {
                             "name": "",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32"
+                            "internalType": "uint32"
                         }
                     ]
                 },
@@ -2635,8 +2602,7 @@
                         {
                             "name": "",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "address"
+                            "internalType": "address"
                         }
                     ]
                 },
@@ -2649,8 +2615,7 @@
                         {
                             "name": "",
                             "type": "uint256",
-                            "components": null,
-                            "internal_type": "uint256"
+                            "internalType": "uint256"
                         }
                     ]
                 },
@@ -2662,16 +2627,14 @@
                         {
                             "name": "periodNumber",
                             "type": "uint256",
-                            "components": null,
-                            "internal_type": "uint256"
+                            "internalType": "uint256"
                         }
                     ],
                     "outputs": [
                         {
                             "name": "",
                             "type": "uint256",
-                            "components": null,
-                            "internal_type": "uint256"
+                            "internalType": "uint256"
                         }
                     ]
                 },
@@ -2684,8 +2647,7 @@
                         {
                             "name": "",
                             "type": "uint256",
-                            "components": null,
-                            "internal_type": "uint256"
+                            "internalType": "uint256"
                         }
                     ]
                 },
@@ -2697,8 +2659,7 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32"
+                            "internalType": "uint32"
                         }
                     ],
                     "outputs": []
@@ -2711,20 +2672,17 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32"
+                            "internalType": "uint32"
                         },
                         {
                             "name": "addresses",
                             "type": "address[]",
-                            "components": null,
-                            "internal_type": "address[]"
+                            "internalType": "address[]"
                         },
                         {
                             "name": "value",
                             "type": "bool",
-                            "components": null,
-                            "internal_type": "bool"
+                            "internalType": "bool"
                         }
                     ],
                     "outputs": []
@@ -2737,22 +2695,19 @@
                         {
                             "name": "periodNumber",
                             "type": "uint256",
-                            "components": null,
-                            "internal_type": "uint256"
+                            "internalType": "uint256"
                         }
                     ],
                     "outputs": [
                         {
                             "name": "paid",
                             "type": "bool",
-                            "components": null,
-                            "internal_type": "bool"
+                            "internalType": "bool"
                         },
                         {
                             "name": "encryptorSlots",
                             "type": "uint128",
-                            "components": null,
-                            "internal_type": "uint128"
+                            "internalType": "uint128"
                         }
                     ]
                 },
@@ -2765,8 +2720,7 @@
                         {
                             "name": "",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "contract Coordinator"
+                            "internalType": "contract Coordinator"
                         }
                     ]
                 },
@@ -2779,8 +2733,7 @@
                         {
                             "name": "",
                             "type": "uint256",
-                            "components": null,
-                            "internal_type": "uint256"
+                            "internalType": "uint256"
                         }
                     ]
                 },
@@ -2792,22 +2745,19 @@
                         {
                             "name": "encryptorSlots",
                             "type": "uint128",
-                            "components": null,
-                            "internal_type": "uint128"
+                            "internalType": "uint128"
                         },
                         {
                             "name": "duration",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32"
+                            "internalType": "uint32"
                         }
                     ],
                     "outputs": [
                         {
                             "name": "",
                             "type": "uint256",
-                            "components": null,
-                            "internal_type": "uint256"
+                            "internalType": "uint256"
                         }
                     ]
                 },
@@ -2820,8 +2770,7 @@
                         {
                             "name": "",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "contract IERC20"
+                            "internalType": "contract IERC20"
                         }
                     ]
                 },
@@ -2834,8 +2783,7 @@
                         {
                             "name": "",
                             "type": "uint256",
-                            "components": null,
-                            "internal_type": "uint256"
+                            "internalType": "uint256"
                         }
                     ]
                 },
@@ -2848,8 +2796,7 @@
                         {
                             "name": "endOfSubscription",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32"
+                            "internalType": "uint32"
                         }
                     ]
                 },
@@ -2861,16 +2808,14 @@
                         {
                             "name": "periodNumber",
                             "type": "uint256",
-                            "components": null,
-                            "internal_type": "uint256"
+                            "internalType": "uint256"
                         }
                     ],
                     "outputs": [
                         {
                             "name": "",
                             "type": "uint256",
-                            "components": null,
-                            "internal_type": "uint256"
+                            "internalType": "uint256"
                         }
                     ]
                 },
@@ -2883,8 +2828,7 @@
                         {
                             "name": "",
                             "type": "uint256",
-                            "components": null,
-                            "internal_type": "uint256"
+                            "internalType": "uint256"
                         }
                     ]
                 },
@@ -2896,8 +2840,7 @@
                         {
                             "name": "_treasury",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "address"
+                            "internalType": "address"
                         }
                     ],
                     "outputs": []
@@ -2910,16 +2853,14 @@
                         {
                             "name": "periodNumber",
                             "type": "uint256",
-                            "components": null,
-                            "internal_type": "uint256"
+                            "internalType": "uint256"
                         }
                     ],
                     "outputs": [
                         {
                             "name": "",
                             "type": "bool",
-                            "components": null,
-                            "internal_type": "bool"
+                            "internalType": "bool"
                         }
                     ]
                 },
@@ -2932,8 +2873,7 @@
                         {
                             "name": "",
                             "type": "uint256",
-                            "components": null,
-                            "internal_type": "uint256"
+                            "internalType": "uint256"
                         }
                     ]
                 },
@@ -2946,8 +2886,7 @@
                         {
                             "name": "",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "address"
+                            "internalType": "address"
                         }
                     ]
                 },
@@ -2959,8 +2898,7 @@
                         {
                             "name": "additionalEncryptorSlots",
                             "type": "uint128",
-                            "components": null,
-                            "internal_type": "uint128"
+                            "internalType": "uint128"
                         }
                     ],
                     "outputs": []
@@ -2973,8 +2911,7 @@
                         {
                             "name": "encryptorSlots",
                             "type": "uint128",
-                            "components": null,
-                            "internal_type": "uint128"
+                            "internalType": "uint128"
                         }
                     ],
                     "outputs": []
@@ -2987,26 +2924,22 @@
                         {
                             "name": "",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "address"
+                            "internalType": "address"
                         },
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32"
+                            "internalType": "uint32"
                         },
                         {
                             "name": "",
                             "type": "uint256",
-                            "components": null,
-                            "internal_type": "uint256"
+                            "internalType": "uint256"
                         },
                         {
                             "name": "",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32"
+                            "internalType": "uint32"
                         }
                     ],
                     "outputs": []
@@ -3019,26 +2952,22 @@
                         {
                             "name": "initiator",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "address"
+                            "internalType": "address"
                         },
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32"
+                            "internalType": "uint32"
                         },
                         {
                             "name": "numberOfProviders",
                             "type": "uint256",
-                            "components": null,
-                            "internal_type": "uint256"
+                            "internalType": "uint256"
                         },
                         {
                             "name": "duration",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32"
+                            "internalType": "uint32"
                         }
                     ],
                     "outputs": []
@@ -3052,8 +2981,7 @@
                         {
                             "name": "",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32"
+                            "internalType": "uint32"
                         }
                     ]
                 },
@@ -3073,8 +3001,7 @@
                         {
                             "name": "",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32"
+                            "internalType": "uint32"
                         }
                     ]
                 },
@@ -3087,8 +3014,7 @@
                         {
                             "name": "",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32"
+                            "internalType": "uint32"
                         }
                     ]
                 },
@@ -3100,8 +3026,7 @@
                         {
                             "name": "newOwner",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "address"
+                            "internalType": "address"
                         }
                     ],
                     "outputs": []
@@ -3115,8 +3040,7 @@
                         {
                             "name": "",
                             "type": "uint256",
-                            "components": null,
-                            "internal_type": "uint256"
+                            "internalType": "uint256"
                         }
                     ]
                 },
@@ -3128,8 +3052,7 @@
                         {
                             "name": "amount",
                             "type": "uint256",
-                            "components": null,
-                            "internal_type": "uint256"
+                            "internalType": "uint256"
                         }
                     ],
                     "outputs": []
@@ -3143,8 +3066,7 @@
                         {
                             "name": "",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32"
+                            "internalType": "uint32"
                         }
                     ]
                 }
@@ -4948,8 +4870,7 @@
                         {
                             "name": "owner",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "address"
+                            "internalType": "address"
                         }
                     ]
                 },
@@ -4960,8 +4881,7 @@
                         {
                             "name": "account",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "address"
+                            "internalType": "address"
                         }
                     ]
                 },
@@ -4972,15 +4892,13 @@
                         {
                             "name": "previousOwner",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "address",
+                            "internalType": "address",
                             "indexed": true
                         },
                         {
                             "name": "newOwner",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "address",
+                            "internalType": "address",
                             "indexed": true
                         }
                     ],
@@ -4994,8 +4912,7 @@
                         {
                             "name": "initiator",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "address"
+                            "internalType": "address"
                         }
                     ],
                     "outputs": []
@@ -5008,8 +4925,7 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32"
+                            "internalType": "uint32"
                         }
                     ],
                     "outputs": []
@@ -5022,20 +4938,17 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32"
+                            "internalType": "uint32"
                         },
                         {
                             "name": "addresses",
                             "type": "address[]",
-                            "components": null,
-                            "internal_type": "address[]"
+                            "internalType": "address[]"
                         },
                         {
                             "name": "value",
                             "type": "bool",
-                            "components": null,
-                            "internal_type": "bool"
+                            "internalType": "bool"
                         }
                     ],
                     "outputs": []
@@ -5048,16 +4961,14 @@
                         {
                             "name": "initiator",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "address"
+                            "internalType": "address"
                         }
                     ],
                     "outputs": [
                         {
                             "name": "approved",
                             "type": "bool",
-                            "components": null,
-                            "internal_type": "bool"
+                            "internalType": "bool"
                         }
                     ]
                 },
@@ -5070,8 +4981,7 @@
                         {
                             "name": "",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "address"
+                            "internalType": "address"
                         }
                     ]
                 },
@@ -5083,26 +4993,22 @@
                         {
                             "name": "initiator",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "address"
+                            "internalType": "address"
                         },
                         {
                             "name": "",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32"
+                            "internalType": "uint32"
                         },
                         {
                             "name": "",
                             "type": "uint256",
-                            "components": null,
-                            "internal_type": "uint256"
+                            "internalType": "uint256"
                         },
                         {
                             "name": "",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32"
+                            "internalType": "uint32"
                         }
                     ],
                     "outputs": []
@@ -5115,26 +5021,22 @@
                         {
                             "name": "initiator",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "address"
+                            "internalType": "address"
                         },
                         {
                             "name": "",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32"
+                            "internalType": "uint32"
                         },
                         {
                             "name": "",
                             "type": "uint256",
-                            "components": null,
-                            "internal_type": "uint256"
+                            "internalType": "uint256"
                         },
                         {
                             "name": "",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32"
+                            "internalType": "uint32"
                         }
                     ],
                     "outputs": []
@@ -5154,8 +5056,7 @@
                         {
                             "name": "newOwner",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "address"
+                            "internalType": "address"
                         }
                     ],
                     "outputs": []
@@ -5175,8 +5076,7 @@
                         {
                             "name": "_coordinator",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "contract Coordinator"
+                            "internalType": "contract Coordinator"
                         }
                     ]
                 },
@@ -5192,8 +5092,7 @@
                         {
                             "name": "length",
                             "type": "uint256",
-                            "components": null,
-                            "internal_type": "uint256"
+                            "internalType": "uint256"
                         }
                     ]
                 },
@@ -5204,8 +5103,7 @@
                         {
                             "name": "s",
                             "type": "bytes32",
-                            "components": null,
-                            "internal_type": "bytes32"
+                            "internalType": "bytes32"
                         }
                     ]
                 },
@@ -5216,22 +5114,19 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32",
+                            "internalType": "uint32",
                             "indexed": true
                         },
                         {
                             "name": "_address",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "address",
+                            "internalType": "address",
                             "indexed": true
                         },
                         {
                             "name": "isAuthorized",
                             "type": "bool",
-                            "components": null,
-                            "internal_type": "bool",
+                            "internalType": "bool",
                             "indexed": false
                         }
                     ],
@@ -5246,8 +5141,7 @@
                         {
                             "name": "",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32"
+                            "internalType": "uint32"
                         }
                     ]
                 },
@@ -5259,16 +5153,14 @@
                         {
                             "name": "",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32"
+                            "internalType": "uint32"
                         }
                     ],
                     "outputs": [
                         {
                             "name": "",
                             "type": "uint256",
-                            "components": null,
-                            "internal_type": "uint256"
+                            "internalType": "uint256"
                         }
                     ]
                 },
@@ -5280,14 +5172,12 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32"
+                            "internalType": "uint32"
                         },
                         {
                             "name": "addresses",
                             "type": "address[]",
-                            "components": null,
-                            "internal_type": "address[]"
+                            "internalType": "address[]"
                         }
                     ],
                     "outputs": []
@@ -5301,8 +5191,7 @@
                         {
                             "name": "",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "contract Coordinator"
+                            "internalType": "contract Coordinator"
                         }
                     ]
                 },
@@ -5314,14 +5203,12 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32"
+                            "internalType": "uint32"
                         },
                         {
                             "name": "addresses",
                             "type": "address[]",
-                            "components": null,
-                            "internal_type": "address[]"
+                            "internalType": "address[]"
                         }
                     ],
                     "outputs": []
@@ -5334,22 +5221,19 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32"
+                            "internalType": "uint32"
                         },
                         {
                             "name": "encryptor",
                             "type": "address",
-                            "components": null,
-                            "internal_type": "address"
+                            "internalType": "address"
                         }
                     ],
                     "outputs": [
                         {
                             "name": "",
                             "type": "bool",
-                            "components": null,
-                            "internal_type": "bool"
+                            "internalType": "bool"
                         }
                     ]
                 },
@@ -5361,28 +5245,24 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "components": null,
-                            "internal_type": "uint32"
+                            "internalType": "uint32"
                         },
                         {
                             "name": "evidence",
                             "type": "bytes",
-                            "components": null,
-                            "internal_type": "bytes"
+                            "internalType": "bytes"
                         },
                         {
                             "name": "ciphertextHeader",
                             "type": "bytes",
-                            "components": null,
-                            "internal_type": "bytes"
+                            "internalType": "bytes"
                         }
                     ],
                     "outputs": [
                         {
                             "name": "",
                             "type": "bool",
-                            "components": null,
-                            "internal_type": "bool"
+                            "internalType": "bool"
                         }
                     ]
                 }
