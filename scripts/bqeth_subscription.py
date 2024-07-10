@@ -56,6 +56,10 @@ def setup_contracts():
     global_allow_list_contract = w3.eth.contract(
         address=GLOBAL_ALLOW_LIST_CONTRACT_ADDRESS, abi=GLOBAL_ALLOW_LIST_CONTRACT_ABI
     )
+    print("ERC20 contract: ", erc20_contract.address)
+    print("Subscription contract: ", subscription_contract.address)
+    print("Coordinator contract: ", coordinator_contract.address)
+    print("Global allow list contract: ", global_allow_list_contract.address)
     return erc20_contract, subscription_contract, coordinator_contract, global_allow_list_contract
 
 
@@ -142,9 +146,9 @@ if __name__ == "__main__":
     base_fees = subscription_contract.functions.baseFees(0).call()
     encryptor_fees = subscription_contract.functions.encryptorFees(MAX_NODES, SUBSCRIPTION_PERIOD).call()
 
-    approve_erc20_transfer(erc20_contract, account, nonce, base_fees, encryptor_fees)
-    pay_for_subscription_and_slots(subscription_contract, account, nonce, encryptor_slots)
-    pay_for_new_slots(subscription_contract, account, nonce, extra_encryptor_slots)
+    # approve_erc20_transfer(erc20_contract, account, nonce, base_fees, encryptor_fees)
+    # pay_for_subscription_and_slots(subscription_contract, account, nonce, encryptor_slots)
+    # pay_for_new_slots(subscription_contract, account, nonce, extra_encryptor_slots)
     initiate_ritual(coordinator_contract, account, nonce, subscription_contract, ritual_id, num_nodes)
 
 # # Test operations during Yellow period
