@@ -6,7 +6,7 @@ from typing import Any, List
 
 from ape import chain, networks
 from ape.api import AccountAPI, ReceiptAPI
-from ape.cli import get_user_selected_account
+from ape.cli.choices import select_account
 from ape.contracts.base import ContractContainer, ContractInstance, ContractTransactionHandler
 from ape.utils import EMPTY_BYTES32, ZERO_ADDRESS
 from eth_typing import ChecksumAddress
@@ -482,7 +482,7 @@ class Transactor:
 
     def __init__(self, account: typing.Optional[AccountAPI] = None):
         if account is None:
-            self._account = get_user_selected_account()
+            self._account = select_account()
         else:
             self._account = account
 
@@ -538,7 +538,7 @@ class Deployer(Transactor):
         constants = config.get("constants", {})
         _Constants = namedtuple("_Constants", list(constants))
         self.constants = _Constants(**constants)
-        
+
         super().__init__(account)
         self._set_account(self._account)
         self.verify = verify
@@ -588,7 +588,7 @@ class Deployer(Transactor):
         kwargs = self._get_kwargs()
 
         deployer_account = self.get_account()
-        return deployer_account.deploy(*deployment_params, 
+        return deployer_account.deploy(*deployment_params,
                                        # FIXME: Manual gas fees - #199
                                     #    max_priority_fee="3 gwei",
                                     #    max_fee="120 gwei",
@@ -616,7 +616,7 @@ class Deployer(Transactor):
         return contract_type_container.at(proxy_contract.address)
 
     def upgrade(self, container: ContractContainer, proxy_address, data=b'') -> ContractInstance:
-        
+
         admin_slot = chain.provider.get_storage_at(
             address=proxy_address,
             slot=EIP1967_ADMIN_SLOT
@@ -627,7 +627,7 @@ class Deployer(Transactor):
                 f"Admin slot for contract at {proxy_address} is empty. "
                 "Are you sure this is an EIP1967-compatible proxy?"
             )
-        
+
         admin_address = to_checksum_address(admin_slot[-20:])
         proxy_admin = OZ_DEPENDENCY.ProxyAdmin.at(admin_address)
         # TODO: Check that owner of proxy admin is deployer
@@ -636,7 +636,7 @@ class Deployer(Transactor):
         # TODO: initialize taco app implementation too
 
         self.transact(proxy_admin.upgradeAndCall, proxy_address, implementation.address, data)
-        
+
         wrapped_instance = container.at(proxy_address)
         return wrapped_instance
 

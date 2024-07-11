@@ -2294,8 +2294,8 @@
         }
     },
     "80002": {
-        "BetaProgramInitiator": {
-            "address": "0xf47dde316D994a050b8b4e5986e0790309979697",
+        "BqETHSubscription": {
+            "address": "0x3E851204c29742b713d5C243093E98691591e654",
             "abi": [
                 {
                     "type": "constructor",
@@ -2304,12 +2304,68 @@
                         {
                             "name": "_coordinator",
                             "type": "address",
-                            "internalType": "contract Coordinator"
+                            "components": null,
+                            "internal_type": "contract Coordinator"
                         },
                         {
-                            "name": "_executor",
+                            "name": "_accessController",
                             "type": "address",
-                            "internalType": "address"
+                            "components": null,
+                            "internal_type": "contract GlobalAllowList"
+                        },
+                        {
+                            "name": "_feeToken",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "contract IERC20"
+                        },
+                        {
+                            "name": "_adopter",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address"
+                        },
+                        {
+                            "name": "_initialBaseFeeRate",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        },
+                        {
+                            "name": "_baseFeeRateIncrease",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        },
+                        {
+                            "name": "_encryptorFeeRate",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        },
+                        {
+                            "name": "_maxNodes",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        },
+                        {
+                            "name": "_subscriptionPeriodDuration",
+                            "type": "uint32",
+                            "components": null,
+                            "internal_type": "uint32"
+                        },
+                        {
+                            "name": "_yellowPeriodDuration",
+                            "type": "uint32",
+                            "components": null,
+                            "internal_type": "uint32"
+                        },
+                        {
+                            "name": "_redPeriodDuration",
+                            "type": "uint32",
+                            "components": null,
+                            "internal_type": "uint32"
                         }
                     ]
                 },
@@ -2320,7 +2376,8 @@
                         {
                             "name": "target",
                             "type": "address",
-                            "internalType": "address"
+                            "components": null,
+                            "internal_type": "address"
                         }
                     ]
                 },
@@ -2331,7 +2388,8 @@
                         {
                             "name": "account",
                             "type": "address",
-                            "internalType": "address"
+                            "components": null,
+                            "internal_type": "address"
                         }
                     ]
                 },
@@ -2342,116 +2400,171 @@
                 },
                 {
                     "type": "error",
+                    "name": "InvalidInitialization",
+                    "inputs": []
+                },
+                {
+                    "type": "error",
+                    "name": "NotInitializing",
+                    "inputs": []
+                },
+                {
+                    "type": "error",
+                    "name": "OwnableInvalidOwner",
+                    "inputs": [
+                        {
+                            "name": "owner",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address"
+                        }
+                    ]
+                },
+                {
+                    "type": "error",
+                    "name": "OwnableUnauthorizedAccount",
+                    "inputs": [
+                        {
+                            "name": "account",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address"
+                        }
+                    ]
+                },
+                {
+                    "type": "error",
                     "name": "SafeERC20FailedOperation",
                     "inputs": [
                         {
                             "name": "token",
                             "type": "address",
-                            "internalType": "address"
+                            "components": null,
+                            "internal_type": "address"
                         }
                     ]
                 },
                 {
                     "type": "event",
-                    "name": "FailedRequestRefunded",
+                    "name": "EncryptorSlotsPaid",
                     "inputs": [
                         {
-                            "name": "requestIndex",
-                            "type": "uint256",
-                            "internalType": "uint256",
-                            "indexed": true
-                        },
-                        {
-                            "name": "refundAmount",
-                            "type": "uint256",
-                            "internalType": "uint256",
-                            "indexed": false
-                        }
-                    ],
-                    "anonymous": false
-                },
-                {
-                    "type": "event",
-                    "name": "RequestCanceled",
-                    "inputs": [
-                        {
-                            "name": "sender",
+                            "name": "sponsor",
                             "type": "address",
-                            "internalType": "address",
+                            "components": null,
+                            "internal_type": "address",
                             "indexed": true
                         },
                         {
-                            "name": "requestIndex",
+                            "name": "amount",
                             "type": "uint256",
-                            "internalType": "uint256",
-                            "indexed": true
-                        }
-                    ],
-                    "anonymous": false
-                },
-                {
-                    "type": "event",
-                    "name": "RequestExecuted",
-                    "inputs": [
-                        {
-                            "name": "requestIndex",
-                            "type": "uint256",
-                            "internalType": "uint256",
-                            "indexed": true
-                        },
-                        {
-                            "name": "ritualId",
-                            "type": "uint256",
-                            "internalType": "uint256",
-                            "indexed": true
-                        }
-                    ],
-                    "anonymous": false
-                },
-                {
-                    "type": "event",
-                    "name": "RequestRegistered",
-                    "inputs": [
-                        {
-                            "name": "sender",
-                            "type": "address",
-                            "internalType": "address",
-                            "indexed": true
-                        },
-                        {
-                            "name": "requestIndex",
-                            "type": "uint256",
-                            "internalType": "uint256",
-                            "indexed": true
-                        },
-                        {
-                            "name": "providers",
-                            "type": "address[]",
-                            "internalType": "address[]",
+                            "components": null,
+                            "internal_type": "uint256",
                             "indexed": false
                         },
                         {
-                            "name": "authority",
-                            "type": "address",
-                            "internalType": "address",
+                            "name": "encryptorSlots",
+                            "type": "uint128",
+                            "components": null,
+                            "internal_type": "uint128",
                             "indexed": false
                         },
                         {
-                            "name": "duration",
+                            "name": "endOfCurrentPeriod",
                             "type": "uint32",
-                            "internalType": "uint32",
+                            "components": null,
+                            "internal_type": "uint32",
                             "indexed": false
-                        },
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
+                    "name": "Initialized",
+                    "inputs": [
                         {
-                            "name": "accessController",
+                            "name": "version",
+                            "type": "uint64",
+                            "components": null,
+                            "internal_type": "uint64",
+                            "indexed": false
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
+                    "name": "OwnershipTransferred",
+                    "inputs": [
+                        {
+                            "name": "previousOwner",
                             "type": "address",
-                            "internalType": "contract IEncryptionAuthorizer",
+                            "components": null,
+                            "internal_type": "address",
+                            "indexed": true
+                        },
+                        {
+                            "name": "newOwner",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address",
+                            "indexed": true
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
+                    "name": "SubscriptionPaid",
+                    "inputs": [
+                        {
+                            "name": "subscriber",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address",
+                            "indexed": true
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256",
                             "indexed": false
                         },
                         {
-                            "name": "payment",
+                            "name": "encryptorSlots",
+                            "type": "uint128",
+                            "components": null,
+                            "internal_type": "uint128",
+                            "indexed": false
+                        },
+                        {
+                            "name": "endOfSubscription",
+                            "type": "uint32",
+                            "components": null,
+                            "internal_type": "uint32",
+                            "indexed": false
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
+                    "name": "WithdrawalToTreasury",
+                    "inputs": [
+                        {
+                            "name": "treasury",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address",
+                            "indexed": true
+                        },
+                        {
+                            "name": "amount",
                             "type": "uint256",
-                            "internalType": "uint256",
+                            "components": null,
+                            "internal_type": "uint256",
                             "indexed": false
                         }
                     ],
@@ -2459,29 +2572,189 @@
                 },
                 {
                     "type": "function",
-                    "name": "NO_RITUAL",
+                    "name": "INACTIVE_RITUAL_ID",
                     "stateMutability": "view",
                     "inputs": [],
                     "outputs": [
                         {
                             "name": "",
                             "type": "uint32",
-                            "internalType": "uint32"
+                            "components": null,
+                            "internal_type": "uint32"
                         }
                     ]
                 },
                 {
                     "type": "function",
-                    "name": "cancelInitiationRequest",
-                    "stateMutability": "nonpayable",
+                    "name": "INCREASE_BASE",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "accessController",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "contract GlobalAllowList"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "activeRitualId",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint32",
+                            "components": null,
+                            "internal_type": "uint32"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "adopter",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "baseFeeRateIncrease",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "baseFees",
+                    "stateMutability": "view",
                     "inputs": [
                         {
-                            "name": "requestIndex",
+                            "name": "periodNumber",
                             "type": "uint256",
-                            "internalType": "uint256"
+                            "components": null,
+                            "internal_type": "uint256"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "baseFees",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "beforeIsAuthorized",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "components": null,
+                            "internal_type": "uint32"
                         }
                     ],
                     "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "beforeSetAuthorization",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "components": null,
+                            "internal_type": "uint32"
+                        },
+                        {
+                            "name": "addresses",
+                            "type": "address[]",
+                            "components": null,
+                            "internal_type": "address[]"
+                        },
+                        {
+                            "name": "value",
+                            "type": "bool",
+                            "components": null,
+                            "internal_type": "bool"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "billingInfo",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "periodNumber",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "paid",
+                            "type": "bool",
+                            "components": null,
+                            "internal_type": "bool"
+                        },
+                        {
+                            "name": "encryptorSlots",
+                            "type": "uint128",
+                            "components": null,
+                            "internal_type": "uint128"
+                        }
+                    ]
                 },
                 {
                     "type": "function",
@@ -2492,175 +2765,392 @@
                         {
                             "name": "",
                             "type": "address",
-                            "internalType": "contract Coordinator"
+                            "components": null,
+                            "internal_type": "contract Coordinator"
                         }
                     ]
                 },
                 {
                     "type": "function",
-                    "name": "currency",
+                    "name": "encryptorFeeRate",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "encryptorFees",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "encryptorSlots",
+                            "type": "uint128",
+                            "components": null,
+                            "internal_type": "uint128"
+                        },
+                        {
+                            "name": "duration",
+                            "type": "uint32",
+                            "components": null,
+                            "internal_type": "uint32"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "feeToken",
                     "stateMutability": "view",
                     "inputs": [],
                     "outputs": [
                         {
                             "name": "",
                             "type": "address",
-                            "internalType": "contract IERC20"
+                            "components": null,
+                            "internal_type": "contract IERC20"
                         }
                     ]
                 },
                 {
                     "type": "function",
-                    "name": "executeInitiationRequest",
+                    "name": "getCurrentPeriodNumber",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "getEndOfSubscription",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "endOfSubscription",
+                            "type": "uint32",
+                            "components": null,
+                            "internal_type": "uint32"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "getPaidEncryptorSlots",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "periodNumber",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "initialBaseFeeRate",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "initialize",
                     "stateMutability": "nonpayable",
                     "inputs": [
                         {
-                            "name": "requestIndex",
-                            "type": "uint256",
-                            "internalType": "uint256"
+                            "name": "_treasury",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address"
                         }
                     ],
                     "outputs": []
                 },
                 {
                     "type": "function",
-                    "name": "executor",
+                    "name": "isPeriodPaid",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "periodNumber",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "bool",
+                            "components": null,
+                            "internal_type": "bool"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "maxNodes",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "owner",
                     "stateMutability": "view",
                     "inputs": [],
                     "outputs": [
                         {
                             "name": "",
                             "type": "address",
-                            "internalType": "address"
+                            "components": null,
+                            "internal_type": "address"
                         }
                     ]
                 },
                 {
                     "type": "function",
-                    "name": "getProviders",
-                    "stateMutability": "view",
-                    "inputs": [
-                        {
-                            "name": "requestIndex",
-                            "type": "uint256",
-                            "internalType": "uint256"
-                        }
-                    ],
-                    "outputs": [
-                        {
-                            "name": "",
-                            "type": "address[]",
-                            "internalType": "address[]"
-                        }
-                    ]
-                },
-                {
-                    "type": "function",
-                    "name": "getRequestsLength",
-                    "stateMutability": "view",
-                    "inputs": [],
-                    "outputs": [
-                        {
-                            "name": "",
-                            "type": "uint256",
-                            "internalType": "uint256"
-                        }
-                    ]
-                },
-                {
-                    "type": "function",
-                    "name": "refundFailedRequest",
+                    "name": "payForEncryptorSlots",
                     "stateMutability": "nonpayable",
                     "inputs": [
                         {
-                            "name": "requestIndex",
-                            "type": "uint256",
-                            "internalType": "uint256"
+                            "name": "additionalEncryptorSlots",
+                            "type": "uint128",
+                            "components": null,
+                            "internal_type": "uint128"
                         }
                     ],
                     "outputs": []
                 },
                 {
                     "type": "function",
-                    "name": "registerInitiationRequest",
+                    "name": "payForSubscription",
                     "stateMutability": "nonpayable",
                     "inputs": [
                         {
-                            "name": "providers",
-                            "type": "address[]",
-                            "internalType": "address[]"
-                        },
-                        {
-                            "name": "authority",
-                            "type": "address",
-                            "internalType": "address"
-                        },
-                        {
-                            "name": "duration",
-                            "type": "uint32",
-                            "internalType": "uint32"
-                        },
-                        {
-                            "name": "accessController",
-                            "type": "address",
-                            "internalType": "contract IEncryptionAuthorizer"
+                            "name": "encryptorSlots",
+                            "type": "uint128",
+                            "components": null,
+                            "internal_type": "uint128"
                         }
                     ],
-                    "outputs": [
-                        {
-                            "name": "requestIndex",
-                            "type": "uint256",
-                            "internalType": "uint256"
-                        }
-                    ]
+                    "outputs": []
                 },
                 {
                     "type": "function",
-                    "name": "requests",
+                    "name": "processRitualExtending",
                     "stateMutability": "view",
                     "inputs": [
                         {
                             "name": "",
-                            "type": "uint256",
-                            "internalType": "uint256"
-                        }
-                    ],
-                    "outputs": [
-                        {
-                            "name": "authority",
                             "type": "address",
-                            "internalType": "address"
-                        },
-                        {
-                            "name": "duration",
-                            "type": "uint32",
-                            "internalType": "uint32"
-                        },
-                        {
-                            "name": "accessController",
-                            "type": "address",
-                            "internalType": "contract IEncryptionAuthorizer"
-                        },
-                        {
-                            "name": "sender",
-                            "type": "address",
-                            "internalType": "address"
+                            "components": null,
+                            "internal_type": "address"
                         },
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "internalType": "uint32"
+                            "components": null,
+                            "internal_type": "uint32"
                         },
                         {
-                            "name": "payment",
+                            "name": "",
                             "type": "uint256",
-                            "internalType": "uint256"
+                            "components": null,
+                            "internal_type": "uint256"
+                        },
+                        {
+                            "name": "",
+                            "type": "uint32",
+                            "components": null,
+                            "internal_type": "uint32"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "processRitualPayment",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "initiator",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address"
+                        },
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "components": null,
+                            "internal_type": "uint32"
+                        },
+                        {
+                            "name": "numberOfProviders",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        },
+                        {
+                            "name": "duration",
+                            "type": "uint32",
+                            "components": null,
+                            "internal_type": "uint32"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "redPeriodDuration",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint32",
+                            "components": null,
+                            "internal_type": "uint32"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "renounceOwnership",
+                    "stateMutability": "nonpayable",
+                    "inputs": [],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "startOfSubscription",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint32",
+                            "components": null,
+                            "internal_type": "uint32"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "subscriptionPeriodDuration",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint32",
+                            "components": null,
+                            "internal_type": "uint32"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "transferOwnership",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "newOwner",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "usedEncryptorSlots",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "withdrawToTreasury",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "amount",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "yellowPeriodDuration",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint32",
+                            "components": null,
+                            "internal_type": "uint32"
                         }
                     ]
                 }
             ],
-            "tx_hash": "0xbc06258dbf24b6da9d45619a3048e6894a2779a198d4b7e6cdc48470e8e93ee6",
-            "block_number": 5199800,
+            "tx_hash": "0x709f8cb91d3489fed89b0006a162e226a12095e12c5b737d1ec639109cac4a26",
+            "block_number": 9101924,
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "Coordinator": {
@@ -4444,7 +4934,7 @@
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "GlobalAllowList": {
-            "address": "0xfDBA7100B015586270B62bA116920b78F4ff6930",
+            "address": "0xd5a66BF5f63dccAFEC74AEe1ba755CD7e06F683a",
             "abi": [
                 {
                     "type": "constructor",
@@ -4453,7 +4943,8 @@
                         {
                             "name": "_coordinator",
                             "type": "address",
-                            "internalType": "contract Coordinator"
+                            "components": null,
+                            "internal_type": "contract Coordinator"
                         }
                     ]
                 },
@@ -4469,7 +4960,8 @@
                         {
                             "name": "length",
                             "type": "uint256",
-                            "internalType": "uint256"
+                            "components": null,
+                            "internal_type": "uint256"
                         }
                     ]
                 },
@@ -4480,7 +4972,8 @@
                         {
                             "name": "s",
                             "type": "bytes32",
-                            "internalType": "bytes32"
+                            "components": null,
+                            "internal_type": "bytes32"
                         }
                     ]
                 },
@@ -4491,23 +4984,61 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "internalType": "uint32",
+                            "components": null,
+                            "internal_type": "uint32",
                             "indexed": true
                         },
                         {
                             "name": "_address",
                             "type": "address",
-                            "internalType": "address",
+                            "components": null,
+                            "internal_type": "address",
                             "indexed": true
                         },
                         {
                             "name": "isAuthorized",
                             "type": "bool",
-                            "internalType": "bool",
+                            "components": null,
+                            "internal_type": "bool",
                             "indexed": false
                         }
                     ],
                     "anonymous": false
+                },
+                {
+                    "type": "function",
+                    "name": "MAX_AUTH_ACTIONS",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint32",
+                            "components": null,
+                            "internal_type": "uint32"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "authActions",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "",
+                            "type": "uint32",
+                            "components": null,
+                            "internal_type": "uint32"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256",
+                            "components": null,
+                            "internal_type": "uint256"
+                        }
+                    ]
                 },
                 {
                     "type": "function",
@@ -4517,12 +5048,14 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "internalType": "uint32"
+                            "components": null,
+                            "internal_type": "uint32"
                         },
                         {
                             "name": "addresses",
                             "type": "address[]",
-                            "internalType": "address[]"
+                            "components": null,
+                            "internal_type": "address[]"
                         }
                     ],
                     "outputs": []
@@ -4536,7 +5069,8 @@
                         {
                             "name": "",
                             "type": "address",
-                            "internalType": "contract Coordinator"
+                            "components": null,
+                            "internal_type": "contract Coordinator"
                         }
                     ]
                 },
@@ -4548,12 +5082,14 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "internalType": "uint32"
+                            "components": null,
+                            "internal_type": "uint32"
                         },
                         {
                             "name": "addresses",
                             "type": "address[]",
-                            "internalType": "address[]"
+                            "components": null,
+                            "internal_type": "address[]"
                         }
                     ],
                     "outputs": []
@@ -4566,19 +5102,22 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "internalType": "uint32"
+                            "components": null,
+                            "internal_type": "uint32"
                         },
                         {
                             "name": "encryptor",
                             "type": "address",
-                            "internalType": "address"
+                            "components": null,
+                            "internal_type": "address"
                         }
                     ],
                     "outputs": [
                         {
                             "name": "",
                             "type": "bool",
-                            "internalType": "bool"
+                            "components": null,
+                            "internal_type": "bool"
                         }
                     ]
                 },
@@ -4590,30 +5129,34 @@
                         {
                             "name": "ritualId",
                             "type": "uint32",
-                            "internalType": "uint32"
+                            "components": null,
+                            "internal_type": "uint32"
                         },
                         {
                             "name": "evidence",
                             "type": "bytes",
-                            "internalType": "bytes"
+                            "components": null,
+                            "internal_type": "bytes"
                         },
                         {
                             "name": "ciphertextHeader",
                             "type": "bytes",
-                            "internalType": "bytes"
+                            "components": null,
+                            "internal_type": "bytes"
                         }
                     ],
                     "outputs": [
                         {
                             "name": "",
                             "type": "bool",
-                            "internalType": "bool"
+                            "components": null,
+                            "internal_type": "bool"
                         }
                     ]
                 }
             ],
-            "tx_hash": "0xe1f8d7d3afac631312665faab5e45a4a8bbbfa7180f22014b5ad2dc0497edf72",
-            "block_number": 5198678,
+            "tx_hash": "0x7753ec5286e2521a8430a9686052d7e065b3b561167123e6975f0ae1a2d312d0",
+            "block_number": 9101909,
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "LynxRitualToken": {

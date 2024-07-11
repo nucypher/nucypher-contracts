@@ -1,0 +1,51 @@
+deployment:
+  name: bqeth-lynx
+  chain_id: 80002
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: bqeth-lynx.json
+
+constants:
+  # See deployment/artifacts/lynx.json
+  COORDINATOR_PROXY: "0xE9e94499bB0f67b9DBD75506ec1735486DE57770"
+
+  # LynxRitualToken, see deployment/artifacts/lynx.json
+  LYNX_RITUAL_TOKEN:  "0x064Be2a9740e565729BC0d47bC616c5bb8Cc87B9"
+
+  # lynx deployer account
+  LYNX_DEPLOYER: "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
+
+  MAX_NODES: 4
+
+  # Let's use proposed values for mainnet. See https://github.com/nucypher/tdec/issues/169
+  INITIAL_BASE_FEE_RATE: 4050925925925  # $0.35 per day, in DAI units per second (in Python: 35*10**16 // 86400)
+  ENCRYPTOR_FEE_RATE: 63419583967  # $2 per year, in DAI units per second (in Python: 2 * 10**18 // 86400 // 365)  
+  BASE_FEE_RATE_INCREASE: 500  # 5%, expressed as parts on 10,000
+
+  # TODO: Are these good period durations for testing in Lynx?
+  PERIOD: 172800  # 2 days
+  YELLOW_PERIOD: 86400  # 1 day
+  RED_PERIOD: 86400  # 1 day
+
+contracts:
+  - GlobalAllowList:
+      constructor:
+        _coordinator: $COORDINATOR_PROXY
+  - BqETHSubscription:
+      proxy:
+        constructor:
+          initialOwner: $LYNX_DEPLOYER  # Upgrades owner
+          _data: $encode:initialize,$LYNX_DEPLOYER
+      constructor:
+        _coordinator: $COORDINATOR_PROXY
+        _accessController: $GlobalAllowList
+        _feeToken: $LYNX_RITUAL_TOKEN
+        _adopter: $LYNX_DEPLOYER
+        _initialBaseFeeRate: $INITIAL_BASE_FEE_RATE
+        _baseFeeRateIncrease: $BASE_FEE_RATE_INCREASE
+        _encryptorFeeRate: $ENCRYPTOR_FEE_RATE
+        _maxNodes: $MAX_NODES
+        _subscriptionPeriodDuration: $PERIOD
+        _yellowPeriodDuration: $YELLOW_PERIOD
+        _redPeriodDuration: $RED_PERIOD
