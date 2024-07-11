@@ -1,6 +1,5 @@
 import json
 import os
-import time
 
 import requests
 from dotenv import load_dotenv
@@ -14,15 +13,11 @@ load_dotenv()
 PROVIDER_URL = os.environ.get("PROVIDER_URL")
 PRIVATE_KEY = os.environ.get("PRIVATE_KEY")
 
-"""Constants"""
-BASE_FEE_RATE = 2799999999999360000
+
 MAX_NODES = 10
-
-
 NUCYPHER_DOMAIN = "lynx"
 CHAIN = "80002"
 PORTER_ENDPOINT = f"https://porter-{NUCYPHER_DOMAIN}.nucypher.community"
-NUM_NODES = 2
 
 with open(f"deployment/artifacts/{NUCYPHER_DOMAIN}.json", "r") as f:
     registry = json.load(f)
@@ -76,7 +71,9 @@ def approve_erc20_transfer(erc20_contract, account, nonce, base_fees, encryptor_
     signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
     tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
     tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
-    print(f"Approved ERC20 token for subscription contract.")
+    print(
+        f"Approved transfer of {base_fees + encryptor_fees} ERC20 token for subscription contract."
+    )
     print(f"Transaction receipt: {tx_receipt}")
 
 
@@ -92,13 +89,16 @@ def pay_for_subscription_and_slots(subscription_contract, account, nonce, encryp
     signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
     tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
     tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
-    print(f"Paid for a new subscription period.")
+    print(f"Paid for a new subscription period with {encryptor_slots} encryptor slots.")
     print(f"Transaction receipt: {tx_receipt}")
+
 
 def pay_for_new_slots(subscription_contract, account, nonce, extra_encryptor_slots):
     """Pay for additional encryptor slots"""
     extra_encryptor_slots = 1
-    tx = subscription_contract.functions.payForEncryptorSlots(extra_encryptor_slots).build_transaction(
+    tx = subscription_contract.functions.payForEncryptorSlots(
+        extra_encryptor_slots
+    ).build_transaction(
         {
             "from": account.address,
             "nonce": nonce,
@@ -111,12 +111,23 @@ def pay_for_new_slots(subscription_contract, account, nonce, extra_encryptor_slo
     print(f"Transaction receipt: {tx_receipt}")
 
 
-def initiate_ritual(coordinator_contract, account, nonce, subscription_contract, ritual_id, num_nodes):
+def initiate_ritual(
+    coordinator_contract, account, nonce, subscription_contract, ritual_id, num_nodes
+):
     """Initiate a ritual"""
-    nodes = [u["checksum_address"] for u in requests.get(f"{PORTER_ENDPOINT}/get_ursulas?quantity={num_nodes}").json()["result"]["ursulas"]]
+    nodes = [
+        u["checksum_address"]
+        for u in requests.get(f"{PORTER_ENDPOINT}/get_ursulas?quantity={num_nodes}").json()[
+            "result"
+        ]["ursulas"]
+    ]
     duration = SUBSCRIPTION_PERIOD + YELLOW_PERIOD + RED_PERIOD
     tx = coordinator_contract.functions.initiateRitual(
-        subscription_contract.address, nodes, account.address, duration, GLOBAL_ALLOW_LIST_CONTRACT_ADDRESS
+        subscription_contract.address,
+        nodes,
+        account.address,
+        duration,
+        GLOBAL_ALLOW_LIST_CONTRACT_ADDRESS,
     ).build_transaction(
         {
             "from": account.address,
@@ -126,10 +137,9 @@ def initiate_ritual(coordinator_contract, account, nonce, subscription_contract,
     signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
     tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
     tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
-    print(
-        f"Initiated ritual {ritual_id} with {num_nodes} providers for {duration} seconds."
-    )
+    print(f"Initiated ritual {ritual_id} with {num_nodes} providers for {duration} seconds.")
     print(f"Transaction receipt: {tx_receipt}")
+
 
 if __name__ == "__main__":
     ritual_id = 1
@@ -137,52 +147,25 @@ if __name__ == "__main__":
     encryptor_slots = 2
     extra_encryptor_slots = 1
     w3, account, nonce = setup_connections()
-    erc20_contract, subscription_contract, coordinator_contract, global_allow_list_contract = setup_contracts()
+    (
+        erc20_contract,
+        subscription_contract,
+        coordinator_contract,
+        global_allow_list_contract,
+    ) = setup_contracts()
 
     SUBSCRIPTION_PERIOD = subscription_contract.functions.subscriptionPeriodDuration().call()
     YELLOW_PERIOD = subscription_contract.functions.yellowPeriodDuration().call()
     RED_PERIOD = subscription_contract.functions.redPeriodDuration().call()
 
     base_fees = subscription_contract.functions.baseFees(0).call()
-    encryptor_fees = subscription_contract.functions.encryptorFees(MAX_NODES, SUBSCRIPTION_PERIOD).call()
+    encryptor_fees = subscription_contract.functions.encryptorFees(
+        MAX_NODES, SUBSCRIPTION_PERIOD
+    ).call()
 
-    # approve_erc20_transfer(erc20_contract, account, nonce, base_fees, encryptor_fees)
-    # pay_for_subscription_and_slots(subscription_contract, account, nonce, encryptor_slots)
-    # pay_for_new_slots(subscription_contract, account, nonce, extra_encryptor_slots)
-    initiate_ritual(coordinator_contract, account, nonce, subscription_contract, ritual_id, num_nodes)
-
-# # Test operations during Yellow period
-# end_of_subscription = subscription_contract.functions.getEndOfSubscription().call()
-# yellow_period_start = end_of_subscription
-# yellow_period_end = yellow_period_start + YELLOW_PERIOD
-
-# # Simulate Yellow period
-# w3.geth.miner.stop()
-# w3.geth.miner.set_timestamp(yellow_period_start)
-# w3.geth.miner.start()
-
-# # Test potential restrictions on adopter operations and decryption during Yellow period
-# # ...
-
-# # Test operations during Red period
-# red_period_start = yellow_period_end
-# red_period_end = red_period_start + RED_PERIOD
-
-# # Simulate Red period
-# w3.geth.miner.stop()
-# w3.geth.miner.set_timestamp(red_period_start)
-# w3.geth.miner.start()
-
-# # Test potential restrictions on adopter operations and decryption during Red period
-# # ...
-
-# # Sign a message to test decryption
-# data = os.urandom(32)
-# digest = Web3.keccak(data)
-# signable_message = encode_defunct(digest)
-# signed_digest = w3.eth.account.sign_message(signable_message, private_key=ADOPTER_PRIVATE_KEY)
-# signature = signed_digest.signature
-
-# # Test decryption during Red period
-# is_authorized = global_allow_list_contract.functions.isAuthorized(ritual_id, signature, data).call()
-# print(f"Is authorized during Red period: {is_authorized}")
+    approve_erc20_transfer(erc20_contract, account, nonce, base_fees, encryptor_fees)
+    pay_for_subscription_and_slots(subscription_contract, account, nonce, encryptor_slots)
+    pay_for_new_slots(subscription_contract, account, nonce, extra_encryptor_slots)
+    initiate_ritual(
+        coordinator_contract, account, nonce, subscription_contract, ritual_id, num_nodes
+    )
