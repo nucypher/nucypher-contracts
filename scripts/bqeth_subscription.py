@@ -8,6 +8,8 @@ from web3.middleware import geth_poa_middleware
 
 """
 Read from a .env file
+PROVIDER_URL=https://super-secret-rpc.com/MY-API-KEY
+PRIVATE_KEY=0xPleaseDoNotUseThisKeyInProduction0x
 """
 load_dotenv()
 PROVIDER_URL = os.environ.get("PROVIDER_URL")
