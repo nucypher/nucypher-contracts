@@ -37,7 +37,7 @@ contract BqETHSubscription is EncryptorSlotsSubscription, Initializable, Ownable
     mapping(uint256 periodNumber => Billing billing) public billingInfo;
     address public adopter;
 
-    uint256[19] private gap;
+    uint256[20] private gap;
 
     /**
      * @notice Emitted when a subscription is spent
@@ -80,7 +80,7 @@ contract BqETHSubscription is EncryptorSlotsSubscription, Initializable, Ownable
      * @param _coordinator The address of the coordinator contract
      * @param _accessController The address of the global allow list
      * @param _feeToken The address of the fee token contract
-     * @param _adopterSetter The address of the adopter
+     * @param _adopterSetter Address that can set the adopter address
      * @param _initialBaseFeeRate Fee rate per node per second
      * @param _baseFeeRateIncrease Increase of base fee rate per each period (fraction of INCREASE_BASE)
      * @param _encryptorFeeRate Fee rate per encryptor per second
@@ -154,7 +154,7 @@ contract BqETHSubscription is EncryptorSlotsSubscription, Initializable, Ownable
     }
 
     function setAdopter(address _adopter) external {
-        require(msg.sender == adopterSetter, "Only authority can set adopter");
+        require(msg.sender == adopterSetter, "Only adopter setter can set adopter");
         require(
             adopter == address(0) && _adopter != address(0),
             "Adopter can be set only once with not zero address"
