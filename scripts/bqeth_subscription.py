@@ -72,11 +72,11 @@ def approve_erc20_transfer(erc20_contract, account, nonce, base_fees, encryptor_
     )
     signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
     tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-    tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+    _ = w3.eth.wait_for_transaction_receipt(tx_hash)
     print(
         f"Approved transfer of {base_fees + encryptor_fees} ERC20 token for subscription contract."
     )
-    print(f"Transaction receipt: {tx_receipt}")
+    print(f"Transaction hash: {tx_hash.hex()}")
 
 
 def pay_for_subscription_and_slots(subscription_contract, account, nonce, encryptor_slots):
@@ -90,9 +90,9 @@ def pay_for_subscription_and_slots(subscription_contract, account, nonce, encryp
     )
     signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
     tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-    tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+    _ = w3.eth.wait_for_transaction_receipt(tx_hash)
     print(f"Paid for a new subscription period with {encryptor_slots} encryptor slots.")
-    print(f"Transaction receipt: {tx_receipt}")
+    print(f"Transaction hash: {tx_hash.hex()}")
 
 
 def pay_for_new_slots(subscription_contract, account, nonce, extra_encryptor_slots):
@@ -108,9 +108,9 @@ def pay_for_new_slots(subscription_contract, account, nonce, extra_encryptor_slo
     )
     signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
     tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-    tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+    _ = w3.eth.wait_for_transaction_receipt(tx_hash)
     print(f"Paid for {extra_encryptor_slots} new encryptor slots.")
-    print(f"Transaction receipt: {tx_receipt}")
+    print(f"Transaction hash: {tx_hash.hex()}")
 
 
 def initiate_ritual(
@@ -138,9 +138,9 @@ def initiate_ritual(
     )
     signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
     tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-    tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+    _ = w3.eth.wait_for_transaction_receipt(tx_hash)
     print(f"Initiated ritual {ritual_id} with {num_nodes} providers for {duration} seconds.")
-    print(f"Transaction receipt: {tx_receipt}")
+    print(f"Transaction hash: {tx_hash.hex()}")
 
 
 def add_encryptors(global_allow_list_contract, account, encryptors_addresses, ritual_id):
@@ -156,8 +156,9 @@ def add_encryptors(global_allow_list_contract, account, encryptors_addresses, ri
 
     signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
     tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-    tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
-    print(f"Added encryptors to the global allow list for ritual {ritual_id}.")
+    _ = w3.eth.wait_for_transaction_receipt(tx_hash)
+    print(f"Added {len(encryptors_addresses)} encryptors to the global allow list for ritual {ritual_id}.")
+    print(f"Transaction hash: {tx_hash.hex()}")
 
 if __name__ == "__main__":
     ritual_id = 1
