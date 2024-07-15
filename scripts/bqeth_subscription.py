@@ -143,7 +143,7 @@ def initiate_ritual(
     print(f"Transaction hash: {tx_hash.hex()}")
 
 
-def add_encryptors(global_allow_list_contract, account, encryptors_addresses, ritual_id):
+def add_encryptors(global_allow_list_contract, account, nonce, encryptors_addresses, ritual_id):
     tx = global_allow_list_contract.functions.authorize(
         ritual_id,
         encryptors_addresses,
@@ -159,6 +159,22 @@ def add_encryptors(global_allow_list_contract, account, encryptors_addresses, ri
     _ = w3.eth.wait_for_transaction_receipt(tx_hash)
     print(f"Added {len(encryptors_addresses)} encryptors to the global allow list for ritual {ritual_id}.")
     print(f"Transaction hash: {tx_hash.hex()}")
+
+def remove_encryptors(global_allow_list_contract, account, nonce, encryptors_addresses, ritual_id):
+    tx = global_allow_list_contract.functions.deauthorize(
+        ritual_id,
+        encryptors_addresses,
+    ).build_transaction(
+        {
+            "from": account.address,
+            "nonce": nonce, # TODO: update nonce consequently
+        }
+    )
+
+    signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
+    tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+    tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+    print(f"Removed encryptors from the global allow list for ritual {ritual_id}.")
 
 if __name__ == "__main__":
     ritual_id = 1
@@ -193,11 +209,15 @@ if __name__ == "__main__":
     )
     input("Press Enter to continue...")
 
-    # Randomly generated addresses
     encryptors = [
-        "0x1feDcec87aE951454cB45fc7FbedbE6f3BD434be",
-        # "0x09f5FF03d0117467b4556FbEC4cC74b475358654",
-        # "0x47285b814A360f5c39454bc35eEBeA469d1619b3",
+        "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600",
+        "0x09f5FF03d0117467b4556FbEC4cC74b475358654",
+        "0x47285b814A360f5c39454bc35eEBeA469d1619b3",
         # "0xaa764B4F33097A3d5CA0c9e5FeAFAb8694f02B3E",
+        # "0xD155B60Fb856c27416a0B24C5cE01900D4FfbC8E",
     ]
-    add_encryptors(global_allow_list_contract, account, encryptors, 11)
+    add_encryptors(global_allow_list_contract, account, nonce, encryptors, ritual_id)
+    input("Press Enter to continue...")
+
+    remove_encryptors(global_allow_list_contract, account, nonce, encryptors, ritual_id)
+    input("Press Enter to continue...")
