@@ -26,7 +26,7 @@ contract BqETHSubscription is EncryptorSlotsSubscription, Initializable, Ownable
 
     GlobalAllowList public immutable accessController;
     IERC20 public immutable feeToken;
-    address public immutable adopter;
+    address public immutable adopterSetter;
 
     uint256 public immutable initialBaseFeeRate;
     uint256 public immutable baseFeeRateIncrease;
@@ -35,8 +35,9 @@ contract BqETHSubscription is EncryptorSlotsSubscription, Initializable, Ownable
 
     uint32 public activeRitualId;
     mapping(uint256 periodNumber => Billing billing) public billingInfo;
+    address public adopter;
 
-    uint256[20] private gap;
+    uint256[19] private gap;
 
     /**
      * @notice Emitted when a subscription is spent
@@ -79,7 +80,7 @@ contract BqETHSubscription is EncryptorSlotsSubscription, Initializable, Ownable
      * @param _coordinator The address of the coordinator contract
      * @param _accessController The address of the global allow list
      * @param _feeToken The address of the fee token contract
-     * @param _adopter The address of the adopter
+     * @param _adopterSetter The address of the adopter
      * @param _initialBaseFeeRate Fee rate per node per second
      * @param _baseFeeRateIncrease Increase of base fee rate per each period (fraction of INCREASE_BASE)
      * @param _encryptorFeeRate Fee rate per encryptor per second
@@ -92,7 +93,7 @@ contract BqETHSubscription is EncryptorSlotsSubscription, Initializable, Ownable
         Coordinator _coordinator,
         GlobalAllowList _accessController,
         IERC20 _feeToken,
-        address _adopter,
+        address _adopterSetter,
         uint256 _initialBaseFeeRate,
         uint256 _baseFeeRateIncrease,
         uint256 _encryptorFeeRate,
@@ -109,7 +110,7 @@ contract BqETHSubscription is EncryptorSlotsSubscription, Initializable, Ownable
         )
     {
         require(address(_feeToken) != address(0), "Fee token cannot be the zero address");
-        require(_adopter != address(0), "Adopter cannot be the zero address");
+        require(_adopterSetter != address(0), "Adopter setter cannot be the zero address");
         require(
             address(_accessController) != address(0),
             "Access controller cannot be the zero address"
@@ -119,7 +120,7 @@ contract BqETHSubscription is EncryptorSlotsSubscription, Initializable, Ownable
             "Base fee rate increase must be fraction of INCREASE_BASE"
         );
         feeToken = _feeToken;
-        adopter = _adopter;
+        adopterSetter = _adopterSetter;
         initialBaseFeeRate = _initialBaseFeeRate;
         baseFeeRateIncrease = _baseFeeRateIncrease;
         encryptorFeeRate = _encryptorFeeRate;
@@ -150,6 +151,15 @@ contract BqETHSubscription is EncryptorSlotsSubscription, Initializable, Ownable
     function initialize(address _treasury) external initializer {
         activeRitualId = INACTIVE_RITUAL_ID;
         __Ownable_init(_treasury);
+    }
+
+    function setAdopter(address _adopter) external {
+        require(msg.sender == adopterSetter, "Only authority can set adopter");
+        require(
+            adopter == address(0) && _adopter != address(0),
+            "Adopter can be set only once with not zero address"
+        );
+        adopter = _adopter;
     }
 
     function baseFees() public view returns (uint256) {

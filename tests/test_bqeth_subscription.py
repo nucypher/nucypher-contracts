@@ -19,6 +19,7 @@ from enum import IntEnum
 
 import ape
 import pytest
+from ape.utils import ZERO_ADDRESS
 from eth_account.messages import encode_defunct
 from web3 import Web3
 
@@ -72,6 +73,11 @@ def adopter(accounts):
     return accounts[2]
 
 
+@pytest.fixture(scope="module")
+def adopter_setter(accounts):
+    return accounts[3]
+
+
 @pytest.fixture()
 def erc20(project, adopter):
     token = project.TestToken.deploy(ERC20_SUPPLY, sender=adopter)
@@ -94,13 +100,13 @@ def global_allow_list(project, creator, coordinator):
 
 @pytest.fixture()
 def subscription(
-    project, creator, coordinator, global_allow_list, erc20, adopter, treasury, oz_dependency
+    project, creator, coordinator, global_allow_list, erc20, adopter_setter, treasury, oz_dependency
 ):
     contract = project.BqETHSubscription.deploy(
         coordinator.address,
         global_allow_list.address,
         erc20.address,
-        adopter,
+        adopter_setter,
         BASE_FEE_RATE,
         BASE_FEE_RATE_INCREASE * 100,
         ENCRYPTORS_FEE_RATE,
@@ -124,10 +130,22 @@ def subscription(
     return proxy_contract
 
 
+def test_adopter_setter(subscription, adopter_setter, adopter):
+    with ape.reverts("Only authority can set adopter"):
+        subscription.setAdopter(adopter, sender=adopter)
+    with ape.reverts("Adopter can be set only once with not zero address"):
+        subscription.setAdopter(ZERO_ADDRESS, sender=adopter_setter)
+    subscription.setAdopter(adopter, sender=adopter_setter)
+    assert subscription.adopter() == adopter
+    with ape.reverts("Adopter can be set only once with not zero address"):
+        subscription.setAdopter(adopter_setter, sender=adopter_setter)
+
+
 def test_pay_subscription(
-    erc20, subscription, coordinator, global_allow_list, adopter, treasury, chain
+    erc20, subscription, coordinator, global_allow_list, adopter, adopter_setter, treasury, chain
 ):
     erc20.approve(subscription.address, ERC20_SUPPLY, sender=adopter)
+    subscription.setAdopter(adopter, sender=adopter_setter)
 
     # First payment
     balance_before = erc20.balanceOf(adopter)
@@ -250,7 +268,7 @@ def test_pay_subscription(
 
 
 def test_pay_encryptor_slots(
-    erc20, subscription, coordinator, global_allow_list, adopter, treasury, chain
+    erc20, subscription, coordinator, global_allow_list, adopter, adopter_setter, treasury, chain
 ):
     encryptor_slots = 10
     assert (
@@ -259,6 +277,7 @@ def test_pay_encryptor_slots(
     )
 
     erc20.approve(subscription.address, ERC20_SUPPLY, sender=adopter)
+    subscription.setAdopter(adopter, sender=adopter_setter)
 
     with ape.reverts("Current billing period must be paid"):
         subscription.payForEncryptorSlots(encryptor_slots, sender=adopter)
@@ -333,8 +352,9 @@ def test_pay_encryptor_slots(
         subscription.payForEncryptorSlots(encryptor_slots, sender=adopter)
 
 
-def test_withdraw(erc20, subscription, adopter, treasury, global_allow_list):
+def test_withdraw(erc20, subscription, adopter, adopter_setter, treasury, global_allow_list):
     erc20.approve(subscription.address, ERC20_SUPPLY, sender=adopter)
+    subscription.setAdopter(adopter, sender=adopter_setter)
 
     with ape.reverts():
         subscription.withdrawToTreasury(1, sender=adopter)
@@ -357,10 +377,11 @@ def test_withdraw(erc20, subscription, adopter, treasury, global_allow_list):
 
 
 def test_process_ritual_payment(
-    erc20, subscription, coordinator, global_allow_list, adopter, treasury
+    erc20, subscription, coordinator, global_allow_list, adopter, adopter_setter, treasury
 ):
     ritual_id = 7
     number_of_providers = 6
+    subscription.setAdopter(adopter, sender=adopter_setter)
 
     with ape.reverts("Only the Coordinator can call this method"):
         subscription.processRitualPayment(
@@ -460,7 +481,7 @@ def test_process_ritual_payment(
 
 
 def test_process_ritual_extending(
-    erc20, subscription, coordinator, adopter, global_allow_list, treasury
+    erc20, subscription, coordinator, adopter, adopter_setter, global_allow_list, treasury
 ):
     ritual_id = 6
     number_of_providers = 7
@@ -475,6 +496,7 @@ def test_process_ritual_extending(
         )
 
     erc20.approve(subscription.address, ERC20_SUPPLY, sender=adopter)
+    subscription.setAdopter(adopter, sender=adopter_setter)
     subscription.payForSubscription(0, sender=adopter)
     coordinator.setRitual(
         ritual_id, RitualState.ACTIVE, 0, global_allow_list.address, sender=treasury
@@ -535,7 +557,15 @@ def test_process_ritual_extending(
 
 
 def test_before_set_authorization(
-    erc20, subscription, coordinator, adopter, global_allow_list, treasury, creator, chain
+    erc20,
+    subscription,
+    coordinator,
+    adopter,
+    adopter_setter,
+    global_allow_list,
+    treasury,
+    creator,
+    chain,
 ):
     ritual_id = 6
     number_of_providers = 7
@@ -547,6 +577,7 @@ def test_before_set_authorization(
         global_allow_list.authorize(0, [creator], sender=adopter)
 
     erc20.approve(subscription.address, ERC20_SUPPLY, sender=adopter)
+    subscription.setAdopter(adopter, sender=adopter_setter)
     subscription.payForSubscription(0, sender=adopter)
     coordinator.setRitual(
         ritual_id, RitualState.ACTIVE, 0, global_allow_list.address, sender=treasury
@@ -592,7 +623,15 @@ def test_before_set_authorization(
 
 
 def test_before_is_authorized(
-    erc20, subscription, coordinator, adopter, global_allow_list, treasury, creator, chain
+    erc20,
+    subscription,
+    coordinator,
+    adopter,
+    adopter_setter,
+    global_allow_list,
+    treasury,
+    creator,
+    chain,
 ):
     ritual_id = 6
 
@@ -610,6 +649,7 @@ def test_before_is_authorized(
         global_allow_list.isAuthorized(0, bytes(signature), bytes(data))
 
     erc20.approve(subscription.address, ERC20_SUPPLY, sender=adopter)
+    subscription.setAdopter(adopter, sender=adopter_setter)
     subscription.payForSubscription(1, sender=adopter)
     coordinator.setRitual(
         ritual_id, RitualState.ACTIVE, 0, global_allow_list.address, sender=treasury
