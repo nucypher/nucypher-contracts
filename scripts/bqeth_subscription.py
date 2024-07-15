@@ -114,7 +114,7 @@ def pay_for_new_slots(subscription_contract, account, nonce, extra_encryptor_slo
 
 
 def initiate_ritual(
-    coordinator_contract, account, nonce, subscription_contract, ritual_id, num_nodes
+    coordinator_contract, account, nonce, subscription_contract, num_nodes
 ):
     """Initiate a ritual"""
     nodes = [
@@ -189,7 +189,7 @@ if __name__ == "__main__":
     pay_for_new_slots(subscription_contract, account, nonce, extra_encryptor_slots)
     input("Press Enter to continue...")
     initiate_ritual(
-        coordinator_contract, account, nonce, subscription_contract, ritual_id, num_nodes
+        coordinator_contract, account, nonce, subscription_contract, num_nodes
     )
     input("Press Enter to continue...")
 
