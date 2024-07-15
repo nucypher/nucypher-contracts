@@ -131,7 +131,7 @@ def subscription(
 
 
 def test_adopter_setter(subscription, adopter_setter, adopter):
-    with ape.reverts("Only authority can set adopter"):
+    with ape.reverts("Only adopter setter can set adopter"):
         subscription.setAdopter(adopter, sender=adopter)
     with ape.reverts("Adopter can be set only once with not zero address"):
         subscription.setAdopter(ZERO_ADDRESS, sender=adopter_setter)
