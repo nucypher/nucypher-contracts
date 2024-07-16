@@ -1,3 +1,43 @@
+"""
+# Prerequisites
+`pip install web3 requests python-dotenv click`
+
+# Setup
+Create a .env file in the project root directory and add the following environment variables:
+```
+PROVIDER_URL=<your_provider_url>
+PRIVATE_KEY=<your_private_key>
+```
+
+# Usage
+To use the BqETH Subscription CLI, run the bqeth_subscription.py script with the desired command and options. Here are the available commands:
+
+- pay-subscription: Pay for a new subscription period and initial encryptor slots.
+  - --encryptor-slots: Number of encryptor slots to pay for (default: 2).
+
+- pay-slots: Pay for additional encryptor slots.
+  ---extra-slots: Number of additional encryptor slots to pay for (default: 1).
+
+- initiate-ritual: Initiate a ritual.
+  - --num-nodes: Number of nodes to use for the ritual (default: 2).
+
+- add-encryptors: Add encryptors to the global allow list for a ritual.
+  - ritual_id: ID of the ritual.
+  - encryptors: List of encryptor addresses to add.
+
+- remove-encryptors: Remove encryptors from the global allow list for a ritual.
+  - ritual_id: ID of the ritual.
+  - encryptors: List of encryptor addresses to remove.
+
+Example usage:
+```
+python bqeth_subscription.py pay-subscription --encryptor-slots 3
+python bqeth_subscription.py pay-slots --extra-slots 2
+python bqeth_subscription.py initiate-ritual --num-nodes 4
+python bqeth_subscription.py add-encryptors 1 0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600 0x09f5FF03d0117467b4556FbEC4cC74b475358654
+python bqeth_subscription.py remove-encryptors 1 0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600 0x09f5FF03d0117467b4556FbEC4cC74b475358654
+```
+"""
 import json
 import os
 import click
