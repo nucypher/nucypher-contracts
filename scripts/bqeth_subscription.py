@@ -1,20 +1,16 @@
 import json
 import os
+import click
 
 import requests
 from dotenv import load_dotenv
 from web3 import Web3
 from web3.middleware import construct_sign_and_send_raw_middleware, geth_poa_middleware
 
-"""
-Read from a .env file
-PROVIDER_URL=https://super-secret-rpc.com/MY-API-KEY
-PRIVATE_KEY=0xPleaseDoNotUseThisKeyInProduction0x
-"""
+# Load environment variables
 load_dotenv()
 PROVIDER_URL = os.environ.get("PROVIDER_URL")
 PRIVATE_KEY = os.environ.get("PRIVATE_KEY")
-
 
 MAX_NODES = 10
 NUCYPHER_DOMAIN = "lynx"
@@ -35,6 +31,7 @@ GLOBAL_ALLOW_LIST_CONTRACT_ABI = registry[CHAIN]["GlobalAllowList"]["abi"]
 
 
 def setup_connections():
+    """Set up Web3 connections."""
     w3 = Web3(Web3.HTTPProvider(PROVIDER_URL))
     w3.middleware_onion.inject(geth_poa_middleware, layer=0)
     account = w3.eth.account.from_key(PRIVATE_KEY)
@@ -43,164 +40,96 @@ def setup_connections():
 
 
 def setup_contracts():
+    """Set up contract instances."""
+    w3, _ = setup_connections()
     erc20_contract = w3.eth.contract(address=ERC20_CONTRACT_ADDRESS, abi=ERC20_CONTRACT_ABI)
-    subscription_contract = w3.eth.contract(
-        address=SUBSCRIPTION_CONTRACT_ADDRESS, abi=SUBSCRIPTION_CONTRACT_ABI
-    )
-    coordinator_contract = w3.eth.contract(
-        address=COORDINATOR_CONTRACT_ADDRESS, abi=COORDINATOR_CONTRACT_ABI
-    )
-    global_allow_list_contract = w3.eth.contract(
-        address=GLOBAL_ALLOW_LIST_CONTRACT_ADDRESS, abi=GLOBAL_ALLOW_LIST_CONTRACT_ABI
-    )
-    print("ERC20 contract: ", erc20_contract.address)
-    print("Subscription contract: ", subscription_contract.address)
-    print("Coordinator contract: ", coordinator_contract.address)
-    print("Global allow list contract: ", global_allow_list_contract.address)
+    subscription_contract = w3.eth.contract(address=SUBSCRIPTION_CONTRACT_ADDRESS, abi=SUBSCRIPTION_CONTRACT_ABI)
+    coordinator_contract = w3.eth.contract(address=COORDINATOR_CONTRACT_ADDRESS, abi=COORDINATOR_CONTRACT_ABI)
+    global_allow_list_contract = w3.eth.contract(address=GLOBAL_ALLOW_LIST_CONTRACT_ADDRESS, abi=GLOBAL_ALLOW_LIST_CONTRACT_ABI)
+    click.echo(f"ERC20 contract: {erc20_contract.address}")
+    click.echo(f"Subscription contract: {subscription_contract.address}")
+    click.echo(f"Coordinator contract: {coordinator_contract.address}")
+    click.echo(f"Global allow list contract: {global_allow_list_contract.address}")
     return erc20_contract, subscription_contract, coordinator_contract, global_allow_list_contract
 
 
-def approve_erc20_transfer(erc20_contract, account, base_fees, encryptor_fees):
-    """Approve ERC20 token for subscription contract"""
-    tx_hash = erc20_contract.functions.approve(
-        SUBSCRIPTION_CONTRACT_ADDRESS, base_fees + encryptor_fees
-    ).transact(
-        {
-            "from": account.address,
-        }
-    )
-    print(
-        f"Approved transfer of {base_fees + encryptor_fees} ERC20 token for subscription contract."
-    )
-    print(f"Transaction hash: {tx_hash.hex()}")
+@click.group()
+def cli():
+    """BqETH Subscription CLI"""
+    pass
 
 
-def pay_for_subscription_and_slots(subscription_contract, account, encryptor_slots):
-    """Pay for a new subscription period and initial encryptor slots"""
-    encryptor_slots = 2
-    tx_hash = subscription_contract.functions.payForSubscription(encryptor_slots).transact(
-        {
-            "from": account.address,
-        }
-    )
-    print(f"Paid for a new subscription period with {encryptor_slots} encryptor slots.")
-    print(f"Transaction hash: {tx_hash.hex()}")
+@cli.command()
+@click.option('--encryptor-slots', default=2, help='Number of encryptor slots to pay for.')
+def pay_subscription(encryptor_slots):
+    """Pay for a new subscription period and initial encryptor slots."""
+    w3, account = setup_connections()
+    erc20_contract, subscription_contract, _, _ = setup_contracts()
 
-
-def pay_for_new_slots(subscription_contract, account, extra_encryptor_slots):
-    """Pay for additional encryptor slots"""
-    extra_encryptor_slots = 1
-    tx_hash = subscription_contract.functions.payForEncryptorSlots(extra_encryptor_slots).transact(
-        {
-            "from": account.address,
-        }
-    )
-    print(f"Paid for {extra_encryptor_slots} new encryptor slots.")
-    print(f"Transaction hash: {tx_hash.hex()}")
-
-
-def initiate_ritual(coordinator_contract, account, subscription_contract, num_nodes):
-    """Initiate a ritual"""
-    nodes = [
-        u["checksum_address"]
-        for u in requests.get(f"{PORTER_ENDPOINT}/get_ursulas?quantity={num_nodes}").json()[
-            "result"
-        ]["ursulas"]
-    ]
-    duration = SUBSCRIPTION_PERIOD + YELLOW_PERIOD + RED_PERIOD
-    tx_hash = coordinator_contract.functions.initiateRitual(
-        subscription_contract.address,
-        nodes,
-        account.address,
-        duration,
-        GLOBAL_ALLOW_LIST_CONTRACT_ADDRESS,
-    ).transact(
-        {
-            "from": account.address,
-        }
-    )
-    print(f"Initiated ritual {ritual_id} with {num_nodes} providers for {duration} seconds.")
-    print(f"Transaction hash: {tx_hash.hex()}")
-
-
-def add_encryptors(global_allow_list_contract, account, encryptors_addresses, ritual_id):
-    tx_hash = global_allow_list_contract.functions.authorize(
-        ritual_id,
-        encryptors_addresses,
-    ).transact(
-        {
-            "from": account.address,
-        }
-    )
-    print(
-        f"Added {len(encryptors_addresses)} encryptors to the global allow list for ritual {ritual_id}."
-    )
-    print(f"Transaction hash: {tx_hash.hex()}")
-
-
-def remove_encryptors(global_allow_list_contract, account, encryptors_addresses, ritual_id):
-    tx_hash = global_allow_list_contract.functions.deauthorize(
-        ritual_id,
-        encryptors_addresses,
-    ).transact(
-        {
-            "from": account.address,
-        }
-    )
-    print(
-        f"Removed {len(encryptors_addresses)} encryptors from the global allow list for ritual {ritual_id}."
-    )
-    print(f"Transaction hash: {tx_hash.hex()}")
-
-
-def get_fees(subscription_contract):
     base_fees = subscription_contract.functions.baseFees(0).call()
-    encryptor_fees = subscription_contract.functions.encryptorFees(
-        MAX_NODES, SUBSCRIPTION_PERIOD
-    ).call()
-    return base_fees, encryptor_fees
+    encryptor_fees = subscription_contract.functions.encryptorFees(MAX_NODES, subscription_contract.functions.subscriptionPeriodDuration().call()).call()
+
+    click.echo(f"Approving transfer of {base_fees + encryptor_fees} ERC20 token for subscription contract.")
+    tx_hash = erc20_contract.functions.approve(SUBSCRIPTION_CONTRACT_ADDRESS, base_fees + encryptor_fees).transact({'from': account.address})
+    click.echo(f"Transaction hash: {tx_hash.hex()}")
+
+    click.echo(f"Paying for a new subscription period with {encryptor_slots} encryptor slots.")
+    tx_hash = subscription_contract.functions.payForSubscription(encryptor_slots).transact({'from': account.address})
+    click.echo(f"Transaction hash: {tx_hash.hex()}")
+
+
+@cli.command()
+@click.option('--extra-slots', default=1, help='Number of additional encryptor slots to pay for.')
+def pay_slots(extra_slots):
+    """Pay for additional encryptor slots."""
+    _, account = setup_connections()
+    _, subscription_contract, _, _ = setup_contracts()
+
+    click.echo(f"Paying for {extra_slots} new encryptor slots.")
+    tx_hash = subscription_contract.functions.payForEncryptorSlots(extra_slots).transact({'from': account.address})
+    click.echo(f"Transaction hash: {tx_hash.hex()}")
+
+
+@cli.command()
+@click.option('--num-nodes', default=2, help='Number of nodes to use for the ritual.')
+def initiate_ritual(num_nodes):
+    """Initiate a ritual."""
+    w3, account = setup_connections()
+    _, subscription_contract, coordinator_contract, _ = setup_contracts()
+
+    nodes = [u["checksum_address"] for u in requests.get(f"{PORTER_ENDPOINT}/get_ursulas?quantity={num_nodes}").json()["result"]["ursulas"]]
+    duration = subscription_contract.functions.subscriptionPeriodDuration().call() + subscription_contract.functions.yellowPeriodDuration().call() + subscription_contract.functions.redPeriodDuration().call()
+
+    click.echo(f"Initiating ritual with {num_nodes} providers for {duration} seconds.")
+    tx_hash = coordinator_contract.functions.initiateRitual(subscription_contract.address, nodes, account.address, duration, GLOBAL_ALLOW_LIST_CONTRACT_ADDRESS).transact({'from': account.address})
+    click.echo(f"Transaction hash: {tx_hash.hex()}")
+
+
+@cli.command()
+@click.argument('ritual_id', type=int)
+@click.argument('encryptors', nargs=-1)
+def add_encryptors(ritual_id, encryptors):
+    """Add encryptors to the global allow list for a ritual."""
+    _, account = setup_connections()
+    _, _, _, global_allow_list_contract = setup_contracts()
+
+    click.echo(f"Adding {len(encryptors)} encryptors to the global allow list for ritual {ritual_id}.")
+    tx_hash = global_allow_list_contract.functions.authorize(ritual_id, encryptors).transact({'from': account.address})
+    click.echo(f"Transaction hash: {tx_hash.hex()}")
+
+
+@cli.command()
+@click.argument('ritual_id', type=int)
+@click.argument('encryptors', nargs=-1)
+def remove_encryptors(ritual_id, encryptors):
+    """Remove encryptors from the global allow list for a ritual."""
+    _, account = setup_connections()
+    _, _, _, global_allow_list_contract = setup_contracts()
+
+    click.echo(f"Removing {len(encryptors)} encryptors from the global allow list for ritual {ritual_id}.")
+    tx_hash = global_allow_list_contract.functions.deauthorize(ritual_id, encryptors).transact({'from': account.address})
+    click.echo(f"Transaction hash: {tx_hash.hex()}")
 
 
 if __name__ == "__main__":
-    ritual_id = 1
-    num_nodes = 2
-    encryptor_slots = 2
-    extra_encryptor_slots = 1
-    (
-        w3,
-        account,
-    ) = setup_connections()
-    (
-        erc20_contract,
-        subscription_contract,
-        coordinator_contract,
-        global_allow_list_contract,
-    ) = setup_contracts()
-
-    SUBSCRIPTION_PERIOD = subscription_contract.functions.subscriptionPeriodDuration().call()
-    YELLOW_PERIOD = subscription_contract.functions.yellowPeriodDuration().call()
-    RED_PERIOD = subscription_contract.functions.redPeriodDuration().call()
-
-    base_fees, encryptor_fees = get_fees(subscription_contract)
-
-    approve_erc20_transfer(erc20_contract, account, base_fees, encryptor_fees)
-    input("Press Enter to continue...")
-    pay_for_subscription_and_slots(subscription_contract, account, encryptor_slots)
-    input("Press Enter to continue...")
-    pay_for_new_slots(subscription_contract, account, extra_encryptor_slots)
-    input("Press Enter to continue...")
-    initiate_ritual(coordinator_contract, account, subscription_contract, num_nodes)
-    input("Press Enter to continue...")
-
-    encryptors = [
-        "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600",
-        "0x09f5FF03d0117467b4556FbEC4cC74b475358654",
-        "0x47285b814A360f5c39454bc35eEBeA469d1619b3",
-        # "0xaa764B4F33097A3d5CA0c9e5FeAFAb8694f02B3E",
-        # "0xD155B60Fb856c27416a0B24C5cE01900D4FfbC8E",
-    ]
-    add_encryptors(global_allow_list_contract, account, encryptors, ritual_id)
-    input("Press Enter to continue...")
-
-    remove_encryptors(global_allow_list_contract, account, encryptors, ritual_id)
-    input("Press Enter to continue...")
+    cli()
