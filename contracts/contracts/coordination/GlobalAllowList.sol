@@ -22,6 +22,8 @@ contract GlobalAllowList is IEncryptionAuthorizer {
 
     mapping(uint32 => uint256) public authActions;
 
+    uint32 public constant MAX_AUTH_ACTIONS = 100;
+
     /**
      * @notice Emitted when an address authorization is set
      * @param ritualId The ID of the ritual
@@ -150,6 +152,8 @@ contract GlobalAllowList is IEncryptionAuthorizer {
      */
     function setAuthorizations(uint32 ritualId, address[] calldata addresses, bool value) internal {
         require(coordinator.isRitualActive(ritualId), "Only active rituals can set authorizations");
+
+        require(addresses.length <= MAX_AUTH_ACTIONS, "Too many addresses");
 
         _beforeSetAuthorization(ritualId, addresses, value);
         for (uint256 i = 0; i < addresses.length; i++) {
