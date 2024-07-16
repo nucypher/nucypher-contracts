@@ -10,7 +10,9 @@ constants:
   # See deployment/artifacts/mainnet.json
   COORDINATOR_PROXY: "0xE74259e3dafe30bAA8700238e324b47aC98FE755"
   
-  BQETH_ADOPTER: "TBD"
+  # See https://github.com/nucypher/tdec/issues/137#issuecomment-1881525878
+  # and https://app.safe.global/home?safe=matic:0x861aa915C785dEe04684444560fC7A2AB43a1543
+  NUCO_MULTISIG: "0x861aa915C785dEe04684444560fC7A2AB43a1543"
 
   # DAI Token on Polygon PoS - References:
   # - https://polygonscan.com/token/0x8f3cf7ad23cd3cadbd9735aff958023239c6a063
@@ -47,7 +49,7 @@ contracts:
         _coordinator: $COORDINATOR_PROXY
         _accessController: $GlobalAllowList
         _feeToken: $DAI_ON_POLYGON
-        _adopter: $BQETH_ADOPTER
+        _adopterSetter: $NUCO_MULTISIG
         _initialBaseFeeRate: $INITIAL_BASE_FEE_RATE
         _baseFeeRateIncrease: $BASE_FEE_RATE_INCREASE_PER_PERIOD
         _encryptorFeeRate: $ENCRYPTOR_FEE_RATE
