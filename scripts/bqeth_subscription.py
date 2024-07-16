@@ -4,7 +4,7 @@ import os
 import requests
 from dotenv import load_dotenv
 from web3 import Web3
-from web3.middleware import geth_poa_middleware
+from web3.middleware import construct_sign_and_send_raw_middleware, geth_poa_middleware
 
 """
 Read from a .env file
@@ -38,8 +38,8 @@ def setup_connections():
     w3 = Web3(Web3.HTTPProvider(PROVIDER_URL))
     w3.middleware_onion.inject(geth_poa_middleware, layer=0)
     account = w3.eth.account.from_key(PRIVATE_KEY)
-    nonce = w3.eth.get_transaction_count(account.address)
-    return w3, account, nonce
+    w3.middleware_onion.add(construct_sign_and_send_raw_middleware(account))
+    return w3, account
 
 
 def setup_contracts():
@@ -60,60 +60,46 @@ def setup_contracts():
     return erc20_contract, subscription_contract, coordinator_contract, global_allow_list_contract
 
 
-def approve_erc20_transfer(erc20_contract, account, nonce, base_fees, encryptor_fees):
+def approve_erc20_transfer(erc20_contract, account, base_fees, encryptor_fees):
     """Approve ERC20 token for subscription contract"""
-    tx = erc20_contract.functions.approve(
+    tx_hash = erc20_contract.functions.approve(
         SUBSCRIPTION_CONTRACT_ADDRESS, base_fees + encryptor_fees
-    ).build_transaction(
+    ).transact(
         {
             "from": account.address,
-            "nonce": nonce,
         }
     )
-    signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
-    tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-    _ = w3.eth.wait_for_transaction_receipt(tx_hash)
     print(
         f"Approved transfer of {base_fees + encryptor_fees} ERC20 token for subscription contract."
     )
     print(f"Transaction hash: {tx_hash.hex()}")
 
 
-def pay_for_subscription_and_slots(subscription_contract, account, nonce, encryptor_slots):
+def pay_for_subscription_and_slots(subscription_contract, account, encryptor_slots):
     """Pay for a new subscription period and initial encryptor slots"""
     encryptor_slots = 2
-    tx = subscription_contract.functions.payForSubscription(encryptor_slots).build_transaction(
+    tx_hash = subscription_contract.functions.payForSubscription(encryptor_slots).transact(
         {
             "from": account.address,
-            "nonce": nonce,
         }
     )
-    signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
-    tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-    _ = w3.eth.wait_for_transaction_receipt(tx_hash)
     print(f"Paid for a new subscription period with {encryptor_slots} encryptor slots.")
     print(f"Transaction hash: {tx_hash.hex()}")
 
 
-def pay_for_new_slots(subscription_contract, account, nonce, extra_encryptor_slots):
+def pay_for_new_slots(subscription_contract, account, extra_encryptor_slots):
     """Pay for additional encryptor slots"""
     extra_encryptor_slots = 1
-    tx = subscription_contract.functions.payForEncryptorSlots(
-        extra_encryptor_slots
-    ).build_transaction(
+    tx_hash = subscription_contract.functions.payForEncryptorSlots(extra_encryptor_slots).transact(
         {
             "from": account.address,
-            "nonce": nonce,
         }
     )
-    signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
-    tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-    _ = w3.eth.wait_for_transaction_receipt(tx_hash)
     print(f"Paid for {extra_encryptor_slots} new encryptor slots.")
     print(f"Transaction hash: {tx_hash.hex()}")
 
 
-def initiate_ritual(coordinator_contract, account, nonce, subscription_contract, num_nodes):
+def initiate_ritual(coordinator_contract, account, subscription_contract, num_nodes):
     """Initiate a ritual"""
     nodes = [
         u["checksum_address"]
@@ -122,59 +108,45 @@ def initiate_ritual(coordinator_contract, account, nonce, subscription_contract,
         ]["ursulas"]
     ]
     duration = SUBSCRIPTION_PERIOD + YELLOW_PERIOD + RED_PERIOD
-    tx = coordinator_contract.functions.initiateRitual(
+    tx_hash = coordinator_contract.functions.initiateRitual(
         subscription_contract.address,
         nodes,
         account.address,
         duration,
         GLOBAL_ALLOW_LIST_CONTRACT_ADDRESS,
-    ).build_transaction(
+    ).transact(
         {
             "from": account.address,
-            "nonce": nonce,
         }
     )
-    signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
-    tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-    _ = w3.eth.wait_for_transaction_receipt(tx_hash)
     print(f"Initiated ritual {ritual_id} with {num_nodes} providers for {duration} seconds.")
     print(f"Transaction hash: {tx_hash.hex()}")
 
 
-def add_encryptors(global_allow_list_contract, account, nonce, encryptors_addresses, ritual_id):
-    tx = global_allow_list_contract.functions.authorize(
+def add_encryptors(global_allow_list_contract, account, encryptors_addresses, ritual_id):
+    tx_hash = global_allow_list_contract.functions.authorize(
         ritual_id,
         encryptors_addresses,
-    ).build_transaction(
+    ).transact(
         {
             "from": account.address,
-            "nonce": nonce,  # TODO: update nonce consequently
         }
     )
-
-    signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
-    tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-    _ = w3.eth.wait_for_transaction_receipt(tx_hash)
     print(
         f"Added {len(encryptors_addresses)} encryptors to the global allow list for ritual {ritual_id}."
     )
     print(f"Transaction hash: {tx_hash.hex()}")
 
 
-def remove_encryptors(global_allow_list_contract, account, nonce, encryptors_addresses, ritual_id):
-    tx = global_allow_list_contract.functions.deauthorize(
+def remove_encryptors(global_allow_list_contract, account, encryptors_addresses, ritual_id):
+    tx_hash = global_allow_list_contract.functions.deauthorize(
         ritual_id,
         encryptors_addresses,
-    ).build_transaction(
+    ).transact(
         {
             "from": account.address,
-            "nonce": nonce,  # TODO: update nonce consequently
         }
     )
-
-    signed_tx = w3.eth.account.sign_transaction(tx, private_key=PRIVATE_KEY)
-    tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-    _ = w3.eth.wait_for_transaction_receipt(tx_hash)
     print(
         f"Removed {len(encryptors_addresses)} encryptors from the global allow list for ritual {ritual_id}."
     )
@@ -194,7 +166,10 @@ if __name__ == "__main__":
     num_nodes = 2
     encryptor_slots = 2
     extra_encryptor_slots = 1
-    w3, account, nonce = setup_connections()
+    (
+        w3,
+        account,
+    ) = setup_connections()
     (
         erc20_contract,
         subscription_contract,
@@ -208,13 +183,13 @@ if __name__ == "__main__":
 
     base_fees, encryptor_fees = get_fees(subscription_contract)
 
-    approve_erc20_transfer(erc20_contract, account, nonce, base_fees, encryptor_fees)
+    approve_erc20_transfer(erc20_contract, account, base_fees, encryptor_fees)
     input("Press Enter to continue...")
-    pay_for_subscription_and_slots(subscription_contract, account, nonce, encryptor_slots)
+    pay_for_subscription_and_slots(subscription_contract, account, encryptor_slots)
     input("Press Enter to continue...")
-    pay_for_new_slots(subscription_contract, account, nonce, extra_encryptor_slots)
+    pay_for_new_slots(subscription_contract, account, extra_encryptor_slots)
     input("Press Enter to continue...")
-    initiate_ritual(coordinator_contract, account, nonce, subscription_contract, num_nodes)
+    initiate_ritual(coordinator_contract, account, subscription_contract, num_nodes)
     input("Press Enter to continue...")
 
     encryptors = [
@@ -224,8 +199,8 @@ if __name__ == "__main__":
         # "0xaa764B4F33097A3d5CA0c9e5FeAFAb8694f02B3E",
         # "0xD155B60Fb856c27416a0B24C5cE01900D4FfbC8E",
     ]
-    add_encryptors(global_allow_list_contract, account, nonce, encryptors, ritual_id)
+    add_encryptors(global_allow_list_contract, account, encryptors, ritual_id)
     input("Press Enter to continue...")
 
-    remove_encryptors(global_allow_list_contract, account, nonce, encryptors, ritual_id)
+    remove_encryptors(global_allow_list_contract, account, encryptors, ritual_id)
     input("Press Enter to continue...")
