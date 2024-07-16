@@ -33,7 +33,7 @@ constants:
   ENCRYPTOR_FEE_RATE: 63419583967  # $2 per year, in DAI units per second (in Python: 2 * 10**18 // 86400 // 365)  
   BASE_FEE_RATE_INCREASE_PER_PERIOD: 247  # 5%/year ~ 2.47%/semester, expressed in basis points (0.01%)
   # - Duration parameters --> 1 period = 6 months
-  SIX_MONTHS_IN_SECONDS: 15552000  # 180 days (~6 months)
+  SIX_MONTHS_IN_SECONDS: 15811200  # 183 days (~6 months)
   THREE_MONTHS_IN_SECONDS: 7776000  # 90 day (~3 months)
 
 contracts:
