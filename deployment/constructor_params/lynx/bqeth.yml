@@ -41,7 +41,7 @@ contracts:
         _coordinator: $COORDINATOR_PROXY
         _accessController: $GlobalAllowList
         _feeToken: $LYNX_RITUAL_TOKEN
-        _adopter: $LYNX_DEPLOYER
+        _adopterSetter: $LYNX_DEPLOYER
         _initialBaseFeeRate: $INITIAL_BASE_FEE_RATE
         _baseFeeRateIncrease: $BASE_FEE_RATE_INCREASE
         _encryptorFeeRate: $ENCRYPTOR_FEE_RATE

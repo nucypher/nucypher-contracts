@@ -23,6 +23,9 @@ def main():
     deployments = [global_allow_list, bqeth_subscription]
 
     deployer.finalize(deployments=deployments)
+
+    deployer.transact(bqeth_subscription.setAdopter, deployer.get_account().address)
+
     merge_registries(
         registry_1_filepath=LYNX_REGISTRY,
         registry_2_filepath=deployer.registry_filepath,
