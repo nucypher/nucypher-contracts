@@ -9,8 +9,10 @@ artifacts:
 constants:
   # See deployment/artifacts/mainnet.json
   COORDINATOR_PROXY: "0xE74259e3dafe30bAA8700238e324b47aC98FE755"
-  
-  BQETH_ADOPTER: "TBD"
+
+  # See https://github.com/nucypher/tdec/issues/137#issuecomment-1881525878
+  # and https://app.safe.global/home?safe=matic:0x861aa915C785dEe04684444560fC7A2AB43a1543
+  NUCO_MULTISIG: "0x861aa915C785dEe04684444560fC7A2AB43a1543"
 
   # DAI Token on Polygon PoS - References:
   # - https://polygonscan.com/token/0x8f3cf7ad23cd3cadbd9735aff958023239c6a063
@@ -23,15 +25,17 @@ constants:
   TREASURY_GUILD_ON_POLYGON: "0xc3Bf49eBA094AF346830dF4dbB42a07dE378EeB6"
   THRESHOLD_COUNCIL_ON_POLYGON: "0x9F6e831c8F8939DC0C830C6e492e7cEf4f9C2F5f"
 
-  # Subscription Parameters 
+  # Subscription Parameters
   # See https://github.com/nucypher/tdec/issues/169
+
+  MAX_NODES: 30
 
   # - Fee parameters:
   INITIAL_BASE_FEE_RATE: 4050925925925  # $0.35 per day, in DAI units per second (in Python: 35*10**16 // 86400)
-  ENCRYPTOR_FEE_RATE: 63419583967  # $2 per year, in DAI units per second (in Python: 2 * 10**18 // 86400 // 365)  
+  ENCRYPTOR_FEE_RATE: 63419583967  # $2 per year, in DAI units per second (in Python: 2 * 10**18 // 86400 // 365)
   BASE_FEE_RATE_INCREASE_PER_PERIOD: 247  # 5%/year ~ 2.47%/semester, expressed in basis points (0.01%)
   # - Duration parameters --> 1 period = 6 months
-  SIX_MONTHS_IN_SECONDS: 15552000  # 180 days (~6 months)
+  SIX_MONTHS_IN_SECONDS: 15811200  # 183 days (~6 months)
   THREE_MONTHS_IN_SECONDS: 7776000  # 90 day (~3 months)
 
 contracts:
@@ -47,7 +51,7 @@ contracts:
         _coordinator: $COORDINATOR_PROXY
         _accessController: $GlobalAllowList
         _feeToken: $DAI_ON_POLYGON
-        _adopter: $BQETH_ADOPTER
+        _adopterSetter: $NUCO_MULTISIG
         _initialBaseFeeRate: $INITIAL_BASE_FEE_RATE
         _baseFeeRateIncrease: $BASE_FEE_RATE_INCREASE_PER_PERIOD
         _encryptorFeeRate: $ENCRYPTOR_FEE_RATE

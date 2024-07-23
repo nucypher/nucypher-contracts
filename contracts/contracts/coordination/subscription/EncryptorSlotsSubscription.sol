@@ -88,7 +88,11 @@ abstract contract EncryptorSlotsSubscription is AbstractSubscription {
             usedEncryptorSlots += addresses.length;
             require(usedEncryptorSlots <= encryptorSlots, "Encryptors slots filled up");
         } else {
-            usedEncryptorSlots -= addresses.length;
+            if (usedEncryptorSlots >= addresses.length) {
+                usedEncryptorSlots -= addresses.length;
+            } else {
+                usedEncryptorSlots = 0;
+            }
         }
     }
 
