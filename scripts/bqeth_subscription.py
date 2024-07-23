@@ -38,6 +38,7 @@ python bqeth_subscription.py add-encryptors 1 0x3B42d26E19FF860bC4dEbB920DD8caA5
 python bqeth_subscription.py remove-encryptors 1 0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600 0x09f5FF03d0117467b4556FbEC4cC74b475358654
 ```
 """
+
 import functools
 import json
 import os
