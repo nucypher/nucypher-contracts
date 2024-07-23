@@ -9,7 +9,7 @@ from deployment.params import Deployer
 from deployment.registry import merge_registries
 
 VERIFY = False
-CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "mainnet" / "beta_program_initiator.yml"
+CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "mainnet" / "bqeth.yml"
 MAINNET_REGISTRY = ARTIFACTS_DIR / "mainnet.json"
 
 
