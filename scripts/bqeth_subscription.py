@@ -139,7 +139,7 @@ def pay_slots(context, extra_slots):
 @setup_context
 def initiate_ritual(context, num_nodes):
     """Initiate a ritual."""
-    nodes = [u["checksum_address"] for u in requests.get(f"{PORTER_ENDPOINT}/get_ursulas?quantity={num_nodes}").json()["result"]["ursulas"]]
+    nodes = sorted([u["checksum_address"] for u in requests.get(f"{PORTER_ENDPOINT}/get_ursulas?quantity={num_nodes}").json()["result"]["ursulas"]])
     duration = context.subscription_contract.functions.subscriptionPeriodDuration().call() + context.subscription_contract.functions.yellowPeriodDuration().call() + context.subscription_contract.functions.redPeriodDuration().call()
 
     click.echo(f"Initiating ritual with {num_nodes} providers for {duration} seconds.")
