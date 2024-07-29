@@ -149,7 +149,7 @@
             "deployer": "0xFfFd7092685bDeeBD121D1A0FEA3c349114Cce50"
         },
         "TACoApplication": {
-            "address": "0x347CC7ede7e5517bD47D20620B2CF1b406edcF07",
+            "address": "0x98F643B32b5A3513929Dfd3F2E3e39F7376659DB",
             "abi": [
                 {
                     "type": "constructor",
@@ -194,6 +194,21 @@
                             "name": "_commitmentDeadline",
                             "type": "uint64",
                             "internalType": "uint64"
+                        },
+                        {
+                            "name": "_penaltyDefault",
+                            "type": "uint192",
+                            "internalType": "uint192"
+                        },
+                        {
+                            "name": "_penaltyDuration",
+                            "type": "uint256",
+                            "internalType": "uint256"
+                        },
+                        {
+                            "name": "_penaltyIncrement",
+                            "type": "uint192",
+                            "internalType": "uint192"
                         }
                     ]
                 },
@@ -548,6 +563,31 @@
                 },
                 {
                     "type": "event",
+                    "name": "Penalized",
+                    "inputs": [
+                        {
+                            "name": "stakingProvider",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        },
+                        {
+                            "name": "penaltyPercent",
+                            "type": "uint256",
+                            "internalType": "uint256",
+                            "indexed": false
+                        },
+                        {
+                            "name": "endPenalty",
+                            "type": "uint64",
+                            "internalType": "uint64",
+                            "indexed": false
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
                     "name": "RewardAdded",
                     "inputs": [
                         {
@@ -555,6 +595,19 @@
                             "type": "uint256",
                             "internalType": "uint256",
                             "indexed": false
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
+                    "name": "RewardContractSet",
+                    "inputs": [
+                        {
+                            "name": "rewardContract",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
                         }
                     ],
                     "anonymous": false
@@ -577,6 +630,12 @@
                     "name": "RewardPaid",
                     "inputs": [
                         {
+                            "name": "sender",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        },
+                        {
                             "name": "stakingProvider",
                             "type": "address",
                             "internalType": "address",
@@ -593,6 +652,19 @@
                             "type": "uint256",
                             "internalType": "uint256",
                             "indexed": false
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
+                    "name": "RewardReset",
+                    "inputs": [
+                        {
+                            "name": "stakingProvider",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
                         }
                     ],
                     "anonymous": false
@@ -646,6 +718,19 @@
                         }
                     ],
                     "anonymous": false
+                },
+                {
+                    "type": "function",
+                    "name": "PENALTY_BASE",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint192",
+                            "internalType": "uint192"
+                        }
+                    ]
                 },
                 {
                     "type": "function",
@@ -1007,6 +1092,30 @@
                 },
                 {
                     "type": "function",
+                    "name": "getPenalty",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "penalty",
+                            "type": "uint192",
+                            "internalType": "uint192"
+                        },
+                        {
+                            "name": "endPenalty",
+                            "type": "uint64",
+                            "internalType": "uint64"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
                     "name": "getStakingProvidersLength",
                     "stateMutability": "view",
                     "inputs": [],
@@ -1203,6 +1312,58 @@
                 },
                 {
                     "type": "function",
+                    "name": "penalize",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "penaltyDefault",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint192",
+                            "internalType": "uint192"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "penaltyDuration",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256",
+                            "internalType": "uint256"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "penaltyIncrement",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint192",
+                            "internalType": "uint192"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
                     "name": "pendingAuthorizationDecrease",
                     "stateMutability": "view",
                     "inputs": [
@@ -1287,6 +1448,19 @@
                 },
                 {
                     "type": "function",
+                    "name": "resetReward",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
                     "name": "resynchronizeAuthorization",
                     "stateMutability": "nonpayable",
                     "inputs": [
@@ -1297,6 +1471,19 @@
                         }
                     ],
                     "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "rewardContract",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ]
                 },
                 {
                     "type": "function",
@@ -1385,6 +1572,19 @@
                             "name": "_childApplication",
                             "type": "address",
                             "internalType": "contract ITACoRootToChild"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "setRewardContract",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_rewardContract",
+                            "type": "address",
+                            "internalType": "address"
                         }
                     ],
                     "outputs": []
@@ -1481,6 +1681,21 @@
                             "name": "endCommitment",
                             "type": "uint64",
                             "internalType": "uint64"
+                        },
+                        {
+                            "name": "stub",
+                            "type": "uint256",
+                            "internalType": "uint256"
+                        },
+                        {
+                            "name": "penaltyPercent",
+                            "type": "uint192",
+                            "internalType": "uint192"
+                        },
+                        {
+                            "name": "endPenalty",
+                            "type": "uint64",
+                            "internalType": "uint64"
                         }
                     ]
                 },
@@ -1575,8 +1790,8 @@
                     "outputs": []
                 }
             ],
-            "tx_hash": "0x58617564fa2bf9ad71b9eab1ceefdd3eae5a46efc71f4463df6dbffbd713a160",
-            "block_number": 18622368,
+            "tx_hash": "0x178f50155caea7bb32dab5cd79280c66d19a52aa2d303174fa9f5d843ba2ea91",
+            "block_number": 20410589,
             "deployer": "0xFfFd7092685bDeeBD121D1A0FEA3c349114Cce50"
         }
     },
