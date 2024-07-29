@@ -33,4 +33,7 @@ contracts:
         _deauthorizationDuration: $IN_SECONDS_182_DAYS
         _commitmentDurationOptions: [$IN_SECONDS_91_DAYS, $IN_SECONDS_182_DAYS, $IN_SECONDS_364_DAYS, $IN_SECONDS_546_DAYS]
         _commitmentDeadline: $TIMESTAMP_FOR_2024_01_15_2359_UTC
+        _penaltyDefault: 1
+        _penaltyDuration: 1
+        _penaltyIncrement: 1
 
