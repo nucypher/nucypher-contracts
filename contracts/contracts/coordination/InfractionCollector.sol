@@ -7,10 +7,10 @@ import "./Coordinator.sol";
 import "../../threshold/ITACoChildApplication.sol";
 
 contract InfractionCollector is OwnableUpgradeable {
-    Coordinator public coordinator;
+    Coordinator public immutable coordinator;
 
     // Reference to the TACoChildApplication contract
-    ITACoChildApplication public tacoChildApplication;
+    ITACoChildApplication public immutable tacoChildApplication;
 
     // infraction types
     enum InfractionType {
@@ -20,11 +20,10 @@ contract InfractionCollector is OwnableUpgradeable {
     // Mapping to keep track of reported infractions
     mapping(uint32 => mapping(address => mapping(InfractionType => bool))) public infractions;
 
-    function initialize(
+    constructor(
         Coordinator _coordinator,
         ITACoChildApplication _tacoChildApplication
-    ) public initializer {
-        __Ownable_init(msg.sender);
+    ) {
         coordinator = _coordinator;
         tacoChildApplication = _tacoChildApplication;
     }
