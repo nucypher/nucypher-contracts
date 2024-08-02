@@ -66,7 +66,13 @@ def cli(domain, duration, network, account, access_controller, fee_model, num_no
     deployments = contracts_from_registry(filepath=registry_filepath, chain_id=chain_id)
     coordinator = deployments[project.Coordinator.contract_type.name]
 
-    access_controller = deployments[getattr(project, access_controller).contract_type.name]
+    # auxiliary contracts
+    try:
+        access_controller = deployments[getattr(project, access_controller).contract_type.name]
+        fee_model = deployments[getattr(project, fee_model).contract_type.name]
+    except KeyError as e:
+        raise ValueError(f"Contract not found in registry for domain {domain}: {e}")
+
     authority = transactor.get_account().address
 
     while True:
