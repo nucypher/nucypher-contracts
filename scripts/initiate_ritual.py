@@ -47,12 +47,7 @@ from deployment.utils import check_plugins, registry_filepath_from_domain, sampl
     type=int,
     required=True,
 )
-@click.option(
-    "--random-seed",
-    help="Random seed integer for sampling.",
-    required=False,
-    type=int
-)
+@click.option("--random-seed", help="Random seed integer for sampling.", required=False, type=int)
 def cli(domain, duration, network, account, access_controller, fee_model, num_nodes, random_seed):
     check_plugins()
     print(f"Using network: {network}")
@@ -76,16 +71,17 @@ def cli(domain, duration, network, account, access_controller, fee_model, num_no
     authority = transactor.get_account().address
 
     while True:
-
         providers = sample_nodes(
-            domain=domain,
-            num_nodes=num_nodes,
-            duration=duration,
-            random_seed=random_seed
+            domain=domain, num_nodes=num_nodes, duration=duration, random_seed=random_seed
         )
 
         transactor.transact(
-            coordinator.initiateRitual, providers, authority, duration, access_controller.address
+            coordinator.initiateRitual,
+            fee_model.address,
+            providers,
+            authority,
+            duration,
+            access_controller.address,
         )
         if not input("Another? [y/n] ").lower().startswith("y"):
             break
