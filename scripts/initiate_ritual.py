@@ -4,10 +4,10 @@ import click
 from ape import project
 from ape.cli import ConnectedProviderCommand, account_option, network_option
 
-from deployment.constants import LYNX, LYNX_NODES, SUPPORTED_TACO_DOMAINS, TAPIR, TAPIR_NODES
+from deployment.constants import SUPPORTED_TACO_DOMAINS
 from deployment.params import Transactor
 from deployment.registry import contracts_from_registry
-from deployment.utils import check_plugins, registry_filepath_from_domain
+from deployment.utils import check_plugins, registry_filepath_from_domain, sample_nodes
 
 
 @click.command(cls=ConnectedProviderCommand)
@@ -25,8 +25,7 @@ from deployment.utils import check_plugins, registry_filepath_from_domain
     "-t",
     help="Duration of the ritual",
     type=int,
-    default=86400,
-    show_default=True,
+    required=True,
 )
 @click.option(
     "--access-controller",
@@ -35,20 +34,31 @@ from deployment.utils import check_plugins, registry_filepath_from_domain
     type=click.Choice(["GlobalAllowList", "OpenAccessAuthorizer", "ManagedAllowList"]),
     required=True,
 )
-def cli(domain, duration, network, account, access_controller):
+@click.option(
+    "--fee-model",
+    "-f",
+    help="The name of a fee model contract.",
+    type=click.Choice(["FreeFeeModel", "BqETHSubscription"]),
+    required=True,
+)
+@click.option(
+    "--num-nodes",
+    help="Number of nodes to use for the ritual.",
+    type=int,
+    required=True,
+)
+@click.option(
+    "--random-seed",
+    help="Random seed integer for sampling.",
+    required=False,
+    type=int
+)
+def cli(domain, duration, network, account, access_controller, fee_model, num_nodes, random_seed):
     check_plugins()
     print(f"Using network: {network}")
     print(f"Using domain: {domain}")
     print(f"Using account: {account}")
     transactor = Transactor(account=account)
-
-    if domain == LYNX:
-        providers = list(sorted(LYNX_NODES.keys()))
-    elif domain == TAPIR:
-        providers = list(sorted(TAPIR_NODES.keys()))
-    else:
-        # mainnet sampling not currently supported
-        raise ValueError(f"Sampling of providers not supported for domain '{domain}'")
 
     registry_filepath = registry_filepath_from_domain(domain=domain)
 
