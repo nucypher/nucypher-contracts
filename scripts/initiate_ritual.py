@@ -60,6 +60,14 @@ def cli(domain, duration, network, account, access_controller):
     authority = transactor.get_account().address
 
     while True:
+
+        providers = sample_nodes(
+            domain=domain,
+            num_nodes=num_nodes,
+            duration=duration,
+            random_seed=random_seed
+        )
+
         transactor.transact(
             coordinator.initiateRitual, providers, authority, duration, access_controller.address
         )

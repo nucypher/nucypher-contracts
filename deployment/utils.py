@@ -1,14 +1,15 @@
 import json
 import os
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
+import requests
 import yaml
 from ape import networks, project
 from ape.contracts import ContractContainer, ContractInstance
 from ape_etherscan.utils import API_KEY_ENV_KEY_MAP
 
-from deployment.constants import ARTIFACTS_DIR
+from deployment.constants import ARTIFACTS_DIR, MAINNET, LYNX, TAPIR
 from deployment.networks import is_local_network
 
 
@@ -156,3 +157,33 @@ def registry_filepath_from_domain(domain: str) -> Path:
         raise ValueError(f"No registry found for domain '{domain}'")
 
     return p
+
+
+def sample_nodes(
+        domain: str,
+        num_nodes: int,
+        random_seed: Optional[int] = None,
+        duration: Optional[int] = None
+):
+    porter_endpoints = {
+        MAINNET: "https://porter.nucypher.community/bucket_sampling",
+        LYNX: "https://porter-lynx.nucypher.network/get_ursulas",
+        TAPIR: "https://porter-tapir.nucypher.network/get_ursulas",
+    }
+    porter_endpoint = porter_endpoints.get(domain)
+    if not porter_endpoint:
+        raise ValueError(f"Porter endpoint not found for domain '{domain}'")
+
+    params = {
+        "quantity": num_nodes,
+    }
+    if duration:
+        params["duration"] = duration
+    if domain == MAINNET and random_seed:
+        params["random_seed"] = random_seed
+
+    response = requests.get(porter_endpoint, params=params)
+    data = response.json()
+    result = sorted(data["result"]["ursulas"], key=lambda x: x.lower())
+
+    return result
