@@ -7,6 +7,7 @@ import yaml
 from ape import networks, project
 from ape.contracts import ContractContainer, ContractInstance
 from ape_etherscan.utils import API_KEY_ENV_KEY_MAP
+
 from deployment.constants import ARTIFACTS_DIR
 from deployment.networks import is_local_network
 
@@ -136,8 +137,7 @@ def _get_dependency_contract_container(contract: str) -> ContractContainer:
             return contract_container
         except AttributeError:
             continue
-
-    raise ValueError(f"No contract found for {contract}")
+    raise ValueError(f"No contract found with name '{contract}'.")
 
 
 def get_contract_container(contract: str) -> ContractContainer:
