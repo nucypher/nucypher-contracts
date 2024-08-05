@@ -167,7 +167,7 @@ contract BqETHSubscription is EncryptorSlotsSubscription, Initializable, Ownable
         return baseFees(currentPeriodNumber);
     }
 
-    /// @dev optential overflow after 15-16 periods
+    /// @dev potential overflow after 15-16 periods
     function baseFees(uint256 periodNumber) public view returns (uint256) {
         uint256 baseFeeRate = initialBaseFeeRate *
             (INCREASE_BASE + baseFeeRateIncrease) ** periodNumber;
