@@ -12,12 +12,16 @@ OZ_DEPENDENCY = project.dependencies["openzeppelin"]["5.0.0"]
 #
 # Domains
 #
+
 LYNX = "lynx"
 TAPIR = "tapir"
 MAINNET = "mainnet"
 
 SUPPORTED_TACO_DOMAINS = [LYNX, TAPIR, MAINNET]
 
+#
+# Nodes
+#
 
 LYNX_NODES = {
     # staking provider -> operator
@@ -39,3 +43,14 @@ TAPIR_NODES = {
 
 # Admin slot - https://eips.ethereum.org/EIPS/eip-1967#admin-address
 EIP1967_ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103
+
+
+#
+# Contracts
+#
+
+ACCESS_CONTROLLERS = [
+    "GlobalAllowList",
+    "OpenAccessAuthorizer",
+    "ManagedAllowList"
+]
