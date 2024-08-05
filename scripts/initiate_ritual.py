@@ -11,7 +11,6 @@ from deployment.utils import check_plugins, registry_filepath_from_domain, sampl
 
 
 @click.command(cls=ConnectedProviderCommand)
-@network_option(required=True)
 @account_option()
 @click.option(
     "--domain",
@@ -47,44 +46,48 @@ from deployment.utils import check_plugins, registry_filepath_from_domain, sampl
     type=int,
     required=True,
 )
-@click.option("--random-seed", help="Random seed integer for sampling.", required=False, type=int)
-def cli(domain, duration, network, account, access_controller, fee_model, num_nodes, random_seed):
+@click.option(
+    "--random-seed",
+    help="Random seed integer for sampling.",
+    required=False,
+    type=int
+)
+@click.option(
+    "--authority",
+    help="The address of the ritual authority.",
+    required=False,
+    type=str
+)
+def cli(domain, duration, account, access_controller, fee_model, num_nodes, random_seed, authority):
     check_plugins()
-    print(f"Using network: {network}")
-    print(f"Using domain: {domain}")
-    print(f"Using account: {account}")
     transactor = Transactor(account=account)
-
     registry_filepath = registry_filepath_from_domain(domain=domain)
-
     chain_id = project.chain_manager.chain_id
     deployments = contracts_from_registry(filepath=registry_filepath, chain_id=chain_id)
     coordinator = deployments[project.Coordinator.contract_type.name]
 
-    # auxiliary contracts
     try:
         access_controller = deployments[getattr(project, access_controller).contract_type.name]
         fee_model = deployments[getattr(project, fee_model).contract_type.name]
     except KeyError as e:
         raise ValueError(f"Contract not found in registry for domain {domain}: {e}")
 
-    authority = transactor.get_account().address
+    if not authority:
+        authority = transactor.get_account().address
+        click.confirm(f"Using {authority} as the ritual authority. Continue?", abort=True)
 
-    while True:
-        providers = sample_nodes(
-            domain=domain, num_nodes=num_nodes, duration=duration, random_seed=random_seed
-        )
+    providers = sample_nodes(
+        domain=domain, num_nodes=num_nodes, duration=duration, random_seed=random_seed
+    )
 
-        transactor.transact(
-            coordinator.initiateRitual,
-            fee_model.address,
-            providers,
-            authority,
-            duration,
-            access_controller.address,
-        )
-        if not input("Another? [y/n] ").lower().startswith("y"):
-            break
+    transactor.transact(
+        coordinator.initiateRitual,
+        fee_model.address,
+        providers,
+        authority,
+        duration,
+        access_controller.address,
+    )
 
 
 if __name__ == "__main__":
