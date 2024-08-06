@@ -2,12 +2,48 @@
 
 import click
 from ape import project
-from ape.cli import ConnectedProviderCommand, account_option, network_option
+from ape.cli import ConnectedProviderCommand, account_option
 
 from deployment.constants import SUPPORTED_TACO_DOMAINS
 from deployment.params import Transactor
 from deployment.registry import contracts_from_registry
 from deployment.utils import check_plugins, registry_filepath_from_domain, sample_nodes
+
+
+def validate_options(ctx):
+    if "handpicked" in ctx.params and ctx.params["handpicked"]:
+        if "num_nodes" in ctx.params and ctx.params["num_nodes"]:
+            raise click.BadOptionUsage(
+                option_name="--handpicked",
+                message="Cannot specify both --num-nodes and --handpicked.",
+            )
+        if "random_seed" in ctx.params and ctx.params["random_seed"]:
+            raise click.BadOptionUsage(
+                option_name="--handpicked",
+                message="Cannot specify both --random-seed and --handpicked.",
+            )
+    if not ctx.params.get("handpicked") and not ctx.params.get("num_nodes"):
+        raise click.BadOptionUsage(
+            option_name="--num-nodes", message="Must specify either --num-nodes or --handpicked."
+        )
+
+
+class MinInt(click.ParamType):
+    name = "minint"
+
+    def __init__(self, min_value):
+        self.min_value = min_value
+
+    def convert(self, value, param, ctx):
+        try:
+            ivalue = int(value)
+        except ValueError:
+            self.fail(f"{value} is not a valid integer", param, ctx)
+        if ivalue < self.min_value:
+            self.fail(
+                f"{value} is less than the minimum allowed value of {self.min_value}", param, ctx
+            )
+        return ivalue
 
 
 @click.command(cls=ConnectedProviderCommand)
@@ -22,14 +58,14 @@ from deployment.utils import check_plugins, registry_filepath_from_domain, sampl
 @click.option(
     "--duration",
     "-t",
-    help="Duration of the ritual",
-    type=int,
+    help="Duration of the ritual in seconds. Must be at least 24h.",
+    type=MinInt(86400),
     required=True,
 )
 @click.option(
     "--access-controller",
     "-a",
-    help="global allow list or open access authorizer.",
+    help="The name of an access controller contract.",
     type=click.Choice(["GlobalAllowList", "OpenAccessAuthorizer", "ManagedAllowList"]),
     required=True,
 )
@@ -44,21 +80,33 @@ from deployment.utils import check_plugins, registry_filepath_from_domain, sampl
     "--num-nodes",
     help="Number of nodes to use for the ritual.",
     type=int,
-    required=True,
+    required=False,
+)
+@click.option("--random-seed", help="Random seed integer for sampling.", required=False, type=int)
+@click.option(
+    "--authority", help="The ethereum address of the ritual authority.", required=False, type=str
 )
 @click.option(
-    "--random-seed",
-    help="Random seed integer for sampling.",
+    "--handpicked",
+    help="The filepath of a file containing newline separated staking provider addresses.",
     required=False,
-    type=int
+    type=click.File("r"),
 )
-@click.option(
-    "--authority",
-    help="The address of the ritual authority.",
-    required=False,
-    type=str
-)
-def cli(domain, duration, account, access_controller, fee_model, num_nodes, random_seed, authority):
+def cli(
+    domain,
+    duration,
+    account,
+    access_controller,
+    fee_model,
+    num_nodes,
+    random_seed,
+    authority,
+    handpicked,
+):
+
+    ctx = click.get_current_context()
+    validate_options(ctx)
+
     check_plugins()
     transactor = Transactor(account=account)
     registry_filepath = registry_filepath_from_domain(domain=domain)
@@ -76,9 +124,14 @@ def cli(domain, duration, account, access_controller, fee_model, num_nodes, rand
         authority = transactor.get_account().address
         click.confirm(f"Using {authority} as the ritual authority. Continue?", abort=True)
 
-    providers = sample_nodes(
-        domain=domain, num_nodes=num_nodes, duration=duration, random_seed=random_seed
-    )
+    if handpicked:
+        providers = sorted(line.lower() for line in handpicked)
+        if not providers:
+            raise ValueError(f"No staking providers found in the handpicked file {handpicked.name}")
+    else:
+        providers = sample_nodes(
+            domain=domain, num_nodes=num_nodes, duration=duration, random_seed=random_seed
+        )
 
     transactor.transact(
         coordinator.initiateRitual,
