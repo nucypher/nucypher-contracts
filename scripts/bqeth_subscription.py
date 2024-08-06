@@ -31,81 +31,85 @@ To use the BqETH Subscription CLI, run the bqeth_subscription.py script with the
 
 Example usage:
 ```
-python bqeth_subscription.py pay-subscription --encryptor-slots 3
-python bqeth_subscription.py pay-slots --extra-slots 2
-python bqeth_subscription.py initiate-ritual --num-nodes 4
-python bqeth_subscription.py add-encryptors 1 0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600 0x09f5FF03d0117467b4556FbEC4cC74b475358654
-python bqeth_subscription.py remove-encryptors 1 0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600 0x09f5FF03d0117467b4556FbEC4cC74b475358654
+python bqeth_subscription.py --domain lynx pay-subscription --encryptor-slots 3
+python bqeth_subscription.py --domain lynx pay-slots --extra-slots 2
+python bqeth_subscription.py --domain lynx initiate-ritual --num-nodes 4
+python bqeth_subscription.py --domain lynx add-encryptors 1 0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600 0x09f5FF03d0117467b4556FbEC4cC74b475358654
+python bqeth_subscription.py --domain lynx remove-encryptors 1 0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600 0x09f5FF03d0117467b4556FbEC4cC74b475358654
 ```
 """
 
 import functools
 import json
 import os
-from collections import namedtuple
+from typing import NamedTuple
 
 import click
 import requests
 from dotenv import load_dotenv
 from web3 import Web3
+from web3.contract import Contract
 from web3.middleware import construct_sign_and_send_raw_middleware, geth_poa_middleware
-
-# Load environment variables
-load_dotenv()
-PROVIDER_URL = os.environ.get("PROVIDER_URL")
-PRIVATE_KEY = os.environ.get("PRIVATE_KEY")
-
-MAX_NODES = 10
-NUCYPHER_DOMAIN = "lynx"
-CHAIN = "80002"
-PORTER_ENDPOINT = f"https://porter-{NUCYPHER_DOMAIN}.nucypher.community"
-
-with open(f"deployment/artifacts/{NUCYPHER_DOMAIN}.json", "r") as f:
-    registry = json.load(f)
-
-SUBSCRIPTION_CONTRACT_ADDRESS = registry[CHAIN]["BqETHSubscription"]["address"]
-SUBSCRIPTION_CONTRACT_ABI = registry[CHAIN]["BqETHSubscription"]["abi"]
-ERC20_CONTRACT_ADDRESS = registry[CHAIN][NUCYPHER_DOMAIN.title() + "RitualToken"]["address"]
-ERC20_CONTRACT_ABI = registry[CHAIN][NUCYPHER_DOMAIN.title() + "RitualToken"]["abi"]
-COORDINATOR_CONTRACT_ADDRESS = registry[CHAIN]["Coordinator"]["address"]
-COORDINATOR_CONTRACT_ABI = registry[CHAIN]["Coordinator"]["abi"]
-GLOBAL_ALLOW_LIST_CONTRACT_ADDRESS = registry[CHAIN]["GlobalAllowList"]["address"]
-GLOBAL_ALLOW_LIST_CONTRACT_ABI = registry[CHAIN]["GlobalAllowList"]["abi"]
-
-# Define a namedtuple to hold the required objects
-Context = namedtuple(
-    "Context",
-    [
-        "w3",
-        "account",
-        "erc20_contract",
-        "subscription_contract",
-        "coordinator_contract",
-        "global_allow_list_contract",
-    ],
-)
+from eth_account.signers.local import LocalAccount
 
 
-def setup_connections():
+def build_constants(domain, provider_url, private_key):
+    DOMAIN_TO_CHAIN = {"lynx": "80002", "tapir": "80002", "mainnet": "137"}
+    chain = DOMAIN_TO_CHAIN[domain]
+    PORTER_ENDPOINT = f"https://porter-{domain}.nucypher.community"
+
+    with open(f"deployment/artifacts/{domain}.json", "r") as f:
+        registry = json.load(f)
+
+    return {
+        "PROVIDER_URL": provider_url,
+        "PRIVATE_KEY": private_key,
+        "PORTER_ENDPOINT": PORTER_ENDPOINT,
+        "SUBSCRIPTION_CONTRACT_ADDRESS": registry[chain]["BqETHSubscription"]["address"],
+        "SUBSCRIPTION_CONTRACT_ABI": registry[chain]["BqETHSubscription"]["abi"],
+        "ERC20_CONTRACT_ADDRESS": registry[chain][f"{domain.title()}RitualToken"]["address"],
+        "ERC20_CONTRACT_ABI": registry[chain][f"{domain.title()}RitualToken"]["abi"],
+        "COORDINATOR_CONTRACT_ADDRESS": registry[chain]["Coordinator"]["address"],
+        "COORDINATOR_CONTRACT_ABI": registry[chain]["Coordinator"]["abi"],
+        "GLOBAL_ALLOW_LIST_CONTRACT_ADDRESS": registry[chain]["GlobalAllowList"]["address"],
+        "GLOBAL_ALLOW_LIST_CONTRACT_ABI": registry[chain]["GlobalAllowList"]["abi"],
+    }
+
+
+class Context(NamedTuple):
+    w3: Web3
+    account: LocalAccount
+    erc20_contract: Contract
+    subscription_contract: Contract
+    coordinator_contract: Contract
+    global_allow_list_contract: Contract
+    constants: dict
+
+
+def setup_connections(constants):
     """Set up Web3 connections."""
-    w3 = Web3(Web3.HTTPProvider(PROVIDER_URL))
+    w3 = Web3(Web3.HTTPProvider(constants["PROVIDER_URL"]))
     w3.middleware_onion.inject(geth_poa_middleware, layer=0)
-    account = w3.eth.account.from_key(PRIVATE_KEY)
+    account = w3.eth.account.from_key(constants["PRIVATE_KEY"])
     w3.middleware_onion.add(construct_sign_and_send_raw_middleware(account))
     return w3, account
 
 
-def setup_contracts(w3):
+def setup_contracts(w3, constants):
     """Set up contract instances."""
-    erc20_contract = w3.eth.contract(address=ERC20_CONTRACT_ADDRESS, abi=ERC20_CONTRACT_ABI)
+    erc20_contract = w3.eth.contract(
+        address=constants["ERC20_CONTRACT_ADDRESS"], abi=constants["ERC20_CONTRACT_ABI"]
+    )
     subscription_contract = w3.eth.contract(
-        address=SUBSCRIPTION_CONTRACT_ADDRESS, abi=SUBSCRIPTION_CONTRACT_ABI
+        address=constants["SUBSCRIPTION_CONTRACT_ADDRESS"],
+        abi=constants["SUBSCRIPTION_CONTRACT_ABI"],
     )
     coordinator_contract = w3.eth.contract(
-        address=COORDINATOR_CONTRACT_ADDRESS, abi=COORDINATOR_CONTRACT_ABI
+        address=constants["COORDINATOR_CONTRACT_ADDRESS"], abi=constants["COORDINATOR_CONTRACT_ABI"]
     )
     global_allow_list_contract = w3.eth.contract(
-        address=GLOBAL_ALLOW_LIST_CONTRACT_ADDRESS, abi=GLOBAL_ALLOW_LIST_CONTRACT_ABI
+        address=constants["GLOBAL_ALLOW_LIST_CONTRACT_ADDRESS"],
+        abi=constants["GLOBAL_ALLOW_LIST_CONTRACT_ABI"],
     )
     click.echo(f"ERC20 contract: {erc20_contract.address}")
     click.echo(f"Subscription contract: {subscription_contract.address}")
@@ -118,14 +122,16 @@ def setup_context(func):
     """Decorator to set up connections and contracts before executing the command function."""
 
     @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        w3, account = setup_connections()
+    @click.pass_context
+    def wrapper(ctx, *args, **kwargs):
+        constants = ctx.obj["constants"]
+        w3, account = setup_connections(constants)
         (
             erc20_contract,
             subscription_contract,
             coordinator_contract,
             global_allow_list_contract,
-        ) = setup_contracts(w3)
+        ) = setup_contracts(w3, constants)
         context = Context(
             w3,
             account,
@@ -133,6 +139,7 @@ def setup_context(func):
             subscription_contract,
             coordinator_contract,
             global_allow_list_contract,
+            constants,
         )
         return func(context, *args, **kwargs)
 
@@ -140,9 +147,15 @@ def setup_context(func):
 
 
 @click.group()
-def cli():
+@click.option("--domain", default="lynx", help="NuCypher domain.")
+@click.pass_context
+def cli(ctx, domain):
     """BqETH Subscription CLI"""
-    pass
+    load_dotenv(override=True)
+    provider_url = os.environ.get("PROVIDER_URL")
+    private_key = os.environ.get("PRIVATE_KEY")
+    ctx.ensure_object(dict)
+    ctx.obj["constants"] = build_constants(domain, provider_url, private_key)
 
 
 @cli.command()
@@ -152,14 +165,14 @@ def pay_subscription(context, encryptor_slots):
     """Pay for a new subscription period and initial encryptor slots."""
     base_fees = context.subscription_contract.functions.baseFees(0).call()
     encryptor_fees = context.subscription_contract.functions.encryptorFees(
-        MAX_NODES, context.subscription_contract.functions.subscriptionPeriodDuration().call()
+        encryptor_slots, context.subscription_contract.functions.subscriptionPeriodDuration().call()
     ).call()
 
     click.echo(
         f"Approving transfer of {base_fees + encryptor_fees} ERC20 token for subscription contract."
     )
     tx_hash = context.erc20_contract.functions.approve(
-        SUBSCRIPTION_CONTRACT_ADDRESS, base_fees + encryptor_fees
+        context.constants["SUBSCRIPTION_CONTRACT_ADDRESS"], base_fees + encryptor_fees
     ).transact({"from": context.account.address})
     click.echo(f"Transaction hash: {tx_hash.hex()}")
 
@@ -187,14 +200,14 @@ def pay_slots(context, extra_slots):
 @setup_context
 def initiate_ritual(context, num_nodes):
     """Initiate a ritual."""
-    nodes = sorted(
+    nodes = list(sorted(
         [
             u["checksum_address"]
-            for u in requests.get(f"{PORTER_ENDPOINT}/get_ursulas?quantity={num_nodes}").json()[
-                "result"
-            ]["ursulas"]
+            for u in requests.get(
+                f"{context.constants['PORTER_ENDPOINT']}/get_ursulas?quantity={num_nodes}"
+            ).json()["result"]["ursulas"]
         ]
-    )
+    ))
     start_of_subscription = context.subscription_contract.functions.startOfSubscription().call()
     duration = (
         context.subscription_contract.functions.subscriptionPeriodDuration().call()
@@ -214,7 +227,7 @@ def initiate_ritual(context, num_nodes):
         nodes,
         context.account.address,
         duration,
-        GLOBAL_ALLOW_LIST_CONTRACT_ADDRESS,
+        context.constants["GLOBAL_ALLOW_LIST_CONTRACT_ADDRESS"],
     ).transact({"from": context.account.address})
     click.echo(f"Transaction hash: {tx_hash.hex()}")
 
