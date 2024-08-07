@@ -68,7 +68,6 @@ def cli(
     authority,
     handpicked,
 ):
-
     check_plugins()
     if not (bool(handpicked) ^ (num_nodes is not None)):
         raise click.BadOptionUsage(
