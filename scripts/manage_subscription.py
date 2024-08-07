@@ -1,6 +1,6 @@
 import click
 from ape import Contract
-from ape.cli import account_option, ConnectedProviderCommand
+from ape.cli import account_option, ConnectedProviderCommand, network_option
 
 from deployment import registry
 from deployment.options import (
@@ -51,6 +51,7 @@ def cli():
 
 @cli.command(cls=ConnectedProviderCommand)
 @account_option()
+@network_option(required=True)
 @domain_option
 @subscription_contract_option
 @encryptor_slots_option
@@ -59,9 +60,10 @@ def cli():
     default=0,
     help="Subscription billing period number to pay for.",
 )
-def pay_subscription(account, domain, subscription_contract, encryptor_slots, period):
+def pay_subscription(account, network, domain, subscription_contract, encryptor_slots, period):
     """Pay for a new subscription period and initial encryptor slots."""
     check_plugins()
+    click.echo(f"Connected to {network.name} network.")
     transactor = Transactor(account=account)
     subscription_contract = registry.get_contract(
         contract_name=subscription_contract,
@@ -92,12 +94,14 @@ def pay_subscription(account, domain, subscription_contract, encryptor_slots, pe
 
 @cli.command(cls=ConnectedProviderCommand)
 @account_option()
+@network_option(required=True)
 @domain_option
 @subscription_contract_option
 @encryptor_slots_option
-def pay_slots(account, domain, subscription_contract, encryptor_slots):
+def pay_slots(account, network, domain, subscription_contract, encryptor_slots):
     """Pay for additional encryptor slots in the current billing period."""
     check_plugins()
+    click.echo(f"Connected to {network.name} network.")
     transactor = Transactor(account=account)
     subscription_contract = registry.get_contract(
         contract_name=subscription_contract,
@@ -123,12 +127,14 @@ def pay_slots(account, domain, subscription_contract, encryptor_slots):
 
 @cli.command(cls=ConnectedProviderCommand)
 @account_option()
+@network_option(required=True)
 @domain_option
 @ritual_id_option
 @access_controller_option
 @encryptors_option
-def add_encryptors(account, domain, ritual_id, access_controller, encryptors):
+def add_encryptors(account, network, domain, ritual_id, access_controller, encryptors):
     """Authorize encryptors to the access control contract for a ritual."""
+    click.echo(f"Connected to {network.name} network.")
     access_controller = registry.get_contract(
         contract_name=access_controller,
         domain=domain
