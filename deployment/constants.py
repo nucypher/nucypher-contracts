@@ -59,7 +59,7 @@ FEE_MODELS = ["FreeFeeModel", "BqETHSubscription"]
 # Sampling
 #
 
-PORTER_ENDPOINTS = {
+PORTER_SAMPLING_ENDPOINTS = {
     MAINNET: "https://porter.nucypher.io/bucket_sampling",
     LYNX: "https://porter-lynx.nucypher.io/get_ursulas",
     TAPIR: "https://porter-tapir.nucypher.io/get_ursulas",

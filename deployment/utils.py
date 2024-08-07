@@ -9,7 +9,7 @@ from ape import networks, project
 from ape.contracts import ContractContainer, ContractInstance
 from ape_etherscan.utils import API_KEY_ENV_KEY_MAP
 
-from deployment.constants import ARTIFACTS_DIR, LYNX, MAINNET, PORTER_ENDPOINTS, TAPIR
+from deployment.constants import ARTIFACTS_DIR, LYNX, MAINNET, PORTER_SAMPLING_ENDPOINTS, TAPIR
 from deployment.networks import is_local_network
 
 
@@ -171,7 +171,7 @@ def get_chain_name(chain_id: int) -> str:
 def sample_nodes(
     domain: str, num_nodes: int, random_seed: Optional[int] = None, duration: Optional[int] = None
 ):
-    porter_endpoint = PORTER_ENDPOINTS.get(domain)
+    porter_endpoint = PORTER_SAMPLING_ENDPOINTS.get(domain)
     if not porter_endpoint:
         raise ValueError(f"Porter endpoint not found for domain '{domain}'")
 

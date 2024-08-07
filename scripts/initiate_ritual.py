@@ -85,7 +85,7 @@ def cli(
     if not (bool(handpicked) ^ (num_nodes is not None)):
         raise click.BadOptionUsage(
             option_name="--num-nodes",
-            message=f"Specify either --num-nodes or --handpicked; got {num_nodes} {handpicked}",
+            message=f"Specify either --num-nodes or --handpicked; got {num_nodes}, {handpicked}.",
         )
     if handpicked and random_seed:
         raise click.BadOptionUsage(
