@@ -7,43 +7,8 @@ from ape.cli import ConnectedProviderCommand, account_option
 from deployment.constants import SUPPORTED_TACO_DOMAINS
 from deployment.params import Transactor
 from deployment.registry import contracts_from_registry
+from deployment.types import MinInt
 from deployment.utils import check_plugins, registry_filepath_from_domain, sample_nodes
-
-
-def validate_options(ctx):
-    if "handpicked" in ctx.params and ctx.params["handpicked"]:
-        if "num_nodes" in ctx.params and ctx.params["num_nodes"]:
-            raise click.BadOptionUsage(
-                option_name="--handpicked",
-                message="Cannot specify both --num-nodes and --handpicked.",
-            )
-        if "random_seed" in ctx.params and ctx.params["random_seed"]:
-            raise click.BadOptionUsage(
-                option_name="--handpicked",
-                message="Cannot specify both --random-seed and --handpicked.",
-            )
-    if not ctx.params.get("handpicked") and not ctx.params.get("num_nodes"):
-        raise click.BadOptionUsage(
-            option_name="--num-nodes", message="Must specify either --num-nodes or --handpicked."
-        )
-
-
-class MinInt(click.ParamType):
-    name = "minint"
-
-    def __init__(self, min_value):
-        self.min_value = min_value
-
-    def convert(self, value, param, ctx):
-        try:
-            ivalue = int(value)
-        except ValueError:
-            self.fail(f"{value} is not a valid integer", param, ctx)
-        if ivalue < self.min_value:
-            self.fail(
-                f"{value} is less than the minimum allowed value of {self.min_value}", param, ctx
-            )
-        return ivalue
 
 
 @click.command(cls=ConnectedProviderCommand)
@@ -104,10 +69,18 @@ def cli(
     handpicked,
 ):
 
-    ctx = click.get_current_context()
-    validate_options(ctx)
-
     check_plugins()
+    if not (bool(handpicked) ^ (num_nodes is not None)):
+        raise click.BadOptionUsage(
+            option_name="--num-nodes",
+            message=f"Specify either --num-nodes or --handpicked; got {num_nodes} {handpicked}",
+        )
+    if handpicked and random_seed:
+        raise click.BadOptionUsage(
+            option_name="--random-seed",
+            message="Cannot specify --random-seed when using --handpicked.",
+        )
+
     transactor = Transactor(account=account)
     registry_filepath = registry_filepath_from_domain(domain=domain)
     chain_id = project.chain_manager.chain_id
