@@ -53,6 +53,8 @@ EIP1967_ADMIN_SLOT = 0xB53127684A568B3173AE13B9F8A6016E243E63B6E8EE1178D6A717850
 
 ACCESS_CONTROLLERS = ["GlobalAllowList", "OpenAccessAuthorizer", "ManagedAllowList"]
 
+FEE_MODELS = ["FreeFeeModel", "BqETHSubscription"]
+
 #
 # Sampling
 #

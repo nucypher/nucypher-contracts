@@ -1,17 +1,16 @@
 #!/usr/bin/python3
 
 import click
-from ape import project
 from ape.cli import ConnectedProviderCommand, account_option
 
-from deployment.constants import SUPPORTED_TACO_DOMAINS
+from deployment import registry
+from deployment.constants import ACCESS_CONTROLLERS, FEE_MODELS, SUPPORTED_TACO_DOMAINS
 from deployment.params import Transactor
-from deployment.registry import contracts_from_registry
-from deployment.types import MinInt
-from deployment.utils import check_plugins, registry_filepath_from_domain, sample_nodes
+from deployment.types import ChecksumAddress, MinInt
+from deployment.utils import check_plugins, sample_nodes
 
 
-@click.command(cls=ConnectedProviderCommand)
+@click.command(cls=ConnectedProviderCommand, name="initiate-ritual")
 @account_option()
 @click.option(
     "--domain",
@@ -29,32 +28,40 @@ from deployment.utils import check_plugins, registry_filepath_from_domain, sampl
 )
 @click.option(
     "--access-controller",
-    "-a",
-    help="The name of an access controller contract.",
-    type=click.Choice(["GlobalAllowList", "OpenAccessAuthorizer", "ManagedAllowList"]),
+    "-c",
+    help="The registry name of an access controller contract.",
+    type=click.Choice(ACCESS_CONTROLLERS),
     required=True,
 )
 @click.option(
     "--fee-model",
     "-f",
     help="The name of a fee model contract.",
-    type=click.Choice(["FreeFeeModel", "BqETHSubscription"]),
+    type=click.Choice(FEE_MODELS),
     required=True,
 )
 @click.option(
+    "--authority",
+    "-a",
+    help="The ethereum address of the ritual authority.",
+    required=True,
+    type=ChecksumAddress(),
+)
+@click.option(
     "--num-nodes",
+    "-n",
     help="Number of nodes to use for the ritual.",
     type=int,
-    required=False,
 )
-@click.option("--random-seed", help="Random seed integer for sampling.", required=False, type=int)
 @click.option(
-    "--authority", help="The ethereum address of the ritual authority.", required=False, type=str
+    "--random-seed",
+    "-r",
+    help="Random seed integer for bucket sampling on mainnet.",
+    type=int,
 )
 @click.option(
     "--handpicked",
     help="The filepath of a file containing newline separated staking provider addresses.",
-    required=False,
     type=click.File("r"),
 )
 def cli(
@@ -63,11 +70,14 @@ def cli(
     account,
     access_controller,
     fee_model,
+    authority,
     num_nodes,
     random_seed,
-    authority,
     handpicked,
 ):
+    """Initiate a ritual for a TACo domain."""
+
+    # Setup
     check_plugins()
     if not (bool(handpicked) ^ (num_nodes is not None)):
         raise click.BadOptionUsage(
@@ -80,22 +90,7 @@ def cli(
             message="Cannot specify --random-seed when using --handpicked.",
         )
 
-    transactor = Transactor(account=account)
-    registry_filepath = registry_filepath_from_domain(domain=domain)
-    chain_id = project.chain_manager.chain_id
-    deployments = contracts_from_registry(filepath=registry_filepath, chain_id=chain_id)
-    coordinator = deployments[project.Coordinator.contract_type.name]
-
-    try:
-        access_controller = deployments[getattr(project, access_controller).contract_type.name]
-        fee_model = deployments[getattr(project, fee_model).contract_type.name]
-    except KeyError as e:
-        raise ValueError(f"Contract not found in registry for domain {domain}: {e}")
-
-    if not authority:
-        authority = transactor.get_account().address
-        click.confirm(f"Using {authority} as the ritual authority. Continue?", abort=True)
-
+    # Get the staking providers in the ritual cohort
     if handpicked:
         providers = sorted(line.lower() for line in handpicked)
         if not providers:
@@ -105,6 +100,13 @@ def cli(
             domain=domain, num_nodes=num_nodes, duration=duration, random_seed=random_seed
         )
 
+    # Get the contracts from the registry
+    coordinator = registry.get_contract(domain=domain, contract_name="Coordinator")
+    access_controller = registry.get_contract(domain=domain, contract_name=access_controller)
+    fee_model = registry.get_contract(domain=domain, contract_name=fee_model)
+
+    # Initiate the ritual
+    transactor = Transactor(account=account)
     transactor.transact(
         coordinator.initiateRitual,
         fee_model.address,
