@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import click
-from ape.cli import ConnectedProviderCommand, account_option
+from ape.cli import ConnectedProviderCommand, account_option, network_option
 
 from deployment import registry
 from deployment.constants import ACCESS_CONTROLLERS, FEE_MODELS, SUPPORTED_TACO_DOMAINS
@@ -12,6 +12,7 @@ from deployment.utils import check_plugins, sample_nodes
 
 @click.command(cls=ConnectedProviderCommand, name="initiate-ritual")
 @account_option()
+@network_option(required=True)
 @click.option(
     "--domain",
     "-d",
@@ -66,8 +67,9 @@ from deployment.utils import check_plugins, sample_nodes
 )
 def cli(
     domain,
-    duration,
     account,
+    network,
+    duration,
     access_controller,
     fee_model,
     authority,
@@ -79,6 +81,7 @@ def cli(
 
     # Setup
     check_plugins()
+    click.echo(f"Connected to {network.name} network.")
     if not (bool(handpicked) ^ (num_nodes is not None)):
         raise click.BadOptionUsage(
             option_name="--num-nodes",
