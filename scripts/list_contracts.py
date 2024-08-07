@@ -44,10 +44,10 @@ def display_registry_entries(registry_entries):
 
         for chain_id, chain_entries in grouped_entries:
             chain_name = format_chain_name(get_chain_name(chain_id))
-            click.secho(f"{chain_name}", fg="yellow")
+            click.secho(f"    {chain_name}", fg="yellow")
 
             for index, entry in enumerate(chain_entries, start=1):
-                click.secho(f"    {index}. {entry.name} {entry.address}", fg="cyan")
+                click.secho(f"        {index}. {entry.name} {entry.address}", fg="cyan")
 
 
 @click.command(cls=ConnectedProviderCommand, name="list-contracts")
