@@ -161,7 +161,7 @@ def remove_encryptors(account, domain, ritual_id, access_controller, encryptors)
     )
     click.echo(
         f"Removing {len(encryptors)} "
-        f"encryptors to the {access_controller} "
+        f"encryptors from the {access_controller} "
         f"for ritual {ritual_id}."
     )
     transactor.transact(
