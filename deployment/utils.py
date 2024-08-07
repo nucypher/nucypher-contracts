@@ -9,7 +9,7 @@ from ape import networks, project
 from ape.contracts import ContractContainer, ContractInstance
 from ape_etherscan.utils import API_KEY_ENV_KEY_MAP
 
-from deployment.constants import ARTIFACTS_DIR, MAINNET, LYNX, TAPIR
+from deployment.constants import ARTIFACTS_DIR, LYNX, MAINNET, PORTER_ENDPOINTS, TAPIR
 from deployment.networks import is_local_network
 
 
@@ -49,7 +49,7 @@ def validate_config(config: Dict) -> Path:
     config_chain_id = deployment.get("chain_id")
     if not config_chain_id:
         raise ValueError("chain_id is not set in params file.")
-    
+
     contracts = config.get("contracts")
     if not contracts:
         raise ValueError("Constructor parameters file missing 'contracts' field.")
@@ -169,17 +169,9 @@ def get_chain_name(chain_id: int) -> str:
 
 
 def sample_nodes(
-        domain: str,
-        num_nodes: int,
-        random_seed: Optional[int] = None,
-        duration: Optional[int] = None
+    domain: str, num_nodes: int, random_seed: Optional[int] = None, duration: Optional[int] = None
 ):
-    porter_endpoints = {
-        MAINNET: "https://porter.nucypher.community/bucket_sampling",
-        LYNX: "https://porter-lynx.nucypher.network/get_ursulas",
-        TAPIR: "https://porter-tapir.nucypher.network/get_ursulas",
-    }
-    porter_endpoint = porter_endpoints.get(domain)
+    porter_endpoint = PORTER_ENDPOINTS.get(domain)
     if not porter_endpoint:
         raise ValueError(f"Porter endpoint not found for domain '{domain}'")
 
@@ -188,7 +180,9 @@ def sample_nodes(
     }
     if duration:
         params["duration"] = duration
-    if domain == MAINNET and random_seed:
+    if random_seed:
+        if domain != MAINNET:
+            raise ValueError("'random_seed' is only a valid parameter for mainnet")
         params["random_seed"] = random_seed
 
     response = requests.get(porter_endpoint, params=params)

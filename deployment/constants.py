@@ -4,10 +4,13 @@ from ape import project
 
 import deployment
 
+#
+# Filesystem
+#
+
 DEPLOYMENT_DIR = Path(deployment.__file__).parent
 CONSTRUCTOR_PARAMS_DIR = DEPLOYMENT_DIR / "constructor_params"
 ARTIFACTS_DIR = DEPLOYMENT_DIR / "artifacts"
-OZ_DEPENDENCY = project.dependencies["openzeppelin"]["5.0.0"]
 
 #
 # Domains
@@ -20,7 +23,7 @@ MAINNET = "mainnet"
 SUPPORTED_TACO_DOMAINS = [LYNX, TAPIR, MAINNET]
 
 #
-# Nodes
+# Testnet
 #
 
 LYNX_NODES = {
@@ -39,18 +42,23 @@ TAPIR_NODES = {
     "0xcbE2F626d84c556AbA674FABBbBDdbED6B39d87b": "0xb057B982fB575509047e90cf5087c9B863a2022d",
 }
 
-# EIP1967
-
-# Admin slot - https://eips.ethereum.org/EIPS/eip-1967#admin-address
-EIP1967_ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103
-
-
 #
 # Contracts
 #
 
-ACCESS_CONTROLLERS = [
-    "GlobalAllowList",
-    "OpenAccessAuthorizer",
-    "ManagedAllowList"
-]
+OZ_DEPENDENCY = project.dependencies["openzeppelin"]["5.0.0"]
+
+# EIP1967 Admin slot - https://eips.ethereum.org/EIPS/eip-1967#admin-address
+EIP1967_ADMIN_SLOT = 0xB53127684A568B3173AE13B9F8A6016E243E63B6E8EE1178D6A717850B5D6103
+
+ACCESS_CONTROLLERS = ["GlobalAllowList", "OpenAccessAuthorizer", "ManagedAllowList"]
+
+#
+# Sampling
+#
+
+PORTER_ENDPOINTS = {
+    MAINNET: "https://porter.nucypher.io/bucket_sampling",
+    LYNX: "https://porter-lynx.nucypher.io/get_ursulas",
+    TAPIR: "https://porter-tapir.nucypher.io/get_ursulas",
+}
