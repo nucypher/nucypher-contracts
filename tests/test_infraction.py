@@ -3,10 +3,6 @@ from enum import IntEnum
 
 import ape
 import pytest
-from eth_account import Account
-from eth_account.messages import encode_defunct
-from hexbytes import HexBytes
-from web3 import Web3
 
 TIMEOUT = 1000
 MAX_DKG_SIZE = 31
@@ -156,7 +152,7 @@ def test_report_infractions(erc20, nodes, initiator, global_allow_list, infracti
     chain.pending_timestamp += TIMEOUT * 2
     infraction_collector.reportMissingTranscript(0, nodes, sender=initiator)
     for node in nodes:
-        assert infraction_collector.infractions(0, node) == True
+        assert infraction_collector.infractions(0, node, 0) == True
 
 def test_cant_report_infractions_twice(erc20, nodes, initiator, global_allow_list, infraction_collector, coordinator, chain):
     for node in nodes:
