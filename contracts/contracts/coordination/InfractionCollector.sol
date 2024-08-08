@@ -12,8 +12,13 @@ contract InfractionCollector is OwnableUpgradeable {
     // Reference to the TACoChildApplication contract
     ITACoChildApplication public tacoChildApplication;
 
+    // infraction types
+    enum InfractionType {
+        MISSING_TRANSCRIPT
+    }
+
     // Mapping to keep track of reported infractions
-    mapping(uint32 => mapping(address => bool)) public infractions;
+    mapping(uint32 => mapping(address => mapping(InfractionType => bool))) public infractions;
 
     function initialize(
         Coordinator _coordinator,
@@ -36,15 +41,21 @@ contract InfractionCollector is OwnableUpgradeable {
 
         for (uint256 i = 0; i < stakingProviders.length; i++) {
             // Check if the infraction has already been reported
-            require(!infractions[ritualId][stakingProviders[i]], "Infraction already reported");
+            require(
+                !infractions[ritualId][stakingProviders[i]][InfractionType.MISSING_TRANSCRIPT],
+                "Infraction already reported"
+            );
             Coordinator.Participant memory participant = coordinator.getParticipantFromProvider(
                 ritualId,
                 stakingProviders[i]
             );
-            if (participant.transcript.length == 0) {  // Transcript TX wasn't posted
+            if (participant.transcript.length == 0) {
+                // Transcript TX wasn't posted
                 // Penalize the staking provider
                 tacoChildApplication.penalize(stakingProviders[i]);
-                infractions[ritualId][stakingProviders[i]] = true;
+                infractions[ritualId][stakingProviders[i]][
+                    InfractionType.MISSING_TRANSCRIPT
+                ] = true;
             }
         }
     }
