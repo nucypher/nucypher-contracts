@@ -113,12 +113,10 @@ def global_allow_list(project, deployer, coordinator):
 
 @pytest.fixture
 def infraction_collector(project, deployer, coordinator, application, oz_dependency):
-    contract = project.InfractionCollector.deploy(sender=deployer)
-    encoded_initializer_function = contract.initialize.encode_input(coordinator.address, application.address)
+    contract = project.InfractionCollector.deploy(coordinator.address, application.address, sender=deployer)
     proxy = oz_dependency.TransparentUpgradeableProxy.deploy(
         contract.address,
         deployer,
-        encoded_initializer_function,
         sender=deployer,
     )
     proxy_contract = project.InfractionCollector.at(proxy.address)

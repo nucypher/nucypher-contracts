@@ -20,10 +20,7 @@ contract InfractionCollector is OwnableUpgradeable {
     // Mapping to keep track of reported infractions
     mapping(uint32 => mapping(address => mapping(InfractionType => bool))) public infractions;
 
-    constructor(
-        Coordinator _coordinator,
-        ITACoChildApplication _tacoChildApplication
-    ) {
+    constructor(Coordinator _coordinator, ITACoChildApplication _tacoChildApplication) {
         coordinator = _coordinator;
         tacoChildApplication = _tacoChildApplication;
     }
