@@ -23,7 +23,7 @@ contract InfractionCollector is OwnableUpgradeable {
 
     constructor(Coordinator _coordinator, ITACoChildApplication _tacoChildApplication) {
         require(
-            _coordinator != address(0) && _tacoChildApplication != address(0),
+            address(_coordinator) != address(0) && address(_tacoChildApplication) != address(0),
             "Contracts must be specified"
         );
         coordinator = _coordinator;
