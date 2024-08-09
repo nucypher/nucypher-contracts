@@ -21,8 +21,13 @@ contract InfractionCollector is OwnableUpgradeable {
     mapping(uint32 => mapping(address => mapping(InfractionType => bool))) public infractions;
 
     constructor(Coordinator _coordinator, ITACoChildApplication _tacoChildApplication) {
+        require(
+            _coordinator != address(0) && _tacoChildApplication != address(0),
+            "Contracts must be specified"
+        );
         coordinator = _coordinator;
         tacoChildApplication = _tacoChildApplication;
+        _disableInitializers();
     }
 
     function reportMissingTranscript(
