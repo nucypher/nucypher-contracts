@@ -112,15 +112,9 @@ def global_allow_list(project, deployer, coordinator):
 
 
 @pytest.fixture
-def infraction_collector(project, deployer, coordinator, application, oz_dependency):
+def infraction_collector(project, deployer, coordinator, application):
     contract = project.InfractionCollector.deploy(coordinator.address, application.address, sender=deployer)
-    proxy = oz_dependency.TransparentUpgradeableProxy.deploy(
-        contract.address,
-        deployer,
-        sender=deployer,
-    )
-    proxy_contract = project.InfractionCollector.at(proxy.address)
-    return proxy_contract
+    return contract
 
 def test_no_infractions(erc20, nodes, initiator, global_allow_list, infraction_collector, coordinator):
     for node in nodes:
