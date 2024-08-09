@@ -7,6 +7,7 @@ import "./Coordinator.sol";
 import "../../threshold/ITACoChildApplication.sol";
 
 contract InfractionCollector is OwnableUpgradeable {
+    event InfractionReported(uint32 indexed ritualId, address indexed stakingProvider, InfractionType infractionType);
     Coordinator public immutable coordinator;
 
     // Reference to the TACoChildApplication contract
@@ -57,6 +58,7 @@ contract InfractionCollector is OwnableUpgradeable {
                 infractions[ritualId][stakingProviders[i]][
                     InfractionType.MISSING_TRANSCRIPT
                 ] = true;
+                emit InfractionReported(ritualId, stakingProviders[i], InfractionType.MISSING_TRANSCRIPT);
             }
         }
     }
