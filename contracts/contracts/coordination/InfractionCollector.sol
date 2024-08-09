@@ -52,7 +52,7 @@ contract InfractionCollector is OwnableUpgradeable {
             if (participant.transcript.length == 0) {
                 // Transcript TX wasn't posted
                 // Penalize the staking provider
-                tacoChildApplication.penalize(stakingProviders[i]);
+                // tacoChildApplication.penalize(stakingProviders[i]);
                 infractions[ritualId][stakingProviders[i]][
                     InfractionType.MISSING_TRANSCRIPT
                 ] = true;
