@@ -117,10 +117,10 @@ def infraction_collector(project, deployer, coordinator, application):
     return contract
 
 def test_no_infractions(erc20, nodes, initiator, global_allow_list, infraction_collector, coordinator):
+    cost = coordinator.getRitualInitiationCost(nodes, DURATION)
     for node in nodes:
         public_key = gen_public_key()
-        coordinator.setProviderPublicKey(public_key, sender=node)
-        cost = coordinator.getRitualInitiationCost(nodes, DURATION)
+        coordinator.setProviderPublicKey(public_key, sender=node)  
     erc20.approve(coordinator.address, cost, sender=initiator)
     coordinator.initiateRitual(
         nodes, initiator, DURATION, global_allow_list.address, sender=initiator
@@ -133,10 +133,10 @@ def test_no_infractions(erc20, nodes, initiator, global_allow_list, infraction_c
         infraction_collector.reportMissingTranscript(0, nodes, sender=initiator)
 
 def test_report_infractions(erc20, nodes, initiator, global_allow_list, infraction_collector, coordinator, chain):
+    cost = coordinator.getRitualInitiationCost(nodes, DURATION)
     for node in nodes:
         public_key = gen_public_key()
-        coordinator.setProviderPublicKey(public_key, sender=node)
-        cost = coordinator.getRitualInitiationCost(nodes, DURATION)
+        coordinator.setProviderPublicKey(public_key, sender=node)   
     erc20.approve(coordinator.address, cost, sender=initiator)
     coordinator.initiateRitual(
         nodes, initiator, DURATION, global_allow_list.address, sender=initiator
@@ -147,10 +147,10 @@ def test_report_infractions(erc20, nodes, initiator, global_allow_list, infracti
         assert infraction_collector.infractions(0, node, 0) == True
 
 def test_cant_report_infractions_twice(erc20, nodes, initiator, global_allow_list, infraction_collector, coordinator, chain):
+    cost = coordinator.getRitualInitiationCost(nodes, DURATION)
     for node in nodes:
         public_key = gen_public_key()
-        coordinator.setProviderPublicKey(public_key, sender=node)
-        cost = coordinator.getRitualInitiationCost(nodes, DURATION)
+        coordinator.setProviderPublicKey(public_key, sender=node)   
     erc20.approve(coordinator.address, cost, sender=initiator)
     coordinator.initiateRitual(
         nodes, initiator, DURATION, global_allow_list.address, sender=initiator
