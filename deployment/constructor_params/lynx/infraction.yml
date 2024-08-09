@@ -15,5 +15,5 @@ contracts:
   - InfractionCollector:
       proxy:
       constructor:
-          _coordinator: $COORDINATOR_PROXY
-          _tacoChildApplication: $TACO_CHILD_PROXY
+        _coordinator: $COORDINATOR_PROXY
+        _tacoChildApplication: $TACO_CHILD_PROXY
