@@ -33,7 +33,3 @@ contracts:
   - GlobalAllowList:
       constructor:
         _coordinator: $Coordinator
-  - InfractionCollector:
-      proxy:
-        constructor:
-          _data: $encode:initialize,$Coordinator,$TACoChildApplication

@@ -331,7 +331,7 @@ def test_penalize(accounts, root_application, child_application, coordinator):
     ) = accounts[0:]
 
     # Penalize can be done only from adjudicator address
-    with ape.reverts("Only infractionCollector allowed to penalize"):
+    with ape.reverts("Only adjudicator allowed to penalize"):
         child_application.penalize(staking_provider, sender=staking_provider)
 
     tx = child_application.penalize(staking_provider, sender=creator)
