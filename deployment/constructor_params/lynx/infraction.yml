@@ -9,9 +9,11 @@ artifacts:
 constants:
   # See deployment/artifacts/lynx.json
   COORDINATOR_PROXY: "0xE9e94499bB0f67b9DBD75506ec1735486DE57770"
+  TACO_CHILD_PROXY: "0x42F30AEc1A36995eEFaf9536Eb62BD751F982D32"
 
 contracts:
   - InfractionCollector:
       proxy:
       constructor:
           _coordinator: $COORDINATOR_PROXY
+          _tacoChildApplication: $TACO_CHILD_PROXY
