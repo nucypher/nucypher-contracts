@@ -1,0 +1,19 @@
+deployment:
+  name: infraction
+  chain_id: 80002
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: tapir.json
+
+constants:
+  # See deployment/artifacts/tapir.json
+  COORDINATOR_PROXY: "0xE690b6bCC0616Dc5294fF84ff4e00335cA52C388"
+  TACO_CHILD_PROXY: "0x489287Ed5BdF7a35fEE411FBdCc47331093D0769"
+
+contracts:
+  - InfractionCollector:
+      proxy:
+      constructor:
+        _coordinator: $COORDINATOR_PROXY
+        _tacoChildApplication: $TACO_CHILD_PROXY
