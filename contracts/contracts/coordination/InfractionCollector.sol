@@ -23,7 +23,8 @@ contract InfractionCollector is OwnableUpgradeable {
     }
 
     // Mapping to keep track of reported infractions
-    mapping(uint32 => mapping(address => mapping(InfractionType => bool))) public infractions;
+    mapping(uint32 ritualId => mapping(address stakingProvider => mapping(InfractionType => bool)))
+        public infractions;
 
     constructor(Coordinator _coordinator, ITACoChildApplication _tacoChildApplication) {
         require(
