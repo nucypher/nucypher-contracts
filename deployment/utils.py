@@ -1,13 +1,15 @@
 import json
 import os
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
+import requests
 import yaml
 from ape import networks, project
 from ape.contracts import ContractContainer, ContractInstance
 from ape_etherscan.utils import API_KEY_ENV_KEY_MAP
-from deployment.constants import ARTIFACTS_DIR
+
+from deployment.constants import ARTIFACTS_DIR, LYNX, MAINNET, PORTER_SAMPLING_ENDPOINTS, TAPIR
 from deployment.networks import is_local_network
 
 
@@ -47,7 +49,7 @@ def validate_config(config: Dict) -> Path:
     config_chain_id = deployment.get("chain_id")
     if not config_chain_id:
         raise ValueError("chain_id is not set in params file.")
-    
+
     contracts = config.get("contracts")
     if not contracts:
         raise ValueError("Constructor parameters file missing 'contracts' field.")
@@ -136,8 +138,7 @@ def _get_dependency_contract_container(contract: str) -> ContractContainer:
             return contract_container
         except AttributeError:
             continue
-
-    raise ValueError(f"No contract found for {contract}")
+    raise ValueError(f"No contract found with name '{contract}'.")
 
 
 def get_contract_container(contract: str) -> ContractContainer:
@@ -165,3 +166,27 @@ def get_chain_name(chain_id: int) -> str:
             if network.chain_id == chain_id:
                 return f"{ecosystem_name} {network_name}"
     raise ValueError(f"Chain ID {chain_id} not found in networks.")
+
+
+def sample_nodes(
+    domain: str, num_nodes: int, random_seed: Optional[int] = None, duration: Optional[int] = None
+):
+    porter_endpoint = PORTER_SAMPLING_ENDPOINTS.get(domain)
+    if not porter_endpoint:
+        raise ValueError(f"Porter endpoint not found for domain '{domain}'")
+
+    params = {
+        "quantity": num_nodes,
+    }
+    if duration:
+        params["duration"] = duration
+    if random_seed:
+        if domain != MAINNET:
+            raise ValueError("'random_seed' is only a valid parameter for mainnet")
+        params["random_seed"] = random_seed
+
+    response = requests.get(porter_endpoint, params=params)
+    data = response.json()
+    result = sorted(data["result"]["ursulas"], key=lambda x: x.lower())
+
+    return result

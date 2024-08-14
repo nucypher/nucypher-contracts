@@ -5,18 +5,27 @@ from enum import Enum
 from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional
 
+from ape import chain, project
 from ape.contracts import ContractInstance
 from eth_typing import ChecksumAddress
 from eth_utils import to_checksum_address
 from web3.types import ABI
 
-from deployment.utils import _load_json, get_contract_container
+from deployment.utils import (
+    _load_json,
+    get_contract_container,
+    registry_filepath_from_domain
+)
 
 ChainId = int
 ContractName = str
 
 
 STANDARD_REGISTRY_JSON_FORMAT = {"indent": 4, "separators": (",", ": ")}
+
+
+class NoContractFound(Exception):
+    """Raised when a contract is not found in the registry."""
 
 
 class RegistryEntry(NamedTuple):
@@ -35,7 +44,7 @@ def _get_abi(contract_instance: ContractInstance) -> ABI:
     """Returns the ABI of a contract instance."""
     contract_abi = list()
     for entry in contract_instance.contract_type.abi:
-        contract_abi.append(entry.dict())
+        contract_abi.append(entry.model_dump())
     return contract_abi
 
 
@@ -59,7 +68,7 @@ def _get_entry(
 ) -> RegistryEntry:
     contract_abi = _get_abi(contract_instance)
     contract_name = _get_name(contract_instance=contract_instance, registry_names=registry_names)
-    receipt = contract_instance.receipt
+    receipt = chain.get_receipt(contract_instance.txn_hash)
     entry = RegistryEntry(
         name=contract_name,
         address=to_checksum_address(contract_instance.address),
@@ -294,3 +303,17 @@ def normalize_registry(filepath: Path):
     except Exception:
         print(f"Error when normalizing registry at {filepath}.")
         raise
+
+
+def get_contract(domain: str, contract_name: str) -> ContractInstance:
+    """Returns the contract instance for the contract name and domain."""
+    registry_filepath = registry_filepath_from_domain(domain=domain)
+    chain_id = project.chain_manager.chain_id
+    deployments = contracts_from_registry(filepath=registry_filepath, chain_id=chain_id)
+    try:
+        return deployments[contract_name]
+    except KeyError:
+        raise NoContractFound(
+            f"Contract '{contract_name}' not found in {domain} registry for chain {chain_id}. "
+            "Are you connected to the correct network + domain?"
+        )

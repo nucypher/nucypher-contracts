@@ -4,9 +4,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./FlatRateFeeModel.sol";
+import "./IFeeModel.sol";
 import "./IReimbursementPool.sol";
 import "../lib/BLS12381.sol";
 import "../../threshold/ITACoChildApplication.sol";
@@ -16,7 +14,7 @@ import "./IEncryptionAuthorizer.sol";
  * @title Coordinator
  * @notice Coordination layer for Threshold Access Control (TACo 🌮)
  */
-contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable, FlatRateFeeModel {
+contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable {
     // DKG Protocol
     event StartRitual(uint32 indexed ritualId, address indexed authority, address[] participants);
     event StartAggregationRound(uint32 indexed ritualId);
@@ -44,6 +42,8 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         address indexed participant,
         BLS12381.G2Point publicKey
     );
+    event FeeModelApproved(IFeeModel feeModel);
+    event RitualExtended(uint32 indexed ritualId, uint32 endTimestamp);
 
     enum RitualState {
         NON_INITIATED,
@@ -80,6 +80,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         BLS12381.G1Point publicKey;
         bytes aggregatedTranscript;
         Participant[] participant;
+        IFeeModel feeModel;
     }
 
     struct ParticipantKey {
@@ -87,38 +88,35 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         BLS12381.G2Point publicKey;
     }
 
-    using SafeERC20 for IERC20;
-
-    bytes32 public constant INITIATOR_ROLE = keccak256("INITIATOR_ROLE");
     bytes32 public constant TREASURY_ROLE = keccak256("TREASURY_ROLE");
 
     ITACoChildApplication public immutable application;
-    uint96 private immutable minAuthorization;
+    uint96 private immutable minAuthorization; // TODO use child app for checking eligibility
 
     Ritual[] public rituals;
     uint32 public timeout;
     uint16 public maxDkgSize;
-    bool public isInitiationPublic;
-    uint256 public totalPendingFees;
-    mapping(uint256 => uint256) public pendingFees;
-    IFeeModel internal feeModel; // TODO: Consider making feeModel specific to each ritual
+    bool private stub1; // former isInitiationPublic
+
+    uint256 private stub2; // former totalPendingFees
+    mapping(uint256 => uint256) private stub3; // former pendingFees
+    address private stub4; // former feeModel
+
     IReimbursementPool internal reimbursementPool;
     mapping(address => ParticipantKey[]) internal participantKeysHistory;
     mapping(bytes32 => uint32) internal ritualPublicKeyRegistry;
+    mapping(IFeeModel => bool) public feeModelsRegistry;
     // Note: Adjust the __preSentinelGap size if more contract variables are added
 
     // Storage area for sentinel values
-    uint256[20] internal __preSentinelGap;
+    uint256[19] internal __preSentinelGap;
     Participant internal __sentinelParticipant;
     uint256[20] internal __postSentinelGap;
 
-    constructor(
-        ITACoChildApplication _application,
-        IERC20 _currency,
-        uint256 _feeRatePerSecond
-    ) FlatRateFeeModel(_currency, _feeRatePerSecond) {
+    constructor(ITACoChildApplication _application) {
         application = _application;
-        minAuthorization = _application.minimumAuthorization();
+        minAuthorization = _application.minimumAuthorization(); // TODO use child app for checking eligibility
+        _disableInitializers();
     }
 
     /**
@@ -128,6 +126,25 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         timeout = _timeout;
         maxDkgSize = _maxDkgSize;
         __AccessControlDefaultAdminRules_init(0, _admin);
+    }
+
+    function getInitiator(uint32 ritualId) external view returns (address) {
+        return rituals[ritualId].initiator;
+    }
+
+    function getTimestamps(
+        uint32 ritualId
+    ) external view returns (uint32 initTimestamp, uint32 endTimestamp) {
+        initTimestamp = rituals[ritualId].initTimestamp;
+        endTimestamp = rituals[ritualId].endTimestamp;
+    }
+
+    function getAccessController(uint32 ritualId) external view returns (IEncryptionAuthorizer) {
+        return rituals[ritualId].accessController;
+    }
+
+    function getFeeModel(uint32 ritualId) external view returns (IFeeModel) {
+        return rituals[ritualId].feeModel;
     }
 
     function getRitualState(uint32 ritualId) external view returns (RitualState) {
@@ -174,11 +191,6 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
             //   - Still within the deadline
             revert("Ambiguous ritual state");
         }
-    }
-
-    function makeInitiationPublic() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        isInitiationPublic = true;
-        _setRoleAdmin(INITIATOR_ROLE, bytes32(0));
     }
 
     function setProviderPublicKey(BLS12381.G2Point calldata publicKey) external {
@@ -258,6 +270,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     }
 
     function initiateRitual(
+        IFeeModel feeModel,
         address[] calldata providers,
         address authority,
         uint32 duration,
@@ -265,10 +278,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     ) external returns (uint32) {
         require(authority != address(0), "Invalid authority");
 
-        require(
-            isInitiationPublic || hasRole(INITIATOR_ROLE, msg.sender),
-            "Sender can't initiate ritual"
-        );
+        require(feeModelsRegistry[feeModel], "Fee model must be approved");
         uint16 length = uint16(providers.length);
         require(2 <= length && length <= maxDkgSize, "Invalid number of nodes");
         require(duration >= 24 hours, "Invalid ritual duration"); // TODO: Define minimum duration #106
@@ -282,6 +292,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         ritual.initTimestamp = uint32(block.timestamp);
         ritual.endTimestamp = ritual.initTimestamp + duration;
         ritual.accessController = accessController;
+        ritual.feeModel = feeModel;
 
         address previous = address(0);
         for (uint256 i = 0; i < length; i++) {
@@ -302,7 +313,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
             previous = current;
         }
 
-        processRitualPayment(id, providers, duration);
+        feeModel.processRitualPayment(msg.sender, id, length, duration);
 
         emit StartRitual(id, ritual.authority, providers);
         return id;
@@ -397,7 +408,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         if (!ritual.aggregationMismatch) {
             ritual.totalAggregations++;
             if (ritual.totalAggregations == ritual.dkgSize) {
-                processPendingFee(ritualId);
+                // processPendingFee(ritualId); TODO consider to notify feeModel
                 // Register ritualId + 1 to discern ritualID#0 from unregistered keys.
                 // See getRitualIdFromPublicKey() for inverse operation.
                 bytes32 registryKey = keccak256(
@@ -532,6 +543,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         return found;
     }
 
+    /// @dev Deprecated, see issue #195
     function isEncryptionAuthorized(
         uint32 ritualId,
         bytes memory evidence,
@@ -540,44 +552,6 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         Ritual storage ritual = rituals[ritualId];
         require(getRitualState(ritual) == RitualState.ACTIVE, "Ritual not active");
         return ritual.accessController.isAuthorized(ritualId, evidence, ciphertextHeader);
-    }
-
-    function processRitualPayment(
-        uint32 ritualId,
-        address[] calldata providers,
-        uint32 duration
-    ) internal {
-        uint256 ritualCost = getRitualInitiationCost(providers, duration);
-        require(ritualCost > 0, "Invalid ritual cost");
-        totalPendingFees += ritualCost;
-        pendingFees[ritualId] = ritualCost;
-        currency.safeTransferFrom(msg.sender, address(this), ritualCost);
-    }
-
-    function processPendingFee(uint32 ritualId) public returns (uint256 refundableFee) {
-        Ritual storage ritual = rituals[ritualId];
-        RitualState state = getRitualState(ritual);
-        require(
-            state == RitualState.DKG_TIMEOUT ||
-                state == RitualState.DKG_INVALID ||
-                state == RitualState.ACTIVE ||
-                state == RitualState.EXPIRED,
-            "Ritual is not ended"
-        );
-        uint256 pending = pendingFees[ritualId];
-        require(pending > 0, "No pending fees for this ritual");
-
-        // Finalize fees for this ritual
-        totalPendingFees -= pending;
-        delete pendingFees[ritualId];
-        // Transfer fees back to initiator if failed
-        if (state == RitualState.DKG_TIMEOUT || state == RitualState.DKG_INVALID) {
-            // Refund everything minus cost of renting cohort for a day
-            uint256 duration = ritual.endTimestamp - ritual.initTimestamp;
-            refundableFee = pending - feeDeduction(pending, duration);
-            currency.safeTransfer(ritual.initiator, refundableFee);
-        }
-        return refundableFee;
     }
 
     function processReimbursement(uint256 initialGasLeft) internal {
@@ -591,13 +565,23 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         }
     }
 
-    function withdrawTokens(IERC20 token, uint256 amount) external onlyRole(TREASURY_ROLE) {
-        if (address(token) == address(currency)) {
-            require(
-                amount <= token.balanceOf(address(this)) - totalPendingFees,
-                "Can't withdraw pending fees"
-            );
-        }
-        token.safeTransfer(msg.sender, amount);
+    function approveFeeModel(IFeeModel feeModel) external onlyRole(TREASURY_ROLE) {
+        require(!feeModelsRegistry[feeModel], "Fee model already approved");
+        feeModelsRegistry[feeModel] = true;
+        emit FeeModelApproved(feeModel);
+    }
+
+    function extendRitual(uint32 ritualId, uint32 duration) external {
+        Ritual storage ritual = rituals[ritualId];
+        require(msg.sender == ritual.initiator, "Only initiator can extend ritual");
+        require(getRitualState(ritual) == RitualState.ACTIVE, "Only active ritual can be extended");
+        ritual.endTimestamp += duration;
+        ritual.feeModel.processRitualExtending(
+            ritual.initiator,
+            ritualId,
+            ritual.participant.length,
+            duration
+        );
+        emit RitualExtended(ritualId, ritual.endTimestamp);
     }
 }

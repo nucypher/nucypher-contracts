@@ -1,0 +1,10 @@
+deployment:
+  name: mainnet-free-fee-model
+  chain_id: 137
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: free-fee-model.json
+
+contracts:
+  - FreeFeeModel

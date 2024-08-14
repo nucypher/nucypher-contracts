@@ -33,22 +33,3 @@ contract ChildApplicationForCoordinatorMock is ITACoChildApplication {
     // solhint-disable-next-line no-empty-blocks
     function penalize(address _stakingProvider) external {}
 }
-
-// /**
-//  * @notice Intermediary contract for testing operator
-//  */
-// contract Intermediary {
-//     TACoApplication public immutable application;
-
-//     constructor(TACoApplication _application) {
-//         application = _application;
-//     }
-
-//     function bondOperator(address _operator) external {
-//         application.bondOperator(address(this), _operator);
-//     }
-
-//     function confirmOperatorAddress() external {
-//         application.confirmOperatorAddress();
-//     }
-// }

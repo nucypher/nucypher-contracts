@@ -1,18 +1,18 @@
 #!/usr/bin/python3
 
 import click
-from ape import project
 from ape.cli import ConnectedProviderCommand, account_option, network_option
 
-from deployment.constants import LYNX, LYNX_NODES, SUPPORTED_TACO_DOMAINS, TAPIR, TAPIR_NODES
+from deployment import registry
+from deployment.constants import ACCESS_CONTROLLERS, FEE_MODELS, SUPPORTED_TACO_DOMAINS
 from deployment.params import Transactor
-from deployment.registry import contracts_from_registry
-from deployment.utils import check_plugins, registry_filepath_from_domain
+from deployment.types import ChecksumAddress, MinInt
+from deployment.utils import check_plugins, sample_nodes
 
 
-@click.command(cls=ConnectedProviderCommand)
-@network_option(required=True)
+@click.command(cls=ConnectedProviderCommand, name="initiate-ritual")
 @account_option()
+@network_option(required=True)
 @click.option(
     "--domain",
     "-d",
@@ -23,48 +23,101 @@ from deployment.utils import check_plugins, registry_filepath_from_domain
 @click.option(
     "--duration",
     "-t",
-    help="Duration of the ritual",
-    type=int,
-    default=86400,
-    show_default=True,
+    help="Duration of the ritual in seconds. Must be at least 24h.",
+    type=MinInt(86400),
+    required=True,
 )
 @click.option(
     "--access-controller",
-    "-a",
-    help="global allow list or open access authorizer.",
-    type=click.Choice(["GlobalAllowList", "OpenAccessAuthorizer"]),
+    "-c",
+    help="The registry name of an access controller contract.",
+    type=click.Choice(ACCESS_CONTROLLERS),
     required=True,
 )
-def cli(domain, duration, network, account, access_controller):
+@click.option(
+    "--fee-model",
+    "-f",
+    help="The name of a fee model contract.",
+    type=click.Choice(FEE_MODELS),
+    required=True,
+)
+@click.option(
+    "--authority",
+    "-a",
+    help="The ethereum address of the ritual authority.",
+    required=True,
+    type=ChecksumAddress(),
+)
+@click.option(
+    "--num-nodes",
+    "-n",
+    help="Number of nodes to use for the ritual.",
+    type=int,
+)
+@click.option(
+    "--random-seed",
+    "-r",
+    help="Random seed integer for bucket sampling on mainnet.",
+    type=int,
+)
+@click.option(
+    "--handpicked",
+    help="The filepath of a file containing newline separated staking provider addresses.",
+    type=click.File("r"),
+)
+def cli(
+    domain,
+    account,
+    network,
+    duration,
+    access_controller,
+    fee_model,
+    authority,
+    num_nodes,
+    random_seed,
+    handpicked,
+):
+    """Initiate a ritual for a TACo domain."""
+
+    # Setup
     check_plugins()
-    print(f"Using network: {network}")
-    print(f"Using domain: {domain}")
-    print(f"Using account: {account}")
-    transactor = Transactor(account=account)
-
-    if domain == LYNX:
-        providers = list(sorted(LYNX_NODES.keys()))
-    elif domain == TAPIR:
-        providers = list(sorted(TAPIR_NODES.keys()))
-    else:
-        # mainnet sampling not currently supported
-        raise ValueError(f"Sampling of providers not supported for domain '{domain}'")
-
-    registry_filepath = registry_filepath_from_domain(domain=domain)
-
-    chain_id = project.chain_manager.chain_id
-    deployments = contracts_from_registry(filepath=registry_filepath, chain_id=chain_id)
-    coordinator = deployments[project.Coordinator.contract_type.name]
-
-    access_controller = deployments[getattr(project, access_controller).contract_type.name]
-    authority = transactor.get_account().address
-
-    while True:
-        transactor.transact(
-            coordinator.initiateRitual, providers, authority, duration, access_controller.address
+    click.echo(f"Connected to {network.name} network.")
+    if not (bool(handpicked) ^ (num_nodes is not None)):
+        raise click.BadOptionUsage(
+            option_name="--num-nodes",
+            message=f"Specify either --num-nodes or --handpicked; got {num_nodes}, {handpicked}.",
         )
-        if not input("Another? [y/n] ").lower().startswith("y"):
-            break
+    if handpicked and random_seed:
+        raise click.BadOptionUsage(
+            option_name="--random-seed",
+            message="Cannot specify --random-seed when using --handpicked.",
+        )
+
+    # Get the staking providers in the ritual cohort
+    if handpicked:
+        providers = sorted(line.lower() for line in handpicked)
+        if not providers:
+            raise ValueError(f"No staking providers found in the handpicked file {handpicked.name}")
+    else:
+        providers = sample_nodes(
+            domain=domain, num_nodes=num_nodes, duration=duration, random_seed=random_seed
+        )
+
+    # Get the contracts from the registry
+    coordinator = registry.get_contract(domain=domain, contract_name="Coordinator")
+    access_controller = registry.get_contract(domain=domain, contract_name=access_controller)
+    fee_model = registry.get_contract(domain=domain, contract_name=fee_model)
+
+    # Initiate the ritual
+    transactor = Transactor(account=account)
+    transactor.transact(
+        coordinator.initiateRitual,
+        fee_model.address,
+        providers,
+        authority,
+        duration,
+        access_controller.address,
+    )
 
 
 if __name__ == "__main__":

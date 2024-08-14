@@ -27,7 +27,7 @@ contract PolygonRoot is FxBaseRootTunnel {
         require(success, "Root tx failed");
     }
 
-    fallback() external {
+    fallback() external payable {
         require(msg.sender == rootApplication, "Caller must be the root app");
         _sendMessageToChild(msg.data);
     }
