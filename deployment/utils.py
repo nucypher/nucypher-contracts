@@ -169,7 +169,11 @@ def get_chain_name(chain_id: int) -> str:
 
 
 def sample_nodes(
-    domain: str, num_nodes: int, random_seed: Optional[int] = None, duration: Optional[int] = None
+    domain: str,
+    num_nodes: int,
+    random_seed: Optional[int] = None,
+    duration: Optional[int] = None,
+    min_version: Optional[str] = None,
 ):
     porter_endpoint = PORTER_SAMPLING_ENDPOINTS.get(domain)
     if not porter_endpoint:
@@ -184,6 +188,8 @@ def sample_nodes(
         if domain != MAINNET:
             raise ValueError("'random_seed' is only a valid parameter for mainnet")
         params["random_seed"] = random_seed
+    if min_version:
+        params["min_version"] = min_version
 
     response = requests.get(porter_endpoint, params=params)
     data = response.json()
