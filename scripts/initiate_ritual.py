@@ -105,6 +105,11 @@ def cli(
             message="Cannot specify --min-version when using --handpicked.",
         )
 
+    # Get the contracts from the registry
+    coordinator_contract = registry.get_contract(domain=domain, contract_name="Coordinator")
+    access_controller_contract = registry.get_contract(domain=domain, contract_name=access_controller)
+    fee_model_contract = registry.get_contract(domain=domain, contract_name=fee_model)
+
     # Get the staking providers in the ritual cohort
     if handpicked:
         providers = sorted(line.lower() for line in handpicked)
@@ -115,20 +120,16 @@ def cli(
             domain=domain, num_nodes=num_nodes, duration=duration, random_seed=random_seed, min_version=min_version
         )
 
-    # Get the contracts from the registry
-    coordinator = registry.get_contract(domain=domain, contract_name="Coordinator")
-    access_controller = registry.get_contract(domain=domain, contract_name=access_controller)
-    fee_model = registry.get_contract(domain=domain, contract_name=fee_model)
 
     # Initiate the ritual
     transactor = Transactor(account=account)
     transactor.transact(
-        coordinator.initiateRitual,
-        fee_model.address,
+        coordinator_contract.initiateRitual,
+        fee_model_contract.address,
         providers,
         authority,
         duration,
-        access_controller.address,
+        access_controller_contract.address,
     )
 
 
