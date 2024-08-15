@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import click
+from ape import chain
 from ape.cli import ConnectedProviderCommand, account_option, network_option
 
 from deployment import registry
@@ -25,7 +26,7 @@ from deployment.utils import check_plugins, sample_nodes
     "-t",
     help="Duration of the ritual in seconds. Must be at least 24h.",
     type=MinInt(86400),
-    required=True,
+    required=False,
 )
 @click.option(
     "--access-controller",
@@ -109,6 +110,23 @@ def cli(
     coordinator_contract = registry.get_contract(domain=domain, contract_name="Coordinator")
     access_controller_contract = registry.get_contract(domain=domain, contract_name=access_controller)
     fee_model_contract = registry.get_contract(domain=domain, contract_name=fee_model)
+
+    # if using a subcription, duration needs to be calculated
+    if fee_model == "BqETHSubscription":
+        start_of_subscription = fee_model_contract.startOfSubscription()
+        duration = (
+            fee_model_contract.subscriptionPeriodDuration()
+            + fee_model_contract.yellowPeriodDuration()
+            + fee_model_contract.redPeriodDuration()
+        )
+        if start_of_subscription > 0:
+            click.echo(
+            "Subscription has already started. Subtracting the elapsed time from the duration."
+        )
+            now = chain.blocks.head.timestamp
+            elapsed = now - start_of_subscription + 100
+            duration -= elapsed
+
 
     # Get the staking providers in the ritual cohort
     if handpicked:
