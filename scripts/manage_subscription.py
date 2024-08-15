@@ -108,7 +108,7 @@ def add_encryptors(account, network, domain, ritual_id, encryptors):
     # lookup the access controller + authority for the ritual
     coordinator = registry.get_contract(contract_name="Coordinator", domain=domain)
     ritual = coordinator.rituals(ritual_id)
-    access_controller = Contract(ritual.access_controller)  # uses polygonscan API
+    access_controller = Contract(ritual.accessController)  # uses polygonscan API
     if account.address != ritual.authority:
         raise ValueError(f"Only the authority ({ritual.authority}) can authorize encryptors.")
 
