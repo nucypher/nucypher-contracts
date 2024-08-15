@@ -99,10 +99,11 @@ def cli(
             option_name="--random-seed",
             message="Cannot specify --random-seed when using --handpicked.",
         )
-    
-    # TODO: Think what to do if you do something silly like requirin a min version
-    # but handpicking nodes that do not run that min version. 
-    # Maybe just don't allow both flags together?
+    if handpicked and min_version:
+        raise click.BadOptionUsage(
+            option_name="--min-version",
+            message="Cannot specify --min-version when using --handpicked.",
+        )
 
     # Get the staking providers in the ritual cohort
     if handpicked:
