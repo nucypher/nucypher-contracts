@@ -93,7 +93,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     ITACoChildApplication public immutable application;
     uint96 private immutable minAuthorization; // TODO use child app for checking eligibility
 
-    Ritual[] public rituals;
+    Ritual[] private ritualsStub; // former rituals
     uint32 public timeout;
     uint16 public maxDkgSize;
     bool private stub1; // former isInitiationPublic
@@ -106,10 +106,13 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     mapping(address => ParticipantKey[]) internal participantKeysHistory;
     mapping(bytes32 => uint32) internal ritualPublicKeyRegistry;
     mapping(IFeeModel => bool) public feeModelsRegistry;
+
+    mapping(uint256 index => Ritual ritual) internal _rituals;
+    uint256 public numberOfRituals;
     // Note: Adjust the __preSentinelGap size if more contract variables are added
 
     // Storage area for sentinel values
-    uint256[19] internal __preSentinelGap;
+    uint256[17] internal __preSentinelGap;
     Participant internal __sentinelParticipant;
     uint256[20] internal __postSentinelGap;
 
@@ -128,27 +131,49 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         __AccessControlDefaultAdminRules_init(0, _admin);
     }
 
+    function initializeNumberOfRituals() external reinitializer(2) {
+        if (numberOfRituals == 0) {
+            numberOfRituals = ritualsStub.length;
+        }
+    }
+
+    function rituals(uint32 ritualId) public view returns (Ritual memory) {
+        return storageRitual(ritualId);
+    }
+
+    // for backward compatibility
+    function storageRitual(uint32 ritualId) internal view returns (Ritual storage) {
+        if (ritualId < ritualsStub.length) {
+            return ritualsStub[ritualId];
+        }
+        require(ritualId < numberOfRituals, "Ritual id out of bounds");
+        return _rituals[ritualId];
+    }
+
     function getInitiator(uint32 ritualId) external view returns (address) {
-        return rituals[ritualId].initiator;
+        return rituals(ritualId).initiator;
     }
 
     function getTimestamps(
         uint32 ritualId
     ) external view returns (uint32 initTimestamp, uint32 endTimestamp) {
-        initTimestamp = rituals[ritualId].initTimestamp;
-        endTimestamp = rituals[ritualId].endTimestamp;
+        Ritual storage ritual = storageRitual(ritualId);
+        initTimestamp = ritual.initTimestamp;
+        endTimestamp = ritual.endTimestamp;
     }
 
     function getAccessController(uint32 ritualId) external view returns (IEncryptionAuthorizer) {
-        return rituals[ritualId].accessController;
+        Ritual storage ritual = storageRitual(ritualId);
+        return ritual.accessController;
     }
 
     function getFeeModel(uint32 ritualId) external view returns (IFeeModel) {
-        return rituals[ritualId].feeModel;
+        Ritual storage ritual = storageRitual(ritualId);
+        return ritual.feeModel;
     }
 
     function getRitualState(uint32 ritualId) external view returns (RitualState) {
-        return getRitualState(rituals[ritualId]);
+        return getRitualState(storageRitual(ritualId));
     }
 
     function isRitualActive(Ritual storage ritual) internal view returns (bool) {
@@ -156,7 +181,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     }
 
     function isRitualActive(uint32 ritualId) external view returns (bool) {
-        Ritual storage ritual = rituals[ritualId];
+        Ritual storage ritual = storageRitual(ritualId);
         return isRitualActive(ritual);
     }
 
@@ -194,7 +219,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     }
 
     function setProviderPublicKey(BLS12381.G2Point calldata publicKey) external {
-        uint32 lastRitualId = uint32(rituals.length);
+        uint32 lastRitualId = uint32(numberOfRituals);
         address stakingProvider = application.operatorToStakingProvider(msg.sender);
         require(stakingProvider != address(0), "Operator has no bond with staking provider");
 
@@ -247,7 +272,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     }
 
     function transferRitualAuthority(uint32 ritualId, address newAuthority) external {
-        Ritual storage ritual = rituals[ritualId];
+        Ritual storage ritual = storageRitual(ritualId);
         require(isRitualActive(ritual), "Ritual is not active");
         address previousAuthority = ritual.authority;
         require(msg.sender == previousAuthority, "Sender not ritual authority");
@@ -255,12 +280,8 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         emit RitualAuthorityTransferred(ritualId, previousAuthority, newAuthority);
     }
 
-    function numberOfRituals() external view returns (uint256) {
-        return rituals.length;
-    }
-
     function getParticipants(uint32 ritualId) external view returns (Participant[] memory) {
-        Ritual storage ritual = rituals[ritualId];
+        Ritual storage ritual = storageRitual(ritualId);
         return ritual.participant;
     }
 
@@ -283,8 +304,9 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         require(2 <= length && length <= maxDkgSize, "Invalid number of nodes");
         require(duration >= 24 hours, "Invalid ritual duration"); // TODO: Define minimum duration #106
 
-        uint32 id = uint32(rituals.length);
-        Ritual storage ritual = rituals.push();
+        uint32 id = uint32(numberOfRituals);
+        Ritual storage ritual = _rituals[id];
+        numberOfRituals += 1;
         ritual.initiator = msg.sender;
         ritual.authority = authority;
         ritual.dkgSize = length;
@@ -326,7 +348,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     function postTranscript(uint32 ritualId, bytes calldata transcript) external {
         uint256 initialGasLeft = gasleft();
 
-        Ritual storage ritual = rituals[ritualId];
+        Ritual storage ritual = storageRitual(ritualId);
         require(
             getRitualState(ritual) == RitualState.DKG_AWAITING_TRANSCRIPTS,
             "Not waiting for transcripts"
@@ -354,7 +376,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     }
 
     function getAuthority(uint32 ritualId) external view returns (address) {
-        return rituals[ritualId].authority;
+        return rituals(ritualId).authority;
     }
 
     function postAggregation(
@@ -365,7 +387,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     ) external {
         uint256 initialGasLeft = gasleft();
 
-        Ritual storage ritual = rituals[ritualId];
+        Ritual storage ritual = storageRitual(ritualId);
         require(
             getRitualState(ritual) == RitualState.DKG_AWAITING_AGGREGATIONS,
             "Not waiting for aggregations"
@@ -433,7 +455,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     function getPublicKeyFromRitualId(
         uint32 ritualId
     ) external view returns (BLS12381.G1Point memory) {
-        Ritual storage ritual = rituals[ritualId];
+        Ritual storage ritual = storageRitual(ritualId);
         RitualState state = getRitualState(ritual);
         require(
             state == RitualState.ACTIVE || state == RitualState.EXPIRED,
@@ -484,7 +506,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         address provider,
         bool transcript
     ) external view returns (Participant memory) {
-        Ritual storage ritual = rituals[ritualId];
+        Ritual storage ritual = storageRitual(ritualId);
         Participant memory participant = getParticipant(ritual, provider);
         if (!transcript) {
             participant.transcript = "";
@@ -496,7 +518,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         uint32 ritualId,
         address provider
     ) external view returns (Participant memory) {
-        Ritual storage ritual = rituals[ritualId];
+        Ritual storage ritual = storageRitual(ritualId);
         Participant memory participant = getParticipant(ritual, provider);
         return participant;
     }
@@ -507,7 +529,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         uint256 maxParticipants,
         bool includeTranscript
     ) external view returns (Participant[] memory) {
-        Ritual storage ritual = rituals[ritualId];
+        Ritual storage ritual = storageRitual(ritualId);
         uint256 endIndex = ritual.participant.length;
         require(startIndex >= 0, "Invalid start index");
         require(startIndex < endIndex, "Wrong start index");
@@ -529,7 +551,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     }
 
     function getProviders(uint32 ritualId) external view returns (address[] memory) {
-        Ritual storage ritual = rituals[ritualId];
+        Ritual storage ritual = storageRitual(ritualId);
         address[] memory providers = new address[](ritual.participant.length);
         for (uint256 i = 0; i < ritual.participant.length; i++) {
             providers[i] = ritual.participant[i].provider;
@@ -538,7 +560,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     }
 
     function isParticipant(uint32 ritualId, address provider) external view returns (bool) {
-        Ritual storage ritual = rituals[ritualId];
+        Ritual storage ritual = storageRitual(ritualId);
         (bool found, ) = findParticipant(ritual, provider);
         return found;
     }
@@ -549,7 +571,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         bytes memory evidence,
         bytes memory ciphertextHeader
     ) external view returns (bool) {
-        Ritual storage ritual = rituals[ritualId];
+        Ritual storage ritual = storageRitual(ritualId);
         require(getRitualState(ritual) == RitualState.ACTIVE, "Ritual not active");
         return ritual.accessController.isAuthorized(ritualId, evidence, ciphertextHeader);
     }
@@ -572,7 +594,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     }
 
     function extendRitual(uint32 ritualId, uint32 duration) external {
-        Ritual storage ritual = rituals[ritualId];
+        Ritual storage ritual = storageRitual(ritualId);
         require(msg.sender == ritual.initiator, "Only initiator can extend ritual");
         require(getRitualState(ritual) == RitualState.ACTIVE, "Only active ritual can be extended");
         ritual.endTimestamp += duration;
