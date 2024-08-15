@@ -93,7 +93,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     ITACoChildApplication public immutable application;
     uint96 private immutable minAuthorization; // TODO use child app for checking eligibility
 
-    Ritual[] private ritualsStub; // former rituals
+    Ritual[] internal ritualsStub; // former rituals, "internal" for testing only
     uint32 public timeout;
     uint16 public maxDkgSize;
     bool private stub1; // former isInitiationPublic
