@@ -149,7 +149,7 @@
             "deployer": "0xFfFd7092685bDeeBD121D1A0FEA3c349114Cce50"
         },
         "TACoApplication": {
-            "address": "0x98F643B32b5A3513929Dfd3F2E3e39F7376659DB",
+            "address": "0x347CC7ede7e5517bD47D20620B2CF1b406edcF07",
             "abi": [
                 {
                     "type": "constructor",
