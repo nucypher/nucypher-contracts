@@ -49,6 +49,12 @@ from deployment.utils import check_plugins, sample_nodes
     type=ChecksumAddress(),
 )
 @click.option(
+    "--min-version",
+    "-mv",
+    help="Minimum version to sample",
+    type=str,
+)
+@click.option(
     "--num-nodes",
     "-n",
     help="Number of nodes to use for the ritual.",
@@ -76,6 +82,7 @@ def cli(
     num_nodes,
     random_seed,
     handpicked,
+    min_version
 ):
     """Initiate a ritual for a TACo domain."""
 
@@ -92,6 +99,11 @@ def cli(
             option_name="--random-seed",
             message="Cannot specify --random-seed when using --handpicked.",
         )
+    if handpicked and min_version:
+        raise click.BadOptionUsage(
+            option_name="--min-version",
+            message="Cannot specify --min-version when using --handpicked.",
+        )
 
     # Get the staking providers in the ritual cohort
     if handpicked:
@@ -100,7 +112,7 @@ def cli(
             raise ValueError(f"No staking providers found in the handpicked file {handpicked.name}")
     else:
         providers = sample_nodes(
-            domain=domain, num_nodes=num_nodes, duration=duration, random_seed=random_seed
+            domain=domain, num_nodes=num_nodes, duration=duration, random_seed=random_seed, min_version=min_version
         )
 
     # Get the contracts from the registry
