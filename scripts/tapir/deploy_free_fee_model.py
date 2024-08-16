@@ -8,7 +8,7 @@ from deployment.constants import (
 from deployment.params import Deployer
 
 VERIFY = False
-CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "mainnet" / "free-fee-model.yml"
+CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "tapir" / "free-fee-model.yml"
 
 
 def main():
