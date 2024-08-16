@@ -36,6 +36,10 @@ contract InfractionCollector is OwnableUpgradeable {
         _disableInitializers();
     }
 
+    function initialize() external initializer {
+        __Ownable_init(msg.sender);
+    }
+
     function reportMissingTranscript(
         uint32 ritualId,
         address[] calldata stakingProviders
