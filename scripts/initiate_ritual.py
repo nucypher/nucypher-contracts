@@ -120,10 +120,13 @@ def cli(
             + fee_model_contract.redPeriodDuration()
         )
         if start_of_subscription > 0:
+            end_of_subscription = fee_model_contract.getEndOfSubscription()
+            now = chain.blocks.head.timestamp
+            if now > end_of_subscription:
+                raise ValueError("Subscription has already ended.")
             click.echo(
             "Subscription has already started. Subtracting the elapsed time from the duration."
         )
-            now = chain.blocks.head.timestamp
             elapsed = now - start_of_subscription + 100
             duration -= elapsed
 
