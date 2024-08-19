@@ -131,6 +131,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         __AccessControlDefaultAdminRules_init(0, _admin);
     }
 
+    /// @dev use `upgradeAndCall` for upgrading together with re-initialization
     function initializeNumberOfRituals() external reinitializer(2) {
         if (numberOfRituals == 0) {
             numberOfRituals = ritualsStub.length;
