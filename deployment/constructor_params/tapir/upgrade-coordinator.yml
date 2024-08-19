@@ -1,0 +1,12 @@
+deployment:
+  name: tapir-upgrade-coordinator
+  chain_id: 80002
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: tapir-upgrade-coordinator.json
+
+contracts:
+  - Coordinator:
+      constructor:
+        _application: $TACoChildApplication
