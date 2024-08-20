@@ -79,12 +79,10 @@ def erc20(project, initiator):
 
 
 @pytest.fixture()
-def coordinator(project, deployer, application, erc20, initiator, oz_dependency):
+def coordinator(project, deployer, application, oz_dependency):
     admin = deployer
     contract = project.Coordinator.deploy(
         application.address,
-        erc20.address,
-        FEE_RATE,
         sender=deployer,
     )
 
@@ -96,8 +94,6 @@ def coordinator(project, deployer, application, erc20, initiator, oz_dependency)
         sender=deployer,
     )
     proxy_contract = project.Coordinator.at(proxy.address)
-
-    proxy_contract.grantRole(contract.INITIATOR_ROLE(), initiator, sender=admin)
     return proxy_contract
 
 
@@ -107,19 +103,32 @@ def global_allow_list(project, deployer, coordinator):
     return contract
 
 
+@pytest.fixture()
+def fee_model(project, deployer, coordinator, erc20, treasury):
+    contract = project.FlatRateFeeModel.deploy(
+        coordinator.address, erc20.address, FEE_RATE, sender=deployer
+    )
+    coordinator.grantRole(coordinator.TREASURY_ROLE(), treasury, sender=deployer)
+    coordinator.approveFeeModel(contract.address, sender=treasury)
+    return contract
+
+
 @pytest.fixture
 def infraction_collector(project, deployer, coordinator):
     contract = project.InfractionCollector.deploy(coordinator.address, sender=deployer)
     return contract
 
-def test_no_infractions(erc20, nodes, initiator, global_allow_list, infraction_collector, coordinator):
-    cost = coordinator.getRitualInitiationCost(nodes, DURATION)
+
+def test_no_infractions(
+    erc20, nodes, initiator, global_allow_list, infraction_collector, coordinator, fee_model
+):
+    cost = fee_model.getRitualCost(len(nodes), DURATION)
     for node in nodes:
         public_key = gen_public_key()
-        coordinator.setProviderPublicKey(public_key, sender=node)  
-    erc20.approve(coordinator.address, cost, sender=initiator)
+        coordinator.setProviderPublicKey(public_key, sender=node)
+    erc20.approve(fee_model.address, cost, sender=initiator)
     coordinator.initiateRitual(
-        nodes, initiator, DURATION, global_allow_list.address, sender=initiator
+        fee_model, nodes, initiator, DURATION, global_allow_list.address, sender=initiator
     )
     transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
     for node in nodes:
@@ -128,52 +137,69 @@ def test_no_infractions(erc20, nodes, initiator, global_allow_list, infraction_c
     with ape.reverts("Ritual must have failed"):
         infraction_collector.reportMissingTranscript(0, nodes, sender=initiator)
 
-def test_partial_infractions(erc20, nodes, initiator, global_allow_list, infraction_collector, coordinator, chain):
-    cost = coordinator.getRitualInitiationCost(nodes, DURATION)
+
+def test_partial_infractions(
+    erc20, nodes, initiator, global_allow_list, infraction_collector, coordinator, chain, fee_model
+):
+    cost = fee_model.getRitualCost(len(nodes), DURATION)
     for node in nodes:
         public_key = gen_public_key()
         coordinator.setProviderPublicKey(public_key, sender=node)
-    erc20.approve(coordinator.address, cost, sender=initiator)
+    erc20.approve(fee_model.address, cost, sender=initiator)
     coordinator.initiateRitual(
-        nodes, initiator, DURATION, global_allow_list.address, sender=initiator
+        fee_model, nodes, initiator, DURATION, global_allow_list.address, sender=initiator
     )
     transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
     # post transcript for half of nodes
-    for node in nodes[:len(nodes) // 2]:
+    for node in nodes[: len(nodes) // 2]:
         coordinator.postTranscript(RITUAL_ID, transcript, sender=node)
     chain.pending_timestamp += TIMEOUT * 2
-    infraction_collector.reportMissingTranscript(RITUAL_ID, nodes[len(nodes) // 2:], sender=initiator)
+    infraction_collector.reportMissingTranscript(
+        RITUAL_ID, nodes[len(nodes) // 2 :], sender=initiator
+    )
     # first half of nodes should be fine, second half should be infracted
-    for node in nodes[:len(nodes) // 2]:
-        assert not infraction_collector.infractionsForRitual(RITUAL_ID, node, infraction_types.MISSING_TRANSCRIPT)
-    for node in nodes[len(nodes) // 2:]:
-        assert infraction_collector.infractionsForRitual(RITUAL_ID, node, infraction_types.MISSING_TRANSCRIPT)
+    for node in nodes[: len(nodes) // 2]:
+        assert not infraction_collector.infractionsForRitual(
+            RITUAL_ID, node, infraction_types.MISSING_TRANSCRIPT
+        )
+    for node in nodes[len(nodes) // 2 :]:
+        assert infraction_collector.infractionsForRitual(
+            RITUAL_ID, node, infraction_types.MISSING_TRANSCRIPT
+        )
 
-def test_report_infractions(erc20, nodes, initiator, global_allow_list, infraction_collector, coordinator, chain):
-    cost = coordinator.getRitualInitiationCost(nodes, DURATION)
+
+def test_report_infractions(
+    erc20, nodes, initiator, global_allow_list, infraction_collector, coordinator, chain, fee_model
+):
+    cost = fee_model.getRitualCost(len(nodes), DURATION)
     for node in nodes:
         public_key = gen_public_key()
-        coordinator.setProviderPublicKey(public_key, sender=node)   
-    erc20.approve(coordinator.address, cost, sender=initiator)
+        coordinator.setProviderPublicKey(public_key, sender=node)
+    erc20.approve(fee_model.address, cost, sender=initiator)
     coordinator.initiateRitual(
-        nodes, initiator, DURATION, global_allow_list.address, sender=initiator
+        fee_model, nodes, initiator, DURATION, global_allow_list.address, sender=initiator
     )
     chain.pending_timestamp += TIMEOUT * 2
     infraction_collector.reportMissingTranscript(RITUAL_ID, nodes, sender=initiator)
     for node in nodes:
-        assert infraction_collector.infractionsForRitual(RITUAL_ID, node, infraction_types.MISSING_TRANSCRIPT)
+        assert infraction_collector.infractionsForRitual(
+            RITUAL_ID, node, infraction_types.MISSING_TRANSCRIPT
+        )
 
-def test_cant_report_infractions_twice(erc20, nodes, initiator, global_allow_list, infraction_collector, coordinator, chain):
-    cost = coordinator.getRitualInitiationCost(nodes, DURATION)
+
+def test_cant_report_infractions_twice(
+    erc20, nodes, initiator, global_allow_list, infraction_collector, coordinator, chain, fee_model
+):
+    cost = fee_model.getRitualCost(len(nodes), DURATION)
     for node in nodes:
         public_key = gen_public_key()
-        coordinator.setProviderPublicKey(public_key, sender=node)   
-    erc20.approve(coordinator.address, cost, sender=initiator)
+        coordinator.setProviderPublicKey(public_key, sender=node)
+    erc20.approve(fee_model.address, cost, sender=initiator)
     coordinator.initiateRitual(
-        nodes, initiator, DURATION, global_allow_list.address, sender=initiator
+        fee_model, nodes, initiator, DURATION, global_allow_list.address, sender=initiator
     )
     chain.pending_timestamp += TIMEOUT * 2
     infraction_collector.reportMissingTranscript(RITUAL_ID, nodes, sender=initiator)
-    
+
     with ape.reverts("Infraction already reported"):
         infraction_collector.reportMissingTranscript(RITUAL_ID, nodes, sender=initiator)
