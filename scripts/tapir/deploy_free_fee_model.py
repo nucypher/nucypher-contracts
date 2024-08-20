@@ -6,11 +6,11 @@ from deployment.constants import (
     ARTIFACTS_DIR,
     CONSTRUCTOR_PARAMS_DIR,
 )
-from deployment.params import Deployer, Transactor
-from deployment.registry import contracts_from_registry
+from deployment.params import Deployer
+from deployment.registry import contracts_from_registry, merge_registries
 
 VERIFY = False
-CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "tapir" / "tapir-free-fee-model.yml"
+CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "tapir" / "free-fee-model.yml"
 TAPIR_REGISTRY_FILEPATH = ARTIFACTS_DIR / "tapir.json"
 
 
@@ -19,11 +19,13 @@ def main():
         filepath=TAPIR_REGISTRY_FILEPATH, chain_id=networks.active_provider.chain_id
     )
     deployer = Deployer.from_yaml(filepath=CONSTRUCTOR_PARAMS_FILEPATH, verify=VERIFY)
-    transactor = Transactor()
 
     free_fee_model = deployer.deploy(project.FreeFeeModel)
-    coordinator = deployments[project.Coordinator.contract_type.name]
-    transactor.transact(coordinator.approveFeeModel, free_fee_model.address)
     deployments = [free_fee_model]
 
     deployer.finalize(deployments=deployments)
+    merge_registries(
+        registry_1_filepath=TAPIR_REGISTRY_FILEPATH,
+        registry_2_filepath=deployer.registry_filepath,
+        output_filepath=TAPIR_REGISTRY_FILEPATH,
+    )
