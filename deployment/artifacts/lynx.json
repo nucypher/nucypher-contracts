@@ -5476,6 +5476,245 @@
             "block_number": 9101909,
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
+        "InfractionCollector": {
+            "address": "0xad8dADaB38eC94B8fe3c482f7550044201506369",
+            "abi": [
+                {
+                    "type": "constructor",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_coordinator",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "contract Coordinator"
+                        },
+                        {
+                            "name": "_tacoChildApplication",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "contract ITACoChildApplication"
+                        }
+                    ]
+                },
+                {
+                    "type": "error",
+                    "name": "InvalidInitialization",
+                    "inputs": []
+                },
+                {
+                    "type": "error",
+                    "name": "NotInitializing",
+                    "inputs": []
+                },
+                {
+                    "type": "error",
+                    "name": "OwnableInvalidOwner",
+                    "inputs": [
+                        {
+                            "name": "owner",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address"
+                        }
+                    ]
+                },
+                {
+                    "type": "error",
+                    "name": "OwnableUnauthorizedAccount",
+                    "inputs": [
+                        {
+                            "name": "account",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address"
+                        }
+                    ]
+                },
+                {
+                    "type": "event",
+                    "name": "InfractionReported",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "components": null,
+                            "internal_type": "uint32",
+                            "indexed": true
+                        },
+                        {
+                            "name": "stakingProvider",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address",
+                            "indexed": true
+                        },
+                        {
+                            "name": "infractionType",
+                            "type": "uint8",
+                            "components": null,
+                            "internal_type": "enum InfractionCollector.InfractionType",
+                            "indexed": false
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
+                    "name": "Initialized",
+                    "inputs": [
+                        {
+                            "name": "version",
+                            "type": "uint64",
+                            "components": null,
+                            "internal_type": "uint64",
+                            "indexed": false
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
+                    "name": "OwnershipTransferred",
+                    "inputs": [
+                        {
+                            "name": "previousOwner",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address",
+                            "indexed": true
+                        },
+                        {
+                            "name": "newOwner",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address",
+                            "indexed": true
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "function",
+                    "name": "coordinator",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "contract Coordinator"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "infractions",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "components": null,
+                            "internal_type": "uint32"
+                        },
+                        {
+                            "name": "stakingProvider",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address"
+                        },
+                        {
+                            "name": "",
+                            "type": "uint8",
+                            "components": null,
+                            "internal_type": "enum InfractionCollector.InfractionType"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "bool",
+                            "components": null,
+                            "internal_type": "bool"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "owner",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "renounceOwnership",
+                    "stateMutability": "nonpayable",
+                    "inputs": [],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "reportMissingTranscript",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "components": null,
+                            "internal_type": "uint32"
+                        },
+                        {
+                            "name": "stakingProviders",
+                            "type": "address[]",
+                            "components": null,
+                            "internal_type": "address[]"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "tacoChildApplication",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "contract ITACoChildApplication"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "transferOwnership",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "newOwner",
+                            "type": "address",
+                            "components": null,
+                            "internal_type": "address"
+                        }
+                    ],
+                    "outputs": []
+                }
+            ],
+            "tx_hash": "0x36762db270b4706dfe829502e5b6469f783acb4bc74e9d21908ecdc88f150629",
+            "block_number": 10661923,
+            "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
+        },
         "LynxRitualToken": {
             "address": "0x064Be2a9740e565729BC0d47bC616c5bb8Cc87B9",
             "abi": [
