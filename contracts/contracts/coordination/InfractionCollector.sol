@@ -12,27 +12,24 @@ contract InfractionCollector is OwnableUpgradeable {
         address indexed stakingProvider,
         InfractionType infractionType
     );
-    Coordinator public immutable coordinator;
-
-    // Reference to the TACoChildApplication contract
-    ITACoChildApplication public immutable tacoChildApplication;
-
     // infraction types
     enum InfractionType {
         MISSING_TRANSCRIPT
     }
-
+    Coordinator public immutable coordinator;
+    // Reference to the TACoChildApplication contract
+    ITACoChildApplication public immutable tacoChildApplication;
     // Mapping to keep track of reported infractions
-    mapping(uint32 ritualId => mapping(address stakingProvider => mapping(InfractionType => bool)))
-        public infractions;
+    mapping(uint32 ritualId => mapping(address stakingProvider => mapping(InfractionType => uint256)))
+        public infractionsForRitual;
 
-    constructor(Coordinator _coordinator, ITACoChildApplication _tacoChildApplication) {
+    constructor(Coordinator _coordinator) {
         require(
-            address(_coordinator) != address(0) && address(_tacoChildApplication) != address(0),
+            address(_coordinator) != address(0),
             "Contracts must be specified"
         );
         coordinator = _coordinator;
-        tacoChildApplication = _tacoChildApplication;
+        tacoChildApplication = coordinator.application();
         _disableInitializers();
     }
 
@@ -53,26 +50,22 @@ contract InfractionCollector is OwnableUpgradeable {
         for (uint256 i = 0; i < stakingProviders.length; i++) {
             // Check if the infraction has already been reported
             require(
-                !infractions[ritualId][stakingProviders[i]][InfractionType.MISSING_TRANSCRIPT],
+                infractionsForRitual[ritualId][stakingProviders[i]][InfractionType.MISSING_TRANSCRIPT] == 0,
                 "Infraction already reported"
             );
             Coordinator.Participant memory participant = coordinator.getParticipantFromProvider(
                 ritualId,
                 stakingProviders[i]
             );
-            if (participant.transcript.length == 0) {
-                // Transcript TX wasn't posted
-                // Penalize the staking provider
-                // tacoChildApplication.penalize(stakingProviders[i]);
-                infractions[ritualId][stakingProviders[i]][
-                    InfractionType.MISSING_TRANSCRIPT
-                ] = true;
-                emit InfractionReported(
-                    ritualId,
-                    stakingProviders[i],
-                    InfractionType.MISSING_TRANSCRIPT
-                );
-            }
+            require(participant.transcript.length == 0, "Transcript is not missing");
+            infractionsForRitual[ritualId][stakingProviders[i]][
+                InfractionType.MISSING_TRANSCRIPT
+            ] = 1;
+            emit InfractionReported(
+                ritualId,
+                stakingProviders[i],
+                InfractionType.MISSING_TRANSCRIPT
+            );
         }
     }
 }
