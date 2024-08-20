@@ -24,10 +24,7 @@ contract InfractionCollector is OwnableUpgradeable {
         public infractionsForRitual;
 
     constructor(Coordinator _coordinator) {
-        require(
-            address(_coordinator) != address(0),
-            "Contracts must be specified"
-        );
+        require(address(_coordinator) != address(0), "Contracts must be specified");
         coordinator = _coordinator;
         tacoChildApplication = coordinator.application();
         _disableInitializers();
@@ -50,7 +47,9 @@ contract InfractionCollector is OwnableUpgradeable {
         for (uint256 i = 0; i < stakingProviders.length; i++) {
             // Check if the infraction has already been reported
             require(
-                infractionsForRitual[ritualId][stakingProviders[i]][InfractionType.MISSING_TRANSCRIPT] == 0,
+                infractionsForRitual[ritualId][stakingProviders[i]][
+                    InfractionType.MISSING_TRANSCRIPT
+                ] == 0,
                 "Infraction already reported"
             );
             Coordinator.Participant memory participant = coordinator.getParticipantFromProvider(
