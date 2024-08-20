@@ -5,17 +5,13 @@ from enum import Enum
 from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional
 
-from ape import chain, project
+from ape import project
 from ape.contracts import ContractInstance
 from eth_typing import ChecksumAddress
 from eth_utils import to_checksum_address
 from web3.types import ABI
 
-from deployment.utils import (
-    _load_json,
-    get_contract_container,
-    registry_filepath_from_domain
-)
+from deployment.utils import _load_json, get_contract_container, registry_filepath_from_domain
 
 ChainId = int
 ContractName = str
@@ -68,7 +64,7 @@ def _get_entry(
 ) -> RegistryEntry:
     contract_abi = _get_abi(contract_instance)
     contract_name = _get_name(contract_instance=contract_instance, registry_names=registry_names)
-    receipt = chain.get_receipt(contract_instance.txn_hash)
+    receipt = contract_instance.receipt
     entry = RegistryEntry(
         name=contract_name,
         address=to_checksum_address(contract_instance.address),
