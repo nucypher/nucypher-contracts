@@ -11,16 +11,12 @@ ERC20_SUPPLY = 10**24
 DURATION = 48 * 60 * 60
 ONE_DAY = 24 * 60 * 60
 
-RitualState = IntEnum(
-    "RitualState",
+RITUAL_ID = 0
+
+infraction_types = IntEnum(
+    "InfractionType",
     [
-        "NON_INITIATED",
-        "DKG_AWAITING_TRANSCRIPTS",
-        "DKG_AWAITING_AGGREGATIONS",
-        "DKG_TIMEOUT",
-        "DKG_INVALID",
-        "ACTIVE",
-        "EXPIRED",
+        "MISSING_TRANSCRIPT",
     ],
     start=0,
 )
@@ -112,8 +108,8 @@ def global_allow_list(project, deployer, coordinator):
 
 
 @pytest.fixture
-def infraction_collector(project, deployer, coordinator, application):
-    contract = project.InfractionCollector.deploy(coordinator.address, application.address, sender=deployer)
+def infraction_collector(project, deployer, coordinator):
+    contract = project.InfractionCollector.deploy(coordinator.address, sender=deployer)
     return contract
 
 def test_no_infractions(erc20, nodes, initiator, global_allow_list, infraction_collector, coordinator):
@@ -144,14 +140,14 @@ def test_partial_infractions(erc20, nodes, initiator, global_allow_list, infract
     transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
     # post transcript for half of nodes
     for node in nodes[:len(nodes) // 2]:
-        coordinator.postTranscript(0, transcript, sender=node)
+        coordinator.postTranscript(RITUAL_ID, transcript, sender=node)
     chain.pending_timestamp += TIMEOUT * 2
-    infraction_collector.reportMissingTranscript(0, nodes, sender=initiator)
+    infraction_collector.reportMissingTranscript(RITUAL_ID, nodes[len(nodes) // 2:], sender=initiator)
     # first half of nodes should be fine, second half should be infracted
     for node in nodes[:len(nodes) // 2]:
-        assert infraction_collector.infractions(0, node, 0) == False
+        assert not infraction_collector.infractionsForRitual(RITUAL_ID, node, infraction_types.MISSING_TRANSCRIPT)
     for node in nodes[len(nodes) // 2:]:
-        assert infraction_collector.infractions(0, node, 0) == True
+        assert infraction_collector.infractionsForRitual(RITUAL_ID, node, infraction_types.MISSING_TRANSCRIPT)
 
 def test_report_infractions(erc20, nodes, initiator, global_allow_list, infraction_collector, coordinator, chain):
     cost = coordinator.getRitualInitiationCost(nodes, DURATION)
@@ -163,9 +159,9 @@ def test_report_infractions(erc20, nodes, initiator, global_allow_list, infracti
         nodes, initiator, DURATION, global_allow_list.address, sender=initiator
     )
     chain.pending_timestamp += TIMEOUT * 2
-    infraction_collector.reportMissingTranscript(0, nodes, sender=initiator)
+    infraction_collector.reportMissingTranscript(RITUAL_ID, nodes, sender=initiator)
     for node in nodes:
-        assert infraction_collector.infractions(0, node, 0) == True
+        assert infraction_collector.infractionsForRitual(RITUAL_ID, node, infraction_types.MISSING_TRANSCRIPT)
 
 def test_cant_report_infractions_twice(erc20, nodes, initiator, global_allow_list, infraction_collector, coordinator, chain):
     cost = coordinator.getRitualInitiationCost(nodes, DURATION)
@@ -177,7 +173,7 @@ def test_cant_report_infractions_twice(erc20, nodes, initiator, global_allow_lis
         nodes, initiator, DURATION, global_allow_list.address, sender=initiator
     )
     chain.pending_timestamp += TIMEOUT * 2
-    infraction_collector.reportMissingTranscript(0, nodes, sender=initiator)
+    infraction_collector.reportMissingTranscript(RITUAL_ID, nodes, sender=initiator)
     
     with ape.reverts("Infraction already reported"):
-        infraction_collector.reportMissingTranscript(0, nodes, sender=initiator)
+        infraction_collector.reportMissingTranscript(RITUAL_ID, nodes, sender=initiator)
