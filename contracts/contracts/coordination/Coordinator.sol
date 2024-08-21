@@ -139,7 +139,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     }
 
     function rituals(
-        uint32 ritualId
+        uint256 ritualId // uint256 for backward compatibility
     )
         external
         view
@@ -161,7 +161,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
             IFeeModel feeModel
         )
     {
-        Ritual storage ritual = storageRitual(ritualId);
+        Ritual storage ritual = storageRitual(uint32(ritualId));
         initiator = ritual.initiator;
         initTimestamp = ritual.initTimestamp;
         endTimestamp = ritual.endTimestamp;
