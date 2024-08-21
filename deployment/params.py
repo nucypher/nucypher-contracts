@@ -4,7 +4,7 @@ from collections import OrderedDict, namedtuple
 from pathlib import Path
 from typing import Any, List
 
-from ape import chain, networks
+from ape import chain, networks, project
 from ape.api import AccountAPI, ReceiptAPI
 from ape.cli.choices import select_account
 from ape.contracts.base import ContractContainer, ContractInstance, ContractTransactionHandler
@@ -633,6 +633,13 @@ class Deployer(Transactor):
         return contract_type_container.at(proxy_contract.address)
 
     def upgrade(self, container: ContractContainer, proxy_address, data=b"") -> ContractInstance:
+        implementation = self.deploy(container)
+        # TODO: initialize taco app implementation too
+        return self.upgradeTo(implementation, proxy_address, data)
+
+    def upgradeTo(
+        self, implementation: ContractInstance, proxy_address, data=b""
+    ) -> ContractInstance:
         admin_slot = chain.provider.get_storage_at(address=proxy_address, slot=EIP1967_ADMIN_SLOT)
 
         if admin_slot == EMPTY_BYTES32:
@@ -645,12 +652,9 @@ class Deployer(Transactor):
         proxy_admin = OZ_DEPENDENCY.ProxyAdmin.at(admin_address)
         # TODO: Check that owner of proxy admin is deployer
 
-        implementation = self.deploy(container)
-        # TODO: initialize taco app implementation too
-
         self.transact(proxy_admin.upgradeAndCall, proxy_address, implementation.address, data)
 
-        wrapped_instance = container.at(proxy_address)
+        wrapped_instance = getattr(project, implementation.contract_type.name).at(proxy_address)
         return wrapped_instance
 
     def finalize(self, deployments: List[ContractInstance]) -> None:
