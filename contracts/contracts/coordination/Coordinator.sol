@@ -138,8 +138,43 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         }
     }
 
-    function rituals(uint32 ritualId) public view returns (Ritual memory) {
-        return storageRitual(ritualId);
+    function rituals(
+        uint32 ritualId
+    )
+        external
+        view
+        returns (
+            address initiator,
+            uint32 initTimestamp,
+            uint32 endTimestamp,
+            uint16 totalTranscripts,
+            uint16 totalAggregations,
+            //
+            address authority,
+            uint16 dkgSize,
+            uint16 threshold,
+            bool aggregationMismatch,
+            //
+            IEncryptionAuthorizer accessController,
+            BLS12381.G1Point memory publicKey,
+            bytes memory aggregatedTranscript,
+            IFeeModel feeModel
+        )
+    {
+        Ritual storage ritual = storageRitual(ritualId);
+        initiator = ritual.initiator;
+        initTimestamp = ritual.initTimestamp;
+        endTimestamp = ritual.endTimestamp;
+        totalTranscripts = ritual.totalTranscripts;
+        totalAggregations = ritual.totalAggregations;
+        authority = ritual.authority;
+        dkgSize = ritual.dkgSize;
+        threshold = ritual.threshold;
+        aggregationMismatch = ritual.aggregationMismatch;
+        accessController = ritual.accessController;
+        publicKey = ritual.publicKey;
+        aggregatedTranscript = ritual.aggregatedTranscript;
+        feeModel = ritual.feeModel;
     }
 
     // for backward compatibility
@@ -152,7 +187,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     }
 
     function getInitiator(uint32 ritualId) external view returns (address) {
-        return rituals(ritualId).initiator;
+        return storageRitual(ritualId).initiator;
     }
 
     function getTimestamps(
@@ -377,7 +412,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     }
 
     function getAuthority(uint32 ritualId) external view returns (address) {
-        return rituals(ritualId).authority;
+        return storageRitual(ritualId).authority;
     }
 
     function postAggregation(
