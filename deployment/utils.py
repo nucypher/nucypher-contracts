@@ -9,7 +9,7 @@ from ape import networks, project
 from ape.contracts import ContractContainer, ContractInstance
 from ape_etherscan.utils import API_KEY_ENV_KEY_MAP
 
-from deployment.constants import ARTIFACTS_DIR, LYNX, MAINNET, PORTER_SAMPLING_ENDPOINTS, TAPIR
+from deployment.constants import ARTIFACTS_DIR, MAINNET, PORTER_SAMPLING_ENDPOINTS
 from deployment.networks import is_local_network
 
 
@@ -192,6 +192,8 @@ def sample_nodes(
         params["min_version"] = min_version
 
     response = requests.get(porter_endpoint, params=params)
+    response.raise_for_status()
+
     data = response.json()
     result = sorted(data["result"]["ursulas"], key=lambda x: x.lower())
 
