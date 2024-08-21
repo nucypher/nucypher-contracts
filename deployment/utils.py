@@ -195,6 +195,11 @@ def sample_nodes(
     response.raise_for_status()
 
     data = response.json()
-    result = sorted(data["result"]["ursulas"], key=lambda x: x.lower())
+    ursulas = data["result"]["ursulas"]
+    if domain != MAINNET:
+        # /get_ursulas is used for sampling (instead of /bucket_sampling)
+        #  so the json returned is slightly different
+        ursulas = [u["checksum_address"] for u in ursulas]
 
+    result = sorted(ursulas, key=lambda x: x.lower())
     return result
