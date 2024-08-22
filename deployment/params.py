@@ -634,7 +634,7 @@ class Deployer(Transactor):
 
     def upgrade(self, container: ContractContainer, proxy_address, data=b"") -> ContractInstance:
         implementation = self.deploy(container)
-        # TODO: initialize taco app implementation too
+        # upgrade proxy to implementation
         return self.upgradeTo(implementation, proxy_address, data)
 
     def upgradeTo(
