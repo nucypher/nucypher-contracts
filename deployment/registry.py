@@ -64,7 +64,7 @@ def _get_entry(
 ) -> RegistryEntry:
     contract_abi = _get_abi(contract_instance)
     contract_name = _get_name(contract_instance=contract_instance, registry_names=registry_names)
-    receipt = contract_instance.receipt
+    receipt = contract_instance.creation_metadata.receipt
     entry = RegistryEntry(
         name=contract_name,
         address=to_checksum_address(contract_instance.address),
