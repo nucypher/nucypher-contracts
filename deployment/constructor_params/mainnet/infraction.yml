@@ -1,0 +1,17 @@
+deployment:
+  name: infraction
+  chain_id: 137
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: mainnet.json
+
+constants:
+  # See deployment/artifacts/mainnet.json
+  COORDINATOR_PROXY: "0xE74259e3dafe30bAA8700238e324b47aC98FE755"
+
+contracts:
+  - InfractionCollector:
+      proxy:
+      constructor:
+        _coordinator: $COORDINATOR_PROXY
