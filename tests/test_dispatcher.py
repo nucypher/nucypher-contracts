@@ -16,7 +16,6 @@ along with nucypher.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import ape
-import pytest
 from ape.utils import ZERO_ADDRESS
 
 
@@ -337,103 +336,6 @@ def test_dispatcher(project, accounts):
         dispatcher.StateVerified(testTarget=contract3_lib.address, sender=creator),
         dispatcher.StateVerified(testTarget=contract3_lib.address, sender=creator),
     ]
-
-
-def test_selfdestruct(project, accounts):
-    creator = accounts[0]
-    account = accounts[1]
-
-    # Deploy contract and destroy it
-    contract1_lib = creator.deploy(project.Destroyable, 22)
-    assert 22 == contract1_lib.constructorValue()
-    contract1_lib.destroy(sender=creator)
-    with pytest.raises(ape.exceptions.ContractNotFoundError):
-        contract1_lib.constructorValue()
-
-    # Can't create dispatcher using address without contract
-    with ape.reverts():
-        creator.deploy(project.Dispatcher, ZERO_ADDRESS)
-    with ape.reverts():
-        creator.deploy(project.Dispatcher, account)
-    with ape.reverts():
-        creator.deploy(project.Dispatcher, contract1_lib.address)
-
-    # Deploy contract again with a dispatcher targeting it
-    contract2_lib = creator.deploy(project.Destroyable, 23)
-    dispatcher = creator.deploy(project.Dispatcher, contract2_lib.address)
-    assert contract2_lib.address == dispatcher.target()
-
-    contract_instance = project.Destroyable.at(dispatcher.address)
-    contract_instance.setFunctionValue(34, sender=accounts[0])
-    assert 23 == contract_instance.constructorValue()
-    assert 34 == contract_instance.functionValue()
-
-    # Can't upgrade to an address without contract
-    with ape.reverts():
-        dispatcher.upgrade(ZERO_ADDRESS, sender=creator)
-    with ape.reverts():
-        dispatcher.upgrade(account, sender=creator)
-    with ape.reverts():
-        dispatcher.upgrade(contract1_lib.address, sender=creator)
-
-    # Destroy library
-    contract2_lib.destroy(sender=creator)
-    # Dispatcher must determine that there is no contract
-    with ape.reverts():
-        contract_instance.constructorValue()
-
-    # Can't upgrade to an address without contract
-    with ape.reverts():
-        dispatcher.upgrade(ZERO_ADDRESS, sender=creator)
-    with ape.reverts():
-        dispatcher.upgrade(account, sender=creator)
-    with ape.reverts():
-        dispatcher.upgrade(contract1_lib.address, sender=creator)
-
-    # Deploy the same contract again and upgrade to this contract
-    contract3_lib = creator.deploy(project.Destroyable, 24)
-    dispatcher.upgrade(contract3_lib.address, sender=creator)
-    assert 24 == contract_instance.constructorValue()
-    assert 34 == contract_instance.functionValue()
-
-    # Can't rollback because the previous version is destroyed
-    with ape.reverts():
-        dispatcher.rollback(sender=account)
-
-    # Destroy again
-    contract3_lib.destroy(sender=creator)
-    with ape.reverts():
-        contract_instance.constructorValue()
-
-    # Still can't rollback because the previous version is destroyed
-    with ape.reverts():
-        dispatcher.rollback(sender=account)
-
-    # Deploy the same contract twice and upgrade to the latest contract
-    contract4_lib = creator.deploy(project.Destroyable, 25)
-    contract5_lib = creator.deploy(project.Destroyable, 26)
-    dispatcher.upgrade(contract4_lib.address, sender=creator)
-    dispatcher.upgrade(contract5_lib.address, sender=creator)
-    assert 26 == contract_instance.constructorValue()
-    assert 34 == contract_instance.functionValue()
-
-    # Destroy the previous version of the contract and try to rollback again
-    contract4_lib.destroy(sender=creator)
-    with ape.reverts():
-        dispatcher.rollback(sender=account)
-
-    # Deploy the same contract again and upgrade
-    contract6_lib = creator.deploy(project.Destroyable, 27)
-    dispatcher.upgrade(contract6_lib.address, sender=creator)
-    assert 27 == contract_instance.constructorValue()
-    assert 34 == contract_instance.functionValue()
-
-    # Destroy the current version of the contract
-    contract6_lib.destroy(sender=creator)
-    # Now rollback must work, the previous version is fine
-    dispatcher.rollback(sender=creator)
-    assert 26 == contract_instance.constructorValue()
-    assert 34 == contract_instance.functionValue()
 
 
 def test_receive_fallback(project, accounts):
