@@ -43,6 +43,15 @@ jobs:
       - name: Run Ape Tests
         run: ape test
 
+      - name: Run Deployment Test
+        run: ape run ci deploy_child
+
+      - name: Run Registry Scripts to list contracts
+        run: |
+          ape run list_contracts --domain lynx
+          ape run list_contracts --domain tapir
+          ape run list_contracts --domain mainnet
+
       - name: Build npm package
         run: npm run build
 
