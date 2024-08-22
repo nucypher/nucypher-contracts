@@ -38,7 +38,7 @@ jobs:
         with:
           cache: "pip"
           python-version: "3.11"
-      - run: pip install . -r requirements.txt
+      - run: pip install -e . -r requirements.txt
 
       - name: Run Ape Tests
         run: ape test
