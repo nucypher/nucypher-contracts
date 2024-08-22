@@ -1,0 +1,33 @@
+deployment:
+  name: ci-child
+  chain_id: 1337
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: ci.json
+
+constants:
+  ONE_HOUR_IN_SECONDS: 3600
+  FORTY_THOUSAND_TOKENS_IN_WEI_UNITS: 40000000000000000000000
+  TEN_MILLION_TOKENS_IN_WEI_UNITS: 10000000000000000000000000 # https://www.youtube.com/watch?v=EJR1H5tf5wE
+  MAX_DKG_SIZE: 4
+
+contracts:
+  - MockPolygonChild
+  - TACoChildApplication:
+      proxy:
+      constructor:
+        _rootApplication: $MockPolygonChild
+        _minimumAuthorization: $FORTY_THOUSAND_TOKENS_IN_WEI_UNITS
+  - LynxRitualToken:
+      constructor:
+        _totalSupplyOfTokens: $TEN_MILLION_TOKENS_IN_WEI_UNITS
+  - Coordinator:
+      proxy:
+        constructor:
+          _data: $encode:initialize,$ONE_HOUR_IN_SECONDS,$MAX_DKG_SIZE,$deployer
+      constructor:
+        _application: $TACoChildApplication
+  - GlobalAllowList:
+      constructor:
+        _coordinator: $Coordinator
