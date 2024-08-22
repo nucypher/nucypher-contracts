@@ -1,6 +1,6 @@
 import typing
 from abc import ABC, abstractmethod
-from collections import namedtuple, OrderedDict
+from collections import OrderedDict, namedtuple
 from pathlib import Path
 from typing import Any, List
 
@@ -480,7 +480,11 @@ class Transactor:
     Represents an ape account plus validated/annotated transaction execution.
     """
 
-    def __init__(self, account: typing.Optional[AccountAPI] = None):
+    def __init__(self, account: typing.Optional[AccountAPI] = None, force: bool = False):
+        if force and not account:
+            raise ValueError("'force' can only be used if 'account' is provided")
+
+        self._force = force
         if account is None:
             self._account = select_account()
         else:
@@ -502,13 +506,17 @@ class Transactor:
         else:
             message = f"{base_message} with no arguments"
         print(message)
-        _continue()
 
-        result = method(*args, sender=self._account,
-                        # FIXME: Manual gas fees - #199
-                        # max_priority_fee="3 gwei",
-                        # max_fee="120 gwei"
-                        )
+        if not self._force:
+            _continue()
+
+        result = method(
+            *args,
+            sender=self._account,
+            # FIXME: Manual gas fees - #199
+            # max_priority_fee="3 gwei",
+            # max_fee="120 gwei"
+        )
         return result
 
 
@@ -526,7 +534,10 @@ class Deployer(Transactor):
         path: Path,
         verify: bool,
         account: typing.Optional[AccountAPI] = None,
+        force: bool = False,
     ):
+        super().__init__(account, force)
+
         check_plugins()
         self.path = path
         self.config = config
@@ -539,10 +550,13 @@ class Deployer(Transactor):
         _Constants = namedtuple("_Constants", list(constants))
         self.constants = _Constants(**constants)
 
-        super().__init__(account)
         self._set_account(self._account)
         self.verify = verify
-        self._confirm_start()
+        self._print_deployment_info()
+
+        if not self._force:
+            # Confirms the start of the deployment.
+            _continue()
 
     @classmethod
     def from_yaml(cls, filepath: Path, *args, **kwargs) -> "Deployer":
@@ -583,16 +597,19 @@ class Deployer(Transactor):
         self, container: ContractContainer, resolved_params: OrderedDict
     ) -> ContractInstance:
         contract_name = container.contract_type.name
-        _confirm_resolution(resolved_params, contract_name)
+        if not self._force:
+            _confirm_resolution(resolved_params, contract_name)
         deployment_params = [container, *resolved_params.values()]
         kwargs = self._get_kwargs()
 
         deployer_account = self.get_account()
-        return deployer_account.deploy(*deployment_params,
-                                       # FIXME: Manual gas fees - #199
-                                    #    max_priority_fee="3 gwei",
-                                    #    max_fee="120 gwei",
-                                       **kwargs)
+        return deployer_account.deploy(
+            *deployment_params,
+            # FIXME: Manual gas fees - #199
+            #    max_priority_fee="3 gwei",
+            #    max_fee="120 gwei",
+            **kwargs,
+        )
 
     def _deploy_proxy(
         self,
@@ -615,12 +632,8 @@ class Deployer(Transactor):
         )
         return contract_type_container.at(proxy_contract.address)
 
-    def upgrade(self, container: ContractContainer, proxy_address, data=b'') -> ContractInstance:
-
-        admin_slot = chain.provider.get_storage_at(
-            address=proxy_address,
-            slot=EIP1967_ADMIN_SLOT
-        )
+    def upgrade(self, container: ContractContainer, proxy_address, data=b"") -> ContractInstance:
+        admin_slot = chain.provider.get_storage_at(address=proxy_address, slot=EIP1967_ADMIN_SLOT)
 
         if admin_slot == EMPTY_BYTES32:
             raise ValueError(
@@ -651,8 +664,7 @@ class Deployer(Transactor):
         if self.verify:
             verify_contracts(contracts=deployments)
 
-    def _confirm_start(self) -> None:
-        """Confirms the start of the deployment."""
+    def _print_deployment_info(self):
         print(
             f"Account: {self.get_account().address}",
             f"Config: {self.path}",
@@ -664,4 +676,3 @@ class Deployer(Transactor):
             f"Gas Price: {networks.provider.gas_price}",
             sep="\n",
         )
-        _continue()
