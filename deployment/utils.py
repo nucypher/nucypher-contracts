@@ -9,7 +9,7 @@ from ape import networks, project
 from ape.contracts import ContractContainer, ContractInstance
 from ape_etherscan.utils import API_KEY_ENV_KEY_MAP
 
-from deployment.constants import ARTIFACTS_DIR, LYNX, MAINNET, PORTER_SAMPLING_ENDPOINTS, TAPIR
+from deployment.constants import ARTIFACTS_DIR, MAINNET, PORTER_SAMPLING_ENDPOINTS
 from deployment.networks import is_local_network
 
 
@@ -192,7 +192,14 @@ def sample_nodes(
         params["min_version"] = min_version
 
     response = requests.get(porter_endpoint, params=params)
-    data = response.json()
-    result = sorted(data["result"]["ursulas"], key=lambda x: x.lower())
+    response.raise_for_status()
 
+    data = response.json()
+    ursulas = data["result"]["ursulas"]
+    if domain != MAINNET:
+        # /get_ursulas is used for sampling (instead of /bucket_sampling)
+        #  so the json returned is slightly different
+        ursulas = [u["checksum_address"] for u in ursulas]
+
+    result = sorted(ursulas, key=lambda x: x.lower())
     return result
