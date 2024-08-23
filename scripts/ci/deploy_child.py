@@ -13,7 +13,10 @@ def main():
         test_account = accounts.test_accounts[0]
 
         deployer = Deployer.from_yaml(
-            filepath=CONSTRUCTOR_PARAMS_FILEPATH, verify=VERIFY, account=test_account, force=True
+            filepath=CONSTRUCTOR_PARAMS_FILEPATH,
+            verify=VERIFY,
+            account=test_account,
+            non_interactive=True,
         )
 
         mock_polygon_child = deployer.deploy(project.MockPolygonChild)

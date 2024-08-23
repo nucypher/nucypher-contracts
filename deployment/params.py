@@ -480,11 +480,11 @@ class Transactor:
     Represents an ape account plus validated/annotated transaction execution.
     """
 
-    def __init__(self, account: typing.Optional[AccountAPI] = None, force: bool = False):
-        if force and not account:
-            raise ValueError("'force' can only be used if 'account' is provided")
+    def __init__(self, account: typing.Optional[AccountAPI] = None, non_interactive: bool = False):
+        if non_interactive and not account:
+            raise ValueError("'non_interactive' can only be used if an account is provided")
 
-        self._force = force
+        self._non_interactive = non_interactive
         if account is None:
             self._account = select_account()
         else:
@@ -507,7 +507,7 @@ class Transactor:
             message = f"{base_message} with no arguments"
         print(message)
 
-        if not self._force:
+        if not self._non_interactive:
             _continue()
 
         result = method(
@@ -534,9 +534,9 @@ class Deployer(Transactor):
         path: Path,
         verify: bool,
         account: typing.Optional[AccountAPI] = None,
-        force: bool = False,
+        non_interactive: bool = False,
     ):
-        super().__init__(account, force)
+        super().__init__(account, non_interactive)
 
         check_plugins()
         self.path = path
@@ -554,7 +554,7 @@ class Deployer(Transactor):
         self.verify = verify
         self._print_deployment_info()
 
-        if not self._force:
+        if not self._non_interactive:
             # Confirms the start of the deployment.
             _continue()
 
@@ -597,7 +597,7 @@ class Deployer(Transactor):
         self, container: ContractContainer, resolved_params: OrderedDict
     ) -> ContractInstance:
         contract_name = container.contract_type.name
-        if not self._force:
+        if not self._non_interactive:
             _confirm_resolution(resolved_params, contract_name)
         deployment_params = [container, *resolved_params.values()]
         kwargs = self._get_kwargs()
