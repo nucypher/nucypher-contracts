@@ -40,3 +40,6 @@ def main():
     ]
 
     deployer.finalize(deployments=deployments)
+
+    # remove registry file now that task is complete
+    deployer.registry_filepath.unlink()
