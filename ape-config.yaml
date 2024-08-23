@@ -27,17 +27,10 @@ dependencies:
 solidity:
   version: 0.8.23
   evm_version: paris
-  import_remapping:
-    - "@openzeppelin/contracts=openzeppelin/v5.0.0"
-    - "@openzeppelin-upgradeable/contracts=openzeppelin-upgradeable/v5.0.0"
-    - "@fx-portal/contracts=fx-portal/v1.0.5"
-    - "@threshold/contracts=threshold/v1.2.1"
-
 
 ethereum:
   mainnet:
-    transaction_acceptance_timeout: 600  # 10 minutes
-
+    transaction_acceptance_timeout: 600 # 10 minutes
 
 test:
   mnemonic: test test test test test test test test test test test junk
