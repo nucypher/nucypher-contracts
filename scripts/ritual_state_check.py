@@ -114,6 +114,7 @@ def cli(network, domain, ritual_id, realtime):
         f"\tAccessController  : "
         f"{ritual.accessController} {'(GlobalAllowList)' if isGlobalAllowList else ''}"
     )
+    print(f"\tFee Model         : {ritual.feeModel}")
     print("\tParticipants      :")
     for participant in participants:
         provider = participant.provider
