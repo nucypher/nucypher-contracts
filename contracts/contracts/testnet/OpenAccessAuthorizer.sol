@@ -2,13 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-interface IEncryptionAuthorizer {
-    function isAuthorized(
-        uint32 ritualId,
-        bytes memory evidence,
-        bytes memory ciphertextHeader
-    ) external view returns (bool);
-}
+import "../coordination/IEncryptionAuthorizer.sol";
 
 contract OpenAccessAuthorizer is IEncryptionAuthorizer {
     function isAuthorized(

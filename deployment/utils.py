@@ -1,13 +1,15 @@
 import json
 import os
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
+import requests
 import yaml
 from ape import networks, project
 from ape.contracts import ContractContainer, ContractInstance
 from ape_etherscan.utils import API_KEY_ENV_KEY_MAP
-from deployment.constants import ARTIFACTS_DIR
+
+from deployment.constants import ARTIFACTS_DIR, MAINNET, PORTER_SAMPLING_ENDPOINTS
 from deployment.networks import is_local_network
 
 
@@ -47,7 +49,7 @@ def validate_config(config: Dict) -> Path:
     config_chain_id = deployment.get("chain_id")
     if not config_chain_id:
         raise ValueError("chain_id is not set in params file.")
-    
+
     contracts = config.get("contracts")
     if not contracts:
         raise ValueError("Constructor parameters file missing 'contracts' field.")
@@ -97,6 +99,8 @@ def check_infura_plugin() -> None:
     """Checks that the ape-infura plugin is installed."""
     if is_local_network():
         return  # unnecessary for local deployment
+    if networks.provider.name != 'infura':
+        return  # unnecessary when using a provider different than infura
     try:
         import ape_infura  # noqa: F401
         from ape_infura.provider import _ENVIRONMENT_VARIABLE_NAMES  # noqa: F401
@@ -136,8 +140,7 @@ def _get_dependency_contract_container(contract: str) -> ContractContainer:
             return contract_container
         except AttributeError:
             continue
-
-    raise ValueError(f"No contract found for {contract}")
+    raise ValueError(f"No contract found with name '{contract}'.")
 
 
 def get_contract_container(contract: str) -> ContractContainer:
@@ -156,3 +159,49 @@ def registry_filepath_from_domain(domain: str) -> Path:
         raise ValueError(f"No registry found for domain '{domain}'")
 
     return p
+
+
+def get_chain_name(chain_id: int) -> str:
+    """Returns the name of the chain given its chain ID."""
+    for ecosystem_name, ecosystem in networks.ecosystems.items():
+        for network_name, network in ecosystem.networks.items():
+            if network.chain_id == chain_id:
+                return f"{ecosystem_name} {network_name}"
+    raise ValueError(f"Chain ID {chain_id} not found in networks.")
+
+
+def sample_nodes(
+    domain: str,
+    num_nodes: int,
+    random_seed: Optional[int] = None,
+    duration: Optional[int] = None,
+    min_version: Optional[str] = None,
+):
+    porter_endpoint = PORTER_SAMPLING_ENDPOINTS.get(domain)
+    if not porter_endpoint:
+        raise ValueError(f"Porter endpoint not found for domain '{domain}'")
+
+    params = {
+        "quantity": num_nodes,
+    }
+    if duration:
+        params["duration"] = duration
+    if random_seed:
+        if domain != MAINNET:
+            raise ValueError("'random_seed' is only a valid parameter for mainnet")
+        params["random_seed"] = random_seed
+    if min_version:
+        params["min_version"] = min_version
+
+    response = requests.get(porter_endpoint, params=params)
+    response.raise_for_status()
+
+    data = response.json()
+    ursulas = data["result"]["ursulas"]
+    if domain != MAINNET:
+        # /get_ursulas is used for sampling (instead of /bucket_sampling)
+        #  so the json returned is slightly different
+        ursulas = [u["checksum_address"] for u in ursulas]
+
+    result = sorted(ursulas, key=lambda x: x.lower())
+    return result

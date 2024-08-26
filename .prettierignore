@@ -4,3 +4,4 @@
 **/contracts/test/proxy/
 **/contracts/test/StakingEscrowTestSet.sol
 **/.cache
+Pipfile.lock

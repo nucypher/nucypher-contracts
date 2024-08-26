@@ -32,6 +32,7 @@ COMMITMENT_DURATION_3 = 3 * COMMITMENT_DURATION_1  # 365 days in seconds
 COMMITMENT_DEADLINE = 60 * 60 * 24 * 200  # 200 days after deploymwent
 
 PENALTY_DEFAULT = 1000  # 10% penalty
+PENALTY_INCREMENT = 2500  # 25% penalty increment
 PENALTY_DURATION = 60 * 60 * 24  # 1 day in seconds
 
 
@@ -83,6 +84,7 @@ def taco_application(project, creator, token, threshold_staking, oz_dependency, 
         now + COMMITMENT_DEADLINE,
         PENALTY_DEFAULT,
         PENALTY_DURATION,
+        PENALTY_INCREMENT,
     )
 
     encoded_initializer_function = encode_function_data()

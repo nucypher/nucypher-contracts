@@ -198,7 +198,7 @@ contract TACoApplication is
 
     uint256 public constant REWARD_PER_TOKEN_MULTIPLIER = 10 ** 3;
     uint256 internal constant FLOATING_POINT_DIVISOR = REWARD_PER_TOKEN_MULTIPLIER * 10 ** 18;
-    uint256 public constant PENALTY_BASE = 10000;
+    uint192 public constant PENALTY_BASE = 10000;
 
     uint96 public immutable minimumAuthorization;
     uint256 public immutable minOperatorSeconds;
@@ -206,6 +206,7 @@ contract TACoApplication is
     uint256 public immutable deauthorizationDuration;
     uint192 public immutable penaltyDefault;
     uint256 public immutable penaltyDuration;
+    uint192 public immutable penaltyIncrement;
 
     uint64 public immutable commitmentDurationOption1;
     uint64 public immutable commitmentDurationOption2;
@@ -244,6 +245,7 @@ contract TACoApplication is
      * @param _commitmentDeadline Last date to make a commitment
      * @param _penaltyDefault Default penalty percentage (as a value out of 10000)
      * @param _penaltyDuration Duration of penalty
+     * @param _penaltyIncrement Increment of penalty if violation occurs during an existing penalty period
      */
     constructor(
         IERC20 _token,
@@ -255,7 +257,8 @@ contract TACoApplication is
         uint64[] memory _commitmentDurationOptions,
         uint64 _commitmentDeadline,
         uint192 _penaltyDefault,
-        uint256 _penaltyDuration
+        uint256 _penaltyDuration,
+        uint192 _penaltyIncrement
     ) {
         uint256 totalSupply = _token.totalSupply();
         require(
@@ -265,8 +268,9 @@ contract TACoApplication is
                 _commitmentDurationOptions.length >= 1 &&
                 _commitmentDurationOptions.length <= 4 &&
                 _penaltyDefault > 0 &&
-                _penaltyDefault < PENALTY_BASE &&
-                _penaltyDuration > 0,
+                _penaltyDefault <= PENALTY_BASE &&
+                _penaltyDuration > 0 &&
+                _penaltyDefault + _penaltyIncrement <= PENALTY_BASE,
             "Wrong input parameters"
         );
         // This require is only to check potential overflow for 10% reward
@@ -295,6 +299,7 @@ contract TACoApplication is
         commitmentDeadline = _commitmentDeadline;
         penaltyDefault = _penaltyDefault;
         penaltyDuration = _penaltyDuration;
+        penaltyIncrement = _penaltyIncrement;
         _disableInitializers();
     }
 
@@ -1074,7 +1079,12 @@ contract TACoApplication is
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         uint96 before = effectiveAuthorized(info.authorized, info.penaltyPercent);
         info.endPenalty = uint64(block.timestamp + penaltyDuration);
-        info.penaltyPercent = penaltyDefault;
+        info.penaltyPercent = info.penaltyPercent == 0
+            ? penaltyDefault
+            : info.penaltyPercent + penaltyIncrement;
+        if (info.penaltyPercent > PENALTY_BASE) {
+            info.penaltyPercent = PENALTY_BASE;
+        }
         if (info.operatorConfirmed) {
             authorizedOverall -= before - effectiveAuthorized(info.authorized, info.penaltyPercent);
         }

@@ -3,6 +3,7 @@
 pragma solidity ^0.8.0;
 
 import "../threshold/ITACoChildApplication.sol";
+import "../contracts/coordination/Coordinator.sol";
 
 /**
  * @notice Contract for testing Coordinator contract
@@ -34,21 +35,36 @@ contract ChildApplicationForCoordinatorMock is ITACoChildApplication {
     function penalize(address _stakingProvider) external {}
 }
 
-// /**
-//  * @notice Intermediary contract for testing operator
-//  */
-// contract Intermediary {
-//     TACoApplication public immutable application;
+contract ExtendedCoordinator is Coordinator {
+    constructor(ITACoChildApplication _application) Coordinator(_application) {}
 
-//     constructor(TACoApplication _application) {
-//         application = _application;
-//     }
+    function initiateOldRitual(
+        IFeeModel feeModel,
+        address[] calldata providers,
+        address authority,
+        uint32 duration,
+        IEncryptionAuthorizer accessController
+    ) external returns (uint32) {
+        uint16 length = uint16(providers.length);
 
-//     function bondOperator(address _operator) external {
-//         application.bondOperator(address(this), _operator);
-//     }
+        uint32 id = uint32(ritualsStub.length);
+        Ritual storage ritual = ritualsStub.push();
+        ritual.initiator = msg.sender;
+        ritual.authority = authority;
+        ritual.dkgSize = length;
+        ritual.threshold = getThresholdForRitualSize(length);
+        ritual.initTimestamp = uint32(block.timestamp);
+        ritual.endTimestamp = ritual.initTimestamp + duration;
+        ritual.accessController = accessController;
+        ritual.feeModel = feeModel;
 
-//     function confirmOperatorAddress() external {
-//         application.confirmOperatorAddress();
-//     }
-// }
+        address previous = address(0);
+        for (uint256 i = 0; i < length; i++) {
+            Participant storage newParticipant = ritual.participant.push();
+            address current = providers[i];
+            newParticipant.provider = current;
+            previous = current;
+        }
+        return id;
+    }
+}
