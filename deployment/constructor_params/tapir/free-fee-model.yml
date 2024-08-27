@@ -1,0 +1,10 @@
+deployment:
+  name: tapir-free-fee-model
+  chain_id: 80002
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: tapir-free-fee-model.json
+
+contracts:
+  - FreeFeeModel

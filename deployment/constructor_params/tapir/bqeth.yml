@@ -1,0 +1,44 @@
+deployment:
+  name: bqeth-tapir
+  chain_id: 80002
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: bqeth-tapir.json
+
+constants:
+  # See deployment/artifacts/tapir.json
+  COORDINATOR_PROXY: "0xE690b6bCC0616Dc5294fF84ff4e00335cA52C388"
+  TAPIR_RITUAL_TOKEN: "0xf91afFE7cf1d9c367Cb56eDd70C0941a4E8570d9"
+  TESTNET_DEPLOYER: "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
+  GLOBAL_ALLOW_LIST: "0xcc537b292d142dABe2424277596d8FFCC3e6A12D"
+
+  MAX_NODES: 5
+
+  # - Fee parameters:
+  INITIAL_BASE_FEE_RATE: 4050925925925  # $0.35 per day, in DAI units per second (in Python: 35*10**16 // 86400)
+  ENCRYPTOR_FEE_RATE: 63419583967  # $2 per year, in DAI units per second (in Python: 2 * 10**18 // 86400 // 365)
+  BASE_FEE_RATE_INCREASE: 500  # 5%/year ~ 2.47%/semester, expressed in basis points (0.01%)
+
+  PERIOD: 172800  # 2 days
+  YELLOW_PERIOD: 86400  # 1 day
+  RED_PERIOD: 86400  # 1 day
+
+contracts:
+  - BqETHSubscription:
+      proxy:
+        constructor:
+          initialOwner: $TESTNET_DEPLOYER
+          _data: $encode:initialize,$TESTNET_DEPLOYER
+      constructor:
+        _coordinator: $COORDINATOR_PROXY
+        _accessController: $GLOBAL_ALLOW_LIST
+        _feeToken: $TAPIR_RITUAL_TOKEN
+        _adopterSetter: $TESTNET_DEPLOYER
+        _initialBaseFeeRate: $INITIAL_BASE_FEE_RATE
+        _baseFeeRateIncrease: $BASE_FEE_RATE_INCREASE
+        _encryptorFeeRate: $ENCRYPTOR_FEE_RATE
+        _maxNodes: $MAX_NODES
+        _subscriptionPeriodDuration: $PERIOD
+        _yellowPeriodDuration: $YELLOW_PERIOD
+        _redPeriodDuration: $RED_PERIOD
