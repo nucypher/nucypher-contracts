@@ -393,14 +393,18 @@ def test_withdraw(accounts, token, threshold_staking, taco_application, child_ap
     assert token.balanceOf(beneficiary) == earned
     assert token.balanceOf(taco_application.address) == reward_portion - earned
 
-    events = taco_application.RewardPaid.from_receipt(tx)
-    assert events == [
+    reward_paid_events = taco_application.RewardPaid.from_receipt(tx)
+    assert reward_paid_events == [
         taco_application.RewardPaid(
             stakingProvider=staking_provider,
             beneficiary=beneficiary,
             reward=earned,
             sender=beneficiary,
         )
+    ]
+    rewards_withdrawn_events = taco_application.RewardsWithdrawn.from_receipt(tx)
+    assert rewards_withdrawn_events == [
+        taco_application.RewardsWithdrawn(stakingProvider=staking_provider, amount=earned)
     ]
 
     # Add one more staking provider, push reward again and drop operator
@@ -430,14 +434,18 @@ def test_withdraw(accounts, token, threshold_staking, taco_application, child_ap
     assert token.balanceOf(beneficiary) == earned + new_earned
     assert token.balanceOf(taco_application.address) == 2 * reward_portion - earned - new_earned
 
-    events = taco_application.RewardPaid.from_receipt(tx)
-    assert events == [
+    reward_paid_events = taco_application.RewardPaid.from_receipt(tx)
+    assert reward_paid_events == [
         taco_application.RewardPaid(
             stakingProvider=staking_provider,
             beneficiary=beneficiary,
             reward=new_earned,
             sender=reward_contract,
         )
+    ]
+    rewards_withdrawn_events = taco_application.RewardsWithdrawn.from_receipt(tx)
+    assert rewards_withdrawn_events == [
+        taco_application.RewardsWithdrawn(stakingProvider=staking_provider, amount=new_earned)
     ]
 
     # Reset reward contract

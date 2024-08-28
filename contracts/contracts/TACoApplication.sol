@@ -556,6 +556,7 @@ contract TACoApplication is
         uint96 value = info.tReward;
         require(value > 0, "No reward to withdraw");
         info.tReward = 0;
+        emit RewardsWithdrawn(_stakingProvider, value);
         emit RewardPaid(msg.sender, _stakingProvider, beneficiary, value);
         token.safeTransfer(beneficiary, value);
     }
