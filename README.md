@@ -83,7 +83,7 @@ contracts:
 
 ##### 2. Create Deployment Script
 
-Deployment scripts are located in `scripts/<domain>/<name>.py`. 
+Deployment scripts are located in `scripts/<domain>/<name>.py`.
 Here is a simple example deployment script, but you can also find a full example in `scripts/lynx/deploy_root.py`:
 
 ```python
@@ -132,8 +132,8 @@ $ ape accounts list
 
 ##### 4. Deploy
 
-Clear your ape database before deploying to production to avoid conflicts with upgradeable proxies.  
-Please note that this will delete all ape deployment artifacts, so make sure you have a 
+Clear your ape database before deploying to production to avoid conflicts with upgradeable proxies.
+Please note that this will delete all ape deployment artifacts, so make sure you have a
 backup of artifacts from other projects before running this command.
 
 ```
@@ -157,17 +157,37 @@ The process to publish a new NPM release is as follows:
 
 1. Make the required changes to deployment artifacts, usually by running a deployment script.
 
-2. Update the package version using `bump2version <VERSION_PART>` (e.g., `bump2version patch` to go from v0.1.2 to v0.1.3).
-Alternatively, modify the `version` field in `package.json` and `setup.cfg`.
+2. Update the package version using `bump2version`. We don't want to create a git tag, so we are running it with `--no-tag`.
+
 Note that we follow [semantic versioning](https://docs.npmjs.com/about-semantic-versioning).
 
-3. Push the bump commit and new tag upstream:
-
 ```bash
-> git push origin main && git push origin <VERSION_TAG>
+To update the minor version (e.g. from v1.1.0 to v1.2.0):
+> bump2version minor --no-tag
+
+To update the patch version (e.g. from v1.1.0 to v1.1.1):
+> bump2version patch --no-tag
 ```
 
-3. Publish the new NPM version; this is performed automatically by Github Actions 
+Alternatively, modify the `version` field in `package.json` and `setup.cfg`.
+
+It is still necessary to bump the version on the `package-lock.json` file, so just run:
+
+```bash
+> npm install
+```
+
+3. Create a PR with these changes. We need this PR to be merged before continue.
+
+4. When these changes are merged, create a new tag on `main` branch. The name of the tag must be the new `<version>` that is being released (e.g. `v0.23.0`).
+
+```bash
+> git tag -a <version> -m "<version>"
+
+> git push origin <version>
+```
+
+5. Publish the new NPM version; this is performed automatically by Github Actions
 when you [create a new release](https://github.com/nucypher/nucypher-contracts/releases/new),
 associated to the latest version tag. Alternatively, run:
 
