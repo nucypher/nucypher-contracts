@@ -7,7 +7,10 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./IReimbursementPool.sol";
 
-
+/**
+ * @title ReimbursementPool contract
+ * @dev Original source: https://github.com/keep-network/keep-core/blob/main/solidity/random-beacon/contracts/ReimbursementPool.sol
+ */
 contract ReimbursementPool is Ownable, ReentrancyGuard, IReimbursementPool {
     /// @notice Authorized contracts that can interact with the reimbursment pool.
     ///         Authorization can be granted and removed by the owner.
