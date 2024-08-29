@@ -4,7 +4,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./IReimbursementPool.sol";
 
 
@@ -34,7 +34,7 @@ contract ReimbursementPool is Ownable, ReentrancyGuard, IReimbursementPool {
 
     event FundsWithdrawn(uint256 withdrawnAmount, address receiver);
 
-    constructor(uint256 _staticGas, uint256 _maxGasPrice) {
+    constructor(uint256 _staticGas, uint256 _maxGasPrice) Ownable(msg.sender) {
         staticGas = _staticGas;
         maxGasPrice = _maxGasPrice;
     }
