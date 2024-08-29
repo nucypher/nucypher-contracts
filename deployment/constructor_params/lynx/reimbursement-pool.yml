@@ -1,0 +1,18 @@
+deployment:
+  name: reimbursement-lynx
+  chain_id: 80002
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: reimbursement.json
+
+constants:
+  STATIC_GAS: 21000  # tx base cost + refund function gas. For the moment let's just include tx base cost
+  MAX_GAS_PRICE: 1234000000000  # 1234 gwei (dummy value for now)
+
+contracts:
+  - ReimbursementPool:
+      constructor:
+        _staticGas: $STATIC_GAS
+        _maxGasPrice: $MAX_GAS_PRICE
+  
