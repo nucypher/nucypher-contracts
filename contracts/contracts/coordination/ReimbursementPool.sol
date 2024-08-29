@@ -53,15 +53,10 @@ contract ReimbursementPool is Ownable, ReentrancyGuard, IReimbursementPool {
     /// @param gasSpent Gas spent on a transaction that needs to be reimbursed.
     /// @param receiver Address where the reimbursment is sent.
     function refund(uint256 gasSpent, address receiver) external nonReentrant {
-        require(
-            isAuthorized[msg.sender],
-            "Contract is not authorized for a refund"
-        );
+        require(isAuthorized[msg.sender], "Contract is not authorized for a refund");
         require(receiver != address(0), "Receiver's address cannot be zero");
 
-        uint256 gasPrice = tx.gasprice < maxGasPrice
-            ? tx.gasprice
-            : maxGasPrice;
+        uint256 gasPrice = tx.gasprice < maxGasPrice ? tx.gasprice : maxGasPrice;
 
         uint256 refundAmount = (gasSpent + staticGas) * gasPrice;
 
@@ -124,10 +119,7 @@ contract ReimbursementPool is Ownable, ReentrancyGuard, IReimbursementPool {
     /// @param amount Amount to withdraw from the pool.
     /// @param receiver An address where ETH is sent.
     function withdraw(uint256 amount, address receiver) public onlyOwner {
-        require(
-            address(this).balance >= amount,
-            "Insufficient contract balance"
-        );
+        require(address(this).balance >= amount, "Insufficient contract balance");
         require(receiver != address(0), "Receiver's address cannot be zero");
 
         emit FundsWithdrawn(amount, receiver);
