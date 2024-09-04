@@ -50,16 +50,23 @@ def print_ritual_state(ritual_id, coordinator) -> RitualState:
     ritual = coordinator.rituals(ritual_id)
     participants = coordinator.getParticipants(ritual_id)
 
+    num_missing = 0
     if ritual.totalTranscripts < len(participants):
         print("\t(!) Missing transcripts")
         for participant in participants:
             if not participant.transcript:
                 print(f"\t\t{participant.provider}")
+                num_missing += 1
+
     elif ritual.totalAggregations < len(participants):
         print("\t(!) Missing aggregated transcripts")
         for participant in participants:
             if not participant.aggregated:
                 print(f"\t\t{participant.provider}")
+                num_missing += 1
+
+    if num_missing > 0:
+        print(f"\t\t> Num Missing: {num_missing}")
 
     return ritual_state
 
