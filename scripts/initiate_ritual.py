@@ -83,7 +83,7 @@ def cli(
     num_nodes,
     random_seed,
     handpicked,
-    min_version
+    min_version,
 ):
     """Initiate a ritual for a TACo domain."""
 
@@ -108,7 +108,9 @@ def cli(
 
     # Get the contracts from the registry
     coordinator_contract = registry.get_contract(domain=domain, contract_name="Coordinator")
-    access_controller_contract = registry.get_contract(domain=domain, contract_name=access_controller)
+    access_controller_contract = registry.get_contract(
+        domain=domain, contract_name=access_controller
+    )
     fee_model_contract = registry.get_contract(domain=domain, contract_name=fee_model)
 
     # if using a subcription, duration needs to be calculated
@@ -125,22 +127,24 @@ def cli(
             if now > end_of_subscription:
                 raise ValueError("Subscription has already ended.")
             click.echo(
-            "Subscription has already started. Subtracting the elapsed time from the duration."
-        )
+                "Subscription has already started. Subtracting the elapsed time from the duration."
+            )
             elapsed = now - start_of_subscription + 100
             duration -= elapsed
 
-
     # Get the staking providers in the ritual cohort
     if handpicked:
-        providers = sorted(line.lower() for line in handpicked)
+        providers = sorted(line.lower().strip() for line in handpicked)
         if not providers:
             raise ValueError(f"No staking providers found in the handpicked file {handpicked.name}")
     else:
         providers = sample_nodes(
-            domain=domain, num_nodes=num_nodes, duration=duration, random_seed=random_seed, min_version=min_version
+            domain=domain,
+            num_nodes=num_nodes,
+            duration=duration,
+            random_seed=random_seed,
+            min_version=min_version,
         )
-
 
     # Initiate the ritual
     transactor = Transactor(account=account)
