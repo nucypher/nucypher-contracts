@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// TODO: What about license? Original is GPL but ours is AGPL
 
 pragma solidity ^0.8.0;
 
