@@ -4352,6 +4352,13 @@
                 },
                 {
                     "type": "function",
+                    "name": "initializeNumberOfRituals",
+                    "stateMutability": "nonpayable",
+                    "inputs": [],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
                     "name": "initiateRitual",
                     "stateMutability": "nonpayable",
                     "inputs": [
@@ -4655,7 +4662,7 @@
                     "stateMutability": "view",
                     "inputs": [
                         {
-                            "name": "",
+                            "name": "ritualId",
                             "type": "uint256",
                             "internalType": "uint256"
                         }
