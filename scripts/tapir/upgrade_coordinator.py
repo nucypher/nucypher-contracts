@@ -20,7 +20,8 @@ def main():
     instances = contracts_from_registry(filepath=ARTIFACTS_DIR / "tapir.json", chain_id=80002)
 
     implementation = deployer.deploy(project.Coordinator)
-    encoded_initializer_function = implementation.initializeNumberOfRituals.encode_input()
+    # latest reinitializer function used for most recent upgrade - reinitializer(2)
+    # encoded_initializer_function = implementation.initializeNumberOfRituals.encode_input()
     encoded_initializer_function = b""
     coordinator = deployer.upgradeTo(
         implementation,
