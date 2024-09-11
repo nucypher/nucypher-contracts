@@ -385,6 +385,13 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         return keccak256(abi.encode(nodes));
     }
 
+    function expectedTranscriptSize(
+        uint16 dkgSize,
+        uint16 threshold
+    ) public pure returns (uint256) {
+        return 40 + (dkgSize + 1) * BLS12381.G2_POINT_SIZE + threshold * BLS12381.G1_POINT_SIZE;
+    }
+
     function postTranscript(uint32 ritualId, bytes calldata transcript) external {
         uint256 initialGasLeft = gasleft();
 
@@ -392,6 +399,11 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         require(
             getRitualState(ritual) == RitualState.DKG_AWAITING_TRANSCRIPTS,
             "Not waiting for transcripts"
+        );
+
+        require(
+            transcript.length == expectedTranscriptSize(ritual.dkgSize, ritual.threshold),
+            "Invalid transcript size"
         );
 
         address provider = application.operatorToStakingProvider(msg.sender);
@@ -447,6 +459,11 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         require(
             decryptionRequestStaticKey.length == 42,
             "Invalid length for decryption request static key"
+        );
+
+        require(
+            aggregatedTranscript.length == expectedTranscriptSize(ritual.dkgSize, ritual.threshold),
+            "Invalid transcript size"
         );
 
         // nodes commit to their aggregation result
