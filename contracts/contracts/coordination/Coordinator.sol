@@ -618,7 +618,9 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
     function processReimbursement(uint256 initialGasLeft) internal {
         if (address(reimbursementPool) != address(0)) {
-            uint256 gasUsed = initialGasLeft - gasleft();
+            // For calldataGasCost calculation, see https://github.com/nucypher/nucypher-contracts/issues/328
+            uint256 calldataGasCost = (msg.data.length - 128) * 16 + 128 * 4;
+            uint256 gasUsed = initialGasLeft - gasleft() + calldataGasCost;
             try reimbursementPool.refund(gasUsed, msg.sender) {
                 return;
             } catch {
