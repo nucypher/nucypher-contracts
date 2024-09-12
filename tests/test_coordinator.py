@@ -650,3 +650,27 @@ def test_upgrade(
     assert ritual_struct["publicKey"] == (b"\x00" * 32, b"\x00" * 16)  # publicKey
     assert not ritual_struct["aggregatedTranscript"]  # aggregatedTranscript
     assert ritual_struct["feeModel"] == fee_model.address  # feeModel
+
+
+def test_withdraw_tokens(coordinator, initiator, erc20, treasury, deployer):
+    
+    # Let's send some tokens to Coordinator by mistake
+    erc20.transfer(coordinator.address, 42, sender=initiator)
+    assert erc20.balanceOf(coordinator.address) == 42
+
+    # Only accounts with TREASURY_ROLE can withdraw
+    with ape.reverts():
+        coordinator.withdrawAllTokens(erc20.address, sender=treasury)
+
+    # Treasury is granted proper role and withdraws all tokens
+    treasury_balance_before = erc20.balanceOf(treasury.address)
+
+    coordinator.grantRole(coordinator.TREASURY_ROLE(), treasury, sender=deployer)
+    coordinator.withdrawAllTokens(erc20.address, sender=treasury)
+
+    assert erc20.balanceOf(coordinator.address) == 0
+    assert erc20.balanceOf(treasury.address) == 42 + treasury_balance_before
+
+    # Can't withdraw when there's no tokens
+    with ape.reverts("Insufficient balance"):
+        coordinator.withdrawAllTokens(erc20.address, sender=treasury)
