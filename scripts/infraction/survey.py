@@ -1,5 +1,6 @@
 from collections import Counter, defaultdict
 from enum import IntEnum
+from datetime import datetime, timedelta
 
 import click
 from ape import networks, project
@@ -9,43 +10,85 @@ from deployment.constants import SUPPORTED_TACO_DOMAINS
 from deployment.registry import contracts_from_registry
 from deployment.utils import registry_filepath_from_domain
 
-# Define RitualState as an IntEnum for clarity and ease of use
-RitualState = IntEnum(
-    "RitualState",
-    [
-        "NON_INITIATED",
-        "DKG_AWAITING_TRANSCRIPTS",
-        "DKG_AWAITING_AGGREGATIONS",
-        "DKG_TIMEOUT",
-        "DKG_INVALID",
-        "ACTIVE",
-        "EXPIRED",
-    ],
-    start=0,
-)
 
-# Define end states and successful end states
-END_STATES = [
-    RitualState.DKG_TIMEOUT,
-    RitualState.DKG_INVALID,
-    RitualState.ACTIVE,
-    RitualState.EXPIRED,
-]
+class RitualState(IntEnum):
+    NON_INITIATED = 0
+    DKG_AWAITING_TRANSCRIPTS = 1
+    DKG_AWAITING_AGGREGATIONS = 2
+    DKG_TIMEOUT = 3
+    DKG_INVALID = 4
+    ACTIVE = 5
+    EXPIRED = 6
 
+
+END_STATES = [RitualState.DKG_TIMEOUT, RitualState.DKG_INVALID, RitualState.ACTIVE, RitualState.EXPIRED]
 SUCCESSFUL_END_STATES = [RitualState.ACTIVE, RitualState.EXPIRED]
+PENALTY_PERIOD = timedelta(days=90)
 
 
-def calculate_penalty(offense_count):
-    """Calculate penalty percentage based on the number of offenses."""
+def collect_offenses(coordinator, from_ritual, last_ritual_id):
+    provider_offenses = defaultdict(list)
+    for ritual_id in range(from_ritual, last_ritual_id):
+        ritual_state = coordinator.getRitualState(ritual_id)
+        if ritual_state in SUCCESSFUL_END_STATES:
+            continue
+
+        ritual = coordinator.rituals(ritual_id)
+        ritual_timestamp = datetime.fromtimestamp(ritual.initTimestamp)
+        participants = coordinator.getParticipants(ritual_id)
+        missing_transcripts = len(participants) - ritual.totalTranscripts
+        missing_aggregates = len(participants) - ritual.totalAggregations
+
+        if missing_transcripts or missing_aggregates:
+            issue = 'transcripts' if missing_transcripts else 'aggregates'
+            for participant in participants:
+                if not participant.transcript:
+                    provider_offenses[participant.provider].append(ritual_timestamp)
+                    print(f"Ritual {ritual_id}: {participant.provider} missing {issue}")
+    return provider_offenses
+
+
+def calculate_penalty_periods(offense_timestamps):
+    if not offense_timestamps:
+        return []
+
+    offense_timestamps = sorted(offense_timestamps)
+    penalty_periods = []
+    current_period_start = offense_timestamps[0]
+    current_period_end = current_period_start + PENALTY_PERIOD
+
+    for offense_date in offense_timestamps[1:]:
+        if offense_date > current_period_end:
+            penalty_periods.append((current_period_start, current_period_end))
+            current_period_start = offense_date
+            current_period_end = offense_date + PENALTY_PERIOD
+        else:
+            current_period_end = max(current_period_end, offense_date + PENALTY_PERIOD)
+
+    penalty_periods.append((current_period_start, current_period_end))
+    return penalty_periods
+
+
+def apply_penalties(offense_count):
     if offense_count == 1:
-        return '30% withholding for 3 months'
+        return "30% withholding for 3 months"
     elif offense_count == 2:
-        return '60% withholding for 3 months'
+        return "60% withholding for 3 months"
     elif offense_count == 3:
-        return '90% withholding for 3 months'
+        return "90% withholding for 3 months"
     elif offense_count >= 4:
         return "Slashing (TBD)"
-    return 0
+    return "No penalty"
+
+
+# Function to log penalties
+def log_penalties(provider, offense_timestamps, penalty_periods):
+    offense_count = len(offense_timestamps)
+    penalty_message = apply_penalties(offense_count)
+    print(f"\t{provider}: {offense_count} offenses, {len(penalty_periods)} penalty periods, Penalty: {penalty_message}")
+    # for i, period in enumerate(penalty_periods, start=1):
+    #     duration = (period[1] - period[0]).days
+    #     print(f"\t\tPenalty Period {i}: {duration} days")
 
 
 @click.command(cls=ConnectedProviderCommand)
@@ -72,40 +115,13 @@ def cli(network, domain, from_ritual):
     coordinator = project.Coordinator.at(contracts["Coordinator"].address)
     last_ritual_id = coordinator.numberOfRituals()
 
-    counter = Counter()
-    offenders = defaultdict(list)
-    provider_offense_count = defaultdict(int)
-
-    for ritual_id in range(from_ritual, last_ritual_id - 1):
-        ritual_state = coordinator.getRitualState(ritual_id)
-
-        if ritual_state in SUCCESSFUL_END_STATES:
-            counter['ok'] += 1
-            print(f"Ritual ID: {ritual_id} OK")
-            continue
-
-        ritual = coordinator.rituals(ritual_id)
-        participants = coordinator.getParticipants(ritual_id)
-        missing_transcripts = len(participants) - ritual.totalTranscripts
-        missing_aggregates = len(participants) - ritual.totalAggregations
-
-        if missing_transcripts or missing_aggregates:
-            issue = 'transcripts' if missing_transcripts else 'aggregates'
-            counter[f'missing_{issue}'] += 1
-            print(f"(!) Ritual {ritual_id} missing "
-                  f"{missing_transcripts or missing_aggregates}/{len(participants)} {issue}")
-
-            for participant in participants:
-                if not participant.transcript:
-                    offenders[ritual_id].append(participant.provider)
-                    provider_offense_count[participant.provider] += 1
-                    print(f"\t{participant.provider} (!) Missing transcript")
+    provider_offenses = collect_offenses(coordinator, from_ritual, last_ritual_id)
 
     print(f"Total rituals: {last_ritual_id - from_ritual}")
     print("Provider Offense Count and Penalties")
-    for provider, count in provider_offense_count.items():
-        penalty = calculate_penalty(count)
-        print(f"\t{provider}: {count} offenses, Penalty: {penalty}")
+    for provider, offense_timestamps in provider_offenses.items():
+        penalty_periods = calculate_penalty_periods(offense_timestamps)
+        log_penalties(provider, offense_timestamps, penalty_periods)
 
 
 if __name__ == "__main__":
