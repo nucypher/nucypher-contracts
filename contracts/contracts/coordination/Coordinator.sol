@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "./IFeeModel.sol";
@@ -15,6 +17,8 @@ import "./IEncryptionAuthorizer.sol";
  * @notice Coordination layer for Threshold Access Control (TACo 🌮)
  */
 contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable {
+    using SafeERC20 for IERC20;
+
     // DKG Protocol
     event StartRitual(uint32 indexed ritualId, address indexed authority, address[] participants);
     event StartAggregationRound(uint32 indexed ritualId);
@@ -641,5 +645,11 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
             duration
         );
         emit RitualExtended(ritualId, ritual.endTimestamp);
+    }
+
+    function withdrawAllTokens(IERC20 token) external onlyRole(TREASURY_ROLE) {
+        uint256 tokenBalance = token.balanceOf(address(this));
+        require(tokenBalance > 0, "Insufficient balance");
+        token.safeTransfer(msg.sender, tokenBalance);
     }
 }
