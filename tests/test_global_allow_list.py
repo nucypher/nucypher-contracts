@@ -6,41 +6,13 @@ import pytest
 from eth_account.messages import encode_defunct
 from web3 import Web3
 
+from tests.conftest import gen_public_key, generate_transcript
+
 TIMEOUT = 1000
 MAX_DKG_SIZE = 31
 FEE_RATE = 42
 ERC20_SUPPLY = 10**24
 DURATION = 48 * 60 * 60
-ONE_DAY = 24 * 60 * 60
-
-RitualState = IntEnum(
-    "RitualState",
-    [
-        "NON_INITIATED",
-        "DKG_AWAITING_TRANSCRIPTS",
-        "DKG_AWAITING_AGGREGATIONS",
-        "DKG_TIMEOUT",
-        "DKG_INVALID",
-        "ACTIVE",
-        "EXPIRED",
-    ],
-    start=0,
-)
-
-
-# This formula returns an approximated size
-# To have a representative size, create transcripts with `nucypher-core`
-def transcript_size(shares, threshold):
-    return int(424 + 240 * (shares / 2) + 50 * (threshold))
-
-
-def gen_public_key():
-    return (os.urandom(32), os.urandom(32), os.urandom(32))
-
-
-def access_control_error_message(address, role=None):
-    role = role or b"\x00" * 32
-    return f"account={address}, neededRole={role}"
 
 
 @pytest.fixture(scope="module")
@@ -153,6 +125,7 @@ def test_authorize_using_global_allow_list(
     signable_message = encode_defunct(digest)
     signed_digest = w3.eth.account.sign_message(signable_message, private_key=deployer.private_key)
     signature = signed_digest.signature
+    size = len(nodes)
 
     # Not authorized
     assert not global_allow_list.isAuthorized(0, bytes(signature), bytes(digest))
@@ -168,7 +141,8 @@ def test_authorize_using_global_allow_list(
         coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(digest))
 
     # Finalize ritual
-    transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
+    threshold = coordinator.getThresholdForRitualSize(size)
+    transcript = generate_transcript(size, threshold)
     for node in nodes:
         coordinator.postTranscript(0, transcript, sender=node)
 

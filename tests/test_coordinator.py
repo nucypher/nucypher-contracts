@@ -1,5 +1,4 @@
 import os
-from enum import IntEnum
 
 import ape
 import pytest
@@ -8,41 +7,13 @@ from eth_account import Account
 from hexbytes import HexBytes
 from web3 import Web3
 
+from tests.conftest import ONE_DAY, gen_public_key, generate_transcript, RitualState
+
 TIMEOUT = 1000
 MAX_DKG_SIZE = 31
 FEE_RATE = 42
 ERC20_SUPPLY = 10**24
 DURATION = 48 * 60 * 60
-ONE_DAY = 24 * 60 * 60
-
-RitualState = IntEnum(
-    "RitualState",
-    [
-        "NON_INITIATED",
-        "DKG_AWAITING_TRANSCRIPTS",
-        "DKG_AWAITING_AGGREGATIONS",
-        "DKG_TIMEOUT",
-        "DKG_INVALID",
-        "ACTIVE",
-        "EXPIRED",
-    ],
-    start=0,
-)
-
-
-# This formula returns an approximated size
-# To have a representative size, create transcripts with `nucypher-core`
-def transcript_size(shares, threshold):
-    return int(424 + 240 * (shares / 2) + 50 * (threshold))
-
-
-def gen_public_key():
-    return (os.urandom(32), os.urandom(32), os.urandom(32))
-
-
-def access_control_error_message(address, role=None):
-    role = role or b"\x00" * 32
-    return f"account={address}, neededRole={role}"
 
 
 @pytest.fixture(scope="module")
@@ -275,7 +246,9 @@ def test_post_transcript(coordinator, nodes, initiator, erc20, fee_model, global
         nodes=nodes,
         allow_logic=global_allow_list,
     )
-    transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
+    size = len(nodes)
+    threshold = coordinator.getThresholdForRitualSize(size)
+    transcript = generate_transcript(size, threshold)
 
     for node in nodes:
         assert coordinator.getRitualState(0) == RitualState.DKG_AWAITING_TRANSCRIPTS
@@ -309,7 +282,10 @@ def test_post_transcript_but_not_part_of_ritual(
         allow_logic=global_allow_list,
     )
 
-    transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
+    size = len(nodes)
+    threshold = coordinator.getThresholdForRitualSize(size)
+    transcript = generate_transcript(size, threshold)
+
     with ape.reverts("Participant not part of ritual"):
         coordinator.postTranscript(0, transcript, sender=initiator)
 
@@ -325,7 +301,11 @@ def test_post_transcript_but_already_posted_transcript(
         nodes=nodes,
         allow_logic=global_allow_list,
     )
-    transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
+    
+    size = len(nodes)
+    threshold = coordinator.getThresholdForRitualSize(size)
+    transcript = generate_transcript(size, threshold)
+
     coordinator.postTranscript(0, transcript, sender=nodes[0])
     with ape.reverts("Node already posted transcript"):
         coordinator.postTranscript(0, transcript, sender=nodes[0])
@@ -342,7 +322,11 @@ def test_post_transcript_but_not_waiting_for_transcripts(
         nodes=nodes,
         allow_logic=global_allow_list,
     )
-    transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
+    
+    size = len(nodes)
+    threshold = coordinator.getThresholdForRitualSize(size)
+    transcript = generate_transcript(size, threshold)
+
     for node in nodes:
         coordinator.postTranscript(0, transcript, sender=node)
 
@@ -359,7 +343,10 @@ def test_get_participants(coordinator, nodes, initiator, erc20, fee_model, globa
         nodes=nodes,
         allow_logic=global_allow_list,
     )
-    transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
+    
+    size = len(nodes)
+    threshold = coordinator.getThresholdForRitualSize(size)
+    transcript = generate_transcript(size, threshold)
 
     for node in nodes:
         _ = coordinator.postTranscript(0, transcript, sender=node)
@@ -413,7 +400,10 @@ def test_get_participant(nodes, coordinator, initiator, erc20, fee_model, global
         nodes=nodes,
         allow_logic=global_allow_list,
     )
-    transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
+    
+    size = len(nodes)
+    threshold = coordinator.getThresholdForRitualSize(size)
+    transcript = generate_transcript(size, threshold)
 
     for node in nodes:
         _ = coordinator.postTranscript(0, transcript, sender=node)
@@ -462,8 +452,12 @@ def test_post_aggregation(
         nodes=nodes,
         allow_logic=global_allow_list,
     )
+    
     ritualID = 0
-    transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
+    size = len(nodes)
+    threshold = coordinator.getThresholdForRitualSize(size)
+    transcript = generate_transcript(size, threshold)
+
     for node in nodes:
         coordinator.postTranscript(ritualID, transcript, sender=node)
 
@@ -520,8 +514,12 @@ def test_post_aggregation_fails(
         nodes=nodes,
         allow_logic=global_allow_list,
     )
+    
     ritualID = 0
-    transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
+    size = len(nodes)
+    threshold = coordinator.getThresholdForRitualSize(size)
+    transcript = generate_transcript(size, threshold)
+
     for node in nodes:
         coordinator.postTranscript(ritualID, transcript, sender=node)
 
@@ -535,7 +533,7 @@ def test_post_aggregation_fails(
     )
 
     # Second node screws up everything
-    bad_aggregated = os.urandom(transcript_size(len(nodes), len(nodes)))
+    bad_aggregated = generate_transcript(size, threshold)
     tx = coordinator.postAggregation(
         ritualID, bad_aggregated, dkg_public_key, decryption_request_static_keys[1], sender=nodes[1]
     )
