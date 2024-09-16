@@ -311,6 +311,30 @@ def test_post_transcript_but_already_posted_transcript(
         coordinator.postTranscript(0, transcript, sender=nodes[0])
 
 
+def test_post_transcript_but_wrong_size(
+    coordinator, nodes, initiator, erc20, fee_model, global_allow_list
+):
+    initiate_ritual(
+        coordinator=coordinator,
+        fee_model=fee_model,
+        erc20=erc20,
+        authority=initiator,
+        nodes=nodes,
+        allow_logic=global_allow_list,
+    )
+    
+    size = len(nodes)
+    threshold = coordinator.getThresholdForRitualSize(size)
+    bad_transcript = generate_transcript(size, threshold + 1)
+
+    with ape.reverts("Invalid transcript size"):
+        coordinator.postTranscript(0, bad_transcript, sender=nodes[0])
+
+    bad_transcript = b""
+    with ape.reverts("Invalid transcript size"):
+        coordinator.postTranscript(0, bad_transcript, sender=nodes[0])
+
+
 def test_post_transcript_but_not_waiting_for_transcripts(
     coordinator, nodes, initiator, erc20, fee_model, global_allow_list
 ):
