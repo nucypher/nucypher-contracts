@@ -1,0 +1,21 @@
+deployment:
+  name: reimbursement-mainnet
+  chain_id: 137
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: reimbursement-mainnet.json
+
+constants:
+  # Approx avg cost according to Keep tests (see e.g. https://github.com/keep-network/keep-core/actions/runs/10783327230/job/29905024826).
+  # Also current value used for tBTC ReimbursementPool on Ethereum Mainnet (see https://etherscan.io/address/0x8adF3f35dBE4026112bCFc078872bcb967732Ea8#readContract#F4)
+  STATIC_GAS: 40800
+  # 110 gwei, so we cap refunds for each 30-size ritual to 10 POL (0.33 POL per node)
+  MAX_GAS_PRICE: 110000000000
+
+contracts:
+  - ReimbursementPool:
+      constructor:
+        _staticGas: $STATIC_GAS
+        _maxGasPrice: $MAX_GAS_PRICE
+  

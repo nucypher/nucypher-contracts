@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// TODO: What about license? Original is GPL but ours is AGPL
 
 pragma solidity ^0.8.0;
 
@@ -10,6 +9,7 @@ import "./IReimbursementPool.sol";
 /**
  * @title ReimbursementPool contract
  * @dev Original source: https://github.com/keep-network/keep-core/blob/main/solidity/random-beacon/contracts/ReimbursementPool.sol
+ * @author Dmitry Paremski (@dimpar), Piotr Dyraga (@pdyraga)
  */
 contract ReimbursementPool is Ownable, ReentrancyGuard, IReimbursementPool {
     /// @notice Authorized contracts that can interact with the reimbursment pool.
