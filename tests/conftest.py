@@ -1,7 +1,47 @@
+import os
 import pytest
-from ape import convert, project
+from ape import project
+from enum import IntEnum
+
+# Common constants
+G1_SIZE = 48
+G2_SIZE = 48 * 2
+ONE_DAY = 24 * 60 * 60
+
+RitualState = IntEnum(
+    "RitualState",
+    [
+        "NON_INITIATED",
+        "DKG_AWAITING_TRANSCRIPTS",
+        "DKG_AWAITING_AGGREGATIONS",
+        "DKG_TIMEOUT",
+        "DKG_INVALID",
+        "ACTIVE",
+        "EXPIRED",
+    ],
+    start=0,
+)
 
 
+# Utility functions
+def transcript_size(shares, threshold):
+    return 40 + (1 + shares) * G2_SIZE + threshold * G1_SIZE
+
+
+def generate_transcript(shares, threshold):
+    return os.urandom(transcript_size(shares, threshold))
+
+
+def gen_public_key():
+    return (os.urandom(32), os.urandom(32), os.urandom(32))
+
+
+def access_control_error_message(address, role=None):
+    role = role or b"\x00" * 32
+    return f"account={address}, neededRole={role}"
+
+
+# Fixtures
 @pytest.fixture(scope="session")
 def oz_dependency():
     return project.dependencies["openzeppelin"]["5.0.0"]
@@ -20,10 +60,3 @@ def account1(accounts):
 @pytest.fixture
 def account2(accounts):
     return accounts[2]
-
-
-@pytest.fixture
-def nu_token(NuCypherToken, creator):
-    TOTAL_SUPPLY = convert("1_000_000_000 ether", int)
-    nu_token = creator.deploy(NuCypherToken, TOTAL_SUPPLY)
-    return nu_token

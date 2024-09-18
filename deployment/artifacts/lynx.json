@@ -3966,6 +3966,30 @@
                 },
                 {
                     "type": "function",
+                    "name": "expectedTranscriptSize",
+                    "stateMutability": "pure",
+                    "inputs": [
+                        {
+                            "name": "dkgSize",
+                            "type": "uint16",
+                            "internalType": "uint16"
+                        },
+                        {
+                            "name": "threshold",
+                            "type": "uint16",
+                            "internalType": "uint16"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256",
+                            "internalType": "uint256"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
                     "name": "extendRitual",
                     "stateMutability": "nonpayable",
                     "inputs": [
