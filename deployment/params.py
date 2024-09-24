@@ -480,15 +480,15 @@ class Transactor:
     Represents an ape account plus validated/annotated transaction execution.
     """
 
-    def __init__(self, account: typing.Optional[AccountAPI] = None, non_interactive: bool = False):
-        if non_interactive and not account:
-            raise ValueError("'non_interactive' can only be used if an account is provided")
-
-        self._non_interactive = non_interactive
+    def __init__(self, account: typing.Optional[AccountAPI] = None, autosign: bool = False):
         if account is None:
             self._account = select_account()
         else:
             self._account = account
+        if autosign:
+            print("WARNING: Autosign is enabled. Transactions will be signed automatically.")
+        self._autosign = autosign
+        self._account.set_autosign(autosign)
 
     def get_account(self) -> AccountAPI:
         """Returns the transactor account."""
@@ -506,8 +506,7 @@ class Transactor:
         else:
             message = f"{base_message} with no arguments"
         print(message)
-
-        if not self._non_interactive:
+        if not self._autosign:
             _continue()
 
         result = method(
@@ -534,9 +533,9 @@ class Deployer(Transactor):
         path: Path,
         verify: bool,
         account: typing.Optional[AccountAPI] = None,
-        non_interactive: bool = False,
+        autosign: bool = False,
     ):
-        super().__init__(account, non_interactive)
+        super().__init__(account, autosign)
 
         check_plugins()
         self.path = path
@@ -554,7 +553,7 @@ class Deployer(Transactor):
         self.verify = verify
         self._print_deployment_info()
 
-        if not self._non_interactive:
+        if not self._autosign:
             # Confirms the start of the deployment.
             _continue()
 
@@ -597,7 +596,7 @@ class Deployer(Transactor):
         self, container: ContractContainer, resolved_params: OrderedDict
     ) -> ContractInstance:
         contract_name = container.contract_type.name
-        if not self._non_interactive:
+        if not self._autosign:
             _confirm_resolution(resolved_params, contract_name)
         deployment_params = [container, *resolved_params.values()]
         kwargs = self._get_kwargs()
