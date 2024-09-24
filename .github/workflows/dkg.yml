@@ -1,0 +1,40 @@
+name: Heartbeat DKG
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  initiate_dkg:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+          pip3 install eth-ape ape-infura ape-polygon ape-etherscan
+          pip3 install -e .
+
+    - name: Import Ape Account
+      run: .github/scripts/import_account.py
+      env:
+        DKG_INITIATOR_PRIVATE_KEY: ${{ secrets.DKG_INITIATOR_PRIVATE_KEY }}
+        DKG_INITIATOR_PASSPHRASE: ${{ secrets.DKG_INITIATOR_PASSPHRASE }}
+
+    - name: Initiate Ritual
+      run: .github/scripts/initiate_ritual.sh
+      env:
+        DKG_INITIATOR_ADDRESS: ${{ secrets.DKG_INITIATOR_ADDRESS }}
+        APE_ACCOUNTS_AUTOMATION_PASSPHRASE: ${{ secrets.DKG_INITIATOR_PASSPHRASE }}
+        DKG_AUTHORITY_ADDRESS: ${{ secrets.DKG_AUTHORITY_ADDRESS }}
+        RPC_PROVIDER: ${{ secrets.RPC_PROVIDER }}
+        MIN_VERSION: ${{ secrets.MIN_VERSION }}
+        WEB3_INFURA_API_KEY: ${{ secrets.WEB3_INFURA_API_KEY }}
+        POLYGONSCAN_API_KEY: ${{ secrets.POLYGONSCAN_API_KEY }}
