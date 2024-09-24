@@ -9,6 +9,7 @@ from ape.api import AccountAPI, ReceiptAPI
 from ape.cli.choices import select_account
 from ape.contracts.base import ContractContainer, ContractInstance, ContractTransactionHandler
 from ape.utils import EMPTY_BYTES32, ZERO_ADDRESS
+from ape_test import TestAccount
 from eth_typing import ChecksumAddress
 from eth_utils import to_checksum_address
 from ethpm_types import MethodABI
@@ -488,7 +489,8 @@ class Transactor:
         if autosign:
             print("WARNING: Autosign is enabled. Transactions will be signed automatically.")
         self._autosign = autosign
-        self._account.set_autosign(autosign)
+        if not isinstance(self._account, TestAccount):
+            self._account.set_autosign(autosign)
 
     def get_account(self) -> AccountAPI:
         """Returns the transactor account."""
