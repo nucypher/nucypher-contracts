@@ -10,10 +10,10 @@ import "./EncryptorSlotsSubscription.sol";
 import "../GlobalAllowList.sol";
 
 /**
- * @title BqETH Subscription
+ * @title StandardSubscription
  * @notice Manages the subscription information for rituals.
  */
-contract BqETHSubscription is EncryptorSlotsSubscription, Initializable, OwnableUpgradeable {
+contract StandardSubscription is EncryptorSlotsSubscription, Initializable, OwnableUpgradeable {
     using SafeERC20 for IERC20;
 
     struct Billing {

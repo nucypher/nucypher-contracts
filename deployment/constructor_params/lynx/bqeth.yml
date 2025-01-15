@@ -32,7 +32,7 @@ contracts:
   - GlobalAllowList:
       constructor:
         _coordinator: $COORDINATOR_PROXY
-  - BqETHSubscription:
+  - StandardSubscription:
       proxy:
         constructor:
           initialOwner: $LYNX_DEPLOYER  # Upgrades owner

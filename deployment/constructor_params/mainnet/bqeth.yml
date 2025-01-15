@@ -42,7 +42,7 @@ contracts:
   - GlobalAllowList:
       constructor:
         _coordinator: $COORDINATOR_PROXY
-  - BqETHSubscription:
+  - StandardSubscription:
       proxy:
         constructor:
           initialOwner: $THRESHOLD_COUNCIL_ON_POLYGON  # Upgrades owner
