@@ -57,7 +57,7 @@ def erc20(project, initiator):
 
 
 @pytest.fixture()
-def coordinator(project, deployer, application, initiator, oz_dependency):
+def coordinator(project, deployer, application, oz_dependency):
     admin = deployer
     contract = project.Coordinator.deploy(
         application.address,
@@ -91,6 +91,20 @@ def global_allow_list(project, deployer, coordinator):
     return contract
 
 
+@pytest.fixture()
+def upgradeable_global_allow_list(project, deployer, coordinator, oz_dependency):
+    contract = project.GlobalAllowList.deploy(coordinator.address, sender=deployer)
+    encoded_initializer_function = b""
+    proxy = oz_dependency.TransparentUpgradeableProxy.deploy(
+        contract.address,
+        deployer,
+        encoded_initializer_function,
+        sender=deployer,
+    )
+    proxy_contract = project.GlobalAllowList.at(proxy.address)
+    return proxy_contract
+
+
 def initiate_ritual(coordinator, fee_model, erc20, authority, nodes, allow_logic):
     for node in nodes:
         public_key = gen_public_key()
@@ -106,16 +120,24 @@ def initiate_ritual(coordinator, fee_model, erc20, authority, nodes, allow_logic
     return authority, tx
 
 
+# Using normal and upgradeable versions of global_allow_list. 
+# Since both are fixtures, we need a small workaround to use them as parameters.
+# See https://engineeringfordatascience.com/posts/pytest_fixtures_with_parameterize/#using-requestgetfixturevalue-
+@pytest.mark.parametrize(
+    'allow_list_contract',
+    ('global_allow_list', 'upgradeable_global_allow_list'),
+)
 def test_authorize_using_global_allow_list(
-    coordinator, nodes, deployer, initiator, erc20, fee_model, global_allow_list
+    coordinator, nodes, deployer, initiator, erc20, fee_model, allow_list_contract, request
 ):
+    allow_list_contract = request.getfixturevalue(allow_list_contract)
     initiate_ritual(
         coordinator=coordinator,
         fee_model=fee_model,
         erc20=erc20,
         authority=initiator,
         nodes=nodes,
-        allow_logic=global_allow_list,
+        allow_logic=allow_list_contract,
     )
 
     # This block mocks the signature of a threshold decryption request
@@ -128,14 +150,14 @@ def test_authorize_using_global_allow_list(
     size = len(nodes)
 
     # Not authorized
-    assert not global_allow_list.isAuthorized(0, bytes(signature), bytes(digest))
+    assert not allow_list_contract.isAuthorized(0, bytes(signature), bytes(digest))
 
     # Negative test cases for authorization
     with ape.reverts("Only ritual authority is permitted"):
-        global_allow_list.authorize(0, [deployer.address], sender=deployer)
+        allow_list_contract.authorize(0, [deployer.address], sender=deployer)
 
     with ape.reverts("Only active rituals can set authorizations"):
-        global_allow_list.authorize(0, [deployer.address], sender=initiator)
+        allow_list_contract.authorize(0, [deployer.address], sender=initiator)
 
     with ape.reverts("Ritual not active"):
         coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(digest))
@@ -155,48 +177,48 @@ def test_authorize_using_global_allow_list(
         )
 
     # Actually authorize
-    tx = global_allow_list.authorize(0, [deployer.address], sender=initiator)
+    tx = allow_list_contract.authorize(0, [deployer.address], sender=initiator)
 
     # Authorized
-    assert global_allow_list.isAuthorized(0, bytes(signature), bytes(data))
+    assert allow_list_contract.isAuthorized(0, bytes(signature), bytes(data))
     assert coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(data))
-    events = global_allow_list.AddressAuthorizationSet.from_receipt(tx)
+    events = allow_list_contract.AddressAuthorizationSet.from_receipt(tx)
     assert events == [
-        global_allow_list.AddressAuthorizationSet(
+        allow_list_contract.AddressAuthorizationSet(
             ritualId=0, _address=deployer.address, isAuthorized=True
         )
     ]
 
     # Deauthorize
-    tx = global_allow_list.deauthorize(0, [deployer.address], sender=initiator)
+    tx = allow_list_contract.deauthorize(0, [deployer.address], sender=initiator)
 
-    assert not global_allow_list.isAuthorized(0, bytes(signature), bytes(data))
+    assert not allow_list_contract.isAuthorized(0, bytes(signature), bytes(data))
     assert not coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(data))
-    events = global_allow_list.AddressAuthorizationSet.from_receipt(tx)
+    events = allow_list_contract.AddressAuthorizationSet.from_receipt(tx)
     assert events == [
-        global_allow_list.AddressAuthorizationSet(
+        allow_list_contract.AddressAuthorizationSet(
             ritualId=0, _address=deployer.address, isAuthorized=False
         )
     ]
 
     # Reauthorize in batch
     addresses_to_authorize = [deployer.address, initiator.address]
-    tx = global_allow_list.authorize(0, addresses_to_authorize, sender=initiator)
+    tx = allow_list_contract.authorize(0, addresses_to_authorize, sender=initiator)
     signed_digest = w3.eth.account.sign_message(signable_message, private_key=initiator.private_key)
     initiator_signature = signed_digest.signature
-    assert global_allow_list.isAuthorized(0, bytes(initiator_signature), bytes(data))
+    assert allow_list_contract.isAuthorized(0, bytes(initiator_signature), bytes(data))
     assert coordinator.isEncryptionAuthorized(0, bytes(initiator_signature), bytes(data))
 
-    assert global_allow_list.isAuthorized(0, bytes(signature), bytes(data))
+    assert allow_list_contract.isAuthorized(0, bytes(signature), bytes(data))
     assert coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(data))
 
-    events = global_allow_list.AddressAuthorizationSet.from_receipt(tx)
+    events = allow_list_contract.AddressAuthorizationSet.from_receipt(tx)
     assert events == [
-        global_allow_list.AddressAuthorizationSet(
+        allow_list_contract.AddressAuthorizationSet(
             ritualId=0, _address=deployer.address, isAuthorized=True
         ),
         # TODO was this originally supposed to True (not sure why it passed before)
-        global_allow_list.AddressAuthorizationSet(
+        allow_list_contract.AddressAuthorizationSet(
             ritualId=0, _address=initiator.address, isAuthorized=True
         ),
     ]

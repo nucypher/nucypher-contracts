@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "../lib/LookupKey.sol";
 import "./IEncryptionAuthorizer.sol";
 import "./Coordinator.sol";
@@ -12,7 +13,7 @@ import "./Coordinator.sol";
  * @title GlobalAllowList
  * @notice Manages a global allow list of addresses that are authorized to decrypt ciphertexts.
  */
-contract GlobalAllowList is IEncryptionAuthorizer {
+contract GlobalAllowList is IEncryptionAuthorizer, Initializable {
     using MessageHashUtils for bytes32;
     using ECDSA for bytes32;
 
@@ -45,6 +46,7 @@ contract GlobalAllowList is IEncryptionAuthorizer {
         require(address(_coordinator) != address(0), "Contracts cannot be zero addresses");
         require(_coordinator.numberOfRituals() >= 0, "Invalid coordinator");
         coordinator = _coordinator;
+        _disableInitializers();
     }
 
     /**

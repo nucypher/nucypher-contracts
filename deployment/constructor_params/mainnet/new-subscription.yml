@@ -40,6 +40,10 @@ constants:
 
 contracts:
   - GlobalAllowList:
+      proxy:
+        constructor:
+          initialOwner: $THRESHOLD_COUNCIL_ON_POLYGON  # Upgrades owner
+          _data: "0x"
       constructor:
         _coordinator: $COORDINATOR_PROXY
   - StandardSubscription:
