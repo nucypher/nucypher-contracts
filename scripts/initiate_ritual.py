@@ -114,7 +114,7 @@ def cli(
     fee_model_contract = registry.get_contract(domain=domain, contract_name=fee_model)
 
     # if using a subcription, duration needs to be calculated
-    if fee_model == "BqETHSubscription":
+    if fee_model == "StandardSubscription":
         start_of_subscription = fee_model_contract.startOfSubscription()
         duration = (
             fee_model_contract.subscriptionPeriodDuration()
