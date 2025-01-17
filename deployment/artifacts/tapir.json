@@ -2335,7 +2335,7 @@
         }
     },
     "80002": {
-        "BqETHSubscription": {
+        "StandardSubscription": {
             "address": "0xC3085b0feB8C348D0BD7fabF4299c93dc2aE11d7",
             "abi": [
                 {
