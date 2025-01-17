@@ -86,7 +86,7 @@ def erc20(project, adopter):
 
 @pytest.fixture()
 def coordinator(project, creator):
-    contract = project.CoordinatorForBqETHSubscriptionMock.deploy(
+    contract = project.CoordinatorForStandardSubscriptionMock.deploy(
         sender=creator,
     )
     return contract
@@ -102,7 +102,7 @@ def global_allow_list(project, creator, coordinator):
 def subscription(
     project, creator, coordinator, global_allow_list, erc20, adopter_setter, treasury, oz_dependency
 ):
-    contract = project.BqETHSubscription.deploy(
+    contract = project.StandardSubscription.deploy(
         coordinator.address,
         global_allow_list.address,
         erc20.address,
@@ -124,7 +124,7 @@ def subscription(
         encoded_initializer_function,
         sender=creator,
     )
-    proxy_contract = project.BqETHSubscription.at(proxy.address)
+    proxy_contract = project.StandardSubscription.at(proxy.address)
     coordinator.setFeeModel(proxy_contract.address, sender=creator)
     proxy_contract.initialize(treasury.address, sender=treasury)
     return proxy_contract

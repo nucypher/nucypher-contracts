@@ -6,7 +6,7 @@ import "../contracts/coordination/IEncryptionAuthorizer.sol";
 import "../contracts/coordination/Coordinator.sol";
 import "../contracts/coordination/IFeeModel.sol";
 
-contract CoordinatorForBqETHSubscriptionMock {
+contract CoordinatorForStandardSubscriptionMock {
     struct Ritual {
         uint32 endTimestamp;
         IEncryptionAuthorizer accessController;

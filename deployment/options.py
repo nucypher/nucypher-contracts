@@ -35,7 +35,7 @@ subscription_contract_option = click.option(
     "--subscription-contract",
     "-s",
     help="Name of a subscription contract",
-    type=click.Choice(["BqETHSubscription"]),
+    type=click.Choice(["StandardSubscription"]),
     required=True,
 )
 

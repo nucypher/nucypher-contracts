@@ -1,10 +1,10 @@
 deployment:
-  name: bqeth-mainnet
+  name: new-susbcription-mainnet
   chain_id: 137
 
 artifacts:
   dir: ./deployment/artifacts/
-  filename: bqeth-mainnet.json
+  filename: new-susbcription-mainnet.json
 
 constants:
   # See deployment/artifacts/mainnet.json
@@ -31,15 +31,19 @@ constants:
   MAX_NODES: 30
 
   # - Fee parameters:
-  INITIAL_BASE_FEE_RATE: 4050925925925  # $0.35 per day, in DAI units per second (in Python: 35*10**16 // 86400)
-  ENCRYPTOR_FEE_RATE: 63419583967  # $2 per year, in DAI units per second (in Python: 2 * 10**18 // 86400 // 365)
-  BASE_FEE_RATE_INCREASE_PER_PERIOD: 247  # 5%/year ~ 2.47%/semester, expressed in basis points (0.01%)
-  # - Duration parameters --> 1 period = 6 months
-  SIX_MONTHS_IN_SECONDS: 15811200  # 183 days (~6 months)
+  INITIAL_BASE_FEE_RATE: 5787037037037  # $0.5 per day, in DAI units per second (in Python: 50*10**16 // 86400)
+  ENCRYPTOR_FEE_RATE: 79274479959  # $2.5 per year, in DAI units per second (in Python: 250 * 10**16 // 86400 // 365)
+  BASE_FEE_RATE_INCREASE_PER_PERIOD: 500  # 5%/year, expressed in basis points (0.01%)
+  # - Duration parameters --> 1 period = 365 days
+  ONE_YEAR_IN_SECONDS: 31536000  # 365 days (~1 year)
   THREE_MONTHS_IN_SECONDS: 7776000  # 90 day (~3 months)
 
 contracts:
   - GlobalAllowList:
+      proxy:
+        constructor:
+          initialOwner: $THRESHOLD_COUNCIL_ON_POLYGON  # Upgrades owner
+          _data: "0x"
       constructor:
         _coordinator: $COORDINATOR_PROXY
   - StandardSubscription:
@@ -56,6 +60,6 @@ contracts:
         _baseFeeRateIncrease: $BASE_FEE_RATE_INCREASE_PER_PERIOD
         _encryptorFeeRate: $ENCRYPTOR_FEE_RATE
         _maxNodes: $MAX_NODES
-        _subscriptionPeriodDuration: $SIX_MONTHS_IN_SECONDS
+        _subscriptionPeriodDuration: $ONE_YEAR_IN_SECONDS
         _yellowPeriodDuration: $THREE_MONTHS_IN_SECONDS
         _redPeriodDuration: $THREE_MONTHS_IN_SECONDS
