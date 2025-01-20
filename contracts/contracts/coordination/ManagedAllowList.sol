@@ -33,14 +33,20 @@ contract ManagedAllowList is GlobalAllowList, AccessControlUpgradeable {
      * Acquire cohort admin role
      * @param ritualId The ID of the ritual
      */
-    function initializeCohortAdminRole(uint32 ritualId) external {
+    function initializeCohortAdminRole(uint32 ritualId) public {
+        bytes32 cohortAdminRole = ritualRole(ritualId, COHORT_ADMIN_BASE);
         address authority = coordinator.getAuthority(ritualId);
-        require(authority == msg.sender, "Only ritual authority is permitted");
-        _setRoleAdmin(
-            ritualRole(ritualId, AUTH_ADMIN_BASE),
-            ritualRole(ritualId, COHORT_ADMIN_BASE)
-        );
-        _grantRole(ritualRole(ritualId, COHORT_ADMIN_BASE), authority);
+        require(authority != address(0), "Ritual is not initiated");
+        if (hasRole(cohortAdminRole, authority)) {
+            return;
+        }
+        _setRoleAdmin(ritualRole(ritualId, AUTH_ADMIN_BASE), cohortAdminRole);
+        _grantRole(cohortAdminRole, authority);
+    }
+
+    function grantAuthAdminRole(uint32 ritualId, address account) external {
+        initializeCohortAdminRole(ritualId);
+        grantRole(ritualRole(ritualId, AUTH_ADMIN_BASE), account);
     }
 
     /**
