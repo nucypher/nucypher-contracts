@@ -129,7 +129,7 @@ contract GlobalAllowList is IEncryptionAuthorizer, Initializable {
     function authorize(
         uint32 ritualId,
         address[] calldata addresses
-    ) external canSetAuthorizations(ritualId) {
+    ) external virtual canSetAuthorizations(ritualId) {
         setAuthorizations(ritualId, addresses, true);
     }
 
@@ -141,7 +141,7 @@ contract GlobalAllowList is IEncryptionAuthorizer, Initializable {
     function deauthorize(
         uint32 ritualId,
         address[] calldata addresses
-    ) external canSetAuthorizations(ritualId) {
+    ) external virtual canSetAuthorizations(ritualId) {
         setAuthorizations(ritualId, addresses, false);
     }
 
