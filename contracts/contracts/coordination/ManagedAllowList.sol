@@ -13,8 +13,8 @@ import "./GlobalAllowList.sol";
 contract ManagedAllowList is GlobalAllowList, AccessControlUpgradeable {
     mapping(address authAdmin => mapping(bytes32 lookupKey => bool)) public authAdmins;
 
-    bytes32 public constant COHORT_ADMIN = keccak256("COHORT_ADMIN");
-    bytes32 public constant AUTH_ADMIN = keccak256("AUTH_ADMIN");
+    bytes32 public constant COHORT_ADMIN_BASE = keccak256("COHORT_ADMIN");
+    bytes32 public constant AUTH_ADMIN_BASE = keccak256("AUTH_ADMIN");
 
     /**
      * @notice Sets the coordinator contract
@@ -25,7 +25,7 @@ contract ManagedAllowList is GlobalAllowList, AccessControlUpgradeable {
         _disableInitializers();
     }
 
-    function ritualRole(uint32 ritualId, bytes32 role) public returns (bytes32) {
+    function ritualRole(uint32 ritualId, bytes32 role) public view returns (bytes32) {
         return keccak256(abi.encodePacked(ritualId, role));
     }
 
@@ -36,8 +36,11 @@ contract ManagedAllowList is GlobalAllowList, AccessControlUpgradeable {
     function initializeCohortAdminRole(uint32 ritualId) external {
         address authority = coordinator.getAuthority(ritualId);
         require(authority == msg.sender, "Only ritual authority is permitted");
-        _setRoleAdmin(ritualRole(ritualId, AUTH_ADMIN), ritualRole(ritualId, COHORT_ADMIN));
-        grantRole(ritualRole(ritualId, COHORT_ADMIN), authority);
+        _setRoleAdmin(
+            ritualRole(ritualId, AUTH_ADMIN_BASE),
+            ritualRole(ritualId, COHORT_ADMIN_BASE)
+        );
+        _grantRole(ritualRole(ritualId, COHORT_ADMIN_BASE), authority);
     }
 
     /**
@@ -46,7 +49,7 @@ contract ManagedAllowList is GlobalAllowList, AccessControlUpgradeable {
      */
     modifier canSetAuthorizations(uint32 ritualId) virtual override {
         require(
-            hasRole(ritualRole(ritualId, AUTH_ADMIN), msg.sender),
+            hasRole(ritualRole(ritualId, AUTH_ADMIN_BASE), msg.sender),
             "Only auth admin is permitted"
         );
         _;
