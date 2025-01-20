@@ -71,20 +71,31 @@ def test_authorize_using_global_allow_list(coordinator, deployer, initiator, man
     with ape.reverts("Only auth admin is permitted"):
         managed_allow_list.authorize(ritual_id, [deployer.address], sender=deployer)
 
-    with ape.reverts("Only ritual authority is permitted"):
+    with ape.reverts("Ritual is not initiated"):
         managed_allow_list.initializeCohortAdminRole(ritual_id, sender=deployer)
 
     coordinator.initiateRitual(ritual_id, initiator, sender=initiator)
-
-    with ape.reverts("Only ritual authority is permitted"):
-        managed_allow_list.initializeCohortAdminRole(ritual_id, sender=deployer)
 
     managed_allow_list.initializeCohortAdminRole(ritual_id, sender=initiator)
     assert managed_allow_list.hasRole(cohort_admin_role, initiator)
 
     managed_allow_list.grantRole(auth_admin_role, deployer, sender=initiator)
+    assert managed_allow_list.hasRole(auth_admin_role, deployer)
     managed_allow_list.authorize(ritual_id, [deployer.address], sender=deployer)
 
     managed_allow_list.grantRole(auth_admin_role, initiator, sender=initiator)
     with ape.reverts("Encryptor must be authorized by the sender first"):
         managed_allow_list.deauthorize(ritual_id, [deployer.address], sender=initiator)
+
+    ritual_id = 1
+    cohort_admin_role = managed_allow_list.ritualRole(
+        ritual_id, managed_allow_list.COHORT_ADMIN_BASE()
+    )
+    auth_admin_role = managed_allow_list.ritualRole(ritual_id, managed_allow_list.AUTH_ADMIN_BASE())
+    coordinator.initiateRitual(ritual_id, initiator, sender=initiator)
+    with ape.reverts():
+        managed_allow_list.grantAuthAdminRole(ritual_id, deployer, sender=deployer)
+
+    managed_allow_list.grantAuthAdminRole(ritual_id, deployer, sender=initiator)
+    assert managed_allow_list.hasRole(cohort_admin_role, initiator)
+    assert managed_allow_list.hasRole(auth_admin_role, deployer)
