@@ -7,7 +7,7 @@ import "./GlobalAllowList.sol";
 
 /**
  * @title ManagedAllowList
- * @notice Manages a list of addresses that are authorized to decrypt ciphertexts, with additional management features.
+ * @notice Manages a list of addresses that are authorized to encrypt plaintexts, with additional management features.
  * This contract extends the GlobalAllowList contract and introduces additional management features.
  */
 contract ManagedAllowList is GlobalAllowList, AccessControlUpgradeable {
@@ -21,12 +21,31 @@ contract ManagedAllowList is GlobalAllowList, AccessControlUpgradeable {
      * @dev The coordinator contract cannot be a zero address and must have a valid number of rituals
      * @param _coordinator The address of the coordinator contract
      */
-    constructor(Coordinator _coordinator) GlobalAllowList(_coordinator) {
-        _disableInitializers();
+    constructor(Coordinator _coordinator) GlobalAllowList(_coordinator) {}
+
+    /**
+     * Prepares role ID for the specific ritual
+     * @param ritualId The ID of the ritual
+     * @param role Role ID
+     */
+    function ritualRole(uint32 ritualId, bytes32 role) public pure returns (bytes32) {
+        return keccak256(abi.encodePacked(ritualId, role));
     }
 
-    function ritualRole(uint32 ritualId, bytes32 role) public view returns (bytes32) {
-        return keccak256(abi.encodePacked(ritualId, role));
+    /**
+     * Prepares cohort admin role ID for the specific ritual
+     * @param ritualId The ID of the ritual
+     */
+    function cohortAdminRole(uint32 ritualId) public pure returns (bytes32) {
+        return ritualRole(ritualId, COHORT_ADMIN_BASE);
+    }
+
+    /**
+     * Prepares auth admin role ID for the specific ritual
+     * @param ritualId The ID of the ritual
+     */
+    function authAdminRole(uint32 ritualId) public pure returns (bytes32) {
+        return ritualRole(ritualId, AUTH_ADMIN_BASE);
     }
 
     /**
@@ -34,30 +53,33 @@ contract ManagedAllowList is GlobalAllowList, AccessControlUpgradeable {
      * @param ritualId The ID of the ritual
      */
     function initializeCohortAdminRole(uint32 ritualId) public {
-        bytes32 cohortAdminRole = ritualRole(ritualId, COHORT_ADMIN_BASE);
+        bytes32 cohortAdminRole = cohortAdminRole(ritualId);
         address authority = coordinator.getAuthority(ritualId);
         require(authority != address(0), "Ritual is not initiated");
         if (hasRole(cohortAdminRole, authority)) {
             return;
         }
-        _setRoleAdmin(ritualRole(ritualId, AUTH_ADMIN_BASE), cohortAdminRole);
+        _setRoleAdmin(authAdminRole(ritualId), cohortAdminRole);
         _grantRole(cohortAdminRole, authority);
     }
 
+    /**
+     * Grants Auth Admin role. Can be called only by Cohort Admin or Authority of the ritual
+     * @dev Automatically grants Cohort Admin role to the authority if was not granted before
+     * @param ritualId The ID of the ritual
+     * @param account Address for Auth Admin role
+     */
     function grantAuthAdminRole(uint32 ritualId, address account) external {
         initializeCohortAdminRole(ritualId);
-        grantRole(ritualRole(ritualId, AUTH_ADMIN_BASE), account);
+        grantRole(authAdminRole(ritualId), account);
     }
 
     /**
-     * @notice Checks if the sender is the authority of the ritual
+     * @notice Checks if the sender is an Authorization Admin of the ritual
      * @param ritualId The ID of the ritual
      */
     modifier canSetAuthorizations(uint32 ritualId) virtual override {
-        require(
-            hasRole(ritualRole(ritualId, AUTH_ADMIN_BASE), msg.sender),
-            "Only auth admin is permitted"
-        );
+        require(hasRole(authAdminRole(ritualId), msg.sender), "Only auth admin is permitted");
         _;
     }
 
@@ -90,7 +112,7 @@ contract ManagedAllowList is GlobalAllowList, AccessControlUpgradeable {
             bytes32 lookupKey = LookupKey.lookupKey(ritualId, addresses[i]);
             require(
                 authAdmins[msg.sender][lookupKey],
-                "Encryptor must be authorized by the sender first"
+                "Encryptor has not been previously authorized by the sender"
             );
         }
         setAuthorizations(ritualId, addresses, false);
