@@ -9,14 +9,12 @@ from web3 import Web3
 @pytest.fixture(scope="module")
 def initiator(accounts):
     initiator_index = 1
-    assert len(accounts) >= initiator_index
     return accounts[initiator_index]
 
 
 @pytest.fixture(scope="module")
 def deployer(accounts):
     deployer_index = 2
-    assert len(accounts) >= deployer_index
     return accounts[deployer_index]
 
 
@@ -59,10 +57,8 @@ def test_authorize_using_global_allow_list(coordinator, deployer, initiator, man
     signature = signed_digest.signature
 
     ritual_id = 0
-    cohort_admin_role = managed_allow_list.ritualRole(
-        ritual_id, managed_allow_list.COHORT_ADMIN_BASE()
-    )
-    auth_admin_role = managed_allow_list.ritualRole(ritual_id, managed_allow_list.AUTH_ADMIN_BASE())
+    cohort_admin_role = managed_allow_list.cohortAdminRole(ritual_id)
+    auth_admin_role = managed_allow_list.authAdminRole(ritual_id)
 
     # Not authorized
     assert not managed_allow_list.isAuthorized(0, bytes(signature), bytes(digest))
@@ -84,14 +80,12 @@ def test_authorize_using_global_allow_list(coordinator, deployer, initiator, man
     managed_allow_list.authorize(ritual_id, [deployer.address], sender=deployer)
 
     managed_allow_list.grantRole(auth_admin_role, initiator, sender=initiator)
-    with ape.reverts("Encryptor must be authorized by the sender first"):
+    with ape.reverts("Encryptor has not been previously authorized by the sender"):
         managed_allow_list.deauthorize(ritual_id, [deployer.address], sender=initiator)
 
     ritual_id = 1
-    cohort_admin_role = managed_allow_list.ritualRole(
-        ritual_id, managed_allow_list.COHORT_ADMIN_BASE()
-    )
-    auth_admin_role = managed_allow_list.ritualRole(ritual_id, managed_allow_list.AUTH_ADMIN_BASE())
+    cohort_admin_role = managed_allow_list.cohortAdminRole(ritual_id)
+    auth_admin_role = managed_allow_list.authAdminRole(ritual_id)
     coordinator.initiateRitual(ritual_id, initiator, sender=initiator)
     with ape.reverts():
         managed_allow_list.grantAuthAdminRole(ritual_id, deployer, sender=deployer)

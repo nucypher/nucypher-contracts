@@ -11,7 +11,7 @@ import "./Coordinator.sol";
 
 /**
  * @title GlobalAllowList
- * @notice Manages a global allow list of addresses that are authorized to decrypt ciphertexts.
+ * @notice Manages a global allow list of addresses that are authorized to decrypt plaintexts.
  */
 contract GlobalAllowList is IEncryptionAuthorizer, Initializable {
     using MessageHashUtils for bytes32;
