@@ -2,7 +2,7 @@
 
 import click
 from ape import Contract
-from ape.cli import account_option, ConnectedProviderCommand, network_option
+from ape.cli import ConnectedProviderCommand, account_option, network_option
 
 from deployment import registry
 from deployment.options import (
@@ -17,7 +17,7 @@ from deployment.utils import check_plugins
 
 
 def _erc20_approve(
-        amount: int, erc20: Contract, receiver: Contract, transactor: Transactor
+    amount: int, erc20: Contract, receiver: Contract, transactor: Transactor
 ) -> None:
     """Approve an ERC20 transfer."""
     click.echo(
@@ -56,9 +56,8 @@ def pay_subscription(account, network, domain, subscription_contract, encryptor_
     check_plugins()
     click.echo(f"Connected to {network.name} network.")
     transactor = Transactor(account=account)
-    subscription_contract = registry.get_contract(
-        contract_name=subscription_contract, domain=domain
-    )
+    subscription_contract = Contract(address=subscription_contract)
+
     erc20 = Contract(subscription_contract.feeToken())
     base_fees = subscription_contract.baseFees(period)
     slot_fees = _calculate_slot_fees(
@@ -85,9 +84,7 @@ def pay_slots(account, network, domain, subscription_contract, encryptor_slots):
     check_plugins()
     click.echo(f"Connected to {network.name} network.")
     transactor = Transactor(account=account)
-    subscription_contract = registry.get_contract(
-        contract_name=subscription_contract, domain=domain
-    )
+    subscription_contract = Contract(address=subscription_contract)
     erc20 = Contract(subscription_contract.feeToken())
     fee = _calculate_slot_fees(subscription_contract=subscription_contract, slots=encryptor_slots)
     _erc20_approve(amount=fee, erc20=erc20, receiver=subscription_contract, transactor=transactor)
