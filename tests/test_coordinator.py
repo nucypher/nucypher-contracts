@@ -7,7 +7,7 @@ from eth_account import Account
 from hexbytes import HexBytes
 from web3 import Web3
 
-from tests.conftest import ONE_DAY, gen_public_key, generate_transcript, RitualState
+from tests.conftest import RitualState, gen_public_key, generate_transcript
 
 TIMEOUT = 1000
 MAX_DKG_SIZE = 31
@@ -140,7 +140,7 @@ def test_invalid_initiate_ritual(
             sender=initiator,
         )
 
-    with ape.reverts(project.NuCypherToken.ERC20InsufficientAllowance):
+    with ape.reverts(project.TestToken.ERC20InsufficientAllowance):
         # Sender didn't approve enough tokens
         coordinator.initiateRitual(
             fee_model.address,
@@ -301,7 +301,7 @@ def test_post_transcript_but_already_posted_transcript(
         nodes=nodes,
         allow_logic=global_allow_list,
     )
-    
+
     size = len(nodes)
     threshold = coordinator.getThresholdForRitualSize(size)
     transcript = generate_transcript(size, threshold)
@@ -322,7 +322,7 @@ def test_post_transcript_but_wrong_size(
         nodes=nodes,
         allow_logic=global_allow_list,
     )
-    
+
     size = len(nodes)
     threshold = coordinator.getThresholdForRitualSize(size)
     bad_transcript = generate_transcript(size, threshold + 1)
@@ -346,7 +346,7 @@ def test_post_transcript_but_not_waiting_for_transcripts(
         nodes=nodes,
         allow_logic=global_allow_list,
     )
-    
+
     size = len(nodes)
     threshold = coordinator.getThresholdForRitualSize(size)
     transcript = generate_transcript(size, threshold)
@@ -367,7 +367,7 @@ def test_get_participants(coordinator, nodes, initiator, erc20, fee_model, globa
         nodes=nodes,
         allow_logic=global_allow_list,
     )
-    
+
     size = len(nodes)
     threshold = coordinator.getThresholdForRitualSize(size)
     transcript = generate_transcript(size, threshold)
@@ -424,7 +424,7 @@ def test_get_participant(nodes, coordinator, initiator, erc20, fee_model, global
         nodes=nodes,
         allow_logic=global_allow_list,
     )
-    
+
     size = len(nodes)
     threshold = coordinator.getThresholdForRitualSize(size)
     transcript = generate_transcript(size, threshold)
@@ -476,7 +476,7 @@ def test_post_aggregation(
         nodes=nodes,
         allow_logic=global_allow_list,
     )
-    
+
     ritualID = 0
     size = len(nodes)
     threshold = coordinator.getThresholdForRitualSize(size)
@@ -538,7 +538,7 @@ def test_post_aggregation_fails(
         nodes=nodes,
         allow_logic=global_allow_list,
     )
-    
+
     ritualID = 0
     size = len(nodes)
     threshold = coordinator.getThresholdForRitualSize(size)
@@ -675,7 +675,6 @@ def test_upgrade(
 
 
 def test_withdraw_tokens(coordinator, initiator, erc20, treasury, deployer):
-    
     # Let's send some tokens to Coordinator by mistake
     erc20.transfer(coordinator.address, 42, sender=initiator)
     assert erc20.balanceOf(coordinator.address) == 42
