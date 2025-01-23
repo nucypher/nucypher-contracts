@@ -38,7 +38,7 @@ from deployment.utils import check_plugins, sample_nodes
 @click.option(
     "--fee-model",
     "-f",
-    help="The address of the subscription fee model contract.",
+    help="The address of the fee model/subscription contract.",
     type=ChecksumAddress(),
     required=True,
 )
