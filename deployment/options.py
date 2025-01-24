@@ -1,11 +1,7 @@
 import click
 from eth_typing import ChecksumAddress
 
-from deployment.constants import (
-    ACCESS_CONTROLLERS,
-    SUPPORTED_TACO_DOMAINS
-)
-
+from deployment.constants import ACCESS_CONTROLLERS, SUPPORTED_TACO_DOMAINS
 
 access_controller_option = click.option(
     "--access-controller",
@@ -24,18 +20,14 @@ domain_option = click.option(
 )
 
 ritual_id_option = click.option(
-    "--ritual-id",
-    "-r",
-    help="ID of the ritual",
-    required=True,
-    type=int
+    "--ritual-id", "-r", help="ID of the ritual", required=True, type=int
 )
 
 subscription_contract_option = click.option(
     "--subscription-contract",
     "-s",
-    help="Name of a subscription contract",
-    type=click.Choice(["StandardSubscription"]),
+    help="Address of a subscription contract",
+    type=ChecksumAddress,
     required=True,
 )
 
@@ -44,7 +36,7 @@ encryptor_slots_option = click.option(
     "-es",
     help="Number of encryptor slots to pay for.",
     required=True,
-    type=int
+    type=int,
 )
 
 encryptors_option = click.option(
@@ -53,5 +45,5 @@ encryptors_option = click.option(
     help="List of encryptor addresses to remove.",
     multiple=True,
     required=True,
-    type=ChecksumAddress
+    type=ChecksumAddress,
 )

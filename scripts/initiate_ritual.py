@@ -1,11 +1,11 @@
 #!/usr/bin/python3
 
 import click
-from ape import chain
+from ape import Contract, chain
 from ape.cli import ConnectedProviderCommand, account_option, network_option
 
 from deployment import registry
-from deployment.constants import ACCESS_CONTROLLERS, FEE_MODELS, SUPPORTED_TACO_DOMAINS
+from deployment.constants import ACCESS_CONTROLLERS, SUPPORTED_TACO_DOMAINS
 from deployment.params import Transactor
 from deployment.types import ChecksumAddress, MinInt
 from deployment.utils import check_plugins, sample_nodes
@@ -38,8 +38,8 @@ from deployment.utils import check_plugins, sample_nodes
 @click.option(
     "--fee-model",
     "-f",
-    help="The name of a fee model contract.",
-    type=click.Choice(FEE_MODELS),
+    help="The address of the fee model/subscription contract.",
+    type=ChecksumAddress(),
     required=True,
 )
 @click.option(
@@ -111,10 +111,10 @@ def cli(
     access_controller_contract = registry.get_contract(
         domain=domain, contract_name=access_controller
     )
-    fee_model_contract = registry.get_contract(domain=domain, contract_name=fee_model)
+    fee_model_contract = Contract(fee_model)
 
-    # if using a subcription, duration needs to be calculated
-    if fee_model == "StandardSubscription":
+    # if using a subscription, duration needs to be calculated
+    if fee_model_contract.contract_type.name == "StandardSubscription":
         start_of_subscription = fee_model_contract.startOfSubscription()
         duration = (
             fee_model_contract.subscriptionPeriodDuration()
