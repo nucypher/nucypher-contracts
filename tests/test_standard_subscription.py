@@ -356,19 +356,13 @@ def test_withdraw(erc20, subscription, adopter, adopter_setter, treasury, global
     erc20.approve(subscription.address, ERC20_SUPPLY, sender=adopter)
     subscription.setAdopter(adopter, sender=adopter_setter)
 
-    with ape.reverts():
-        subscription.withdrawToTreasury(1, sender=adopter)
-
     with ape.reverts("Insufficient balance available"):
-        subscription.withdrawToTreasury(1, sender=treasury)
+        subscription.withdrawToTreasury(sender=adopter)
 
     subscription.payForSubscription(0, sender=adopter)
 
     current_base_fee = base_fee(0)
-    with ape.reverts("Insufficient balance available"):
-        subscription.withdrawToTreasury(current_base_fee + 1, sender=treasury)
-
-    tx = subscription.withdrawToTreasury(current_base_fee, sender=treasury)
+    tx = subscription.withdrawToTreasury(sender=adopter)
     assert erc20.balanceOf(treasury) == current_base_fee
     assert erc20.balanceOf(subscription.address) == 0
 
