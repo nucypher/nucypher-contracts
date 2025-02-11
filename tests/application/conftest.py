@@ -26,10 +26,6 @@ TOTAL_SUPPLY = Web3.to_wei(11_000_000_000, "ether")
 
 REWARD_DURATION = 60 * 60 * 24 * 7  # one week in seconds
 DEAUTHORIZATION_DURATION = 60 * 60 * 24 * 60  # 60 days in seconds
-COMMITMENT_DURATION_1 = 182 * 60 * 24 * 60  # 182 days in seconds
-COMMITMENT_DURATION_2 = 2 * COMMITMENT_DURATION_1  # 365 days in seconds
-COMMITMENT_DURATION_3 = 3 * COMMITMENT_DURATION_1  # 365 days in seconds
-COMMITMENT_DEADLINE = 60 * 60 * 24 * 200  # 200 days after deploymwent
 
 PENALTY_DEFAULT = 1000  # 10% penalty
 PENALTY_INCREMENT = 2500  # 25% penalty increment
@@ -71,7 +67,6 @@ def encode_function_data(initializer=None, *args):
 
 @pytest.fixture()
 def taco_application(project, creator, token, threshold_staking, oz_dependency, chain):
-    now = chain.pending_timestamp
     contract = creator.deploy(
         project.TACoApplication,
         token.address,
@@ -80,8 +75,6 @@ def taco_application(project, creator, token, threshold_staking, oz_dependency, 
         MIN_OPERATOR_SECONDS,
         REWARD_DURATION,
         DEAUTHORIZATION_DURATION,
-        [COMMITMENT_DURATION_1, COMMITMENT_DURATION_2, COMMITMENT_DURATION_3],
-        now + COMMITMENT_DEADLINE,
         PENALTY_DEFAULT,
         PENALTY_DURATION,
         PENALTY_INCREMENT,
