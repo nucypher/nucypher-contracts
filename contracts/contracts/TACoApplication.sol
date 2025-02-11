@@ -625,10 +625,19 @@ contract TACoApplication is
             authorizedOverall -= effectiveDifference(_fromAmount, _toAmount, info);
         }
 
-        info.authorized = _toAmount;
-        if (info.authorized < info.deauthorizing) {
-            info.deauthorizing = info.authorized;
+        uint96 decrease = info.authorized - _toAmount;
+        if (info.deauthorizing > decrease) {
+            info.deauthorizing -= decrease;
+        } else {
+            info.deauthorizing = 0;
+            info.endDeauthorization = 0;
         }
+
+        info.authorized = _toAmount;
+
+        // if (info.authorized < info.deauthorizing) {
+        //     info.deauthorizing = info.authorized;
+        // }
         emit AuthorizationInvoluntaryDecreased(_stakingProvider, _fromAmount, _toAmount);
 
         if (info.authorized == 0) {

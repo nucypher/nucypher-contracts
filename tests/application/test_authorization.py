@@ -338,13 +338,13 @@ def test_involuntary_authorization_decrease(
     assert (
         taco_application.stakingProviderInfo(staking_provider)[AUTHORIZATION_SLOT] == authorization
     )
-    assert taco_application.pendingAuthorizationDecrease(staking_provider) == authorization
+    assert taco_application.pendingAuthorizationDecrease(staking_provider) == 0
     assert taco_application.authorizedOverall() == authorization * 9 // 10
     assert taco_application.authorizedStake(staking_provider) == authorization
     assert child_application.stakingProviderInfo(staking_provider) == (
         authorization,
-        authorization,
-        end_deauthorization,
+        0,
+        0,
     )
     chain.pending_timestamp += PENALTY_DURATION
 
