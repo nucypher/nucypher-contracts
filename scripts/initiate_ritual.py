@@ -72,6 +72,10 @@ from deployment.utils import check_plugins, sample_nodes
     help="The filepath of a file containing newline separated staking provider addresses.",
     type=click.File("r"),
 )
+@click.option(
+    "--autosign",
+    is_flag=True,
+)
 def cli(
     domain,
     account,
@@ -84,6 +88,7 @@ def cli(
     random_seed,
     handpicked,
     min_version,
+    autosign,
 ):
     """Initiate a ritual for a TACo domain."""
 
@@ -147,7 +152,7 @@ def cli(
         )
 
     # Initiate the ritual
-    transactor = Transactor(account=account)
+    transactor = Transactor(account=account, autosign=autosign)
     transactor.transact(
         coordinator_contract.initiateRitual,
         fee_model_contract.address,
