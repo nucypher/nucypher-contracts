@@ -16,7 +16,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.x'
+        python-version: '3.13'
 
     - name: Install dependencies
       run: |
@@ -30,12 +30,19 @@ jobs:
         DKG_INITIATOR_PASSPHRASE: ${{ secrets.DKG_INITIATOR_PASSPHRASE }}
 
     - name: Initiate Ritual
-      run: .github/scripts/initiate_ritual.sh
+      run: .github/scripts/initiate_dkg.sh
       env:
         DKG_INITIATOR_ADDRESS: ${{ secrets.DKG_INITIATOR_ADDRESS }}
-        APE_ACCOUNTS_AUTOMATION_PASSPHRASE: ${{ secrets.DKG_INITIATOR_PASSPHRASE }}
+        APE_ACCOUNTS_automation_PASSPHRASE: ${{ secrets.DKG_INITIATOR_PASSPHRASE }}
         DKG_AUTHORITY_ADDRESS: ${{ secrets.DKG_AUTHORITY_ADDRESS }}
         RPC_PROVIDER: ${{ secrets.RPC_PROVIDER }}
         MIN_VERSION: ${{ secrets.MIN_VERSION }}
         WEB3_INFURA_API_KEY: ${{ secrets.WEB3_INFURA_API_KEY }}
         POLYGONSCAN_API_KEY: ${{ secrets.POLYGONSCAN_API_KEY }}
+        NUM_NODES: ${{ secrets.NUM_NODES }}
+        DOMAIN: ${{ secrets.DOMAIN }}
+        NETWORK: ${{ secrets.NETWORK }}
+        ECOSYSTEM: ${{ secrets.ECOSYSTEM }}
+        DURATION: ${{ secrets.DURATION }}
+        ACCESS_CONTROLLER: ${{ secrets.ACCESS_CONTROLLER }}
+        FEE_MODEL: ${{ secrets.FEE_MODEL }}
