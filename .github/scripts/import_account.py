@@ -15,7 +15,7 @@ def main():
             "Please set DKG_INITIATOR_PASSPHRASE and DKG_INITIATOR_PRIVATE_KEY."
         )
     account = import_account_from_private_key(
-        'AUTOMATION',
+        'automation',
         passphrase,
         private_key
     )
