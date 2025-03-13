@@ -1,5 +1,6 @@
 import json
 import os
+from itertools import zip_longest
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -9,6 +10,7 @@ from ape import networks, project
 from ape.contracts import ContractContainer, ContractInstance
 from ape.exceptions import NetworkError
 from ape_etherscan.utils import API_KEY_ENV_KEY_MAP
+from eth_utils import to_checksum_address, to_int
 
 from deployment.constants import ARTIFACTS_DIR, MAINNET, PORTER_SAMPLING_ENDPOINTS
 from deployment.networks import is_local_network
@@ -209,3 +211,29 @@ def sample_nodes(
 
     result = sorted(ursulas, key=lambda x: x.lower())
     return result
+
+
+def _split_into_sorted_pairs(lst) -> List[List[str]]:
+    """Splits a list into sorted pairs."""
+    if len(lst) % 2 != 0:
+        lst.append(lst[-2])  # Use the second-to-last element to fill
+    it = iter(lst)
+    return [sorted(list(pair)) for pair in zip_longest(it, it)]
+
+
+def get_heartbeat_cohorts(taco_application) -> List[List[str]]:
+    data = taco_application.getActiveStakingProviders(
+        0,     # start index
+        1000,  # max number of staking providers
+        1      # min duration of staking
+    )
+    staked, staking_providers_info = data
+    staking_providers = dict()
+    for info in staking_providers_info:
+        staking_provider_address = to_checksum_address(info[0:20])
+        staking_provider_authorized_tokens = to_int(info[20:32])
+        staking_providers[staking_provider_address] = staking_provider_authorized_tokens
+
+    staking_providers_info_pairs = _split_into_sorted_pairs(list(staking_providers))
+    return staking_providers_info_pairs
+
