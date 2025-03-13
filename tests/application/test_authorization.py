@@ -48,7 +48,7 @@ def test_authorization_increase(
 
     # Can't call `authorizationIncreased` directly
     with ape.reverts():
-        taco_application.authorizationIncreased(staking_provider, 0, value, sender=creator)
+        taco_application.authorizationIncreased(staking_provider, 0, value, sender=staking_provider)
 
     # Staking provider and toAmount must be specified
     with ape.reverts():
@@ -88,7 +88,7 @@ def test_authorization_increase(
             staking_provider, value // 2, value - 1, sender=creator
         )
 
-    tx = threshold_staking.authorizationIncreased(
+    tx = taco_application.authorizationIncreased(
         staking_provider, value // 2, value, sender=creator
     )
     assert taco_application.stakingProviderInfo(staking_provider)[AUTHORIZATION_SLOT] == value
@@ -225,7 +225,7 @@ def test_involuntary_authorization_decrease(
     # Can't call `involuntaryAuthorizationDecrease` directly
     with ape.reverts():
         taco_application.involuntaryAuthorizationDecrease(
-            staking_provider, value, 0, sender=creator
+            staking_provider, value, 0, sender=staking_provider
         )
 
     authorization = value // 2
@@ -253,7 +253,7 @@ def test_involuntary_authorization_decrease(
     # Decrease again for staker with penalty
     child_application.penalize(staking_provider, sender=staking_provider)
     threshold_staking.authorizationIncreased(staking_provider, authorization, value, sender=creator)
-    threshold_staking.involuntaryAuthorizationDecrease(
+    taco_application.involuntaryAuthorizationDecrease(
         staking_provider, value, authorization, sender=creator
     )
     assert taco_application.authorizedOverall() == 0
@@ -428,7 +428,9 @@ def test_authorization_decrease_request(
 
     # Can't call `authorizationDecreaseRequested` directly
     with ape.reverts():
-        taco_application.authorizationDecreaseRequested(staking_provider, value, 0, sender=creator)
+        taco_application.authorizationDecreaseRequested(
+            staking_provider, value, 0, sender=staking_provider
+        )
 
     # Can't increase amount using request
     with ape.reverts():
@@ -480,9 +482,7 @@ def test_authorization_decrease_request(
     taco_application.bondOperator(staking_provider, staking_provider, sender=staking_provider)
     child_application.confirmOperatorAddress(staking_provider, sender=staking_provider)
 
-    tx = threshold_staking.authorizationDecreaseRequested(
-        staking_provider, value, 0, sender=creator
-    )
+    tx = taco_application.authorizationDecreaseRequested(staking_provider, value, 0, sender=creator)
     timestamp = chain.pending_timestamp - 1
     assert taco_application.stakingProviderInfo(staking_provider)[AUTHORIZATION_SLOT] == value
     assert taco_application.pendingAuthorizationDecrease(staking_provider) == value
