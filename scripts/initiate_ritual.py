@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import json
 import time
 
 import click
@@ -152,6 +153,7 @@ def cli(
     if heartbeat:
         taco_application = registry.get_contract(domain=domain, contract_name="TACoChildApplication")
         cohorts = get_heartbeat_cohorts(taco_application=taco_application)
+        duration = 86400  # default to 24h
     else:
         if handpicked:
             cohort = sorted(line.lower().strip() for line in handpicked)
@@ -167,10 +169,12 @@ def cli(
             )
         cohorts = [cohort]
 
+    rituals = {}
     for cohort in cohorts:
+        # TODO: Failure recovery? (not enough funds, outages, etc.)
         # Initiate the ritual(s)
         transactor = Transactor(account=account, autosign=autosign)
-        transactor.transact(
+        result = transactor.transact(
             coordinator_contract.initiateRitual,
             fee_model_contract.address,
             cohort,
@@ -178,7 +182,16 @@ def cli(
             duration,
             access_controller_contract.address,
         )
+
+        ritual_id = result.events[0].ritualId
+        rituals[ritual_id] = cohort
         time.sleep(1)  # chill for a sec
+
+    # Save the ritual data
+    if heartbeat:
+        json.dumps(rituals, indent=4)
+        with open("rituals.json", "w") as f:
+            f.write(json.dumps(rituals, indent=4))
 
 
 if __name__ == "__main__":
