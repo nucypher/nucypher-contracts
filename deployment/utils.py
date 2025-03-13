@@ -212,6 +212,7 @@ def sample_nodes(
 def _split_into_sorted_pairs(lst) -> List[List[str]]:
     """Splits a list into sorted pairs."""
     if len(lst) % 2 != 0:
+        # TODO: Use a group of 3 instead of sampling a node twice
         lst.append(lst[-2])  # Use the second-to-last element to fill
     it = iter(lst)
     return [sorted(list(pair)) for pair in zip_longest(it, it)]

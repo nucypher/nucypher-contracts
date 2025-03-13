@@ -19,9 +19,7 @@ jobs:
         python-version: '3.13'
 
     - name: Install dependencies
-      run: |
-          pip3 install eth-ape ape-infura ape-polygon ape-etherscan
-          pip3 install -e .
+      run: pip3 install -e .
 
     - name: Import Ape Account
       run: .github/scripts/import_account.py
@@ -46,3 +44,9 @@ jobs:
         DURATION: ${{ secrets.DURATION }}
         ACCESS_CONTROLLER: ${{ secrets.ACCESS_CONTROLLER }}
         FEE_MODEL: ${{ secrets.FEE_MODEL }}
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: heartbeat-rituals
+        path: rituals.json
