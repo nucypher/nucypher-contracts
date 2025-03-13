@@ -2,12 +2,23 @@
 
 
 import json
+from enum import IntEnum
 
 import click
 from ape.cli import ConnectedProviderCommand, network_option
 
 from deployment import registry
 from deployment.constants import SUPPORTED_TACO_DOMAINS
+
+
+class RitualState(IntEnum):
+    NON_INITIATED = 0
+    DKG_AWAITING_TRANSCRIPTS = 1
+    DKG_AWAITING_AGGREGATIONS = 2
+    DKG_TIMEOUT = 3
+    DKG_INVALID = 4
+    ACTIVE = 5
+    EXPIRED = 6
 
 
 @click.command(cls=ConnectedProviderCommand, name="evaluate-heartbeat")
@@ -45,11 +56,11 @@ def cli(domain, artifact, report_infractions):
     for ritual_id, cohort in artifact_data.items():
 
         ritual_status = coordinator.getRitualState(ritual_id)
-        if ritual_status == 5:
+        if ritual_status == RitualState.ACTIVE.value:
             print(f"Ritual {ritual_id} is ACTIVE.")
             continue
 
-        elif ritual_status == 3:
+        elif ritual_status == RitualState.DKG_TIMEOUT.value:
             print(f"Ritual {ritual_id} status is TIMEOUT.")
             offenders = []
             participants = coordinator.getParticipants(ritual_id).call()
