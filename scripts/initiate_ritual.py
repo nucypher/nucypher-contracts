@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import json
+import os
 import time
 
 import click
@@ -189,6 +190,11 @@ def cli(
 
     # Save the ritual data
     if heartbeat:
+        # remove the file if it exists
+        try:
+            os.remove("rituals.json")
+        except OSError:
+            pass
         json.dumps(rituals, indent=4)
         with open("rituals.json", "w") as f:
             f.write(json.dumps(rituals, indent=4))
