@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import time
 
 import click
 from ape import Contract, chain
@@ -8,7 +9,7 @@ from deployment import registry
 from deployment.constants import ACCESS_CONTROLLERS, SUPPORTED_TACO_DOMAINS
 from deployment.params import Transactor
 from deployment.types import ChecksumAddress, MinInt
-from deployment.utils import check_plugins, sample_nodes
+from deployment.utils import check_plugins, sample_nodes, get_heartbeat_cohorts
 
 
 @click.command(cls=ConnectedProviderCommand, name="initiate-ritual")
@@ -76,6 +77,10 @@ from deployment.utils import check_plugins, sample_nodes
     "--autosign",
     is_flag=True,
 )
+@click.option(
+    "--heartbeat",
+    is_flag=True,
+)
 def cli(
     domain,
     account,
@@ -89,13 +94,14 @@ def cli(
     handpicked,
     min_version,
     autosign,
+    heartbeat,
 ):
     """Initiate a ritual for a TACo domain."""
 
     # Setup
     check_plugins()
     click.echo(f"Connected to {network.name} network.")
-    if not (bool(handpicked) ^ (num_nodes is not None)):
+    if not heartbeat and not (bool(handpicked) ^ (num_nodes is not None)):
         raise click.BadOptionUsage(
             option_name="--num-nodes",
             message=f"Specify either --num-nodes or --handpicked; got {num_nodes}, {handpicked}.",
@@ -109,6 +115,11 @@ def cli(
         raise click.BadOptionUsage(
             option_name="--min-version",
             message="Cannot specify --min-version when using --handpicked.",
+        )
+    if heartbeat and (handpicked or num_nodes or random_seed or min_version):
+        raise click.BadOptionUsage(
+            option_name="--heartbeat",
+            message="Cannot specify --heartbeat with any other sampling options.",
         )
 
     # Get the contracts from the registry
@@ -138,29 +149,36 @@ def cli(
             duration -= elapsed
 
     # Get the staking providers in the ritual cohort
-    if handpicked:
-        providers = sorted(line.lower().strip() for line in handpicked)
-        if not providers:
-            raise ValueError(f"No staking providers found in the handpicked file {handpicked.name}")
+    if heartbeat:
+        taco_application = registry.get_contract(domain=domain, contract_name="TACoChildApplication")
+        cohorts = get_heartbeat_cohorts(taco_application=taco_application)
     else:
-        providers = sample_nodes(
-            domain=domain,
-            num_nodes=num_nodes,
-            duration=duration,
-            random_seed=random_seed,
-            min_version=min_version,
-        )
+        if handpicked:
+            cohort = sorted(line.lower().strip() for line in handpicked)
+            if not cohort:
+                raise ValueError(f"No staking providers found in the handpicked file {handpicked.name}")
+        else:
+            cohort = sample_nodes(
+                domain=domain,
+                num_nodes=num_nodes,
+                duration=duration,
+                random_seed=random_seed,
+                min_version=min_version,
+            )
+        cohorts = [cohort]
 
-    # Initiate the ritual
-    transactor = Transactor(account=account, autosign=autosign)
-    transactor.transact(
-        coordinator_contract.initiateRitual,
-        fee_model_contract.address,
-        providers,
-        authority,
-        duration,
-        access_controller_contract.address,
-    )
+    for cohort in cohorts:
+        # Initiate the ritual(s)
+        transactor = Transactor(account=account, autosign=autosign)
+        transactor.transact(
+            coordinator_contract.initiateRitual,
+            fee_model_contract.address,
+            cohort,
+            authority,
+            duration,
+            access_controller_contract.address,
+        )
+        time.sleep(1)  # chill for a sec
 
 
 if __name__ == "__main__":
