@@ -24,31 +24,55 @@ from deployment.constants import SUPPORTED_TACO_DOMAINS
     help="The filepath of a heartbeat artifact file.",
     type=click.File("r"),
 )
-def cli(domain, artifact):
+@click.option(
+    "--report-infractions",
+    help="Report infractions to the InfractionCollector.",
+    is_flag=True,
+    default=False,
+)
+def cli(domain, artifact, report_infractions):
     """Evaluate the heartbeat artifact."""
+
+    # setup
     artifact_data = json.load(artifact)
     click.echo(json.dumps(artifact_data, indent=4))
     coordinator = registry.get_contract(domain=domain, contract_name="Coordinator")
 
+    # TODO: Uncomment the following lines after the InfractionCollector contract is merged.
+    # infraction_collector = registry.get_contract(domain=domain, contract_name="InfractionCollector")
+
+    # capture ritual states
     for ritual_id, cohort in artifact_data.items():
+
         ritual_status = coordinator.getRitualState(ritual_id)
         if ritual_status == 5:
             print(f"Ritual {ritual_id} is ACTIVE.")
             continue
 
-        print(f"Ritual {ritual_id} is in a bad state.")
+        elif ritual_status == 3:
+            print(f"Ritual {ritual_id} status is TIMEOUT.")
+            offenders = []
+            participants = coordinator.getParticipants(ritual_id).call()
+            for participant_info in participants:
+                address, aggregated, transcript, *data = participant_info
+                if not aggregated:
+                    print(f"Participant {address} has not aggregated.")
+                    # TODO: Missing aggregation is not yet a reportable violation.
+                if not transcript:
+                    print(f"Participant {address} has not submitted a transcript.")
+                    offenders.append(address)
 
-        offenders = []
-        participants = coordinator.getParticipants(ritual_id).call()
-        for participant in participants:
-            participant_address = participant[0]
-            participant_aggregated = participant[1]
-            participant_transcript = participant[2]
-            if not participant_aggregated:
-                print(f"Participant {participant_address} has not aggregated.")
-                offenders.append(participant_address)
-            if not participant_transcript:
-                print(f"Participant {participant_address} has not submitted a transcript.")
-                offenders.append(participant_address)
+            # TODO: Uncomment the following lines after the InfractionCollector contract is merged.
+            # report infractions
+            # if report_infractions:
+            #     receipt = infraction_collector.reportMissingTranscript(ritual_id, offenders)
 
-        print(f"Identified {len(offenders)} offenders: {offenders}")
+            if offenders:
+                print(f"{len(offenders)} ritual #{ritual_id} offenders: {offenders}")
+                json.dumps(offenders)
+                with open(f"ritual-{ritual_id}-offenders.json", "w") as f:
+                    f.write(json.dumps(offenders))
+
+        else:
+            print(f"Ritual {ritual_id} status is {ritual_status}.")
+            continue
