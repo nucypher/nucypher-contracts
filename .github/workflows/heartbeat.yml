@@ -16,10 +16,12 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.13'
+        python-version: '3.12.4'
 
     - name: Install dependencies
-      run: pip3 install -e .
+      run: |
+        sed -i '/^nucypher-core==/d' requirements.txt
+        pip3 install -e . -r requirements.txt
 
     - name: Import Ape Account
       run: .github/scripts/import_account.py
@@ -34,14 +36,11 @@ jobs:
         APE_ACCOUNTS_automation_PASSPHRASE: ${{ secrets.DKG_INITIATOR_PASSPHRASE }}
         DKG_AUTHORITY_ADDRESS: ${{ secrets.DKG_AUTHORITY_ADDRESS }}
         RPC_PROVIDER: ${{ secrets.RPC_PROVIDER }}
-        MIN_VERSION: ${{ secrets.MIN_VERSION }}
         WEB3_INFURA_API_KEY: ${{ secrets.WEB3_INFURA_API_KEY }}
         POLYGONSCAN_API_KEY: ${{ secrets.POLYGONSCAN_API_KEY }}
-        NUM_NODES: ${{ secrets.NUM_NODES }}
         DOMAIN: ${{ secrets.DOMAIN }}
         NETWORK: ${{ secrets.NETWORK }}
         ECOSYSTEM: ${{ secrets.ECOSYSTEM }}
-        DURATION: ${{ secrets.DURATION }}
         ACCESS_CONTROLLER: ${{ secrets.ACCESS_CONTROLLER }}
         FEE_MODEL: ${{ secrets.FEE_MODEL }}
 
