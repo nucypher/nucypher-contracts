@@ -42,7 +42,7 @@ abstract contract EncryptorSlotsSubscription is AbstractSubscription {
 
     function getPaidEncryptorSlots(uint256 periodNumber) public view virtual returns (uint256);
 
-    function getCurrentPeriodNumber() public view returns (uint256) {
+    function getCurrentPeriodNumber() public view virtual returns (uint256) {
         if (startOfSubscription == 0) {
             return 0;
         }
