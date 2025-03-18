@@ -3,7 +3,7 @@ name: Heartbeat DKG
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * 1'
+    - cron: '0 0 * * 1'  # Every Monday at 00:00
 
 jobs:
   initiate_dkg:
@@ -32,18 +32,22 @@ jobs:
     - name: Initiate Ritual
       run: .github/scripts/initiate_dkg.sh
       env:
-        DKG_INITIATOR_ADDRESS: ${{ secrets.DKG_INITIATOR_ADDRESS }}
+
+        # Secret environment variables (secrets)
         APE_ACCOUNTS_automation_PASSPHRASE: ${{ secrets.DKG_INITIATOR_PASSPHRASE }}
-        DKG_AUTHORITY_ADDRESS: ${{ secrets.DKG_AUTHORITY_ADDRESS }}
         RPC_PROVIDER: ${{ secrets.RPC_PROVIDER }}
         WEB3_INFURA_API_KEY: ${{ secrets.WEB3_INFURA_API_KEY }}
         POLYGONSCAN_API_KEY: ${{ secrets.POLYGONSCAN_API_KEY }}
-        DOMAIN: ${{ secrets.DOMAIN }}
-        NETWORK: ${{ secrets.NETWORK }}
-        ECOSYSTEM: ${{ secrets.ECOSYSTEM }}
-        ACCESS_CONTROLLER: ${{ secrets.ACCESS_CONTROLLER }}
-        FEE_MODEL: ${{ secrets.FEE_MODEL }}
-        DURATION: ${{ secrets.DURATION }}
+
+        # Non-secret environment variables (config)
+        DKG_INITIATOR_ADDRESS: ${{ vars.DKG_INITIATOR_ADDRESS }}
+        DKG_AUTHORITY_ADDRESS: ${{ vars.DKG_AUTHORITY_ADDRESS }}
+        DOMAIN: ${{ vars.DOMAIN }}
+        NETWORK: ${{ vars.NETWORK }}
+        ECOSYSTEM: ${{ vars.ECOSYSTEM }}
+        ACCESS_CONTROLLER: ${{ vars.ACCESS_CONTROLLER }}
+        FEE_MODEL: ${{ vars.FEE_MODEL }}
+        DURATION: ${{ vars.DURATION }}
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v3
