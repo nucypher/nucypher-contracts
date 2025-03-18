@@ -43,6 +43,7 @@ jobs:
         ECOSYSTEM: ${{ secrets.ECOSYSTEM }}
         ACCESS_CONTROLLER: ${{ secrets.ACCESS_CONTROLLER }}
         FEE_MODEL: ${{ secrets.FEE_MODEL }}
+        DURATION: ${{ secrets.DURATION }}
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v3

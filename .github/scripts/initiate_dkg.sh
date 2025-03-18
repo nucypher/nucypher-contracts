@@ -6,6 +6,7 @@ echo "DOMAIN: ${DOMAIN}"
 echo "DKG_AUTHORITY_ADDRESS: ${DKG_AUTHORITY_ADDRESS}"
 echo "ACCESS_CONTROLLER: ${ACCESS_CONTROLLER}"
 echo "FEE_MODEL: ${FEE_MODEL}"
+echo "DURATION: ${DURATION}"
 
 echo "Current directory: $(pwd)"
 
@@ -17,4 +18,5 @@ ape run initiate_ritual \
 --access-controller ${ACCESS_CONTROLLER} \
 --fee-model ${FEE_MODEL} \
 --authority ${DKG_AUTHORITY_ADDRESS} \
---heartbeat
+--heartbeat \
+--duration ${DURATION}
