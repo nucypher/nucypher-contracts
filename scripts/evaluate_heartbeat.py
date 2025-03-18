@@ -8,7 +8,7 @@ import click
 from ape.cli import ConnectedProviderCommand, network_option
 
 from deployment import registry
-from deployment.constants import SUPPORTED_TACO_DOMAINS
+from deployment.constants import SUPPORTED_TACO_DOMAINS, HEARTBEAT_ARTIFACT_FILENAME
 
 
 class RitualState(IntEnum):
@@ -34,6 +34,7 @@ class RitualState(IntEnum):
     "--artifact",
     help="The filepath of a heartbeat artifact file.",
     type=click.File("r"),
+    default=HEARTBEAT_ARTIFACT_FILENAME,
 )
 @click.option(
     "--report-infractions",
@@ -63,7 +64,7 @@ def cli(domain, artifact, report_infractions):
         elif ritual_status == RitualState.DKG_TIMEOUT.value:
             print(f"Ritual {ritual_id} status is TIMEOUT.")
             offenders = []
-            participants = coordinator.getParticipants(ritual_id).call()
+            participants = coordinator.getParticipants(ritual_id)
             for participant_info in participants:
                 address, aggregated, transcript, *data = participant_info
                 if not aggregated:

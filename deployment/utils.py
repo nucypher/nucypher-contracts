@@ -2,7 +2,7 @@ import json
 import os
 from itertools import zip_longest
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import requests
 import yaml
@@ -213,16 +213,21 @@ def sample_nodes(
     return result
 
 
-def _split_into_sorted_pairs(lst) -> List[List[str]]:
-    """Splits a list into sorted pairs."""
-    if len(lst) % 2 != 0:
-        # TODO: Use a group of 3 instead of sampling a node twice
-        lst.append(lst[-2])  # Use the second-to-last element to fill
-    it = iter(lst)
-    return [sorted(list(pair)) for pair in zip_longest(it, it)]
+def _split_eth_addresses(addresses: List[str]) -> List[Tuple[str, ...]]:
+    """
+    Splits a list of Ethereum addresses into pairs.
+    If the number of addresses is odd, the last group will be a triplet.
+    Ensures there are no single-element groups.
+    """
+    pairs = [(addresses[i], addresses[i + 1]) for i in range(len(addresses) - 1, 2)]
+    if len(addresses) % 2 == 1:
+        # If there is an odd number of addresses, merge the last pair with the remaining address
+        last_pair = pairs.pop()  # Remove the last pair
+        pairs.append((last_pair[0], last_pair[1], addresses[-1]))  # Form a triplet
+    return pairs
 
 
-def get_heartbeat_cohorts(taco_application) -> List[List[str]]:
+def get_heartbeat_cohorts(taco_application) -> List[Tuple[str, ...]]:
     data = taco_application.getActiveStakingProviders(
         0,     # start index
         1000,  # max number of staking providers
@@ -235,6 +240,5 @@ def get_heartbeat_cohorts(taco_application) -> List[List[str]]:
         staking_provider_authorized_tokens = to_int(info[20:32])
         staking_providers[staking_provider_address] = staking_provider_authorized_tokens
 
-    staking_providers_info_pairs = _split_into_sorted_pairs(list(staking_providers))
+    staking_providers_info_pairs = _split_eth_addresses(list(staking_providers))
     return staking_providers_info_pairs
-

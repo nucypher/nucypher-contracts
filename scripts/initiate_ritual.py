@@ -2,13 +2,14 @@
 import json
 import os
 import time
+from contextlib import suppress
 
 import click
 from ape import Contract, chain
 from ape.cli import ConnectedProviderCommand, account_option, network_option
 
 from deployment import registry
-from deployment.constants import ACCESS_CONTROLLERS, SUPPORTED_TACO_DOMAINS
+from deployment.constants import ACCESS_CONTROLLERS, SUPPORTED_TACO_DOMAINS, HEARTBEAT_ARTIFACT_FILENAME
 from deployment.params import Transactor
 from deployment.types import ChecksumAddress, MinInt
 from deployment.utils import check_plugins, sample_nodes, get_heartbeat_cohorts
@@ -77,10 +78,12 @@ from deployment.utils import check_plugins, sample_nodes, get_heartbeat_cohorts
 )
 @click.option(
     "--autosign",
+    help="Automatically sign transactions.",
     is_flag=True,
 )
 @click.option(
     "--heartbeat",
+    help="Initiate rituals for all nodes in the network.",
     is_flag=True,
 )
 def cli(
@@ -154,7 +157,8 @@ def cli(
     if heartbeat:
         taco_application = registry.get_contract(domain=domain, contract_name="TACoChildApplication")
         cohorts = get_heartbeat_cohorts(taco_application=taco_application)
-        duration = 86400  # default to 24h
+        click.echo(f"Number of rituals: {len(cohorts)}")
+        click.confirm(text="Are you sure you want to initiate these rituals?", abort=True)
     else:
         if handpicked:
             cohort = sorted(line.lower().strip() for line in handpicked)
@@ -191,12 +195,10 @@ def cli(
     # Save the ritual data
     if heartbeat:
         # remove the file if it exists
-        try:
-            os.remove("rituals.json")
-        except OSError:
-            pass
+        with suppress(OSError):
+            os.remove(HEARTBEAT_ARTIFACT_FILENAME)
         json.dumps(rituals, indent=4)
-        with open("rituals.json", "w") as f:
+        with open(HEARTBEAT_ARTIFACT_FILENAME, "w") as f:
             f.write(json.dumps(rituals, indent=4))
 
 
