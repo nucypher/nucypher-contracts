@@ -77,7 +77,7 @@ from deployment.utils import check_plugins, sample_nodes, get_heartbeat_cohorts
     type=click.File("r"),
 )
 @click.option(
-    "--autosign",
+    "--auto",
     help="Automatically sign transactions.",
     is_flag=True,
 )
@@ -98,7 +98,7 @@ def cli(
     random_seed,
     handpicked,
     min_version,
-    autosign,
+    auto,
     heartbeat,
 ):
     """Initiate a ritual for a TACo domain."""
@@ -163,8 +163,9 @@ def cli(
     if heartbeat:
         taco_application = registry.get_contract(domain=domain, contract_name="TACoChildApplication")
         cohorts = get_heartbeat_cohorts(taco_application=taco_application)
-        click.echo(f"Number of rituals: {len(cohorts)}")
-        click.confirm(text="Are you sure you want to initiate these rituals?", abort=True)
+        click.echo(f"Initiating {len(cohorts)} rituals.")
+        if not auto:
+            click.confirm(text="Are you sure you want to initiate these rituals?", abort=True)
     else:
         if handpicked:
             cohort = sorted(line.lower().strip() for line in handpicked)
@@ -184,7 +185,7 @@ def cli(
     for cohort in cohorts:
         # TODO: Failure recovery? (not enough funds, outages, etc.)
         # Initiate the ritual(s)
-        transactor = Transactor(account=account, autosign=autosign)
+        transactor = Transactor(account=account, autosign=auto)
         result = transactor.transact(
             coordinator_contract.initiateRitual,
             fee_model_contract.address,
