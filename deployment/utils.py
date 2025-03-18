@@ -215,26 +215,33 @@ def sample_nodes(
     return result
 
 
-def _split_eth_addresses(addresses: List[str]) -> List[Tuple[str, ...]]:
+def _generate_heartbeat_cohorts(addresses: List[str]) -> Tuple[Tuple[str, ...], ...]:
     """
-    Splits a list of Ethereum addresses into pairs.
-    If the number of addresses is odd, the last group will be a triplet.
-    Ensures there are no single-element groups.
+    In the realm of addresses, where keys unlock boundless potential,
+    we gather them, two by two, like travelers on a shared path.
+    Yet, should a lone wanderer remain, we weave them into a final trio—
+    a constellation of three, shimmering in quiet order.
+§
+    Each group, a harmony of case-insensitive sequence,
+    arranged with care, untouched in form, yet softened in placement.
+
+    No address stands alone. No ledger is left incomplete.
     """
-    pairs = [
-        sorted([addresses[i], addresses[i + 1]])
-        for i in range(0, len(addresses) - 1, 2)
-    ]
-    if len(addresses) % 2 == 1:
-        # If there is an odd number of addresses, merge the last pair with the remaining address
-        last_pair = pairs.pop()  # Remove the last pair
-        pairs.append(
-            sorted([last_pair[0], last_pair[1], addresses[-1]])
-        )  # Form a triplet
-    return pairs
+    if not addresses:
+        raise ValueError("The list of Ethereum addresses cannot be empty.")
+
+    # Form pairs, stepping in twos, embracing a final trio if needed
+    groups = [tuple(addresses[i: i + 2]) for i in range(0, len(addresses) - 1, 2)]
+
+    # If unpaired, merge the last two into a final trio
+    if len(addresses) % 2:
+        groups[-1] += (addresses[-1],)
+
+    # Return each group in case-insensitive order, immutable as stone
+    return tuple(map(lambda group: tuple(sorted(group, key=str.lower)), groups))
 
 
-def get_heartbeat_cohorts(taco_application) -> List[Tuple[str, ...]]:
+def get_heartbeat_cohorts(taco_application: ContractContainer) -> Tuple[Tuple[str, ...], ...]:
     data = taco_application.getActiveStakingProviders(
         0,  # start index
         1000,  # max number of staking providers
@@ -247,5 +254,5 @@ def get_heartbeat_cohorts(taco_application) -> List[Tuple[str, ...]]:
         staking_provider_authorized_tokens = to_int(info[20:32])
         staking_providers[staking_provider_address] = staking_provider_authorized_tokens
 
-    staking_providers_info_pairs = _split_eth_addresses(list(staking_providers))
-    return staking_providers_info_pairs
+    cohorts = _generate_heartbeat_cohorts(list(staking_providers))
+    return cohorts
