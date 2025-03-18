@@ -74,7 +74,9 @@ def validate_config(config: Dict) -> Path:
 
     registry_chain_ids = map(int, _load_json(registry_filepath).keys())
     if config_chain_id in registry_chain_ids:
-        raise ValueError(f"Deployment is already published for chain_id {config_chain_id}.")
+        raise ValueError(
+            f"Deployment is already published for chain_id {config_chain_id}."
+        )
 
     return registry_filepath
 
@@ -219,19 +221,24 @@ def _split_eth_addresses(addresses: List[str]) -> List[Tuple[str, ...]]:
     If the number of addresses is odd, the last group will be a triplet.
     Ensures there are no single-element groups.
     """
-    pairs = [(addresses[i], addresses[i + 1]) for i in range(len(addresses) - 1, 2)]
+    pairs = [
+        sorted([addresses[i], addresses[i + 1]])
+        for i in range(0, len(addresses) - 1, 2)
+    ]
     if len(addresses) % 2 == 1:
         # If there is an odd number of addresses, merge the last pair with the remaining address
         last_pair = pairs.pop()  # Remove the last pair
-        pairs.append((last_pair[0], last_pair[1], addresses[-1]))  # Form a triplet
+        pairs.append(
+            sorted([last_pair[0], last_pair[1], addresses[-1]])
+        )  # Form a triplet
     return pairs
 
 
 def get_heartbeat_cohorts(taco_application) -> List[Tuple[str, ...]]:
     data = taco_application.getActiveStakingProviders(
-        0,     # start index
+        0,  # start index
         1000,  # max number of staking providers
-        1      # min duration of staking
+        1,  # min duration of staking
     )
     staked, staking_providers_info = data
     staking_providers = dict()

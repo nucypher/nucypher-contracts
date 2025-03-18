@@ -121,11 +121,17 @@ def cli(
             option_name="--min-version",
             message="Cannot specify --min-version when using --handpicked.",
         )
-    if heartbeat and (handpicked or num_nodes or random_seed or min_version):
-        raise click.BadOptionUsage(
-            option_name="--heartbeat",
-            message="Cannot specify --heartbeat with any other sampling options.",
-        )
+    if heartbeat:
+        if not duration:
+            raise click.BadOptionUsage(
+                option_name="--heartbeat",
+                message="Must specify --duration when using --heartbeat.",
+            )
+        if handpicked or num_nodes or random_seed or min_version:
+            raise click.BadOptionUsage(
+                option_name="--heartbeat",
+                message="Cannot specify --heartbeat with any other sampling options.",
+            )
 
     # Get the contracts from the registry
     coordinator_contract = registry.get_contract(domain=domain, contract_name="Coordinator")
