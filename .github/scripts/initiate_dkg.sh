@@ -1,22 +1,23 @@
+#!/bin/bash
 
-echo "ECOSYSTEM: ${ECOSYSTEM}"
-echo "NETWORK: ${NETWORK}"
-echo "RPC_PROVIDER: ${RPC_PROVIDER}"
-echo "DOMAIN: ${DOMAIN}"
-echo "DKG_AUTHORITY_ADDRESS: ${DKG_AUTHORITY_ADDRESS}"
-echo "ACCESS_CONTROLLER: ${ACCESS_CONTROLLER}"
-echo "FEE_MODEL: ${FEE_MODEL}"
-echo "DURATION: ${DURATION}"
+echo "Heartbeat: Initiate Ritual"
 
-echo "Current directory: $(pwd)"
+echo "Network ${ECOSYSTEM}:${NETWORK}:${RPC_PROVIDER}"
+echo "Authority: ${DKG_AUTHORITY_ADDRESS}"
+echo "Access Controller: ${ACCESS_CONTROLLER}"
+echo "Fee Model: ${FEE_MODEL}"
+echo "Duration: ${DURATION}"
 
-ape run initiate_ritual \
---autosign \
---account automation \
+ape run initiate_ritual                           \
+--heartbeat                                       \
+--auto                                            \
+--account automation                              \
 --network ${ECOSYSTEM}:${NETWORK}:${RPC_PROVIDER} \
---domain ${DOMAIN} \
---access-controller ${ACCESS_CONTROLLER} \
---fee-model ${FEE_MODEL} \
---authority ${DKG_AUTHORITY_ADDRESS} \
---heartbeat \
---duration ${DURATION}
+--domain ${DOMAIN}                                \
+--access-controller ${ACCESS_CONTROLLER}          \
+--authority ${DKG_AUTHORITY_ADDRESS}              \
+--fee-model ${FEE_MODEL}                          \
+--duration ${DURATION}                            \
+
+echo "All Heartbeat Rituals Initiated"
+
