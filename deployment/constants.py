@@ -62,3 +62,5 @@ PORTER_SAMPLING_ENDPOINTS = {
     LYNX: "https://porter-lynx.nucypher.io/get_ursulas",
     TAPIR: "https://porter-tapir.nucypher.io/get_ursulas",
 }
+
+HEARTBEAT_ARTIFACT_FILENAME = "heartbeat-rituals.json"
