@@ -29,9 +29,9 @@ ENCRYPTORS_FEE_RATE = 77
 
 ERC20_SUPPLY = 10**24
 ONE_DAY = 24 * 60 * 60
-DURATION = 10 * ONE_DAY
+DURATION = 60 * ONE_DAY
 
-PACKAGE_DURATION = 3 * DURATION
+PACKAGE_DURATION = 365 * ONE_DAY // 2
 YELLOW_PERIOD = ONE_DAY
 RED_PERIOD = 5 * ONE_DAY
 
@@ -175,7 +175,7 @@ def subscription(
 
 
 def test_pay_subscription(erc20, subscription, adopter, chain):
-    timestamp = chain.pending_timestamp - 1
+    start_subscription = subscription.startOfSubscription()
 
     # First payment
     balance_before = erc20.balanceOf(adopter)
@@ -185,16 +185,16 @@ def test_pay_subscription(erc20, subscription, adopter, chain):
     assert subscription.baseFees(2) == 2 * base_fee(2)
     assert subscription.baseFees(3) == 2 * base_fee(3)
     assert subscription.baseFees(4) == 2 * base_fee(4)
-    assert subscription.startOfSubscription() == timestamp
-    end_subscription = timestamp + 2 * PACKAGE_DURATION
+    assert subscription.startOfSubscription() == start_subscription
+    end_subscription = start_subscription + 2 * PACKAGE_DURATION
     assert subscription.getEndOfSubscription() == end_subscription
     assert subscription.getCurrentPeriodNumber() == 1
     assert subscription.billingInfo(0) == (True, 0)
     assert subscription.billingInfo(1) == (False, 0)
 
     tx = subscription.payForSubscription(0, sender=adopter)
-    end_subscription = timestamp + 4 * PACKAGE_DURATION
-    assert subscription.startOfSubscription() == timestamp
+    end_subscription = start_subscription + 4 * PACKAGE_DURATION
+    assert subscription.startOfSubscription() == start_subscription
     assert subscription.getEndOfSubscription() == end_subscription
     assert subscription.getCurrentPeriodNumber() == 1
     assert subscription.billingInfo(0) == (True, 0)

@@ -53,10 +53,6 @@ contract BqETHSubscription is StandardSubscription {
 
     /// @dev use `upgradeAndCall` for upgrading together with re-initialization
     function reinitialize() external reinitializer(2) {
-        startOfSubscription = uint32(block.timestamp);
-    }
-
-    function getCurrentPeriodNumber() public view override returns (uint256) {
-        return super.getCurrentPeriodNumber() + 1;
+        startOfSubscription -= 31_536_000 / 2; // Half a year;
     }
 }
