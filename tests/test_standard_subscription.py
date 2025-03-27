@@ -21,10 +21,7 @@ import ape
 import pytest
 from ape.utils import ZERO_ADDRESS
 from eth_account.messages import encode_defunct
-from eth_utils import to_checksum_address
 from web3 import Web3
-
-from deployment.constants import EIP1967_ADMIN_SLOT
 
 BASE_FEE_RATE = 42
 BASE_FEE_RATE_INCREASE = 10  # 10%
@@ -679,41 +676,11 @@ def test_before_is_authorized(
 
 
 def test_transfer_ownership(
-    project,
-    coordinator,
-    global_allow_list,
-    erc20,
-    adopter_setter,
     subscription,
     creator,
     treasury,
-    chain,
-    oz_dependency,
 ):
-    contract = project.BqETHSubscription.deploy(
-        coordinator.address,
-        global_allow_list.address,
-        erc20.address,
-        adopter_setter,
-        BASE_FEE_RATE,
-        BASE_FEE_RATE_INCREASE * 100,
-        ENCRYPTORS_FEE_RATE,
-        MAX_NODES,
-        PACKAGE_DURATION,
-        YELLOW_PERIOD,
-        RED_PERIOD,
-        sender=creator,
-    )
-
-    admin_slot = chain.provider.get_storage_at(
-        address=subscription.address, slot=EIP1967_ADMIN_SLOT
-    )
-    admin_address = to_checksum_address(admin_slot[-20:])
-    proxy_admin = oz_dependency.ProxyAdmin.at(admin_address)
-
-    proxy_admin.upgradeAndCall(subscription.address, contract.address, b"", sender=creator)
     assert subscription.owner() == treasury.address
 
-    proxy_contract = project.BqETHSubscription.at(subscription.address)
-    proxy_contract.reinitialize(creator.address, sender=creator)
+    subscription.reinitialize(creator.address, sender=creator)
     assert subscription.owner() == creator.address
