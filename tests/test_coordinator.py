@@ -695,3 +695,15 @@ def test_withdraw_tokens(coordinator, initiator, erc20, treasury, deployer):
     # Can't withdraw when there's no tokens
     with ape.reverts("Insufficient balance"):
         coordinator.withdrawAllTokens(erc20.address, sender=treasury)
+
+
+def test_transfer_ownership(
+    coordinator,
+    deployer,
+    treasury,
+):
+    assert coordinator.defaultAdmin() == deployer.address
+
+    coordinator.reinitializeDefaultAdmin(treasury.address, sender=deployer)
+    coordinator.acceptDefaultAdminTransfer(sender=treasury)
+    assert coordinator.defaultAdmin() == treasury.address

@@ -673,3 +673,14 @@ def test_before_is_authorized(
 
     subscription.payForEncryptorSlots(1, sender=adopter)
     assert global_allow_list.isAuthorized(ritual_id, bytes(signature), bytes(data))
+
+
+def test_transfer_ownership(
+    subscription,
+    creator,
+    treasury,
+):
+    assert subscription.owner() == treasury.address
+
+    subscription.reinitialize(creator.address, sender=creator)
+    assert subscription.owner() == creator.address

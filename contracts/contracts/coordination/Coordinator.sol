@@ -142,6 +142,11 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         }
     }
 
+    /// @dev use `upgradeAndCall` for upgrading together with re-initialization
+    function reinitializeDefaultAdmin(address newDefaultAdmin) external reinitializer(3) {
+        _beginDefaultAdminTransfer(newDefaultAdmin);
+    }
+
     function rituals(
         uint256 ritualId // uint256 for backward compatibility
     )

@@ -153,6 +153,11 @@ contract StandardSubscription is EncryptorSlotsSubscription, Initializable, Owna
         __Ownable_init(_treasury);
     }
 
+    /// @dev use `upgradeAndCall` for upgrading together with re-initialization
+    function reinitialize(address newOwner) external reinitializer(2) {
+        __Ownable_init(newOwner);
+    }
+
     function setAdopter(address _adopter) external {
         require(msg.sender == adopterSetter, "Only adopter setter can set adopter");
         require(
