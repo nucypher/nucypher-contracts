@@ -282,10 +282,13 @@ contract TACoApplication is
     }
 
     /**
-     * @dev Checks caller is T staking contract
+     * @dev Checks caller is T staking contract or contract Owner
      */
     modifier onlyStakingContract() {
-        require(msg.sender == address(tStaking), "Caller must be the T staking contract");
+        require(
+            msg.sender == address(tStaking) || msg.sender == owner(),
+            "Caller must be the T staking contract or contract owner"
+        );
         _;
     }
 
