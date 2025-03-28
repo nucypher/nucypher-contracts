@@ -36,6 +36,7 @@ contract StandardSubscription is EncryptorSlotsSubscription, Initializable, Owna
     uint32 public activeRitualId;
     mapping(uint256 periodNumber => Billing billing) public billingInfo;
     address public adopter;
+    uint256 public paidFees;
 
     uint256[20] private gap;
 
@@ -158,6 +159,11 @@ contract StandardSubscription is EncryptorSlotsSubscription, Initializable, Owna
         __Ownable_init(newOwner);
     }
 
+    /// @dev use `upgradeAndCall` for upgrading together with re-initialization
+    function initializePaidFees() external reinitializer(3) {
+        paidFees = feeToken.balanceOf(address(this));
+    }
+
     function setAdopter(address _adopter) external {
         require(msg.sender == adopterSetter, "Only adopter setter can set adopter");
         require(
@@ -198,6 +204,16 @@ contract StandardSubscription is EncryptorSlotsSubscription, Initializable, Owna
      * @param encryptorSlots Number of slots for encryptors
      */
     function payForSubscription(uint128 encryptorSlots) external {
+        uint256 fees = processPaymentForSubscription(encryptorSlots);
+        feeToken.safeTransferFrom(msg.sender, address(this), fees);
+    }
+
+    function chargeForSubscription(uint128 encryptorSlots) external onlyOwner {
+        processPaymentForSubscription(encryptorSlots);
+        require(feeToken.balanceOf(address(this)) >= paidFees, "Insufficient balance");
+    }
+
+    function processPaymentForSubscription(uint128 encryptorSlots) internal returns (uint256 fees) {
         uint256 currentPeriodNumber = getCurrentPeriodNumber();
         require(!billingInfo[currentPeriodNumber + 1].paid, "Next billing period already paid"); // TODO until we will have refunds
         require(
@@ -215,9 +231,8 @@ contract StandardSubscription is EncryptorSlotsSubscription, Initializable, Owna
         billing.paid = true;
         billing.encryptorSlots = encryptorSlots;
 
-        uint256 fees = baseFees(periodNumber) +
-            encryptorFees(encryptorSlots, subscriptionPeriodDuration);
-        feeToken.safeTransferFrom(msg.sender, address(this), fees);
+        fees = baseFees(periodNumber) + encryptorFees(encryptorSlots, subscriptionPeriodDuration);
+        paidFees += fees;
         emit SubscriptionPaid(msg.sender, fees, encryptorSlots, getEndOfSubscription());
     }
 
@@ -250,8 +265,8 @@ contract StandardSubscription is EncryptorSlotsSubscription, Initializable, Owna
      * @notice Withdraws the contract balance to the treasury
      */
     function withdrawToTreasury() external {
-        uint256 amount = feeToken.balanceOf(address(this));
-        require(amount > 0, "Insufficient balance available");
+        require(amount <= paidFees, "Insufficient balance available");
+        paidFees -= amount;
         feeToken.safeTransfer(owner(), amount);
         emit WithdrawalToTreasury(owner(), amount);
     }
