@@ -93,6 +93,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     }
 
     bytes32 public constant TREASURY_ROLE = keccak256("TREASURY_ROLE");
+    bytes32 public constant FEE_MODEL_MANAGER_ROLE = keccak256("FEE_MODEL_MANAGER_ROLE");
 
     ITACoChildApplication public immutable application;
     uint96 private immutable minAuthorization; // TODO use child app for checking eligibility
@@ -646,7 +647,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         }
     }
 
-    function approveFeeModel(IFeeModel feeModel) external onlyRole(TREASURY_ROLE) {
+    function approveFeeModel(IFeeModel feeModel) external onlyRole(FEE_MODEL_MANAGER_ROLE) {
         require(!feeModelsRegistry[feeModel], "Fee model already approved");
         feeModelsRegistry[feeModel] = true;
         emit FeeModelApproved(feeModel);

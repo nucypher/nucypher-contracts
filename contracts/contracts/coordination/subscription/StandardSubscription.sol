@@ -243,12 +243,12 @@ contract StandardSubscription is EncryptorSlotsSubscription, Initializable, Owna
 
     /**
      * @notice Withdraws the contract balance to the treasury
-     * @param amount The amount to withdraw
      */
-    function withdrawToTreasury(uint256 amount) external onlyOwner {
-        require(amount <= feeToken.balanceOf(address(this)), "Insufficient balance available");
-        feeToken.safeTransfer(msg.sender, amount);
-        emit WithdrawalToTreasury(msg.sender, amount);
+    function withdrawToTreasury() external {
+        uint256 amount = feeToken.balanceOf(address(this));
+        require(amount > 0, "Insufficient balance available");
+        feeToken.safeTransfer(owner(), amount);
+        emit WithdrawalToTreasury(owner(), amount);
     }
 
     function processRitualPayment(

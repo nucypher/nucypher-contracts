@@ -81,8 +81,9 @@ def fee_model(project, deployer, coordinator, erc20, treasury):
     contract = project.FlatRateFeeModel.deploy(
         coordinator.address, erc20.address, FEE_RATE, sender=deployer
     )
-    coordinator.grantRole(coordinator.TREASURY_ROLE(), treasury, sender=deployer)
+    coordinator.grantRole(coordinator.FEE_MODEL_MANAGER_ROLE(), treasury, sender=deployer)
     coordinator.approveFeeModel(contract.address, sender=treasury)
+    coordinator.grantRole(coordinator.TREASURY_ROLE(), treasury, sender=deployer)
     return contract
 
 
