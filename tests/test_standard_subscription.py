@@ -159,6 +159,7 @@ def test_pay_subscription(
     assert subscription.getEndOfSubscription() == 0
     assert subscription.getCurrentPeriodNumber() == 0
     assert subscription.billingInfo(0) == (False, 0)
+    assert subscription.paidFees() == 0
 
     tx = subscription.payForSubscription(0, sender=adopter)
     end_subscription = 0
@@ -167,6 +168,7 @@ def test_pay_subscription(
     assert subscription.getCurrentPeriodNumber() == 0
     assert subscription.billingInfo(0) == (True, 0)
     assert subscription.billingInfo(1) == (False, 0)
+    assert subscription.paidFees() == current_base_fee
     balance_after = erc20.balanceOf(adopter)
     assert balance_after + current_base_fee == balance_before
     assert erc20.balanceOf(subscription.address) == current_base_fee
@@ -199,6 +201,7 @@ def test_pay_subscription(
     assert subscription.getCurrentPeriodNumber() == 0
     assert subscription.billingInfo(0) == (True, 0)
     assert subscription.billingInfo(1) == (True, encryptor_slots)
+    assert subscription.paidFees() == base_fee(0) + current_base_fee + encryptor_fees
 
     events = [event for event in tx.events if event.event_name == "SubscriptionPaid"]
     assert events == [
@@ -267,6 +270,91 @@ def test_pay_subscription(
         subscription.payForSubscription(0, sender=adopter)
 
 
+def test_charge_subscription(
+    erc20, subscription, coordinator, global_allow_list, adopter, adopter_setter, treasury, chain
+):
+    subscription.setAdopter(adopter, sender=adopter_setter)
+    balance_before = erc20.balanceOf(adopter)
+    current_base_fee = base_fee(0)
+
+    # Only owner can charge
+    with ape.reverts():
+        subscription.chargeForSubscription(0, sender=adopter)
+
+    # Can't charge if there is not enough tokens
+    with ape.reverts("Insufficient balance"):
+        subscription.chargeForSubscription(0, sender=treasury)
+    erc20.transfer(subscription.address, current_base_fee - 1, sender=adopter)
+    with ape.reverts("Insufficient balance"):
+        subscription.chargeForSubscription(0, sender=treasury)
+
+    # First payment
+    erc20.transfer(subscription.address, 1, sender=adopter)
+    assert subscription.baseFees() == current_base_fee
+    assert subscription.startOfSubscription() == 0
+    assert subscription.getEndOfSubscription() == 0
+    assert subscription.getCurrentPeriodNumber() == 0
+    assert subscription.billingInfo(0) == (False, 0)
+    assert subscription.paidFees() == 0
+
+    tx = subscription.chargeForSubscription(0, sender=treasury)
+    end_subscription = 0
+    assert subscription.startOfSubscription() == 0
+    assert subscription.getEndOfSubscription() == 0
+    assert subscription.getCurrentPeriodNumber() == 0
+    assert subscription.billingInfo(0) == (True, 0)
+    assert subscription.billingInfo(1) == (False, 0)
+    balance_after = erc20.balanceOf(adopter)
+    assert balance_after + current_base_fee == balance_before
+    assert erc20.balanceOf(subscription.address) == current_base_fee
+    assert subscription.paidFees() == current_base_fee
+
+    events = subscription.SubscriptionPaid.from_receipt(tx)
+    assert events == [
+        subscription.SubscriptionPaid(
+            subscriber=treasury,
+            amount=current_base_fee,
+            encryptorSlots=0,
+            endOfSubscription=end_subscription,
+        )
+    ]
+
+    # Top up
+    encryptor_slots = 10
+    encryptor_fees = ENCRYPTORS_FEE_RATE * PACKAGE_DURATION * encryptor_slots
+    balance_before = erc20.balanceOf(adopter)
+    current_base_fee = base_fee(1)
+    excessive_balance = current_base_fee // 10
+    subscription_balance_before = erc20.balanceOf(subscription.address)
+    erc20.transfer(
+        subscription.address, current_base_fee + encryptor_fees + excessive_balance, sender=adopter
+    )
+
+    tx = subscription.chargeForSubscription(encryptor_slots, sender=treasury)
+    end_subscription = 0
+    assert subscription.getEndOfSubscription() == end_subscription
+    balance_after = erc20.balanceOf(adopter)
+    assert balance_after + current_base_fee + encryptor_fees + excessive_balance == balance_before
+    assert (
+        erc20.balanceOf(subscription.address)
+        == subscription_balance_before + current_base_fee + encryptor_fees + excessive_balance
+    )
+    assert subscription.getCurrentPeriodNumber() == 0
+    assert subscription.billingInfo(0) == (True, 0)
+    assert subscription.billingInfo(1) == (True, encryptor_slots)
+    assert subscription.paidFees() == base_fee(0) + current_base_fee + encryptor_fees
+
+    events = subscription.SubscriptionPaid.from_receipt(tx)
+    assert events == [
+        subscription.SubscriptionPaid(
+            subscriber=treasury,
+            amount=current_base_fee + encryptor_fees,
+            encryptorSlots=encryptor_slots,
+            endOfSubscription=end_subscription,
+        )
+    ]
+
+
 def test_pay_encryptor_slots(
     erc20, subscription, coordinator, global_allow_list, adopter, adopter_setter, treasury, chain
 ):
@@ -287,6 +375,8 @@ def test_pay_encryptor_slots(
     assert subscription.billingInfo(0) == (True, encryptor_slots)
     assert subscription.billingInfo(1) == (True, 0)
 
+    paid_fees_before = subscription.paidFees()
+
     duration = PACKAGE_DURATION // 3
     chain.pending_timestamp += duration
     encryptor_fees = encryptor_slots * PACKAGE_DURATION * ENCRYPTORS_FEE_RATE
@@ -301,6 +391,7 @@ def test_pay_encryptor_slots(
     assert subscription_balance_before + encryptor_fees == subscription_balance_after
     assert subscription.billingInfo(0) == (True, 2 * encryptor_slots)
     assert subscription.billingInfo(1) == (True, 0)
+    assert subscription.paidFees() == paid_fees_before + encryptor_fees
 
     events = [event for event in tx.events if event.event_name == "EncryptorSlotsPaid"]
     assert events == [
@@ -352,7 +443,106 @@ def test_pay_encryptor_slots(
         subscription.payForEncryptorSlots(encryptor_slots, sender=adopter)
 
 
-def test_withdraw(erc20, subscription, adopter, adopter_setter, treasury, global_allow_list):
+def test_charge_encryptor_slots(
+    erc20, subscription, coordinator, global_allow_list, adopter, adopter_setter, treasury, chain
+):
+    encryptor_slots = 10
+    erc20.approve(subscription.address, ERC20_SUPPLY, sender=adopter)
+    subscription.setAdopter(adopter, sender=adopter_setter)
+
+    # Only owner can charge
+    with ape.reverts():
+        subscription.chargeForEncryptorSlots(encryptor_slots, sender=adopter)
+
+    with ape.reverts("Current billing period must be paid"):
+        subscription.chargeForEncryptorSlots(encryptor_slots, sender=treasury)
+
+    subscription.payForSubscription(encryptor_slots, sender=adopter)
+    subscription.payForSubscription(0, sender=adopter)
+    assert subscription.billingInfo(0) == (True, encryptor_slots)
+    assert subscription.billingInfo(1) == (True, 0)
+
+    paid_fees_before = subscription.paidFees()
+
+    duration = PACKAGE_DURATION // 3
+    chain.pending_timestamp += duration
+    encryptor_fees = encryptor_slots * PACKAGE_DURATION * ENCRYPTORS_FEE_RATE
+    adopter_balance_before = erc20.balanceOf(adopter)
+    subscription_balance_before = erc20.balanceOf(subscription.address)
+
+    # Can't charge if there is not enough tokens
+    with ape.reverts("Insufficient balance"):
+        subscription.chargeForEncryptorSlots(encryptor_slots, sender=treasury)
+    erc20.transfer(subscription.address, encryptor_fees - 1, sender=adopter)
+    with ape.reverts("Insufficient balance"):
+        subscription.chargeForEncryptorSlots(encryptor_slots, sender=treasury)
+
+    erc20.transfer(subscription.address, 1, sender=adopter)
+    tx = subscription.chargeForEncryptorSlots(encryptor_slots, sender=treasury)
+    adopter_balance_after = erc20.balanceOf(adopter)
+    subscription_balance_after = erc20.balanceOf(subscription.address)
+    assert adopter_balance_after + encryptor_fees == adopter_balance_before
+    assert subscription_balance_before + encryptor_fees == subscription_balance_after
+    assert subscription.billingInfo(0) == (True, 2 * encryptor_slots)
+    assert subscription.billingInfo(1) == (True, 0)
+    assert subscription.paidFees() == paid_fees_before + encryptor_fees
+
+    events = subscription.EncryptorSlotsPaid.from_receipt(tx)
+    assert events == [
+        subscription.EncryptorSlotsPaid(
+            sponsor=treasury,
+            amount=encryptor_fees,
+            encryptorSlots=encryptor_slots,
+            endOfCurrentPeriod=0,
+        )
+    ]
+
+    ritual_id = 1
+    coordinator.setRitual(
+        ritual_id,
+        RitualState.DKG_AWAITING_TRANSCRIPTS,
+        0,
+        global_allow_list.address,
+        sender=treasury,
+    )
+    coordinator.processRitualPayment(adopter, ritual_id, MAX_NODES, DURATION, sender=treasury)
+    timestamp = chain.pending_timestamp - 1
+
+    duration = PACKAGE_DURATION // 5
+    excessive_balance = encryptor_fees // 2
+    erc20.transfer(subscription.address, encryptor_fees + excessive_balance, sender=adopter)
+
+    chain.pending_timestamp = timestamp + PACKAGE_DURATION + duration
+    encryptor_fees = encryptor_slots * (PACKAGE_DURATION - duration) * ENCRYPTORS_FEE_RATE
+    paid_fees_before = subscription.paidFees()
+
+    adopter_balance_before = erc20.balanceOf(adopter)
+    subscription_balance_before = erc20.balanceOf(subscription.address)
+    tx = subscription.chargeForEncryptorSlots(encryptor_slots, sender=treasury)
+    adopter_balance_after = erc20.balanceOf(adopter)
+    subscription_balance_after = erc20.balanceOf(subscription.address)
+    assert adopter_balance_after == adopter_balance_before
+    assert subscription_balance_before == subscription_balance_after
+    assert subscription.billingInfo(0) == (True, 2 * encryptor_slots)
+    assert subscription.billingInfo(1) == (True, encryptor_slots)
+    assert subscription.paidFees() == paid_fees_before + encryptor_fees
+
+    events = subscription.EncryptorSlotsPaid.from_receipt(tx)
+    assert events == [
+        subscription.EncryptorSlotsPaid(
+            sponsor=treasury,
+            amount=encryptor_fees,
+            encryptorSlots=encryptor_slots,
+            endOfCurrentPeriod=timestamp + 2 * PACKAGE_DURATION,
+        )
+    ]
+
+    chain.pending_timestamp = timestamp + 2 * PACKAGE_DURATION + duration
+    with ape.reverts("Current billing period must be paid"):
+        subscription.chargeForEncryptorSlots(encryptor_slots, sender=treasury)
+
+
+def test_withdraw(erc20, subscription, adopter, adopter_setter, treasury):
     erc20.approve(subscription.address, ERC20_SUPPLY, sender=adopter)
     subscription.setAdopter(adopter, sender=adopter_setter)
 
@@ -368,6 +558,49 @@ def test_withdraw(erc20, subscription, adopter, adopter_setter, treasury, global
 
     events = [event for event in tx.events if event.event_name == "WithdrawalToTreasury"]
     assert events == [subscription.WithdrawalToTreasury(treasury=treasury, amount=current_base_fee)]
+
+    current_base_fee = base_fee(1)
+    erc20.transfer(subscription.address, 3 * current_base_fee, sender=adopter)
+    subscription.chargeForSubscription(0, sender=treasury)
+    assert subscription.paidFees() == current_base_fee
+    with ape.reverts("Insufficient balance available"):
+        subscription.withdrawToTreasury(current_base_fee + 1, sender=treasury)
+    tx = subscription.withdrawToTreasury(current_base_fee, sender=treasury)
+    assert erc20.balanceOf(treasury) == base_fee(0) + current_base_fee
+    assert erc20.balanceOf(subscription.address) == 2 * current_base_fee
+
+
+def test_refund(erc20, subscription, adopter, adopter_setter, treasury):
+    erc20.approve(subscription.address, ERC20_SUPPLY, sender=adopter)
+    subscription.setAdopter(adopter, sender=adopter_setter)
+
+    with ape.reverts():
+        subscription.refund(1, sender=adopter)
+
+    with ape.reverts("Insufficient balance available"):
+        subscription.refund(1, sender=adopter_setter)
+
+    current_base_fee = base_fee(0)
+    erc20.transfer(subscription.address, current_base_fee, sender=adopter)
+
+    with ape.reverts("Insufficient balance available"):
+        subscription.refund(current_base_fee + 1, sender=adopter_setter)
+
+    tx = subscription.refund(current_base_fee, sender=adopter_setter)
+    assert erc20.balanceOf(adopter_setter) == current_base_fee
+    assert erc20.balanceOf(subscription.address) == 0
+
+    events = subscription.Refund.from_receipt(tx)
+    assert events == [subscription.Refund(sender=adopter_setter, amount=current_base_fee)]
+
+    erc20.transfer(subscription.address, 3 * current_base_fee, sender=adopter)
+    subscription.chargeForSubscription(0, sender=treasury)
+    assert subscription.paidFees() == current_base_fee
+    with ape.reverts("Insufficient balance available"):
+        subscription.refund(2 * current_base_fee + 1, sender=adopter_setter)
+    tx = subscription.refund(2 * current_base_fee, sender=adopter_setter)
+    assert erc20.balanceOf(adopter_setter) == 3 * current_base_fee
+    assert erc20.balanceOf(subscription.address) == current_base_fee
 
 
 def test_process_ritual_payment(
