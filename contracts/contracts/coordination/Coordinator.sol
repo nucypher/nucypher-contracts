@@ -293,7 +293,15 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         revert("No keys found prior to the provided ritual");
     }
 
+    /**
+     * @dev This method will be deprecated in the future. Use `isProviderKeySet` instead.
+     */
     function isProviderPublicKeySet(address provider) external view returns (bool) {
+        ParticipantKey[] storage participantHistory = participantKeysHistory[provider];
+        return participantHistory.length > 0;
+    }
+
+    function isProviderKeySet(address provider) external view returns (bool) {
         ParticipantKey[] storage participantHistory = participantKeysHistory[provider];
         return participantHistory.length > 0;
     }
