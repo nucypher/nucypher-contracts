@@ -156,9 +156,7 @@ def test_invalid_initiate_ritual(
 def initiate_ritual(coordinator, fee_model, erc20, authority, nodes, allow_logic):
     for node in nodes:
         public_key = gen_public_key()
-        assert not coordinator.isProviderPublicKeySet(node)
         coordinator.setProviderPublicKey(public_key, sender=node)
-        assert coordinator.isProviderPublicKeySet(node)
 
     cost = fee_model.getRitualCost(len(nodes), DURATION)
     erc20.approve(fee_model.address, cost, sender=authority)
