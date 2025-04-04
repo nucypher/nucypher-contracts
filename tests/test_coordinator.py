@@ -224,8 +224,10 @@ def test_provider_public_key(coordinator, nodes):
     public_key = gen_public_key()
 
     assert not coordinator.isProviderPublicKeySet(selected_provider)
+    assert not coordinator.isProviderKeySet(selected_provider)
     tx = coordinator.setProviderPublicKey(public_key, sender=selected_provider)
     assert coordinator.isProviderPublicKeySet(selected_provider)
+    assert coordinator.isProviderKeySet(selected_provider)
 
     ritual_id = coordinator.numberOfRituals()
 
