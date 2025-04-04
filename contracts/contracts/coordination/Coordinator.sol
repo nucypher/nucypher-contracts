@@ -398,7 +398,18 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         return 40 + (dkgSize + 1) * BLS12381.G2_POINT_SIZE + threshold * BLS12381.G1_POINT_SIZE;
     }
 
+    /**
+     * @dev This method will be deprecated in the future. Use `publishTranscript` instead.
+     */
     function postTranscript(uint32 ritualId, bytes calldata transcript) external {
+        _postTranscript(ritualId, transcript);
+    }
+
+    function publishTranscript(uint32 ritualId, bytes calldata transcript) external {
+        _postTranscript(ritualId, transcript);
+    }
+
+    function _postTranscript(uint32 ritualId, bytes calldata transcript) internal {
         uint256 initialGasLeft = gasleft();
 
         Ritual storage ritual = storageRitual(ritualId);

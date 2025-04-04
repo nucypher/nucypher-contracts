@@ -251,10 +251,12 @@ def test_post_transcript(coordinator, nodes, initiator, erc20, fee_model, global
     threshold = coordinator.getThresholdForRitualSize(size)
     transcript = generate_transcript(size, threshold)
 
-    for node in nodes:
+    for i, node in enumerate(nodes):
         assert coordinator.getRitualState(0) == RitualState.DKG_AWAITING_TRANSCRIPTS
 
-        tx = coordinator.postTranscript(0, transcript, sender=node)
+        # Some nodes will use a different method to post the transcript to test both methods
+        post_transcript_fn = coordinator.postTranscript if i % 2 == 0 else coordinator.publishTranscript
+        tx = post_transcript_fn(0, transcript, sender=node)
 
         events = list(coordinator.TranscriptPosted.from_receipt(tx))
         assert events == [
