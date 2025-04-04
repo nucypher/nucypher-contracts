@@ -1,5 +1,4 @@
 import os
-from enum import IntEnum
 
 import ape
 import pytest
@@ -80,7 +79,7 @@ def fee_model(project, deployer, coordinator, erc20, treasury):
     contract = project.FlatRateFeeModel.deploy(
         coordinator.address, erc20.address, FEE_RATE, sender=deployer
     )
-    coordinator.grantRole(coordinator.TREASURY_ROLE(), treasury, sender=deployer)
+    coordinator.grantRole(coordinator.FEE_MODEL_MANAGER_ROLE(), treasury, sender=deployer)
     coordinator.approveFeeModel(contract.address, sender=treasury)
     return contract
 
@@ -120,12 +119,12 @@ def initiate_ritual(coordinator, fee_model, erc20, authority, nodes, allow_logic
     return authority, tx
 
 
-# Using normal and upgradeable versions of global_allow_list. 
+# Using normal and upgradeable versions of global_allow_list.
 # Since both are fixtures, we need a small workaround to use them as parameters.
-# See https://engineeringfordatascience.com/posts/pytest_fixtures_with_parameterize/#using-requestgetfixturevalue-
+# See https://engineeringfordatascience.com/posts/pytest_fixtures_with_parameterize/#using-requestgetfixturevalue-
 @pytest.mark.parametrize(
-    'allow_list_contract',
-    ('global_allow_list', 'upgradeable_global_allow_list'),
+    "allow_list_contract",
+    ("global_allow_list", "upgradeable_global_allow_list"),
 )
 def test_authorize_using_global_allow_list(
     coordinator, nodes, deployer, initiator, erc20, fee_model, allow_list_contract, request
