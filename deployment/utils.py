@@ -1,13 +1,15 @@
 import json
 import os
+from itertools import zip_longest
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import requests
 import yaml
 from ape import networks, project
 from ape.contracts import ContractContainer, ContractInstance
 from ape_etherscan.utils import API_KEY_ENV_KEY_MAP
+from eth_utils import to_checksum_address, to_int
 
 from deployment.constants import ARTIFACTS_DIR, MAINNET, PORTER_SAMPLING_ENDPOINTS
 from deployment.networks import is_local_network
@@ -71,7 +73,9 @@ def validate_config(config: Dict) -> Path:
 
     registry_chain_ids = map(int, _load_json(registry_filepath).keys())
     if config_chain_id in registry_chain_ids:
-        raise ValueError(f"Deployment is already published for chain_id {config_chain_id}.")
+        raise ValueError(
+            f"Deployment is already published for chain_id {config_chain_id}."
+        )
 
     return registry_filepath
 
@@ -99,7 +103,7 @@ def check_infura_plugin() -> None:
     """Checks that the ape-infura plugin is installed."""
     if is_local_network():
         return  # unnecessary for local deployment
-    if networks.provider.name != 'infura':
+    if networks.provider.name != "infura":
         return  # unnecessary when using a provider different than infura
     try:
         import ape_infura  # noqa: F401
@@ -205,3 +209,46 @@ def sample_nodes(
 
     result = sorted(ursulas, key=lambda x: x.lower())
     return result
+
+
+def _generate_heartbeat_cohorts(addresses: List[str]) -> Tuple[Tuple[str, ...], ...]:
+    """
+    In the realm of addresses, where keys unlock boundless potential,
+    we gather them, two by two, like travelers on a shared path.
+    Yet, should a lone wanderer remain, we weave them into a final trio—
+    a constellation of three, shimmering in quiet order.
+§
+    Each group, a harmony of case-insensitive sequence,
+    arranged with care, untouched in form, yet softened in placement.
+
+    No address stands alone. No ledger is left incomplete.
+    """
+    if not addresses:
+        raise ValueError("The list of Ethereum addresses cannot be empty.")
+
+    # Form pairs, stepping in twos, embracing a final trio if needed
+    groups = [tuple(addresses[i: i + 2]) for i in range(0, len(addresses) - 1, 2)]
+
+    # If unpaired, merge the last two into a final trio
+    if len(addresses) % 2:
+        groups[-1] += (addresses[-1],)
+
+    # Return each group in case-insensitive order, immutable as stone
+    return tuple(map(lambda group: tuple(sorted(group, key=str.lower)), groups))
+
+
+def get_heartbeat_cohorts(taco_application: ContractContainer) -> Tuple[Tuple[str, ...], ...]:
+    data = taco_application.getActiveStakingProviders(
+        0,  # start index
+        1000,  # max number of staking providers
+        1,  # min duration of staking
+    )
+    staked, staking_providers_info = data
+    staking_providers = dict()
+    for info in staking_providers_info:
+        staking_provider_address = to_checksum_address(info[0:20])
+        staking_provider_authorized_tokens = to_int(info[20:32])
+        staking_providers[staking_provider_address] = staking_provider_authorized_tokens
+
+    cohorts = _generate_heartbeat_cohorts(list(staking_providers))
+    return cohorts
