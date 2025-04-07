@@ -3395,6 +3395,33 @@
                 },
                 {
                     "type": "error",
+                    "name": "AddressEmptyCode",
+                    "inputs": [
+                        {
+                            "name": "target",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ]
+                },
+                {
+                    "type": "error",
+                    "name": "AddressInsufficientBalance",
+                    "inputs": [
+                        {
+                            "name": "account",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ]
+                },
+                {
+                    "type": "error",
+                    "name": "FailedInnerCall",
+                    "inputs": []
+                },
+                {
+                    "type": "error",
                     "name": "InvalidInitialization",
                     "inputs": []
                 },
@@ -3416,6 +3443,17 @@
                             "name": "value",
                             "type": "uint256",
                             "internalType": "uint256"
+                        }
+                    ]
+                },
+                {
+                    "type": "error",
+                    "name": "SafeERC20FailedOperation",
+                    "inputs": [
+                        {
+                            "name": "token",
+                            "type": "address",
+                            "internalType": "address"
                         }
                     ]
                 },
@@ -3817,6 +3855,19 @@
                 {
                     "type": "function",
                     "name": "DEFAULT_ADMIN_ROLE",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "bytes32",
+                            "internalType": "bytes32"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "FEE_MODEL_MANAGER_ROLE",
                     "stateMutability": "view",
                     "inputs": [],
                     "outputs": [
@@ -4664,6 +4715,25 @@
                 },
                 {
                     "type": "function",
+                    "name": "isProviderKeySet",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "provider",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "bool",
+                            "internalType": "bool"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
                     "name": "isProviderPublicKeySet",
                     "stateMutability": "view",
                     "inputs": [
@@ -4829,6 +4899,37 @@
                             "name": "transcript",
                             "type": "bytes",
                             "internalType": "bytes"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "publishTranscript",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        },
+                        {
+                            "name": "transcript",
+                            "type": "bytes",
+                            "internalType": "bytes"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "reinitializeDefaultAdmin",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "newDefaultAdmin",
+                            "type": "address",
+                            "internalType": "address"
                         }
                     ],
                     "outputs": []
@@ -5082,6 +5183,19 @@
                             "name": "newAuthority",
                             "type": "address",
                             "internalType": "address"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "withdrawAllTokens",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "token",
+                            "type": "address",
+                            "internalType": "contract IERC20"
                         }
                     ],
                     "outputs": []
