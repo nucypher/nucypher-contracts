@@ -17,4 +17,4 @@ env
 .cache/
 dist/
 .cosine/
-.github/.secrets
+.github/.secrets.act
