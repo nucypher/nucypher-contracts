@@ -19,14 +19,17 @@ def main():
     deployer = Deployer.from_yaml(filepath=CONSTRUCTOR_PARAMS_FILEPATH, verify=VERIFY)
     instances = contracts_from_registry(filepath=ARTIFACTS_DIR / "tapir.json", chain_id=80002)
 
-    implementation = deployer.deploy(project.Coordinator)
+    # implementation = deployer.deploy(project.Coordinator)
     # latest reinitializer function used for most recent upgrade - reinitializer(2)
     # encoded_initializer_function = implementation.initializeNumberOfRituals.encode_input()
-    encoded_initializer_function = b""
-    coordinator = deployer.upgradeTo(
-        implementation,
-        instances[project.Coordinator.contract_type.name].address,
-        encoded_initializer_function,
+    # encoded_initializer_function = b""
+    # coordinator = deployer.upgradeTo(
+    #    implementation,
+    #    instances[project.Coordinator.contract_type.name].address,
+    #    encoded_initializer_function,
+    # )
+    coordinator = deployer.upgrade(
+        project.Coordinator, instances[project.Coordinator.contract_type.name].address
     )
 
     deployments = [
