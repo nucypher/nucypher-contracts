@@ -179,7 +179,7 @@ def test_initiate_ritual(
     )
 
     ritualID = 0
-    events = coordinator.StartRitual.from_receipt(tx)
+    events = [event for event in tx.events if event.event_name == "StartRitual"]
     assert len(events) == 1
     event = events[0]
     assert event.ritualId == ritualID
@@ -229,7 +229,7 @@ def test_provider_public_key(coordinator, nodes):
 
     ritual_id = coordinator.numberOfRituals()
 
-    events = coordinator.ParticipantPublicKeySet.from_receipt(tx)
+    events = [event for event in tx.events if event.event_name == "ParticipantPublicKeySet"]
     assert len(events) == 1
     event = events[0]
     assert event.ritualId == ritual_id
@@ -255,10 +255,12 @@ def test_post_transcript(coordinator, nodes, initiator, erc20, fee_model, global
         assert coordinator.getRitualState(0) == RitualState.DKG_AWAITING_TRANSCRIPTS
 
         # Some nodes will use a different method to post the transcript to test both methods
-        post_transcript_fn = coordinator.postTranscript if i % 2 == 0 else coordinator.publishTranscript
+        post_transcript_fn = (
+            coordinator.postTranscript if i % 2 == 0 else coordinator.publishTranscript
+        )
         tx = post_transcript_fn(0, transcript, sender=node)
 
-        events = list(coordinator.TranscriptPosted.from_receipt(tx))
+        events = [event for event in tx.events if event.event_name == "TranscriptPosted"]
         assert events == [
             coordinator.TranscriptPosted(
                 ritualId=0, node=node, transcriptDigest=Web3.keccak(transcript)
@@ -497,7 +499,7 @@ def test_post_aggregation(
             ritualID, aggregated, dkg_public_key, decryption_request_static_keys[i], sender=node
         )
 
-        events = coordinator.AggregationPosted.from_receipt(tx)
+        events = [event for event in tx.events if event.event_name == "AggregationPosted"]
         assert events == [
             coordinator.AggregationPosted(
                 ritualId=ritualID, node=node, aggregatedTranscriptDigest=Web3.keccak(aggregated)
@@ -510,7 +512,7 @@ def test_post_aggregation(
         assert participant.decryptionRequestStaticKey == decryption_request_static_keys[i]
 
     assert coordinator.getRitualState(ritualID) == RitualState.ACTIVE
-    events = coordinator.EndRitual.from_receipt(tx)
+    events = [event for event in tx.events if event.event_name == "EndRitual"]
     assert events == [coordinator.EndRitual(ritualId=ritualID, successful=True)]
 
     retrieved_public_key = coordinator.getPublicKeyFromRitualId(ritualID)
@@ -566,7 +568,7 @@ def test_post_aggregation_fails(
     )
 
     assert coordinator.getRitualState(ritualID) == RitualState.DKG_INVALID
-    events = coordinator.EndRitual.from_receipt(tx)
+    events = [event for event in tx.events if event.event_name == "EndRitual"]
     assert events == [coordinator.EndRitual(ritualId=ritualID, successful=False)]
 
     # Fees are still pending

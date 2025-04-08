@@ -105,7 +105,7 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     assert child_application.operatorToStakingProvider(operator1) == staking_provider_3
     assert taco_application.authorizedOverall() == 0
 
-    events = taco_application.OperatorBonded.from_receipt(tx)
+    events = [event for event in tx.events if event.event_name == "OperatorBonded"]
     assert events == [
         taco_application.OperatorBonded(
             stakingProvider=staking_provider_3,
@@ -170,7 +170,7 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     assert all_locked == 0
     assert len(staking_providers) == 0
 
-    events = taco_application.OperatorBonded.from_receipt(tx)
+    events = [event for event in tx.events if event.event_name == "OperatorBonded"]
     assert events == [
         taco_application.OperatorBonded(
             stakingProvider=staking_provider_3,
@@ -192,7 +192,7 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     assert child_application.stakingProviderToOperator(staking_provider_3) == operator2
     assert child_application.operatorToStakingProvider(operator2) == staking_provider_3
 
-    events = taco_application.OperatorBonded.from_receipt(tx)
+    events = [event for event in tx.events if event.event_name == "OperatorBonded"]
     assert events == [
         taco_application.OperatorBonded(
             stakingProvider=staking_provider_3,
@@ -227,7 +227,7 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     assert child_application.stakingProviderToOperator(staking_provider_4) == operator1
     assert child_application.operatorToStakingProvider(operator1) == staking_provider_4
 
-    events = taco_application.OperatorBonded.from_receipt(tx)
+    events = [event for event in tx.events if event.event_name == "OperatorBonded"]
     assert events == [
         taco_application.OperatorBonded(
             stakingProvider=staking_provider_4,
@@ -272,7 +272,7 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     assert all_locked == 0
     assert len(staking_providers) == 0
 
-    events = taco_application.OperatorBonded.from_receipt(tx)
+    events = [event for event in tx.events if event.event_name == "OperatorBonded"]
     assert events == [
         taco_application.OperatorBonded(
             stakingProvider=staking_provider_4,
@@ -305,7 +305,7 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     assert taco_application.getStakingProvidersLength() == 3
     assert taco_application.stakingProviders(2) == staking_provider_1
 
-    events = taco_application.OperatorBonded.from_receipt(tx)
+    events = [event for event in tx.events if event.event_name == "OperatorBonded"]
     assert events == [
         taco_application.OperatorBonded(
             stakingProvider=staking_provider_1,
@@ -392,7 +392,7 @@ def test_confirm_address(accounts, threshold_staking, taco_application, child_ap
     assert taco_application.stakingProviderInfo(staking_provider)[CONFIRMATION_SLOT]
     assert taco_application.authorizedOverall() == min_authorization
 
-    events = taco_application.OperatorConfirmed.from_receipt(tx)
+    events = [event for event in tx.events if event.event_name == "OperatorConfirmed"]
     assert events == [
         taco_application.OperatorConfirmed(stakingProvider=staking_provider, operator=operator)
     ]

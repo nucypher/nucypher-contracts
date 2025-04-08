@@ -83,7 +83,7 @@ def test_push_reward(
     assert taco_application.rewardPerToken() == 0
     assert taco_application.availableRewards(staking_provider_1) == 0
 
-    events = taco_application.RewardAdded.from_receipt(tx)
+    events = [event for event in tx.events if event.event_name == "RewardAdded"]
     assert events == [taco_application.RewardAdded(reward=reward_portion)]
 
     # Wait some time and check reward for staking provider
@@ -121,7 +121,7 @@ def test_push_reward(
     assert taco_application.availableRewards(staking_provider_1) == reward
     assert taco_application.availableRewards(staking_provider_2) == 0
 
-    events = taco_application.RewardAdded.from_receipt(tx)
+    events = [event for event in tx.events if event.event_name == "RewardAdded"]
     assert events == [taco_application.RewardAdded(reward=reward_portion)]
 
     chain.pending_timestamp += reward_duration
@@ -393,7 +393,7 @@ def test_withdraw(accounts, token, threshold_staking, taco_application, child_ap
     assert token.balanceOf(beneficiary) == earned
     assert token.balanceOf(taco_application.address) == reward_portion - earned
 
-    reward_paid_events = taco_application.RewardPaid.from_receipt(tx)
+    reward_paid_events = [event for event in tx.events if event.event_name == "RewardPaid"]
     assert reward_paid_events == [
         taco_application.RewardPaid(
             stakingProvider=staking_provider,
@@ -402,7 +402,9 @@ def test_withdraw(accounts, token, threshold_staking, taco_application, child_ap
             sender=beneficiary,
         )
     ]
-    rewards_withdrawn_events = taco_application.RewardsWithdrawn.from_receipt(tx)
+    rewards_withdrawn_events = [
+        event for event in tx.events if event.event_name == "RewardsWithdrawn"
+    ]
     assert rewards_withdrawn_events == [
         taco_application.RewardsWithdrawn(stakingProvider=staking_provider, amount=earned)
     ]
@@ -434,7 +436,7 @@ def test_withdraw(accounts, token, threshold_staking, taco_application, child_ap
     assert token.balanceOf(beneficiary) == earned + new_earned
     assert token.balanceOf(taco_application.address) == 2 * reward_portion - earned - new_earned
 
-    reward_paid_events = taco_application.RewardPaid.from_receipt(tx)
+    reward_paid_events = [event for event in tx.events if event.event_name == "RewardPaid"]
     assert reward_paid_events == [
         taco_application.RewardPaid(
             stakingProvider=staking_provider,
@@ -443,7 +445,9 @@ def test_withdraw(accounts, token, threshold_staking, taco_application, child_ap
             sender=reward_contract,
         )
     ]
-    rewards_withdrawn_events = taco_application.RewardsWithdrawn.from_receipt(tx)
+    rewards_withdrawn_events = [
+        event for event in tx.events if event.event_name == "RewardsWithdrawn"
+    ]
     assert rewards_withdrawn_events == [
         taco_application.RewardsWithdrawn(stakingProvider=staking_provider, amount=new_earned)
     ]

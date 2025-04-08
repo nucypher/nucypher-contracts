@@ -171,7 +171,7 @@ def test_pay_subscription(
     assert balance_after + current_base_fee == balance_before
     assert erc20.balanceOf(subscription.address) == current_base_fee
 
-    events = subscription.SubscriptionPaid.from_receipt(tx)
+    events = [event for event in tx.events if event.event_name == "SubscriptionPaid"]
     assert events == [
         subscription.SubscriptionPaid(
             subscriber=adopter,
@@ -200,7 +200,7 @@ def test_pay_subscription(
     assert subscription.billingInfo(0) == (True, 0)
     assert subscription.billingInfo(1) == (True, encryptor_slots)
 
-    events = subscription.SubscriptionPaid.from_receipt(tx)
+    events = [event for event in tx.events if event.event_name == "SubscriptionPaid"]
     assert events == [
         subscription.SubscriptionPaid(
             subscriber=adopter,
@@ -250,7 +250,7 @@ def test_pay_subscription(
     assert subscription.billingInfo(1) == (True, encryptor_slots)
     assert subscription.billingInfo(2) == (True, encryptor_slots)
 
-    events = subscription.SubscriptionPaid.from_receipt(tx)
+    events = [event for event in tx.events if event.event_name == "SubscriptionPaid"]
     assert events == [
         subscription.SubscriptionPaid(
             subscriber=adopter,
@@ -302,7 +302,7 @@ def test_pay_encryptor_slots(
     assert subscription.billingInfo(0) == (True, 2 * encryptor_slots)
     assert subscription.billingInfo(1) == (True, 0)
 
-    events = subscription.EncryptorSlotsPaid.from_receipt(tx)
+    events = [event for event in tx.events if event.event_name == "EncryptorSlotsPaid"]
     assert events == [
         subscription.EncryptorSlotsPaid(
             sponsor=adopter,
@@ -337,7 +337,7 @@ def test_pay_encryptor_slots(
     assert subscription.billingInfo(0) == (True, 2 * encryptor_slots)
     assert subscription.billingInfo(1) == (True, encryptor_slots)
 
-    events = subscription.EncryptorSlotsPaid.from_receipt(tx)
+    events = [event for event in tx.events if event.event_name == "EncryptorSlotsPaid"]
     assert events == [
         subscription.EncryptorSlotsPaid(
             sponsor=adopter,
@@ -366,7 +366,7 @@ def test_withdraw(erc20, subscription, adopter, adopter_setter, treasury, global
     assert erc20.balanceOf(treasury) == current_base_fee
     assert erc20.balanceOf(subscription.address) == 0
 
-    events = subscription.WithdrawalToTreasury.from_receipt(tx)
+    events = [event for event in tx.events if event.event_name == "WithdrawalToTreasury"]
     assert events == [subscription.WithdrawalToTreasury(treasury=treasury, amount=current_base_fee)]
 
 
