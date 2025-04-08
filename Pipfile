@@ -9,7 +9,7 @@ coincurve = "*"
 cryptography = "*"
 eth-ape = "*"
 ape-solidity = ">=0.8.4"
-ape-etherscan = {git = "https://github.com/derekpierre/ape-etherscan.git", ref = "flimsy-constructor-args-solution"}
+ape-etherscan = {git = "https://github.com/derekpierre/ape-etherscan.git", ref = "flimsy-verification"}
 ape-polygon = "*"
 ape-infura = "*"
 flake8 = "*"
@@ -19,6 +19,7 @@ pre-commit = "*"
 tox = "*"
 pyyaml = "*"
 bump2version = "*"
+web3 = "<7"
 
 [dev-packages]
 
