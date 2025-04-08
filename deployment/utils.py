@@ -99,21 +99,21 @@ def check_infura_plugin() -> None:
     """Checks that the ape-infura plugin is installed."""
     if is_local_network():
         return  # unnecessary for local deployment
-    if networks.provider.name != 'infura':
+    if networks.provider.name != "infura":
         return  # unnecessary when using a provider different than infura
     try:
         import ape_infura  # noqa: F401
-        from ape_infura.provider import _ENVIRONMENT_VARIABLE_NAMES  # noqa: F401
+        from ape_infura.provider import _API_KEY_ENVIRONMENT_VARIABLE_NAMES  # noqa: F401
     except ImportError:
         raise ImportError("Please install the ape-infura plugin to use this script.")
-    for envvar in _ENVIRONMENT_VARIABLE_NAMES:
+    for envvar in _API_KEY_ENVIRONMENT_VARIABLE_NAMES:
         api_key = os.environ.get(envvar)
         if api_key:
             break
     else:
         raise ValueError(
             f"No Infura API key found in "
-            f"environment variables: {', '.join(_ENVIRONMENT_VARIABLE_NAMES)}"
+            f"environment variables: {', '.join(_API_KEY_ENVIRONMENT_VARIABLE_NAMES)}"
         )
 
 

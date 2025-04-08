@@ -121,7 +121,8 @@ def initiate_ritual(coordinator, fee_model, erc20, authority, nodes, allow_logic
 
 # Using normal and upgradeable versions of global_allow_list.
 # Since both are fixtures, we need a small workaround to use them as parameters.
-# See https://engineeringfordatascience.com/posts/pytest_fixtures_with_parameterize/#using-requestgetfixturevalue-
+# See https://engineeringfordatascience.com/posts/
+# pytest_fixtures_with_parameterize/#using-requestgetfixturevalue-
 @pytest.mark.parametrize(
     "allow_list_contract",
     ("global_allow_list", "upgradeable_global_allow_list"),
@@ -181,7 +182,7 @@ def test_authorize_using_global_allow_list(
     # Authorized
     assert allow_list_contract.isAuthorized(0, bytes(signature), bytes(data))
     assert coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(data))
-    events = allow_list_contract.AddressAuthorizationSet.from_receipt(tx)
+    events = [event for event in tx.events if event.event_name == "AddressAuthorizationSet"]
     assert events == [
         allow_list_contract.AddressAuthorizationSet(
             ritualId=0, _address=deployer.address, isAuthorized=True
@@ -193,7 +194,7 @@ def test_authorize_using_global_allow_list(
 
     assert not allow_list_contract.isAuthorized(0, bytes(signature), bytes(data))
     assert not coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(data))
-    events = allow_list_contract.AddressAuthorizationSet.from_receipt(tx)
+    events = [event for event in tx.events if event.event_name == "AddressAuthorizationSet"]
     assert events == [
         allow_list_contract.AddressAuthorizationSet(
             ritualId=0, _address=deployer.address, isAuthorized=False
@@ -211,7 +212,7 @@ def test_authorize_using_global_allow_list(
     assert allow_list_contract.isAuthorized(0, bytes(signature), bytes(data))
     assert coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(data))
 
-    events = allow_list_contract.AddressAuthorizationSet.from_receipt(tx)
+    events = [event for event in tx.events if event.event_name == "AddressAuthorizationSet"]
     assert events == [
         allow_list_contract.AddressAuthorizationSet(
             ritualId=0, _address=deployer.address, isAuthorized=True
