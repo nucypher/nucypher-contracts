@@ -5,6 +5,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional
 
+from ape import chain as chain_fixture
 from ape import project
 from ape.contracts import ContractInstance
 from eth_typing import ChecksumAddress
@@ -38,21 +39,15 @@ class RegistryEntry(NamedTuple):
 
 def _get_abi(contract_instance: ContractInstance) -> ABI:
     """Returns the ABI of a contract instance."""
-    existing_entries = set()
     contract_abi = list()
-    # TODO I think(?) ABIs for the underlying proxy contract and the implementation
-    #  are being included
-    for entry in contract_instance.contract_type.abi:
-        # Can potentially return duplicates so we need to filter them out
-        # TODO not sure why this is needed, but it is
-        #   One theory is that ABIs for the proxy and implementation contract are being duped
-        #   and this is a workaround for that
-        json_str = entry.model_dump_json(sort_keys=True)
-        if json_str in existing_entries:
-            continue
 
-        # not a duplicate
-        existing_entries.add(json_str)
+    # check if proxy contract, use underlying implementation contract ABI
+    proxy_info = chain_fixture.contracts.get_proxy_info(contract_instance.address)
+    if proxy_info:
+        contract_container = get_contract_container(contract_instance.contract_type.name)
+        contract_instance = contract_container.at(proxy_info.target)
+
+    for entry in contract_instance.contract_type.abi:
         contract_abi.append(entry.model_dump())
     return contract_abi
 
