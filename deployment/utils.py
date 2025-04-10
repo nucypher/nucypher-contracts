@@ -7,6 +7,7 @@ import requests
 import yaml
 from ape import networks, project
 from ape.contracts import ContractContainer, ContractInstance
+from ape.exceptions import NetworkError
 from ape_etherscan.utils import API_KEY_ENV_KEY_MAP
 
 from deployment.constants import ARTIFACTS_DIR, MAINNET, PORTER_SAMPLING_ENDPOINTS
@@ -165,8 +166,11 @@ def get_chain_name(chain_id: int) -> str:
     """Returns the name of the chain given its chain ID."""
     for ecosystem_name, ecosystem in networks.ecosystems.items():
         for network_name, network in ecosystem.networks.items():
-            if network.chain_id == chain_id:
-                return f"{ecosystem_name} {network_name}"
+            try:
+                if network.chain_id == chain_id:
+                    return f"{ecosystem_name} {network_name}"
+            except NetworkError:
+                continue
     raise ValueError(f"Chain ID {chain_id} not found in networks.")
 
 

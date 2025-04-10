@@ -47,16 +47,7 @@ def _get_abi(contract_instance: ContractInstance) -> ABI:
         contract_container = get_contract_container(contract_instance.contract_type.name)
         contract_instance = contract_container.at(proxy_info.target)
 
-    existing_entries = set()
     for entry in contract_instance.contract_type.abi:
-        # TODO I believe due dupes are due to https://github.com/ApeWorX/ape/issues/2569
-        # Can potentially return duplicates so we need to filter them out
-        json_str = entry.model_dump_json(sort_keys=True)
-        if json_str in existing_entries:
-            continue
-
-        # not a duplicate
-        existing_entries.add(json_str)
         contract_abi.append(entry.model_dump())
     return contract_abi
 
