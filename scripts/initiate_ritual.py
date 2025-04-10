@@ -9,10 +9,14 @@ from ape import Contract, chain
 from ape.cli import ConnectedProviderCommand, account_option, network_option
 
 from deployment import registry
-from deployment.constants import ACCESS_CONTROLLERS, SUPPORTED_TACO_DOMAINS, HEARTBEAT_ARTIFACT_FILENAME
+from deployment.constants import (
+    ACCESS_CONTROLLERS,
+    HEARTBEAT_ARTIFACT_FILENAME,
+    SUPPORTED_TACO_DOMAINS,
+)
 from deployment.params import Transactor
 from deployment.types import ChecksumAddress, MinInt
-from deployment.utils import check_plugins, sample_nodes, get_heartbeat_cohorts
+from deployment.utils import check_plugins, get_heartbeat_cohorts, sample_nodes
 
 
 @click.command(cls=ConnectedProviderCommand, name="initiate-ritual")
@@ -161,7 +165,9 @@ def cli(
 
     # Get the staking providers in the ritual cohort
     if heartbeat:
-        taco_application = registry.get_contract(domain=domain, contract_name="TACoChildApplication")
+        taco_application = registry.get_contract(
+            domain=domain, contract_name="TACoChildApplication"
+        )
         cohorts = get_heartbeat_cohorts(taco_application=taco_application)
         click.echo(f"Initiating {len(cohorts)} rituals.")
         if not auto:
@@ -170,7 +176,9 @@ def cli(
         if handpicked:
             cohort = sorted(line.lower().strip() for line in handpicked)
             if not cohort:
-                raise ValueError(f"No staking providers found in the handpicked file {handpicked.name}")
+                raise ValueError(
+                    f"No staking providers found in the handpicked file {handpicked.name}"
+                )
         else:
             cohort = sample_nodes(
                 domain=domain,
