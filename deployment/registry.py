@@ -5,6 +5,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional
 
+from ape import chain as chain_fixture
 from ape import project
 from ape.contracts import ContractInstance
 from eth_typing import ChecksumAddress
@@ -39,6 +40,13 @@ class RegistryEntry(NamedTuple):
 def _get_abi(contract_instance: ContractInstance) -> ABI:
     """Returns the ABI of a contract instance."""
     contract_abi = list()
+
+    # check if proxy contract, use underlying implementation contract ABI
+    proxy_info = chain_fixture.contracts.get_proxy_info(contract_instance.address)
+    if proxy_info:
+        contract_container = get_contract_container(contract_instance.contract_type.name)
+        contract_instance = contract_container.at(proxy_info.target)
+
     for entry in contract_instance.contract_type.abi:
         contract_abi.append(entry.model_dump())
     return contract_abi
@@ -212,6 +220,7 @@ def merge_registries(
     registry_2_filepath: Path,
     output_filepath: Path,
     deprecated_contracts: Optional[List[ContractName]] = None,
+    force_conflict_resolution: ConflictResolution = None,
 ) -> Path:
     """Merges two nucypher-style contract registries created from ape deployments API."""
     # If no deprecated contracts are specified, use an empty list
@@ -245,7 +254,7 @@ def merge_registries(
                 entry_1, entry_2 = reg1_chain_entries.get(name), reg2_chain_entries.get(name)
                 if entry_1 and entry_2:
                     # entries for the same name (same chain)
-                    resolution = _select_conflict_resolution(
+                    resolution = force_conflict_resolution or _select_conflict_resolution(
                         registry_1_entry=entry_1,
                         registry_2_entry=entry_2,
                         registry_1_filepath=registry_1_filepath,
