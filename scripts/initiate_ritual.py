@@ -81,6 +81,12 @@ from deployment.utils import check_plugins, get_heartbeat_cohorts, sample_nodes
     type=click.File("r"),
 )
 @click.option(
+    "--excluded-nodes",
+    help="The filepath of a file containing newline separated staking provider \
+          addresses that will be excluded from the node selection.",
+    type=click.File("r"),
+)
+@click.option(
     "--auto",
     help="Automatically sign transactions.",
     is_flag=True,
@@ -101,6 +107,7 @@ def cli(
     num_nodes,
     random_seed,
     handpicked,
+    excluded_nodes,
     min_version,
     auto,
     heartbeat,
@@ -124,6 +131,11 @@ def cli(
         raise click.BadOptionUsage(
             option_name="--min-version",
             message="Cannot specify --min-version when using --handpicked.",
+        )
+    if handpicked and excluded_nodes:
+        raise click.BadOptionUsage(
+            option_name="--excluded-nodes",
+            message="Cannot specify --excluded-nodes when using --handpicked.",
         )
     if heartbeat:
         if not duration:
@@ -168,6 +180,7 @@ def cli(
         taco_application = registry.get_contract(
             domain=domain, contract_name="TACoChildApplication"
         )
+        # TODO: exclude nodes from the excluded_nodes file
         cohorts = get_heartbeat_cohorts(taco_application=taco_application)
         click.echo(f"Initiating {len(cohorts)} rituals.")
         if not auto:
@@ -180,6 +193,7 @@ def cli(
                     f"No staking providers found in the handpicked file {handpicked.name}"
                 )
         else:
+            # TODO: exclude nodes from the excluded_nodes file
             cohort = sample_nodes(
                 domain=domain,
                 num_nodes=num_nodes,
