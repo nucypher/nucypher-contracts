@@ -35,6 +35,12 @@ HandoverState = IntEnum(
     start=0,
 )
 
+SigningRitualState = IntEnum(
+    "SigningRitualState",
+    ["NON_INITIATED", "AWAITING_SIGNATURES", "TIMEOUT", "ACTIVE", "EXPIRED"],
+    start=0,
+)
+
 
 # Utility functions
 def transcript_size(shares, threshold):
