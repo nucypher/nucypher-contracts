@@ -95,7 +95,7 @@ def test_signing_ritual(signing_coordinator, initiator, nodes):
         assert signing_coordinator.isSigner(signing_cohort_id, n.address)
 
     assert (
-        signing_coordinator.getSigningRitualState(signing_cohort_id)
+        signing_coordinator.getSigningCohortState(signing_cohort_id)
         == SigningRitualState.AWAITING_SIGNATURES
     )
 
@@ -126,5 +126,5 @@ def test_signing_ritual(signing_coordinator, initiator, nodes):
         )
     ]
 
-    assert signing_coordinator.getSigningRitualState(signing_cohort_id) == SigningRitualState.ACTIVE
+    assert signing_coordinator.getSigningCohortState(signing_cohort_id) == SigningRitualState.ACTIVE
     assert signing_coordinator.isCohortActive(signing_cohort_id)
