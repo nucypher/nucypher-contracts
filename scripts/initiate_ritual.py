@@ -77,7 +77,8 @@ from deployment.utils import check_plugins, get_heartbeat_cohorts, sample_nodes
 )
 @click.option(
     "--handpicked",
-    help="The filepath of a file containing newline separated staking provider addresses.",
+    help="The filepath of a file containing newline separated staking provider \
+        addresses that will be included in the ritual.",
     type=click.File("r"),
 )
 @click.option(
@@ -175,13 +176,16 @@ def cli(
             elapsed = now - start_of_subscription + 100
             duration -= elapsed
 
+    excluded = []
     # Get the staking providers in the ritual cohort
     if heartbeat:
+        if excluded_nodes:
+            excluded = [line.strip() for line in excluded_nodes]
+            click.echo(f"Excluding nodes: {excluded}")
         taco_application = registry.get_contract(
             domain=domain, contract_name="TACoChildApplication"
         )
-        # TODO: exclude nodes from the excluded_nodes file
-        cohorts = get_heartbeat_cohorts(taco_application=taco_application)
+        cohorts = get_heartbeat_cohorts(taco_application=taco_application, excluded_nodes=excluded)
         click.echo(f"Initiating {len(cohorts)} rituals.")
         if not auto:
             click.confirm(text="Are you sure you want to initiate these rituals?", abort=True)
