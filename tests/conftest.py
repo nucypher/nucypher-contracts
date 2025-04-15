@@ -1,7 +1,8 @@
 import os
+from enum import IntEnum
+
 import pytest
 from ape import project
-from enum import IntEnum
 
 # Common constants
 G1_SIZE = 48
@@ -19,6 +20,12 @@ RitualState = IntEnum(
         "ACTIVE",
         "EXPIRED",
     ],
+    start=0,
+)
+
+SigningRitualState = IntEnum(
+    "SigningRitualState",
+    ["NON_INITIATED", "AWAITING_SIGNATURES", "TIMEOUT", "ACTIVE", "EXPIRED"],
     start=0,
 )
 
