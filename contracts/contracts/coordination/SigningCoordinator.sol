@@ -41,7 +41,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     );
     event SigningCohortCompleted(uint32 indexed cohortId);
 
-    enum SigningRitualState {
+    enum SigningCohortState {
         NON_INITIATED,
         AWAITING_SIGNATURES,
         TIMEOUT,
@@ -68,7 +68,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     }
 
     function isCohortActive(SigningCohort storage cohort) internal view returns (bool) {
-        return getSigningRitualState(cohort) == SigningRitualState.ACTIVE;
+        return getSigningCohortState(cohort) == SigningCohortState.ACTIVE;
     }
 
     function isCohortActive(uint32 cohortId) external view returns (bool) {
@@ -128,7 +128,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     function postSigningCohortSignature(uint32 cohortId, bytes calldata signature) external {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
         require(
-            getSigningRitualState(signingCohort) == SigningRitualState.AWAITING_SIGNATURES,
+            getSigningCohortState(signingCohort) == SigningCohortState.AWAITING_SIGNATURES,
             "Not waiting for transcripts"
         );
         address provider = application.operatorToStakingProvider(msg.sender);
@@ -152,31 +152,31 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         }
     }
 
-    function getSigningRitualState(
+    function getSigningCohortState(
         uint32 signingCohortId
-    ) external view returns (SigningRitualState) {
-        return getSigningRitualState(signingCohorts[signingCohortId]);
+    ) external view returns (SigningCohortState) {
+        return getSigningCohortState(signingCohorts[signingCohortId]);
     }
 
-    function getSigningRitualState(
+    function getSigningCohortState(
         SigningCohort storage signingCohort
-    ) internal view returns (SigningRitualState) {
+    ) internal view returns (SigningCohortState) {
         uint32 t0 = signingCohort.initTimestamp;
         uint32 deadline = t0 + timeout;
         if (t0 == 0) {
-            return SigningRitualState.NON_INITIATED;
+            return SigningCohortState.NON_INITIATED;
         } else if (signingCohort.totalSignatures == signingCohort.numSigners) {
             // DKG was successful
             if (block.timestamp <= signingCohort.endTimestamp) {
-                return SigningRitualState.ACTIVE;
+                return SigningCohortState.ACTIVE;
             } else {
-                return SigningRitualState.EXPIRED;
+                return SigningCohortState.EXPIRED;
             }
         } else if (block.timestamp > deadline) {
             // DKG failed due to timeout
-            return SigningRitualState.TIMEOUT;
+            return SigningCohortState.TIMEOUT;
         } else if (signingCohort.totalSignatures < signingCohort.numSigners) {
-            return SigningRitualState.AWAITING_SIGNATURES;
+            return SigningCohortState.AWAITING_SIGNATURES;
         } else {
             /**
              * It shouldn't be possible to reach this state:
