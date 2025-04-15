@@ -176,12 +176,11 @@ def cli(
             elapsed = now - start_of_subscription + 100
             duration -= elapsed
 
-    excluded = []
+    # Set the nodes that are excluded from the cohort sampling
+    excluded = [line.strip() for line in excluded_nodes] if excluded_nodes else []
+
     # Get the staking providers in the ritual cohort
     if heartbeat:
-        if excluded_nodes:
-            excluded = [line.strip() for line in excluded_nodes]
-            click.echo(f"Excluding nodes: {excluded}")
         taco_application = registry.get_contract(
             domain=domain, contract_name="TACoChildApplication"
         )

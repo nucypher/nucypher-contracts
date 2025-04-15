@@ -235,7 +235,7 @@ def _generate_heartbeat_cohorts(addresses: List[str]) -> Tuple[Tuple[str, ...], 
 
 
 def get_heartbeat_cohorts(
-    taco_application: ContractContainer, excluded_nodes: list
+    taco_application: ContractContainer, excluded_nodes: Optional[List[str]] = []
 ) -> Tuple[Tuple[str, ...], ...]:
     data = taco_application.getActiveStakingProviders(
         0,  # start index
