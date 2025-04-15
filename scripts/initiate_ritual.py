@@ -196,13 +196,13 @@ def cli(
                     f"No staking providers found in the handpicked file {handpicked.name}"
                 )
         else:
-            # TODO: exclude nodes from the excluded_nodes file
             cohort = sample_nodes(
                 domain=domain,
                 num_nodes=num_nodes,
                 duration=duration,
                 random_seed=random_seed,
                 min_version=min_version,
+                excluded_nodes=excluded,
             )
         cohorts = [cohort]
 

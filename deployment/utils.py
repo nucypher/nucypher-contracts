@@ -181,6 +181,7 @@ def sample_nodes(
     random_seed: Optional[int] = None,
     duration: Optional[int] = None,
     min_version: Optional[str] = None,
+    excluded_nodes: Optional[List[str]] = None,
 ):
     porter_endpoint = PORTER_SAMPLING_ENDPOINTS.get(domain)
     if not porter_endpoint:
@@ -197,6 +198,9 @@ def sample_nodes(
         params["random_seed"] = random_seed
     if min_version:
         params["min_version"] = min_version
+    if excluded_nodes:
+        nodes = [to_checksum_address(node) for node in excluded_nodes]
+        params["exclude_ursulas"] = ",".join(nodes)
 
     response = requests.get(porter_endpoint, params=params)
     response.raise_for_status()
