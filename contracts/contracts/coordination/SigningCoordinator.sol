@@ -23,7 +23,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         uint16 totalSignatures;
         uint16 numSigners;
         uint16 threshold;
-        mapping(address => SigningCohortParticipant) signers;
+        SigningCohortParticipant[] signers;
     }
 
     mapping(uint256 => SigningCohort) public signingCohorts;
@@ -55,6 +55,8 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     uint32 public timeout;
     uint16 public maxCohortSize;
 
+    SigningCohortParticipant internal __sentinelSigner;
+
     constructor(ITACoChildApplication _application) {
         application = _application;
         minAuthorization = _application.minimumAuthorization(); // TODO use child app for checking eligibility
@@ -80,12 +82,52 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         timeout = newTimeout;
     }
 
+    function findSigner(
+        SigningCohort storage cohort,
+        address provider
+    ) internal view returns (bool, SigningCohortParticipant storage) {
+        uint256 length = cohort.signers.length;
+        if (length == 0) {
+            return (false, __sentinelSigner);
+        }
+        uint256 low = 0;
+        uint256 high = length - 1;
+        while (low <= high) {
+            uint256 mid = (low + high) / 2;
+            SigningCohortParticipant storage middleParticipant = cohort.signers[mid];
+            if (middleParticipant.provider == provider) {
+                return (true, middleParticipant);
+            } else if (middleParticipant.provider < provider) {
+                low = mid + 1;
+            } else {
+                if (mid == 0) {
+                    // prevent underflow of unsigned int
+                    break;
+                }
+                high = mid - 1;
+            }
+        }
+        return (false, __sentinelSigner);
+    }
+
     function isSigner(uint32 cohortId, address provider) external view returns (bool) {
         SigningCohort storage cohort = signingCohorts[cohortId];
-        if (cohort.signers[provider].provider != address(0)) {
-            return true;
-        }
-        return false;
+        (bool found, ) = findSigner(cohort, provider);
+        return found;
+    }
+
+    function getSigner(
+        SigningCohort storage cohort,
+        address provider
+    ) internal view returns (SigningCohortParticipant storage) {
+        (bool found, SigningCohortParticipant storage participant) = findSigner(cohort, provider);
+        require(found, "Participant not part of ritual");
+        return participant;
+    }
+
+    function getSigners(uint32 cohortId) external view returns (SigningCohortParticipant[] memory) {
+        SigningCohort storage cohort = signingCohorts[cohortId];
+        return cohort.signers;
     }
 
     function initiateSigningCohort(
@@ -111,14 +153,17 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         signingCohort.initTimestamp = uint32(block.timestamp);
         signingCohort.endTimestamp = signingCohort.initTimestamp + duration;
 
+        address previous = address(0);
         for (uint256 i = 0; i < length; i++) {
             address current = providers[i];
             require(
                 application.authorizedStake(current) >= minAuthorization,
                 "Not enough authorization"
             );
-            SigningCohortParticipant storage newParticipant = signingCohort.signers[current];
+            require(previous < current, "Providers must be sorted");
+            SigningCohortParticipant storage newParticipant = signingCohort.signers.push();
             newParticipant.provider = current;
+            previous = current;
         }
 
         emit InitiateSigningCohort(id, authority, providers);
@@ -134,7 +179,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         address provider = application.operatorToStakingProvider(msg.sender);
         require(provider != address(0), "Operator has no bond with staking provider");
 
-        SigningCohortParticipant storage participant = signingCohort.signers[provider];
+        SigningCohortParticipant storage participant = getSigner(signingCohort, provider);
         require(participant.provider != address(0), "Participant not part of signing ritual");
         require(participant.signature.length == 0, "Node already posted signature");
         require(application.authorizedStake(provider) > 0, "Not enough authorization");
@@ -142,7 +187,6 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         bytes32 dataHash = keccak256(abi.encode(cohortId, signingCohort.authority));
         address recovered = ECDSA.recover(dataHash, signature);
         require(recovered == msg.sender, "Operator signature mismatch");
-        require(signingCohort.signers[provider].provider != address(0), "Invalid signer");
         signingCohort.totalSignatures++;
 
         emit SigningCohortSignaturePosted(cohortId, provider, signature);

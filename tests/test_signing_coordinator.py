@@ -128,3 +128,5 @@ def test_signing_ritual(signing_coordinator, initiator, nodes):
 
     assert signing_coordinator.getSigningCohortState(signing_cohort_id) == SigningRitualState.ACTIVE
     assert signing_coordinator.isCohortActive(signing_cohort_id)
+    for i, node in enumerate(nodes):
+        assert signing_coordinator.isSigner(signing_cohort_id, node.address)
