@@ -125,6 +125,15 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         return participant;
     }
 
+    function getSigner(
+        uint32 cohortId,
+        address provider
+    ) external view returns (SigningCohortParticipant memory) {
+        SigningCohort storage cohort = signingCohorts[cohortId];
+        SigningCohortParticipant memory participant = getSigner(cohort, provider);
+        return participant;
+    }
+
     function getSigners(uint32 cohortId) external view returns (SigningCohortParticipant[] memory) {
         SigningCohort storage cohort = signingCohorts[cohortId];
         return cohort.signers;
@@ -187,6 +196,8 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         bytes32 dataHash = keccak256(abi.encode(cohortId, signingCohort.authority));
         address recovered = ECDSA.recover(dataHash, signature);
         require(recovered == msg.sender, "Operator signature mismatch");
+
+        participant.signature = signature;
         signingCohort.totalSignatures++;
 
         emit SigningCohortSignaturePosted(cohortId, provider, signature);
