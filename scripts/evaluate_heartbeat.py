@@ -1,19 +1,19 @@
 #!/usr/bin/python3
 
 import json
+from collections import Counter, defaultdict
+from enum import IntEnum
+from typing import Any, Dict
+
+import click
 import requests
 import urllib3
-from collections import defaultdict, Counter
-from enum import IntEnum
-from typing import Dict, Any
-
 from ape import chain
-import click
 from ape.cli import ConnectedProviderCommand, network_option
 from ape.contracts.base import ContractContainer
 
 from deployment import registry
-from deployment.constants import SUPPORTED_TACO_DOMAINS, HEARTBEAT_ARTIFACT_FILENAME
+from deployment.constants import HEARTBEAT_ARTIFACT_FILENAME, SUPPORTED_TACO_DOMAINS
 
 # Disable SSL warnings for self-signed certificates
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -21,6 +21,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 class RitualState(IntEnum):
     """Represents the different states of a DKG ritual."""
+
     NON_INITIATED = 0
     DKG_AWAITING_TRANSCRIPTS = 1
     DKG_AWAITING_AGGREGATIONS = 2
@@ -47,7 +48,9 @@ def get_eth_balance(address: str) -> float:
 def get_nucypher_network_data() -> Dict[str, Any]:
     """Retrieves NuCypher network data (list of known nodes)."""
     try:
-        response = requests.get(NUCYPHER_MAINNET_API, params={"json": "true"}, verify=False, timeout=20)
+        response = requests.get(
+            NUCYPHER_MAINNET_API, params={"json": "true"}, verify=False, timeout=20
+        )
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
@@ -65,7 +68,9 @@ def get_operator(staker_address: str, taco_application: ContractContainer) -> st
         return "Unknown"
 
 
-def investigate_offender_networks(offenders: Dict[str, Dict[str, Any]], network_data: Dict[str, Any]) -> None:
+def investigate_offender_networks(
+    offenders: Dict[str, Dict[str, Any]], network_data: Dict[str, Any]
+) -> None:
     """Investigates the network status of offenders and adds a summary."""
     click.secho("\n🌐 Investigating offender network details...", fg="blue")
     reason_counter = Counter()
@@ -77,17 +82,25 @@ def investigate_offender_networks(offenders: Dict[str, Dict[str, Any]], network_
             for node in network_data.get("known_nodes", []):
                 if node.get("staker_address") == address:
                     rest_url = node.get("rest_url", "Unknown")
-                    offenders[ritual_id][address]["url"] = f"https://{rest_url}/status/" if rest_url else "Unknown"
+                    offenders[ritual_id][address]["url"] = (
+                        f"https://{rest_url}/status/" if rest_url else "Unknown"
+                    )
 
                     # Check node status
                     try:
-                        node_status = requests.get(f"https://{rest_url}/status/", params={"json": "true"}, verify=False,
-                                                   timeout=20)
+                        node_status = requests.get(
+                            f"https://{rest_url}/status/",
+                            params={"json": "true"},
+                            verify=False,
+                            timeout=20,
+                        )
                         version = node_status.json().get("version", "Unknown")
                         offenders[ritual_id][address]["version"] = version
 
                         if version != "Unknown" and version != LATEST_NUCYPHER_VERSION:
-                            offenders[ritual_id][address]["reasons"].append(f"Old Version ({version})")
+                            offenders[ritual_id][address]["reasons"].append(
+                                f"Old Version ({version})"
+                            )
                             outdated_nodes += 1
                     except requests.ConnectionError:
                         offenders[ritual_id][address]["version"] = "Unknown"
@@ -120,11 +133,21 @@ def investigate_offender_networks(offenders: Dict[str, Dict[str, Any]], network_
 
 @click.command(cls=ConnectedProviderCommand, name="evaluate-heartbeat")
 @network_option(required=True)
-@click.option("--domain", "-d", help="TACo domain", type=click.Choice(SUPPORTED_TACO_DOMAINS), required=True)
-@click.option("--artifact", help="The filepath of a heartbeat artifact file.", type=click.File("r"),
-              default=HEARTBEAT_ARTIFACT_FILENAME)
-@click.option("--report-infractions", help="Report infractions to the InfractionCollector.", is_flag=True,
-              default=False)
+@click.option(
+    "--domain", "-d", help="TACo domain", type=click.Choice(SUPPORTED_TACO_DOMAINS), required=True
+)
+@click.option(
+    "--artifact",
+    help="The filepath of a heartbeat artifact file.",
+    type=click.File("r"),
+    default=HEARTBEAT_ARTIFACT_FILENAME,
+)
+@click.option(
+    "--report-infractions",
+    help="Report infractions to the InfractionCollector.",
+    is_flag=True,
+    default=False,
+)
 def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
     """Evaluates the heartbeat artifact and analyzes offenders."""
 
@@ -159,7 +182,9 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
 
                 if reasons:
                     offenders[ritual_id][address] = {"reasons": reasons}
-                    click.secho(f"🧐 Investigating offender {address} in ritual {ritual_id}", fg="yellow")
+                    click.secho(
+                        f"🧐 Investigating offender {address} in ritual {ritual_id}", fg="yellow"
+                    )
 
                     # Fetch additional offender details
                     operator_address = get_operator(address, taco_application=taco_application)
@@ -170,7 +195,10 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
     with open("offenders.json", "w") as f:
         json.dump(offenders, f, indent=4)
 
-    click.secho(f"📄 Offender report saved with {sum(len(o) for o in offenders.values())} offenders.", fg="green")
+    click.secho(
+        f"📄 Offender report saved with {sum(len(o) for o in offenders.values())} offenders.",
+        fg="green",
+    )
     investigate_offender_networks(offenders, network_data)
 
 
