@@ -31,7 +31,7 @@ class RitualState(IntEnum):
     EXPIRED = 6
 
 
-NUCYPHER_MAINNET_API = "https://mainnet.nucypher.network:9151/status/?json=true"
+NUCYPHER_MAINNET_API = "https://mainnet.nucypher.network:9151/status?json=true"
 LATEST_NUCYPHER_VERSION = "7.4.1"
 
 
