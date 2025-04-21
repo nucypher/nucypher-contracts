@@ -32,7 +32,7 @@ class RitualState(IntEnum):
 
 
 NUCYPHER_MAINNET_API = "https://mainnet.nucypher.network:9151/status?json=true"
-LATEST_NUCYPHER_VERSION = "7.4.1"
+LATEST_NUCYPHER_VERSION = "7.5.0"
 
 
 def get_eth_balance(address: str) -> float:
