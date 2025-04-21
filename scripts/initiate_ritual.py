@@ -186,6 +186,9 @@ def cli(
         )
         cohorts = get_heartbeat_cohorts(taco_application=taco_application, excluded_nodes=excluded)
         click.echo(f"Initiating {len(cohorts)} rituals.")
+        if excluded:
+            click.echo("The following nodes are being excluded from the heartbeat:")
+            click.echo(" -> " + "\n -> ".join(excluded))
         if not auto:
             click.confirm(text="Are you sure you want to initiate these rituals?", abort=True)
     else:
@@ -196,6 +199,9 @@ def cli(
                     f"No staking providers found in the handpicked file {handpicked.name}"
                 )
         else:
+            if excluded:
+                click.echo("The following nodes are being excluded from the node sampling:")
+                click.echo(" -> " + "\n -> ".join(excluded))
             cohort = sample_nodes(
                 domain=domain,
                 num_nodes=num_nodes,
