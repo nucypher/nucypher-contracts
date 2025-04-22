@@ -3,11 +3,13 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import "@openzeppelin-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "../../threshold/ITACoChildApplication.sol";
 
 contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable {
+    using MessageHashUtils for bytes32;
     using ECDSA for bytes32;
 
     struct SigningCohortParticipant {
@@ -194,7 +196,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         require(application.authorizedStake(provider) > 0, "Not enough authorization");
 
         bytes32 dataHash = keccak256(abi.encode(cohortId, signingCohort.authority));
-        address recovered = ECDSA.recover(dataHash, signature);
+        address recovered = dataHash.toEthSignedMessageHash().recover(signature);
         require(recovered == msg.sender, "Operator signature mismatch");
 
         participant.signature = signature;
