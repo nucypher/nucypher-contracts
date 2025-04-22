@@ -12,7 +12,11 @@ from ape.cli import ConnectedProviderCommand, network_option
 from ape.contracts.base import ContractContainer
 
 from deployment import registry
-from deployment.constants import HEARTBEAT_ARTIFACT_FILENAME, SUPPORTED_TACO_DOMAINS
+from deployment.constants import (
+    HEARTBEAT_ARTIFACT_FILENAME,
+    NETWORK_SEEDNODE,
+    SUPPORTED_TACO_DOMAINS,
+)
 from deployment.utils import RitualState
 
 # Disable SSL warnings for self-signed certificates
@@ -20,9 +24,6 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 LATEST_RELEASE_URL = "https://api.github.com/repos/nucypher/nucypher/releases/latest"
-NUCYPHER_MAINNET_API = "https://mainnet.nucypher.network:9151/status?json=true"
-NUCYPHER_TAPIR_API = "https://tapir.nucypher.network:9151/status?json=true"
-NUCYPHER_LYNX_API = "https://lynx.nucypher.network:9151/status?json=true"
 
 
 def get_eth_balance(address: str) -> float:
@@ -35,14 +36,16 @@ def get_eth_balance(address: str) -> float:
         return 0.0
 
 
-def get_nucypher_network_data(domain_api) -> Dict[str, Any]:
-    """Retrieves NuCypher network data (list of known nodes)."""
+def get_taco_network_data(domain) -> Dict[str, Any]:
+    """Retrieves TACo network data (list of known nodes)."""
+    domain_api = NETWORK_SEEDNODE.get(domain)
+
     try:
         response = requests.get(domain_api, params={"json": "true"}, verify=False, timeout=20)
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
-        click.secho(f"⚠️ Failed to fetch NuCypher network data: {e}", fg="red")
+        click.secho(f"⚠️ Failed to fetch TACo network data: {e}", fg="red")
         return {"known_nodes": []}  # Return an empty structure to avoid crashes
 
 
@@ -150,15 +153,7 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
     taco_application = registry.get_contract(domain=domain, contract_name="TACoChildApplication")
     offenders: Dict[str, Dict[str, Any]] = defaultdict(dict)
 
-    # Load NuCypher network data
-    if domain == "mainnet":
-        domain_api = NUCYPHER_MAINNET_API
-    elif domain == "tapir":
-        domain_api = NUCYPHER_TAPIR_API
-    elif domain == "lynx":
-        domain_api = NUCYPHER_LYNX_API
-
-    network_data = get_nucypher_network_data(domain_api)
+    network_data = get_taco_network_data(domain)
 
     for ritual_id, cohort in artifact_data.items():
         ritual_status = coordinator.getRitualState(ritual_id)

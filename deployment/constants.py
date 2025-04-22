@@ -63,4 +63,14 @@ PORTER_SAMPLING_ENDPOINTS = {
     TAPIR: "https://porter-tapir.nucypher.io/get_ursulas",
 }
 
+#
+# Domain Seednodes
+#
+
+NETWORK_SEEDNODE = {
+    MAINNET: "https://mainnet.nucypher.network:9151/status?json=true",
+    LYNX: "https://lynx.nucypher.network:9151/status?json=true",
+    TAPIR: "https://tapir.nucypher.network:9151/status?json=true",
+}
+
 HEARTBEAT_ARTIFACT_FILENAME = "heartbeat-rituals.json"
