@@ -2,7 +2,6 @@
 
 import json
 from collections import Counter, defaultdict
-from enum import IntEnum
 from typing import Any, Dict
 
 import click
@@ -14,21 +13,10 @@ from ape.contracts.base import ContractContainer
 
 from deployment import registry
 from deployment.constants import HEARTBEAT_ARTIFACT_FILENAME, SUPPORTED_TACO_DOMAINS
+from deployment.utils import RitualState
 
 # Disable SSL warnings for self-signed certificates
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-
-class RitualState(IntEnum):
-    """Represents the different states of a DKG ritual."""
-
-    NON_INITIATED = 0
-    DKG_AWAITING_TRANSCRIPTS = 1
-    DKG_AWAITING_AGGREGATIONS = 2
-    DKG_TIMEOUT = 3
-    DKG_INVALID = 4
-    ACTIVE = 5
-    EXPIRED = 6
 
 
 NUCYPHER_MAINNET_API = "https://mainnet.nucypher.network:9151/status?json=true"

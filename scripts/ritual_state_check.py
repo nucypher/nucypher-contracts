@@ -1,6 +1,5 @@
 import time
 from datetime import datetime
-from enum import IntEnum
 
 import click
 from ape import networks, project
@@ -8,21 +7,7 @@ from ape.cli import ConnectedProviderCommand, network_option
 
 from deployment.constants import SUPPORTED_TACO_DOMAINS
 from deployment.registry import contracts_from_registry
-from deployment.utils import registry_filepath_from_domain
-
-RitualState = IntEnum(
-    "RitualState",
-    [
-        "NON_INITIATED",
-        "DKG_AWAITING_TRANSCRIPTS",
-        "DKG_AWAITING_AGGREGATIONS",
-        "DKG_TIMEOUT",
-        "DKG_INVALID",
-        "ACTIVE",
-        "EXPIRED",
-    ],
-    start=0,
-)
+from deployment.utils import RitualState, registry_filepath_from_domain
 
 END_STATES = [
     RitualState.DKG_TIMEOUT,
