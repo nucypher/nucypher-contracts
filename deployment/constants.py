@@ -1,3 +1,4 @@
+from enum import IntEnum
 from pathlib import Path
 
 from ape import project
@@ -72,5 +73,21 @@ NETWORK_SEEDNODE = {
     LYNX: "https://lynx.nucypher.network:9151/status?json=true",
     TAPIR: "https://tapir.nucypher.network:9151/status?json=true",
 }
+
+
+class RITUAL_STATE(IntEnum):
+    """
+    Represents the different states of a DKG ritual.
+    This is defined in the Coordinator contract.
+    """
+
+    NON_INITIATED = 0
+    DKG_AWAITING_TRANSCRIPTS = 1
+    DKG_AWAITING_AGGREGATIONS = 2
+    DKG_TIMEOUT = 3
+    DKG_INVALID = 4
+    ACTIVE = 5
+    EXPIRED = 6
+
 
 HEARTBEAT_ARTIFACT_FILENAME = "heartbeat-rituals.json"

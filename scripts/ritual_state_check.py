@@ -5,27 +5,27 @@ import click
 from ape import networks, project
 from ape.cli import ConnectedProviderCommand, network_option
 
-from deployment.constants import SUPPORTED_TACO_DOMAINS
+from deployment.constants import RITUAL_STATE, SUPPORTED_TACO_DOMAINS
 from deployment.registry import contracts_from_registry
-from deployment.utils import RitualState, registry_filepath_from_domain
+from deployment.utils import registry_filepath_from_domain
 
 END_STATES = [
-    RitualState.DKG_TIMEOUT,
-    RitualState.DKG_INVALID,
-    RitualState.ACTIVE,
-    RitualState.EXPIRED,
+    RITUAL_STATE.DKG_TIMEOUT,
+    RITUAL_STATE.DKG_INVALID,
+    RITUAL_STATE.ACTIVE,
+    RITUAL_STATE.EXPIRED,
 ]
 
 # expired means that it was active at some point in the past
-SUCCESSFUL_END_STATES = [RitualState.ACTIVE, RitualState.EXPIRED]
+SUCCESSFUL_END_STATES = [RITUAL_STATE.ACTIVE, RITUAL_STATE.EXPIRED]
 
 
-def print_ritual_state(ritual_id, coordinator) -> RitualState:
+def print_ritual_state(ritual_id, coordinator) -> RITUAL_STATE:
     ritual_state = coordinator.getRitualState(ritual_id)
     print()
     print("Ritual State")
     print("============")
-    print(f"\tState            : {RitualState(ritual_state).name}")
+    print(f"\tState            : {RITUAL_STATE(ritual_state).name}")
 
     if ritual_state in SUCCESSFUL_END_STATES:
         return ritual_state

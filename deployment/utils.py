@@ -1,6 +1,5 @@
 import json
 import os
-from enum import IntEnum
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -14,21 +13,6 @@ from eth_utils import to_checksum_address
 
 from deployment.constants import ARTIFACTS_DIR, MAINNET, PORTER_SAMPLING_ENDPOINTS
 from deployment.networks import is_local_network
-
-
-class RitualState(IntEnum):
-    """
-    Represents the different states of a DKG ritual.
-    This is defined in the Coordinator contract.
-    """
-
-    NON_INITIATED = 0
-    DKG_AWAITING_TRANSCRIPTS = 1
-    DKG_AWAITING_AGGREGATIONS = 2
-    DKG_TIMEOUT = 3
-    DKG_INVALID = 4
-    ACTIVE = 5
-    EXPIRED = 6
 
 
 def _load_yaml(filepath: Path) -> dict:

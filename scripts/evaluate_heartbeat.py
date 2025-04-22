@@ -15,9 +15,9 @@ from deployment import registry
 from deployment.constants import (
     HEARTBEAT_ARTIFACT_FILENAME,
     NETWORK_SEEDNODE,
+    RITUAL_STATE,
     SUPPORTED_TACO_DOMAINS,
 )
-from deployment.utils import RitualState
 
 # Disable SSL warnings for self-signed certificates
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -158,10 +158,10 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
     for ritual_id, cohort in artifact_data.items():
         ritual_status = coordinator.getRitualState(ritual_id)
 
-        if ritual_status == RitualState.ACTIVE.value:
+        if ritual_status == RITUAL_STATE.ACTIVE.value:
             continue  # Skip active rituals
 
-        if ritual_status == RitualState.DKG_TIMEOUT.value:
+        if ritual_status == RITUAL_STATE.DKG_TIMEOUT.value:
             ritual = coordinator.rituals(ritual_id)
             participants = coordinator.getParticipants(ritual_id)
 
