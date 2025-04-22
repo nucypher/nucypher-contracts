@@ -1,5 +1,6 @@
 import pytest
 from eth_abi import encode
+from eth_account.messages import encode_defunct
 from web3 import Web3
 
 from tests.conftest import SigningRitualState
@@ -102,12 +103,11 @@ def test_signing_ritual(signing_coordinator, initiator, nodes):
     # submit signatures
     for i, node in enumerate(nodes):
         data = encode(["uint32", "address"], [signing_cohort_id, initiator.address])
-        data_hash = Web3.keccak(data)
-        signature = node.sign_raw_msghash(data_hash)
-        signature_bytes = signature.encode_rsv()
-
+        digest = Web3.keccak(data)
+        signable_message = encode_defunct(digest)
+        signature = node.sign_message(signable_message).encode_rsv()
         tx = signing_coordinator.postSigningCohortSignature(
-            signing_cohort_id, signature_bytes, sender=node
+            signing_cohort_id, signature, sender=node
         )
 
         events = [
@@ -115,7 +115,7 @@ def test_signing_ritual(signing_coordinator, initiator, nodes):
         ]
         assert events == [
             signing_coordinator.SigningCohortSignaturePosted(
-                cohortId=signing_cohort_id, provider=node, signature=signature_bytes
+                cohortId=signing_cohort_id, provider=node, signature=signature
             )
         ]
 
