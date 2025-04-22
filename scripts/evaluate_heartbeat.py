@@ -56,7 +56,7 @@ def get_operator(staker_address: str, taco_application: ContractContainer) -> st
         return "Unknown"
 
 
-def investigate_offender_networks(
+def investigate_offender(
     offenders: Dict[str, Dict[str, Any]], network_data: Dict[str, Any]
 ) -> None:
     """Investigates the network status of offenders and adds a summary."""
@@ -190,7 +190,7 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
         f"📄 Offender report saved with {sum(len(o) for o in offenders.values())} offenders.",
         fg="green",
     )
-    investigate_offender_networks(offenders, network_data)
+    investigate_offender(offenders, network_data)
 
 
 if __name__ == "__main__":
