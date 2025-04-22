@@ -19,8 +19,8 @@ from deployment.utils import RitualState
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
+LATEST_RELEASE_URL = "https://api.github.com/repos/nucypher/nucypher/releases/latest"
 NUCYPHER_MAINNET_API = "https://mainnet.nucypher.network:9151/status?json=true"
-LATEST_NUCYPHER_VERSION = "7.5.0"
 
 
 def get_eth_balance(address: str) -> float:
@@ -65,6 +65,9 @@ def investigate_offender_networks(
     unreachable_nodes = 0
     outdated_nodes = 0
 
+    version_response = requests.get(LATEST_RELEASE_URL)
+    latest_version = version_response.json().get("tag_name").strip("v")
+
     for ritual_id, offender_list in offenders.items():
         for address, details in offender_list.items():
             for node in network_data.get("known_nodes", []):
@@ -85,7 +88,7 @@ def investigate_offender_networks(
                         version = node_status.json().get("version", "Unknown")
                         offenders[ritual_id][address]["version"] = version
 
-                        if version != "Unknown" and version != LATEST_NUCYPHER_VERSION:
+                        if version != "Unknown" and version != latest_version:
                             offenders[ritual_id][address]["reasons"].append(
                                 f"Old Version ({version})"
                             )
