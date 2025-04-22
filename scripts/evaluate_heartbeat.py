@@ -21,6 +21,8 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 LATEST_RELEASE_URL = "https://api.github.com/repos/nucypher/nucypher/releases/latest"
 NUCYPHER_MAINNET_API = "https://mainnet.nucypher.network:9151/status?json=true"
+NUCYPHER_TAPIR_API = "https://tapir.nucypher.network:9151/status?json=true"
+NUCYPHER_LYNX_API = "https://lynx.nucypher.network:9151/status?json=true"
 
 
 def get_eth_balance(address: str) -> float:
@@ -33,12 +35,10 @@ def get_eth_balance(address: str) -> float:
         return 0.0
 
 
-def get_nucypher_network_data() -> Dict[str, Any]:
+def get_nucypher_network_data(domain_api) -> Dict[str, Any]:
     """Retrieves NuCypher network data (list of known nodes)."""
     try:
-        response = requests.get(
-            NUCYPHER_MAINNET_API, params={"json": "true"}, verify=False, timeout=20
-        )
+        response = requests.get(domain_api, params={"json": "true"}, verify=False, timeout=20)
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
@@ -65,6 +65,7 @@ def investigate_offender(
     unreachable_nodes = 0
     outdated_nodes = 0
 
+    # Get the latest released version of nodes
     version_response = requests.get(LATEST_RELEASE_URL)
     latest_version = version_response.json().get("tag_name").strip("v")
 
@@ -150,7 +151,14 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
     offenders: Dict[str, Dict[str, Any]] = defaultdict(dict)
 
     # Load NuCypher network data
-    network_data = get_nucypher_network_data()
+    if domain == "mainnet":
+        domain_api = NUCYPHER_MAINNET_API
+    elif domain == "tapir":
+        domain_api = NUCYPHER_TAPIR_API
+    elif domain == "lynx":
+        domain_api = NUCYPHER_LYNX_API
+
+    network_data = get_nucypher_network_data(domain_api)
 
     for ritual_id, cohort in artifact_data.items():
         ritual_status = coordinator.getRitualState(ritual_id)
