@@ -74,13 +74,12 @@ NETWORK_SEEDNODE = {
     TAPIR: "https://tapir.nucypher.network:9151/status?json=true",
 }
 
+#
+# DKG Ritual states as defined in the Coordinator contract
+#
 
-class RITUAL_STATE(IntEnum):
-    """
-    Represents the different states of a DKG ritual.
-    This is defined in the Coordinator contract.
-    """
 
+class RitualState(IntEnum):
     NON_INITIATED = 0
     DKG_AWAITING_TRANSCRIPTS = 1
     DKG_AWAITING_AGGREGATIONS = 2
