@@ -9,7 +9,7 @@ from ape import networks, project
 from ape.contracts import ContractContainer, ContractInstance
 from ape.exceptions import NetworkError
 from ape_etherscan.utils import API_KEY_ENV_KEY_MAP
-from eth_utils import to_checksum_address, to_int
+from eth_utils import to_checksum_address
 
 from deployment.constants import ARTIFACTS_DIR, MAINNET, PORTER_SAMPLING_ENDPOINTS
 from deployment.networks import is_local_network
@@ -245,21 +245,21 @@ def _generate_heartbeat_cohorts(addresses: List[str]) -> Tuple[Tuple[str, ...], 
 def get_heartbeat_cohorts(
     taco_application: ContractContainer, excluded_nodes: Optional[List[str]] = []
 ) -> Tuple[Tuple[str, ...], ...]:
-    data = taco_application.getActiveStakingProviders(
+    active_stakes_data = taco_application.getActiveStakingProviders(
         0,  # start index
         1000,  # max number of staking providers
         1,  # min duration of staking
     )
-    staked, staking_providers_info = data
-    staking_providers = dict()
+    _, staking_providers_info = active_stakes_data
+
+    staking_providers = []
     for info in staking_providers_info:
-        staking_provider_address = to_checksum_address(info[0:20])
-        staking_provider_authorized_tokens = to_int(info[20:32])
-        staking_providers[staking_provider_address] = staking_provider_authorized_tokens
+        staking_providers.append(to_checksum_address(info[0:20]))
 
     # Exclude nodes that are in the excluded_nodes list
     for node in excluded_nodes:
-        staking_providers.pop(to_checksum_address(node))
+        staking_providers.remove(to_checksum_address(node))
 
-    cohorts = _generate_heartbeat_cohorts(list(staking_providers))
+    cohorts = _generate_heartbeat_cohorts(staking_providers)
+
     return cohorts

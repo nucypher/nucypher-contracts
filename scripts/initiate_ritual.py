@@ -178,6 +178,9 @@ def cli(
 
     # Set the nodes that are excluded from the cohort sampling
     excluded = [line.strip() for line in excluded_nodes] if excluded_nodes else []
+    if excluded:
+        click.echo("The following nodes are being excluded from ritual/s")
+        click.echo(" -> " + "\n -> ".join(excluded))
 
     # Get the staking providers in the ritual cohort
     if heartbeat:

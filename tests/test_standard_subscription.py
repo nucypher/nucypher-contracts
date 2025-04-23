@@ -15,13 +15,14 @@ You should have received a copy of the GNU Affero General Public License
 along with nucypher.  If not, see <https://www.gnu.org/licenses/>.
 """
 import os
-from enum import IntEnum
 
 import ape
 import pytest
 from ape.utils import ZERO_ADDRESS
 from eth_account.messages import encode_defunct
 from web3 import Web3
+
+from tests.conftest import RitualState
 
 BASE_FEE_RATE = 42
 BASE_FEE_RATE_INCREASE = 10  # 10%
@@ -46,21 +47,6 @@ def base_fee(period_number):
         * MAX_NODES
         // pow(100, period_number)
     )
-
-
-RitualState = IntEnum(
-    "RitualState",
-    [
-        "NON_INITIATED",
-        "DKG_AWAITING_TRANSCRIPTS",
-        "DKG_AWAITING_AGGREGATIONS",
-        "DKG_TIMEOUT",
-        "DKG_INVALID",
-        "ACTIVE",
-        "EXPIRED",
-    ],
-    start=0,
-)
 
 
 @pytest.fixture(scope="module")

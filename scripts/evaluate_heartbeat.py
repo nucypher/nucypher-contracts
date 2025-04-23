@@ -1,37 +1,29 @@
 #!/usr/bin/python3
 
 import json
+from collections import Counter, defaultdict
+from typing import Any, Dict
+
+import click
 import requests
 import urllib3
-from collections import defaultdict, Counter
-from enum import IntEnum
-from typing import Dict, Any
-
 from ape import chain
-import click
 from ape.cli import ConnectedProviderCommand, network_option
 from ape.contracts.base import ContractContainer
 
 from deployment import registry
-from deployment.constants import SUPPORTED_TACO_DOMAINS, HEARTBEAT_ARTIFACT_FILENAME
+from deployment.constants import (
+    HEARTBEAT_ARTIFACT_FILENAME,
+    NETWORK_SEEDNODE,
+    SUPPORTED_TACO_DOMAINS,
+    RitualState,
+)
 
 # Disable SSL warnings for self-signed certificates
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
-class RitualState(IntEnum):
-    """Represents the different states of a DKG ritual."""
-    NON_INITIATED = 0
-    DKG_AWAITING_TRANSCRIPTS = 1
-    DKG_AWAITING_AGGREGATIONS = 2
-    DKG_TIMEOUT = 3
-    DKG_INVALID = 4
-    ACTIVE = 5
-    EXPIRED = 6
-
-
-NUCYPHER_MAINNET_API = "https://mainnet.nucypher.network:9151/status/?json=true"
-LATEST_NUCYPHER_VERSION = "7.4.1"
+LATEST_RELEASE_URL = "https://api.github.com/repos/nucypher/nucypher/releases/latest"
 
 
 def get_eth_balance(address: str) -> float:
@@ -44,14 +36,16 @@ def get_eth_balance(address: str) -> float:
         return 0.0
 
 
-def get_nucypher_network_data() -> Dict[str, Any]:
-    """Retrieves NuCypher network data (list of known nodes)."""
+def get_taco_network_data(domain) -> Dict[str, Any]:
+    """Retrieves TACo network data (list of known nodes)."""
+    domain_api = NETWORK_SEEDNODE.get(domain)
+
     try:
-        response = requests.get(NUCYPHER_MAINNET_API, params={"json": "true"}, verify=False, timeout=20)
+        response = requests.get(domain_api, params={"json": "true"}, verify=False, timeout=20)
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
-        click.secho(f"⚠️ Failed to fetch NuCypher network data: {e}", fg="red")
+        click.secho(f"⚠️ Failed to fetch TACo network data: {e}", fg="red")
         return {"known_nodes": []}  # Return an empty structure to avoid crashes
 
 
@@ -65,29 +59,43 @@ def get_operator(staker_address: str, taco_application: ContractContainer) -> st
         return "Unknown"
 
 
-def investigate_offender_networks(offenders: Dict[str, Dict[str, Any]], network_data: Dict[str, Any]) -> None:
+def investigate_offender(
+    offenders: Dict[str, Dict[str, Any]], network_data: Dict[str, Any]
+) -> None:
     """Investigates the network status of offenders and adds a summary."""
     click.secho("\n🌐 Investigating offender network details...", fg="blue")
     reason_counter = Counter()
     unreachable_nodes = 0
     outdated_nodes = 0
 
+    # Get the latest released version of nodes
+    version_response = requests.get(LATEST_RELEASE_URL)
+    latest_version = version_response.json().get("tag_name").strip("v")
+
     for ritual_id, offender_list in offenders.items():
         for address, details in offender_list.items():
             for node in network_data.get("known_nodes", []):
                 if node.get("staker_address") == address:
                     rest_url = node.get("rest_url", "Unknown")
-                    offenders[ritual_id][address]["url"] = f"https://{rest_url}/status/" if rest_url else "Unknown"
+                    offenders[ritual_id][address]["url"] = (
+                        f"https://{rest_url}/status/" if rest_url else "Unknown"
+                    )
 
                     # Check node status
                     try:
-                        node_status = requests.get(f"https://{rest_url}/status/", params={"json": "true"}, verify=False,
-                                                   timeout=20)
+                        node_status = requests.get(
+                            f"https://{rest_url}/status/",
+                            params={"json": "true"},
+                            verify=False,
+                            timeout=20,
+                        )
                         version = node_status.json().get("version", "Unknown")
                         offenders[ritual_id][address]["version"] = version
 
-                        if version != "Unknown" and version != LATEST_NUCYPHER_VERSION:
-                            offenders[ritual_id][address]["reasons"].append(f"Old Version ({version})")
+                        if version != "Unknown" and version != latest_version:
+                            offenders[ritual_id][address]["reasons"].append(
+                                f"Old Version ({version})"
+                            )
                             outdated_nodes += 1
                     except requests.ConnectionError:
                         offenders[ritual_id][address]["version"] = "Unknown"
@@ -120,11 +128,21 @@ def investigate_offender_networks(offenders: Dict[str, Dict[str, Any]], network_
 
 @click.command(cls=ConnectedProviderCommand, name="evaluate-heartbeat")
 @network_option(required=True)
-@click.option("--domain", "-d", help="TACo domain", type=click.Choice(SUPPORTED_TACO_DOMAINS), required=True)
-@click.option("--artifact", help="The filepath of a heartbeat artifact file.", type=click.File("r"),
-              default=HEARTBEAT_ARTIFACT_FILENAME)
-@click.option("--report-infractions", help="Report infractions to the InfractionCollector.", is_flag=True,
-              default=False)
+@click.option(
+    "--domain", "-d", help="TACo domain", type=click.Choice(SUPPORTED_TACO_DOMAINS), required=True
+)
+@click.option(
+    "--artifact",
+    help="The filepath of a heartbeat artifact file.",
+    type=click.File("r"),
+    default=HEARTBEAT_ARTIFACT_FILENAME,
+)
+@click.option(
+    "--report-infractions",
+    help="Report infractions to the InfractionCollector.",
+    is_flag=True,
+    default=False,
+)
 def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
     """Evaluates the heartbeat artifact and analyzes offenders."""
 
@@ -135,8 +153,7 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
     taco_application = registry.get_contract(domain=domain, contract_name="TACoChildApplication")
     offenders: Dict[str, Dict[str, Any]] = defaultdict(dict)
 
-    # Load NuCypher network data
-    network_data = get_nucypher_network_data()
+    network_data = get_taco_network_data(domain)
 
     for ritual_id, cohort in artifact_data.items():
         ritual_status = coordinator.getRitualState(ritual_id)
@@ -159,7 +176,9 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
 
                 if reasons:
                     offenders[ritual_id][address] = {"reasons": reasons}
-                    click.secho(f"🧐 Investigating offender {address} in ritual {ritual_id}", fg="yellow")
+                    click.secho(
+                        f"🧐 Investigating offender {address} in ritual {ritual_id}", fg="yellow"
+                    )
 
                     # Fetch additional offender details
                     operator_address = get_operator(address, taco_application=taco_application)
@@ -170,8 +189,11 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
     with open("offenders.json", "w") as f:
         json.dump(offenders, f, indent=4)
 
-    click.secho(f"📄 Offender report saved with {sum(len(o) for o in offenders.values())} offenders.", fg="green")
-    investigate_offender_networks(offenders, network_data)
+    click.secho(
+        f"📄 Offender report saved with {sum(len(o) for o in offenders.values())} offenders.",
+        fg="green",
+    )
+    investigate_offender(offenders, network_data)
 
 
 if __name__ == "__main__":
