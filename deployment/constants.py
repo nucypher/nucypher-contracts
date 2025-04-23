@@ -68,7 +68,7 @@ PORTER_SAMPLING_ENDPOINTS = {
 # Domain Seednodes
 #
 
-NETWORK_SEEDNODE = {
+NETWORK_SEEDNODE_STATUS_JSON_URI = {
     MAINNET: "https://mainnet.nucypher.network:9151/status?json=true",
     LYNX: "https://lynx.nucypher.network:9151/status?json=true",
     TAPIR: "https://tapir.nucypher.network:9151/status?json=true",
