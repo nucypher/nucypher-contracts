@@ -46,10 +46,31 @@ def application(project, deployer, nodes):
 
 
 @pytest.fixture()
-def signing_coordinator(project, deployer, application, oz_dependency):
+def threshold_signing_multisig(project, deployer):
+    contract = project.ThresholdSigningMultisig.deploy(
+        sender=deployer,
+    )
+    return contract
+
+
+@pytest.fixture()
+def threshold_signing_multisig_clone_factory(project, deployer, threshold_signing_multisig):
+    contract = project.ThresholdSigningMultisigCloneFactory.deploy(
+        threshold_signing_multisig.address,
+        sender=deployer,
+    )
+
+    return contract
+
+
+@pytest.fixture()
+def signing_coordinator(
+    project, deployer, application, threshold_signing_multisig_clone_factory, oz_dependency
+):
     admin = deployer
     contract = project.SigningCoordinator.deploy(
         application.address,
+        threshold_signing_multisig_clone_factory.address,
         sender=deployer,
     )
 
@@ -69,9 +90,12 @@ def signing_coordinator(project, deployer, application, oz_dependency):
 #
 
 
-def test_signing_ritual(signing_coordinator, initiator, nodes):
+def test_signing_ritual(
+    project, signing_coordinator, threshold_signing_multisig_clone_factory, initiator, nodes
+):
+    threshold = len(nodes) // 2 + 1
     tx = signing_coordinator.initiateSigningCohort(
-        initiator, nodes, (len(nodes) // 2 + 1), DURATION, sender=initiator
+        initiator, nodes, threshold, DURATION, sender=initiator
     )
 
     signing_cohort_id = 0
@@ -90,7 +114,7 @@ def test_signing_ritual(signing_coordinator, initiator, nodes):
     assert signing_cohort_struct["totalSignatures"] == 0
 
     assert signing_cohort_struct["numSigners"] == len(nodes)
-    assert signing_cohort_struct["threshold"] == 1 + len(nodes) // 2
+    assert signing_cohort_struct["threshold"] == threshold
 
     for n in nodes:
         assert signing_coordinator.isSigner(signing_cohort_id, n.address)
@@ -119,13 +143,6 @@ def test_signing_ritual(signing_coordinator, initiator, nodes):
             )
         ]
 
-    events = [event for event in tx.events if event.event_name == "SigningCohortCompleted"]
-    assert events == [
-        signing_coordinator.SigningCohortCompleted(
-            cohortId=signing_cohort_id,
-        )
-    ]
-
     assert signing_coordinator.getSigningCohortState(signing_cohort_id) == SigningRitualState.ACTIVE
     assert signing_coordinator.isCohortActive(signing_cohort_id)
     for i, node in enumerate(nodes):
@@ -133,3 +150,24 @@ def test_signing_ritual(signing_coordinator, initiator, nodes):
         signer = signing_coordinator.getSigner(signing_cohort_id, node.address)
         assert signer.provider == node.address
         assert len(signer.signature) > 0, "signature posted"
+
+    # check deployed multisig
+    expected_multisig_address = threshold_signing_multisig_clone_factory.getCloneAddress(
+        signing_cohort_id
+    )
+
+    signing_cohort_struct = signing_coordinator.signingCohorts(signing_cohort_id)
+    assert signing_cohort_struct["multisig"] == expected_multisig_address
+
+    events = [event for event in tx.events if event.event_name == "SigningCohortCompleted"]
+    assert events == [
+        signing_coordinator.SigningCohortCompleted(
+            cohortId=signing_cohort_id,
+            multisig=expected_multisig_address,
+        )
+    ]
+
+    cohort_multisig = project.ThresholdSigningMultisig.at(expected_multisig_address)
+    assert cohort_multisig.getSigners() == [n.address for n in nodes]
+    assert cohort_multisig.threshold() == threshold
+    assert cohort_multisig.owner() == initiator.address
