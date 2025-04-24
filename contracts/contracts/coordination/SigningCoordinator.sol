@@ -15,6 +15,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
 
     struct SigningCohortParticipant {
         address provider;
+        address operator;
         bytes signature;
     }
 
@@ -206,19 +207,21 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         address recovered = dataHash.toEthSignedMessageHash().recover(signature);
         require(recovered == msg.sender, "Operator signature mismatch");
 
+        participant.operator = msg.sender;
         participant.signature = signature;
         signingCohort.totalSignatures++;
 
         emit SigningCohortSignaturePosted(cohortId, provider, signature);
 
         if (signingCohort.totalSignatures == signingCohort.numSigners) {
-            address[] memory providers = new address[](signingCohort.numSigners);
+            address[] memory signers = new address[](signingCohort.numSigners);
             for (uint256 i = 0; i < signingCohort.signers.length; i++) {
-                providers[i] = signingCohort.signers[i].provider;
+                // ursula operator address does signing; not staking provider
+                signers[i] = signingCohort.signers[i].operator;
             }
             address signingMultisig = deploySigningMultisig(
                 cohortId,
-                providers,
+                signers,
                 signingCohort.threshold
             );
             signingCohort.multisig = signingMultisig;
