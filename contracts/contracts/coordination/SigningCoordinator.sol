@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import "@openzeppelin-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "../../threshold/ITACoChildApplication.sol";
+import "./ThresholdSigningMultisigCloneFactory.sol";
 
 contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable {
     using MessageHashUtils for bytes32;
@@ -25,6 +26,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         uint16 totalSignatures;
         uint16 numSigners;
         uint16 threshold;
+        address multisig;
         SigningCohortParticipant[] signers;
     }
 
@@ -41,7 +43,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         address indexed provider,
         bytes signature
     );
-    event SigningCohortCompleted(uint32 indexed cohortId);
+    event SigningCohortCompleted(uint32 indexed cohortId, address multisig);
 
     enum SigningCohortState {
         NON_INITIATED,
@@ -52,6 +54,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     }
 
     ITACoChildApplication public immutable application;
+    ThresholdSigningMultisigCloneFactory public immutable signingMultisigFactory;
     uint96 private immutable minAuthorization; // TODO use child app for checking eligibility
 
     uint32 public timeout;
@@ -59,8 +62,12 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
 
     SigningCohortParticipant internal __sentinelSigner;
 
-    constructor(ITACoChildApplication _application) {
+    constructor(
+        ITACoChildApplication _application,
+        ThresholdSigningMultisigCloneFactory _signingMultisigFactory
+    ) {
         application = _application;
+        signingMultisigFactory = _signingMultisigFactory;
         minAuthorization = _application.minimumAuthorization(); // TODO use child app for checking eligibility
         _disableInitializers();
     }
@@ -205,8 +212,36 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         emit SigningCohortSignaturePosted(cohortId, provider, signature);
 
         if (signingCohort.totalSignatures == signingCohort.numSigners) {
-            emit SigningCohortCompleted(cohortId);
+            address[] memory providers = new address[](signingCohort.numSigners);
+            for (uint256 i = 0; i < signingCohort.signers.length; i++) {
+                providers[i] = signingCohort.signers[i].provider;
+            }
+            address signingMultisig = deploySigningMultisig(
+                cohortId,
+                providers,
+                signingCohort.threshold
+            );
+            signingCohort.multisig = signingMultisig;
+
+            emit SigningCohortCompleted(cohortId, signingMultisig);
         }
+    }
+
+    function deploySigningMultisig(
+        uint32 cohortId,
+        address[] memory signers,
+        uint16 threshold
+    ) internal returns (address) {
+        SigningCohort storage signingCohort = signingCohorts[cohortId];
+        require(signingCohort.totalSignatures == signingCohort.numSigners, "Not enough signatures");
+        require(signingCohort.multisig == address(0), "Already deployed");
+        return
+            signingMultisigFactory.deploySigningMultisig(
+                signers,
+                threshold,
+                signingCohort.authority,
+                cohortId
+            );
     }
 
     function getSigningCohortState(
@@ -222,7 +257,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         uint32 deadline = t0 + timeout;
         if (t0 == 0) {
             return SigningCohortState.NON_INITIATED;
-        } else if (signingCohort.totalSignatures == signingCohort.numSigners) {
+        } else if (signingCohort.multisig != address(0)) {
             // DKG was successful
             if (block.timestamp <= signingCohort.endTimestamp) {
                 return SigningCohortState.ACTIVE;
