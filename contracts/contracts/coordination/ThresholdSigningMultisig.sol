@@ -37,11 +37,12 @@ contract ThresholdSigningMultisig is
 
     bytes4 internal constant MAGICVALUE = 0x1626ba7e;
     bytes4 internal constant INVALID_SIGNATURE = 0xffffffff;
-    mapping(bytes32 => bool) public validSignatures;
+    mapping(bytes32 => bytes32) public validSignatures;
 
     /**
-     * @param _threshold Threshold number of required signings
      * @param _signers List of signers.
+     * @param _threshold Threshold number of required signings
+     * @param _initialOwner Initial owner of the contract
      **/
     function initialize(
         address[] memory _signers,
@@ -119,10 +120,9 @@ contract ThresholdSigningMultisig is
     ) public view override returns (bytes4) {
         // split up signature bytes into array
         require(_signature.length >= (threshold * 65), "Invalid threshold of signatures");
-        if (validSignatures[_hash]) {
+        if (validSignatures[_hash] == keccak256(_signature)) {
             // TODO is this sufficient?
-            // - in this case the message hash was previously signed and cached, but
-            // what if the _hash is correct but the signature is wrong
+            // - in this case the message hash was previously signed and cached
             return MAGICVALUE;
         }
 
@@ -237,7 +237,7 @@ contract ThresholdSigningMultisig is
         require(isValidSignature(_hash, _signature) == MAGICVALUE, "Invalid Signature");
 
         // TODO: is this sufficient?
-        validSignatures[_hash] = true;
+        validSignatures[_hash] = keccak256(_signature);
         emit SignedMessageCached(_hash);
     }
 }
