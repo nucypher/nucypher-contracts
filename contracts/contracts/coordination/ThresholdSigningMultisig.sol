@@ -126,12 +126,18 @@ contract ThresholdSigningMultisig is
             return MAGICVALUE;
         }
 
+        address lastSigner = address(0);
         for (uint16 i = 0; i < threshold; i++) {
             (uint8 v, bytes32 r, bytes32 s) = signatureSplit(_signature, i);
             address recovered = ecrecover(_hash, v, r, s);
             if (!isSigner[recovered]) {
                 return INVALID_SIGNATURE;
             }
+            // ensure signatures are for different signers
+            if (recovered <= lastSigner) {
+                return INVALID_SIGNATURE;
+            }
+            lastSigner = recovered;
         }
 
         return MAGICVALUE;
