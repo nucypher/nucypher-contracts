@@ -3,6 +3,7 @@ from enum import IntEnum
 
 import pytest
 from ape import project
+from hexbytes import HexBytes
 
 # Common constants
 G1_SIZE = 48
@@ -34,6 +35,10 @@ HandoverState = IntEnum(
     ],
     start=0,
 )
+
+ERC1271_MAGIC_VALUE_BYTES = bytes(HexBytes("0x1626ba7e"))
+ERC1271_INVALID_SIGNATURE = bytes(HexBytes("0xffffffff"))
+
 
 SigningRitualState = IntEnum(
     "SigningRitualState",
