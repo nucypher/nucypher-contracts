@@ -31,7 +31,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         SigningCohortParticipant[] signers;
     }
 
-    mapping(uint256 => SigningCohort) public signingCohorts;
+    mapping(uint32 => SigningCohort) public signingCohorts;
     uint256 public numberOfSigningCohorts;
 
     event InitiateSigningCohort(
