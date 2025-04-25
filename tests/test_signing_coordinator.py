@@ -1,9 +1,9 @@
 import pytest
 from eth_abi import encode
-from eth_account.messages import encode_defunct
+from eth_account.messages import _hash_eip191_message, encode_defunct
 from web3 import Web3
 
-from tests.conftest import SigningRitualState
+from tests.conftest import ERC1271_INVALID_SIGNATURE, ERC1271_MAGIC_VALUE_BYTES, SigningRitualState
 
 TIMEOUT = 1000
 MAX_DKG_SIZE = 31
@@ -124,11 +124,13 @@ def test_signing_ritual(
         == SigningRitualState.AWAITING_SIGNATURES
     )
 
+    submitted_signatures = []
+    data = encode(["uint32", "address"], [signing_cohort_id, initiator.address])
+    digest = Web3.keccak(data)
+    signable_message = encode_defunct(digest)
+
     # submit signatures
     for i, node in enumerate(nodes):
-        data = encode(["uint32", "address"], [signing_cohort_id, initiator.address])
-        digest = Web3.keccak(data)
-        signable_message = encode_defunct(digest)
         signature = node.sign_message(signable_message).encode_rsv()
         tx = signing_coordinator.postSigningCohortSignature(
             signing_cohort_id, signature, sender=node
@@ -142,6 +144,7 @@ def test_signing_ritual(
                 cohortId=signing_cohort_id, provider=node, signature=signature
             )
         ]
+        submitted_signatures.append(signature)
 
     assert signing_coordinator.getSigningCohortState(signing_cohort_id) == SigningRitualState.ACTIVE
     assert signing_coordinator.isCohortActive(signing_cohort_id)
@@ -171,3 +174,19 @@ def test_signing_ritual(
     assert cohort_multisig.getSigners() == [n.address for n in nodes]
     assert cohort_multisig.threshold() == threshold
     assert cohort_multisig.owner() == initiator.address
+
+    # ensure signatures are valid for deployed cohort multisig
+    # (just need something signed by signers, why not reuse the data
+    #  from posting of the signature in the ritual)
+    data_hash = _hash_eip191_message(signable_message)
+
+    # signatures must be all unique (no repeats)
+    repeated_signature = b"".join([submitted_signatures[0]] * threshold)
+    assert (
+        cohort_multisig.isValidSignature(data_hash, repeated_signature) == ERC1271_INVALID_SIGNATURE
+    )
+
+    assert (
+        cohort_multisig.isValidSignature(data_hash, b"".join(submitted_signatures))
+        == ERC1271_MAGIC_VALUE_BYTES
+    )
