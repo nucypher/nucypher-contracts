@@ -189,6 +189,13 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         return id;
     }
 
+    function getSigningCohortDataHash(uint32 cohortId) public view returns (bytes32) {
+        SigningCohort storage signingCohort = signingCohorts[cohortId];
+        require(signingCohort.initiator != address(0), "Signing cohort not set");
+        bytes32 dataHash = keccak256(abi.encode(cohortId, signingCohort.authority));
+        return dataHash;
+    }
+
     function postSigningCohortSignature(uint32 cohortId, bytes calldata signature) external {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
         require(
@@ -203,7 +210,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         require(participant.signature.length == 0, "Node already posted signature");
         require(application.authorizedStake(provider) > 0, "Not enough authorization");
 
-        bytes32 dataHash = keccak256(abi.encode(cohortId, signingCohort.authority));
+        bytes32 dataHash = getSigningCohortDataHash(cohortId);
         address recovered = dataHash.toEthSignedMessageHash().recover(signature);
         require(recovered == msg.sender, "Operator signature mismatch");
 
