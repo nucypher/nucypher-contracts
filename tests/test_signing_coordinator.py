@@ -1,7 +1,5 @@
 import pytest
-from eth_abi import encode
 from eth_account.messages import _hash_eip191_message, encode_defunct
-from web3 import Web3
 
 from tests.conftest import ERC1271_INVALID_SIGNATURE, ERC1271_MAGIC_VALUE_BYTES, SigningRitualState
 
@@ -125,9 +123,8 @@ def test_signing_ritual(
     )
 
     submitted_signatures = []
-    data = encode(["uint32", "address"], [signing_cohort_id, initiator.address])
-    digest = Web3.keccak(data)
-    signable_message = encode_defunct(digest)
+    data_hash = signing_coordinator.getSigningCohortDataHash(signing_cohort_id)
+    signable_message = encode_defunct(data_hash)
 
     # submit signatures
     for i, node in enumerate(nodes):
