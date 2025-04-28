@@ -2,7 +2,7 @@ name: Evaluate DKG
 
 on:
   schedule:
-    - cron: '0 0 * * 2'
+    - cron: '0 0 * * 5' # Every Monday at 05:00
 
 jobs:
   evaluate_dkg:
