@@ -31,6 +31,8 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         SigningCohortParticipant[] signers;
     }
 
+    bytes32 public constant INITIATOR_ROLE = keccak256("INITIATOR_ROLE");
+
     mapping(uint32 => SigningCohort) public signingCohorts;
     uint256 public numberOfSigningCohorts;
 
@@ -154,7 +156,12 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         address[] calldata providers,
         uint16 threshold,
         uint32 duration
-    ) external returns (uint32) {
+    )
+        external
+        // TODO initiator role needed for now
+        onlyRole(INITIATOR_ROLE)
+        returns (uint32)
+    {
         require(authority != address(0), "Invalid authority");
         uint16 length = uint16(providers.length);
         require(2 <= length && length <= maxCohortSize, "Invalid number of nodes");
