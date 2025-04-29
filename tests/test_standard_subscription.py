@@ -563,9 +563,7 @@ def test_withdraw(erc20, subscription, adopter, adopter_setter, treasury):
     erc20.transfer(subscription.address, 3 * current_base_fee, sender=adopter)
     subscription.chargeForSubscription(0, sender=treasury)
     assert subscription.paidFees() == current_base_fee
-    with ape.reverts("Insufficient balance available"):
-        subscription.withdrawToTreasury(current_base_fee + 1, sender=treasury)
-    tx = subscription.withdrawToTreasury(current_base_fee, sender=treasury)
+    tx = subscription.withdrawToTreasury(sender=treasury)
     assert erc20.balanceOf(treasury) == base_fee(0) + current_base_fee
     assert erc20.balanceOf(subscription.address) == 2 * current_base_fee
 

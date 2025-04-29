@@ -297,8 +297,9 @@ contract StandardSubscription is EncryptorSlotsSubscription, Initializable, Owna
      * @notice Withdraws the fees to the treasury
      */
     function withdrawToTreasury() external {
-        require(amount <= paidFees, "Insufficient balance available");
-        paidFees -= amount;
+        uint256 amount = paidFees;
+        require(0 < amount, "Insufficient balance available");
+        paidFees = 0;
         feeToken.safeTransfer(owner(), amount);
         emit WithdrawalToTreasury(owner(), amount);
     }
