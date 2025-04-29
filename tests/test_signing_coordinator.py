@@ -63,7 +63,12 @@ def threshold_signing_multisig_clone_factory(project, deployer, threshold_signin
 
 @pytest.fixture()
 def signing_coordinator(
-    project, deployer, application, threshold_signing_multisig_clone_factory, oz_dependency
+    project,
+    deployer,
+    initiator,
+    application,
+    threshold_signing_multisig_clone_factory,
+    oz_dependency,
 ):
     admin = deployer
     contract = project.SigningCoordinator.deploy(
@@ -80,6 +85,8 @@ def signing_coordinator(
         sender=deployer,
     )
     proxy_contract = project.SigningCoordinator.at(proxy.address)
+    proxy_contract.grantRole(proxy_contract.INITIATOR_ROLE(), initiator, sender=deployer)
+
     return proxy_contract
 
 
