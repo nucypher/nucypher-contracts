@@ -31,7 +31,10 @@ jobs:
     - name: Evaluate Ritual
       run: .github/scripts/eval_dkg.sh
       env:
-        DOMAIN: ${{ secrets.DOMAIN }}
-        NETWORK: ${{ secrets.NETWORK }}
+        # Secret environment variables (secrets)
         RPC_PROVIDER: ${{ secrets.RPC_PROVIDER }}
-        ECOSYSTEM: ${{ secrets.ECOSYSTEM }}
+
+        # Non-secret environment variables (config)
+        DOMAIN: ${{ vars.DOMAIN }}
+        NETWORK: ${{ vars.NETWORK }}
+        ECOSYSTEM: ${{ vars.ECOSYSTEM }}
