@@ -14,7 +14,7 @@ from ape.contracts.base import ContractContainer
 from deployment import registry
 from deployment.constants import (
     HEARTBEAT_ARTIFACT_FILENAME,
-    NETWORK_SEEDNODE,
+    NETWORK_SEEDNODE_STATUS_JSON_URI,
     SUPPORTED_TACO_DOMAINS,
     RitualState,
 )
@@ -38,7 +38,7 @@ def get_eth_balance(address: str) -> float:
 
 def get_taco_network_data(domain) -> Dict[str, Any]:
     """Retrieves TACo network data (list of known nodes)."""
-    domain_api = NETWORK_SEEDNODE.get(domain)
+    domain_api = NETWORK_SEEDNODE_STATUS_JSON_URI.get(domain)
 
     try:
         response = requests.get(domain_api, params={"json": "true"}, verify=False, timeout=20)
