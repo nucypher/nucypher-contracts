@@ -3131,17 +3131,17 @@
                     "stateMutability": "view",
                     "inputs": [
                         {
-                            "name": "ritualId",
+                            "name": "",
                             "type": "uint32",
                             "internalType": "uint32"
                         },
                         {
-                            "name": "evidence",
+                            "name": "",
                             "type": "bytes",
                             "internalType": "bytes"
                         },
                         {
-                            "name": "ciphertextHeader",
+                            "name": "",
                             "type": "bytes",
                             "internalType": "bytes"
                         }
@@ -3203,7 +3203,7 @@
                     "stateMutability": "view",
                     "inputs": [
                         {
-                            "name": "provider",
+                            "name": "",
                             "type": "address",
                             "internalType": "address"
                         }
@@ -3356,12 +3356,12 @@
                     "stateMutability": "nonpayable",
                     "inputs": [
                         {
-                            "name": "ritualId",
+                            "name": "",
                             "type": "uint32",
                             "internalType": "uint32"
                         },
                         {
-                            "name": "transcript",
+                            "name": "",
                             "type": "bytes",
                             "internalType": "bytes"
                         }
@@ -3666,9 +3666,9 @@
                     "outputs": []
                 }
             ],
-            "tx_hash": "0x7858c6f34297752433f772ef6b7fa7086608ac3207fc9df5d4d6136ed7ab9b1f",
-            "block_number": 70019855,
-            "deployer": "0x1591165F1BF8B73de7053A6BE6f239BC15076879"
+            "tx_hash": "0xbfdb1ba47830e495dcae80c93943c4a0be539f0e94f795f0330d8e33e6c025fb",
+            "block_number": 70938418,
+            "deployer": "0x0224B7B41E9204550b8B3Fdc1afd6200446576E8"
         },
         "FreeFeeModel": {
             "address": "0x1acaf2677B987e690A09296BabdCe6376712213d",
