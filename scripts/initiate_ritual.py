@@ -77,15 +77,18 @@ from deployment.utils import check_plugins, get_heartbeat_cohorts, sample_nodes
 )
 @click.option(
     "--handpicked",
-    help="The filepath of a file containing newline separated staking provider \
-        addresses that will be included in the ritual.",
+    help="The filepath of a file containing newline separated staking provider addresses that will \
+        be included in the ritual.",
     type=click.File("r"),
 )
 @click.option(
     "--excluded-nodes",
-    help="The filepath of a file containing newline separated staking provider \
-          addresses that will be excluded from the node selection.",
-    type=click.File("r"),
+    help="The filepath of a file containing newline separated staking provider addresses that will \
+        be excluded from the node selection. If no filepath is provided, EXCLUDED_NODES \
+        environment variable will be used as input.",
+    is_flag=False,
+    flag_value="EXCLUDED_NODES_ENVVAR",
+    type=click.Path(exists=False),
 )
 @click.option(
     "--auto",
@@ -118,6 +121,7 @@ def cli(
     # Setup
     check_plugins()
     click.echo(f"Connected to {network.name} network.")
+
     if not heartbeat and not (bool(handpicked) ^ (num_nodes is not None)):
         raise click.BadOptionUsage(
             option_name="--num-nodes",
@@ -177,8 +181,19 @@ def cli(
             duration -= elapsed
 
     # Set the nodes that are excluded from the cohort sampling
-    excluded = [line.strip() for line in excluded_nodes] if excluded_nodes else []
-    if excluded:
+    excluded = []
+    if excluded_nodes:
+        if excluded_nodes == "EXCLUDED_NODES_ENVVAR":
+            if "EXCLUDED_NODES" not in os.environ:
+                raise click.BadOptionUsage(
+                    option_name="--excluded-nodes",
+                    message="EXCLUDED_NODES environment variable not set.",
+                )
+            excluded = os.environ.get("EXCLUDED_NODES").splitlines()
+        else:
+            with open(excluded_nodes, "r") as f:
+                excluded = [line.strip() for line in f]
+
         click.echo("The following nodes are being excluded from ritual/s")
         click.echo(" -> " + "\n -> ".join(excluded))
 
