@@ -41,7 +41,6 @@ jobs:
         EXCLUDED_NODES: ${{ secrets.EXCLUDED_NODES }}
 
         # Non-secret environment variables (config)
-        DKG_INITIATOR_ADDRESS: ${{ vars.DKG_INITIATOR_ADDRESS }}
         DKG_AUTHORITY_ADDRESS: ${{ vars.DKG_AUTHORITY_ADDRESS }}
         DOMAIN: ${{ vars.DOMAIN }}
         NETWORK: ${{ vars.NETWORK }}
