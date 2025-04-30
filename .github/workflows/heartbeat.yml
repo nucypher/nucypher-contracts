@@ -38,6 +38,7 @@ jobs:
         RPC_PROVIDER: ${{ secrets.RPC_PROVIDER }}
         WEB3_INFURA_API_KEY: ${{ secrets.WEB3_INFURA_API_KEY }}
         POLYGONSCAN_API_KEY: ${{ secrets.POLYGONSCAN_API_KEY }}
+        EXCLUDED_NODES: ${{ secrets.EXCLUDED_NODES }}
 
         # Non-secret environment variables (config)
         DKG_INITIATOR_ADDRESS: ${{ vars.DKG_INITIATOR_ADDRESS }}
