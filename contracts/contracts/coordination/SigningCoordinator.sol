@@ -158,7 +158,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         address authority,
         address[] calldata providers,
         uint16 threshold,
-        uint32 duration,
+        uint32 duration
     )
         external
         // TODO initiator role needed for now
@@ -199,13 +199,11 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         return id;
     }
 
-    function setSigningCohortConditions(
-        uint32 cohortId,
-        bytes calldata conditions
-    ) external {
+    function setSigningCohortConditions(uint32 cohortId, bytes calldata conditions) external {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
+        SigningCohortState state = getSigningCohortState(signingCohort);
         require(
-            getSigningCohortState(cohortId) == (SigningCohortState.AWAITING_CONDITIONS || SigningCohortState.ACTIVE),
+            state == SigningCohortState.AWAITING_CONDITIONS || state == SigningCohortState.ACTIVE,
             "Conditions not settable"
         );
         require(
@@ -216,14 +214,9 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         emit SigningCohortConditionsSet(cohortId, conditions);
     }
 
-    function getSigningCohortConditions(
-        uint32 cohortId
-    ) external view returns (bytes memory) {
+    function getSigningCohortConditions(uint32 cohortId) external view returns (bytes memory) {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
-        require(
-            getSigningCohortState(cohortId) == SigningCohortState.ACTIVE,
-            "Conditions not set"
-        );
+        require(getSigningCohortState(cohortId) == SigningCohortState.ACTIVE, "Conditions not set");
         return signingCohort.conditions;
     }
 
@@ -270,7 +263,6 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
                 signingCohort.threshold
             );
             signingCohort.multisig = signingMultisig;
-
             emit SigningCohortCompleted(cohortId, signingMultisig);
         }
     }
@@ -294,7 +286,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
 
     function getSigningCohortState(
         uint32 signingCohortId
-    ) external view returns (SigningCohortState) {
+    ) public view returns (SigningCohortState) {
         return getSigningCohortState(signingCohorts[signingCohortId]);
     }
 
@@ -308,12 +300,10 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         } else if (signingCohort.multisig != address(0)) {
             // Cohort formation was successful
             if (block.timestamp <= signingCohort.endTimestamp) {
-
                 if (signingCohort.conditions.length > 0) {
                     return SigningCohortState.ACTIVE;
                 }
                 return SigningCohortState.AWAITING_CONDITIONS;
-
             } else {
                 return SigningCohortState.EXPIRED;
             }
