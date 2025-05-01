@@ -28,6 +28,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         uint16 numSigners;
         uint16 threshold;
         address multisig;
+        bytes conditions;
         SigningCohortParticipant[] signers;
     }
 
@@ -47,13 +48,15 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         bytes signature
     );
     event SigningCohortCompleted(uint32 indexed cohortId, address multisig);
+    event SigningCohortConditionsSet(uint32 indexed cohortId, bytes conditions);
 
     enum SigningCohortState {
         NON_INITIATED,
         AWAITING_SIGNATURES,
         TIMEOUT,
         ACTIVE,
-        EXPIRED
+        EXPIRED,
+        AWAITING_CONDITIONS
     }
 
     ITACoChildApplication public immutable application;
@@ -155,7 +158,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         address authority,
         address[] calldata providers,
         uint16 threshold,
-        uint32 duration
+        uint32 duration,
     )
         external
         // TODO initiator role needed for now
@@ -194,6 +197,34 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
 
         emit InitiateSigningCohort(id, authority, providers);
         return id;
+    }
+
+    function setSigningCohortConditions(
+        uint32 cohortId,
+        bytes calldata conditions
+    ) external {
+        SigningCohort storage signingCohort = signingCohorts[cohortId];
+        require(
+            getSigningCohortState(cohortId) == (SigningCohortState.AWAITING_CONDITIONS || SigningCohortState.ACTIVE),
+            "Conditions not settable"
+        );
+        require(
+            signingCohort.authority == msg.sender,
+            "Only the cohort authority can set conditions"
+        );
+        signingCohort.conditions = conditions;
+        emit SigningCohortConditionsSet(cohortId, conditions);
+    }
+
+    function getSigningCohortConditions(
+        uint32 cohortId
+    ) external view returns (bytes memory) {
+        SigningCohort storage signingCohort = signingCohorts[cohortId];
+        require(
+            getSigningCohortState(cohortId) == SigningCohortState.ACTIVE,
+            "Conditions not set"
+        );
+        return signingCohort.conditions;
     }
 
     function getSigningCohortDataHash(uint32 cohortId) public view returns (bytes32) {
@@ -275,9 +306,14 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         if (t0 == 0) {
             return SigningCohortState.NON_INITIATED;
         } else if (signingCohort.multisig != address(0)) {
-            // DKG was successful
+            // Cohort formation was successful
             if (block.timestamp <= signingCohort.endTimestamp) {
-                return SigningCohortState.ACTIVE;
+
+                if (signingCohort.conditions.length > 0) {
+                    return SigningCohortState.ACTIVE;
+                }
+                return SigningCohortState.AWAITING_CONDITIONS;
+
             } else {
                 return SigningCohortState.EXPIRED;
             }
