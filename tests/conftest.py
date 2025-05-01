@@ -42,7 +42,7 @@ ERC1271_INVALID_SIGNATURE = bytes(HexBytes("0xffffffff"))
 
 SigningRitualState = IntEnum(
     "SigningRitualState",
-    ["NON_INITIATED", "AWAITING_SIGNATURES", "TIMEOUT", "ACTIVE", "EXPIRED"],
+    ["NON_INITIATED", "AWAITING_SIGNATURES", "TIMEOUT", "ACTIVE", "EXPIRED", "AWAITING_CONDITIONS"],
     start=0,
 )
 
