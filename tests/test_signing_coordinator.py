@@ -150,18 +150,32 @@ def test_signing_ritual(
         ]
         submitted_signatures.append(signature)
 
-    assert signing_coordinator.getSigningCohortState(signing_cohort_id) == SigningRitualState.AWAITING_CONDITIONS
+    expected_multisig_address = threshold_signing_multisig_clone_factory.getCloneAddress(
+        signing_cohort_id
+    )
+    events = [event for event in tx.events if event.event_name == "SigningCohortCompleted"]
+    assert events == [
+        signing_coordinator.SigningCohortCompleted(
+            cohortId=signing_cohort_id,
+            multisig=expected_multisig_address,
+        )
+    ]
+
+    assert (
+        signing_coordinator.getSigningCohortState(signing_cohort_id)
+        == SigningRitualState.AWAITING_CONDITIONS
+    )
     assert not signing_coordinator.isCohortActive(signing_cohort_id)
 
     # submit conditions
-    time_condition = (b'{"version": "1.0.0", "condition": {"chain": 80002, "method": "blocktime", '
-                      b'"returnValueTest": {"comparator": ">", "value": 0}, "conditionType": "time"}}')
+    time_condition = (
+        b'{"version": "1.0.0", "condition": {"chain": 80002, "method": "blocktime", '
+        b'"returnValueTest": {"comparator": ">", "value": 0}, "conditionType": "time"}}'
+    )
     tx = signing_coordinator.setSigningCohortConditions(
         signing_cohort_id, time_condition, sender=initiator
     )
-    events = [
-        event for event in tx.events if event.event_name == "SigningCohortConditionsSet"
-    ]
+    events = [event for event in tx.events if event.event_name == "SigningCohortConditionsSet"]
     assert events == [
         signing_coordinator.SigningCohortConditionsSet(
             cohortId=signing_cohort_id,
@@ -179,20 +193,9 @@ def test_signing_ritual(
         assert len(signer.signature) > 0, "signature posted"
 
     # check deployed multisig
-    expected_multisig_address = threshold_signing_multisig_clone_factory.getCloneAddress(
-        signing_cohort_id
-    )
 
     signing_cohort_struct = signing_coordinator.signingCohorts(signing_cohort_id)
     assert signing_cohort_struct["multisig"] == expected_multisig_address
-
-    events = [event for event in tx.events if event.event_name == "SigningCohortCompleted"]
-    assert events == [
-        signing_coordinator.SigningCohortCompleted(
-            cohortId=signing_cohort_id,
-            multisig=expected_multisig_address,
-        )
-    ]
 
     cohort_multisig = project.ThresholdSigningMultisig.at(expected_multisig_address)
     assert cohort_multisig.getSigners() == [n.address for n in nodes]
