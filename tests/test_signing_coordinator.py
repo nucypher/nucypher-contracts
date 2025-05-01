@@ -150,8 +150,28 @@ def test_signing_ritual(
         ]
         submitted_signatures.append(signature)
 
+    assert signing_coordinator.getSigningCohortState(signing_cohort_id) == SigningRitualState.AWAITING_CONDITIONS
+    assert not signing_coordinator.isCohortActive(signing_cohort_id)
+
+    # submit conditions
+    time_condition = (b'{"version": "1.0.0", "condition": {"chain": 80002, "method": "blocktime", '
+                      b'"returnValueTest": {"comparator": ">", "value": 0}, "conditionType": "time"}}')
+    tx = signing_coordinator.setSigningCohortConditions(
+        signing_cohort_id, time_condition, sender=initiator
+    )
+    events = [
+        event for event in tx.events if event.event_name == "SigningCohortConditionsSet"
+    ]
+    assert events == [
+        signing_coordinator.SigningCohortConditionsSet(
+            cohortId=signing_cohort_id,
+            conditions=time_condition,
+        )
+    ]
+
     assert signing_coordinator.getSigningCohortState(signing_cohort_id) == SigningRitualState.ACTIVE
     assert signing_coordinator.isCohortActive(signing_cohort_id)
+
     for i, node in enumerate(nodes):
         assert signing_coordinator.isSigner(signing_cohort_id, node.address)
         signer = signing_coordinator.getSigner(signing_cohort_id, node.address)
