@@ -36,6 +36,7 @@ contract StandardSubscription is EncryptorSlotsSubscription, Initializable, Owna
     uint32 public activeRitualId;
     mapping(uint256 periodNumber => Billing billing) public billingInfo;
     address public adopter;
+    uint256 public paidFees;
 
     uint256[20] private gap;
 
@@ -45,6 +46,13 @@ contract StandardSubscription is EncryptorSlotsSubscription, Initializable, Owna
      * @param amount The amount withdrawn
      */
     event WithdrawalToTreasury(address indexed treasury, uint256 amount);
+
+    /**
+     * @notice Emitted when refund called
+     * @param sender The address of the sender
+     * @param amount The amount withdrawn
+     */
+    event Refund(address indexed sender, uint256 amount);
 
     /**
      * @notice Emitted when a subscription is paid
@@ -156,6 +164,7 @@ contract StandardSubscription is EncryptorSlotsSubscription, Initializable, Owna
     /// @dev use `upgradeAndCall` for upgrading together with re-initialization
     function reinitialize(address newOwner) external reinitializer(2) {
         __Ownable_init(newOwner);
+        paidFees = feeToken.balanceOf(address(this));
     }
 
     function setAdopter(address _adopter) external {
@@ -198,6 +207,24 @@ contract StandardSubscription is EncryptorSlotsSubscription, Initializable, Owna
      * @param encryptorSlots Number of slots for encryptors
      */
     function payForSubscription(uint128 encryptorSlots) external {
+        uint256 fees = processPaymentForSubscription(encryptorSlots);
+        feeToken.safeTransferFrom(msg.sender, address(this), fees);
+    }
+
+    /**
+     * @notice Charge for the closest unpaid subscription period (either the current or the next)
+     * @param encryptorSlots Number of slots for encryptors
+     */
+    function chargeForSubscription(uint128 encryptorSlots) external onlyOwner {
+        processPaymentForSubscription(encryptorSlots);
+        require(feeToken.balanceOf(address(this)) >= paidFees, "Insufficient balance");
+    }
+
+    /**
+     * @notice Process payment for the closest unpaid subscription period (either the current or the next)
+     * @param encryptorSlots Number of slots for encryptors
+     */
+    function processPaymentForSubscription(uint128 encryptorSlots) internal returns (uint256 fees) {
         uint256 currentPeriodNumber = getCurrentPeriodNumber();
         require(!billingInfo[currentPeriodNumber + 1].paid, "Next billing period already paid"); // TODO until we will have refunds
         require(
@@ -215,9 +242,8 @@ contract StandardSubscription is EncryptorSlotsSubscription, Initializable, Owna
         billing.paid = true;
         billing.encryptorSlots = encryptorSlots;
 
-        uint256 fees = baseFees(periodNumber) +
-            encryptorFees(encryptorSlots, subscriptionPeriodDuration);
-        feeToken.safeTransferFrom(msg.sender, address(this), fees);
+        fees = baseFees(periodNumber) + encryptorFees(encryptorSlots, subscriptionPeriodDuration);
+        paidFees += fees;
         emit SubscriptionPaid(msg.sender, fees, encryptorSlots, getEndOfSubscription());
     }
 
@@ -226,6 +252,26 @@ contract StandardSubscription is EncryptorSlotsSubscription, Initializable, Owna
      * @param additionalEncryptorSlots Additional number of slots for encryptors
      */
     function payForEncryptorSlots(uint128 additionalEncryptorSlots) external {
+        uint256 fees = processPaymentForEncryptorSlots(additionalEncryptorSlots);
+        feeToken.safeTransferFrom(msg.sender, address(this), fees);
+    }
+
+    /**
+     * @notice Charges for additional encryptor slots in the current period
+     * @param additionalEncryptorSlots Additional number of slots for encryptors
+     */
+    function chargeForEncryptorSlots(uint128 additionalEncryptorSlots) external onlyOwner {
+        processPaymentForEncryptorSlots(additionalEncryptorSlots);
+        require(feeToken.balanceOf(address(this)) >= paidFees, "Insufficient balance");
+    }
+
+    /**
+     * @notice Process payment for additional encryptor slots in the current period
+     * @param additionalEncryptorSlots Additional number of slots for encryptors
+     */
+    function processPaymentForEncryptorSlots(
+        uint128 additionalEncryptorSlots
+    ) internal returns (uint256 fees) {
         uint256 currentPeriodNumber = getCurrentPeriodNumber();
         Billing storage billing = billingInfo[currentPeriodNumber];
         require(billing.paid, "Current billing period must be paid");
@@ -242,18 +288,34 @@ contract StandardSubscription is EncryptorSlotsSubscription, Initializable, Owna
         uint256 fees = encryptorFees(additionalEncryptorSlots, duration);
         billing.encryptorSlots += additionalEncryptorSlots;
 
-        feeToken.safeTransferFrom(msg.sender, address(this), fees);
+        paidFees += fees;
         emit EncryptorSlotsPaid(msg.sender, fees, additionalEncryptorSlots, endOfCurrentPeriod);
+        return fees;
     }
 
     /**
-     * @notice Withdraws the contract balance to the treasury
+     * @notice Withdraws the fees to the treasury
      */
     function withdrawToTreasury() external {
-        uint256 amount = feeToken.balanceOf(address(this));
-        require(amount > 0, "Insufficient balance available");
+        uint256 amount = paidFees;
+        require(0 < amount, "Insufficient balance available");
+        paidFees = 0;
         feeToken.safeTransfer(owner(), amount);
         emit WithdrawalToTreasury(owner(), amount);
+    }
+
+    /**
+     * @notice Withdraws unused fees to the adopter setter
+     * @param amount The amount to withdraw
+     */
+    function refund(uint256 amount) external {
+        require(msg.sender == adopterSetter, "Only adopter setter can call refund");
+        require(
+            feeToken.balanceOf(address(this)) - paidFees >= amount,
+            "Insufficient balance available"
+        );
+        feeToken.safeTransfer(msg.sender, amount);
+        emit Refund(msg.sender, amount);
     }
 
     function processRitualPayment(
