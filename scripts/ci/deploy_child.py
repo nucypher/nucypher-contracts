@@ -48,7 +48,7 @@ def main():
             filepath=CONSTRUCTOR_PARAMS_FILEPATH,
             verify=VERIFY,
             account=test_account,
-            non_interactive=True,
+            autosign=True,
         )
 
         mock_polygon_child = deployer.deploy(project.MockPolygonChild)
@@ -82,7 +82,7 @@ def main():
             filepath=UPGRADE_PARAMS_FILEPATH,
             verify=VERIFY,
             account=test_account,
-            non_interactive=True,
+            autosign=True,
         )
 
         upgraded_coordinator = upgrade_deployer.upgrade(project.Coordinator, coordinator.address)

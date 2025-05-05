@@ -1,14 +1,22 @@
 #!/usr/bin/python3
+import json
+import os
+import time
+from contextlib import suppress
 
 import click
 from ape import Contract, chain
 from ape.cli import ConnectedProviderCommand, account_option, network_option
 
 from deployment import registry
-from deployment.constants import ACCESS_CONTROLLERS, SUPPORTED_TACO_DOMAINS
+from deployment.constants import (
+    ACCESS_CONTROLLERS,
+    HEARTBEAT_ARTIFACT_FILENAME,
+    SUPPORTED_TACO_DOMAINS,
+)
 from deployment.params import Transactor
 from deployment.types import ChecksumAddress, MinInt
-from deployment.utils import check_plugins, sample_nodes
+from deployment.utils import check_plugins, get_heartbeat_cohorts, sample_nodes
 
 
 @click.command(cls=ConnectedProviderCommand, name="initiate-ritual")
@@ -69,8 +77,28 @@ from deployment.utils import check_plugins, sample_nodes
 )
 @click.option(
     "--handpicked",
-    help="The filepath of a file containing newline separated staking provider addresses.",
+    help="The filepath of a file containing newline separated staking provider addresses that will \
+        be included in the ritual.",
     type=click.File("r"),
+)
+@click.option(
+    "--excluded-nodes",
+    help="The filepath of a file containing newline separated staking provider addresses that will \
+        be excluded from the node selection. If no filepath is provided, EXCLUDED_NODES \
+        environment variable will be used as input.",
+    is_flag=False,
+    flag_value="EXCLUDED_NODES_ENVVAR",
+    type=click.Path(exists=False),
+)
+@click.option(
+    "--auto",
+    help="Automatically sign transactions.",
+    is_flag=True,
+)
+@click.option(
+    "--heartbeat",
+    help="Initiate rituals for all nodes in the network.",
+    is_flag=True,
 )
 def cli(
     domain,
@@ -83,14 +111,18 @@ def cli(
     num_nodes,
     random_seed,
     handpicked,
+    excluded_nodes,
     min_version,
+    auto,
+    heartbeat,
 ):
     """Initiate a ritual for a TACo domain."""
 
     # Setup
     check_plugins()
     click.echo(f"Connected to {network.name} network.")
-    if not (bool(handpicked) ^ (num_nodes is not None)):
+
+    if not heartbeat and not (bool(handpicked) ^ (num_nodes is not None)):
         raise click.BadOptionUsage(
             option_name="--num-nodes",
             message=f"Specify either --num-nodes or --handpicked; got {num_nodes}, {handpicked}.",
@@ -105,6 +137,22 @@ def cli(
             option_name="--min-version",
             message="Cannot specify --min-version when using --handpicked.",
         )
+    if handpicked and excluded_nodes:
+        raise click.BadOptionUsage(
+            option_name="--excluded-nodes",
+            message="Cannot specify --excluded-nodes when using --handpicked.",
+        )
+    if heartbeat:
+        if not duration:
+            raise click.BadOptionUsage(
+                option_name="--heartbeat",
+                message="Must specify --duration when using --heartbeat.",
+            )
+        if handpicked or num_nodes or random_seed or min_version:
+            raise click.BadOptionUsage(
+                option_name="--heartbeat",
+                message="Cannot specify --heartbeat with any other sampling options.",
+            )
 
     # Get the contracts from the registry
     coordinator_contract = registry.get_contract(domain=domain, contract_name="Coordinator")
@@ -132,30 +180,76 @@ def cli(
             elapsed = now - start_of_subscription + 100
             duration -= elapsed
 
+    # Set the nodes that are excluded from the cohort sampling
+    excluded = []
+    if excluded_nodes:
+        if excluded_nodes == "EXCLUDED_NODES_ENVVAR":
+            if "EXCLUDED_NODES" not in os.environ:
+                raise click.BadOptionUsage(
+                    option_name="--excluded-nodes",
+                    message="EXCLUDED_NODES environment variable not set.",
+                )
+            excluded = os.environ.get("EXCLUDED_NODES").splitlines()
+        else:
+            with open(excluded_nodes, "r") as f:
+                excluded = [line.strip() for line in f]
+
+        click.echo("The following nodes are being excluded from ritual/s")
+        click.echo(" -> " + "\n -> ".join(excluded))
+
     # Get the staking providers in the ritual cohort
-    if handpicked:
-        providers = sorted(line.lower().strip() for line in handpicked)
-        if not providers:
-            raise ValueError(f"No staking providers found in the handpicked file {handpicked.name}")
+    if heartbeat:
+        taco_application = registry.get_contract(
+            domain=domain, contract_name="TACoChildApplication"
+        )
+        cohorts = get_heartbeat_cohorts(taco_application=taco_application, excluded_nodes=excluded)
+        click.echo(f"Initiating {len(cohorts)} rituals.")
+        if not auto:
+            click.confirm(text="Are you sure you want to initiate these rituals?", abort=True)
     else:
-        providers = sample_nodes(
-            domain=domain,
-            num_nodes=num_nodes,
-            duration=duration,
-            random_seed=random_seed,
-            min_version=min_version,
+        if handpicked:
+            cohort = sorted(line.lower().strip() for line in handpicked)
+            if not cohort:
+                raise ValueError(
+                    f"No staking providers found in the handpicked file {handpicked.name}"
+                )
+        else:
+            cohort = sample_nodes(
+                domain=domain,
+                num_nodes=num_nodes,
+                duration=duration,
+                random_seed=random_seed,
+                min_version=min_version,
+                excluded_nodes=excluded,
+            )
+        cohorts = [cohort]
+
+    rituals = {}
+    for cohort in cohorts:
+        # TODO: Failure recovery? (not enough funds, outages, etc.)
+        # Initiate the ritual(s)
+        transactor = Transactor(account=account, autosign=auto)
+        result = transactor.transact(
+            coordinator_contract.initiateRitual,
+            fee_model_contract.address,
+            cohort,
+            authority,
+            duration,
+            access_controller_contract.address,
         )
 
-    # Initiate the ritual
-    transactor = Transactor(account=account)
-    transactor.transact(
-        coordinator_contract.initiateRitual,
-        fee_model_contract.address,
-        providers,
-        authority,
-        duration,
-        access_controller_contract.address,
-    )
+        ritual_id = result.events[0].ritualId
+        rituals[ritual_id] = cohort
+        time.sleep(1)  # chill for a sec
+
+    # Save the ritual data
+    if heartbeat:
+        # remove the file if it exists
+        with suppress(OSError):
+            os.remove(HEARTBEAT_ARTIFACT_FILENAME)
+        json.dumps(rituals, indent=4)
+        with open(HEARTBEAT_ARTIFACT_FILENAME, "w") as f:
+            f.write(json.dumps(rituals, indent=4))
 
 
 if __name__ == "__main__":

@@ -1,0 +1,56 @@
+name: Heartbeat DKG
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 1'  # Every Monday at 00:00
+
+jobs:
+  initiate_dkg:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12.4'
+
+    - name: Install dependencies
+      run: |
+        sed -i '/^nucypher-core==/d' requirements.txt
+        pip3 install -e . -r requirements.txt
+
+    - name: Import Ape Account
+      run: .github/scripts/import_account.py
+      env:
+        DKG_INITIATOR_PRIVATE_KEY: ${{ secrets.DKG_INITIATOR_PRIVATE_KEY }}
+        DKG_INITIATOR_PASSPHRASE: ${{ secrets.DKG_INITIATOR_PASSPHRASE }}
+
+    - name: Initiate Ritual
+      run: .github/scripts/initiate_dkg.sh
+      env:
+
+        # Secret environment variables (secrets)
+        APE_ACCOUNTS_automation_PASSPHRASE: ${{ secrets.DKG_INITIATOR_PASSPHRASE }}
+        RPC_PROVIDER: ${{ secrets.RPC_PROVIDER }}
+        WEB3_INFURA_API_KEY: ${{ secrets.WEB3_INFURA_API_KEY }}
+        POLYGONSCAN_API_KEY: ${{ secrets.POLYGONSCAN_API_KEY }}
+        EXCLUDED_NODES: ${{ secrets.EXCLUDED_NODES }}
+
+        # Non-secret environment variables (config)
+        DKG_AUTHORITY_ADDRESS: ${{ vars.DKG_AUTHORITY_ADDRESS }}
+        DOMAIN: ${{ vars.DOMAIN }}
+        NETWORK: ${{ vars.NETWORK }}
+        ECOSYSTEM: ${{ vars.ECOSYSTEM }}
+        ACCESS_CONTROLLER: ${{ vars.ACCESS_CONTROLLER }}
+        FEE_MODEL: ${{ vars.FEE_MODEL }}
+        DURATION: ${{ vars.DURATION }}
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: heartbeat-rituals
+        path: heartbeat-rituals.json

@@ -1,0 +1,40 @@
+name: Evaluate DKG
+
+on:
+  schedule:
+    - cron: '0 0 * * 5' # Every Monday at 05:00
+
+jobs:
+  evaluate_dkg:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12.4'
+
+    - name: Install dependencies
+      run: |
+        sed -i '/^nucypher-core==/d' requirements.txt
+        pip3 install -e . -r requirements.txt
+
+    - name: Download Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: heartbeat-rituals
+        path: rituals.json
+
+    - name: Evaluate Ritual
+      run: .github/scripts/eval_dkg.sh
+      env:
+        # Secret environment variables (secrets)
+        RPC_PROVIDER: ${{ secrets.RPC_PROVIDER }}
+
+        # Non-secret environment variables (config)
+        DOMAIN: ${{ vars.DOMAIN }}
+        NETWORK: ${{ vars.NETWORK }}
+        ECOSYSTEM: ${{ vars.ECOSYSTEM }}

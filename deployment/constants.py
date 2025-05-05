@@ -1,3 +1,4 @@
+from enum import IntEnum
 from pathlib import Path
 
 from ape import project
@@ -62,3 +63,30 @@ PORTER_SAMPLING_ENDPOINTS = {
     LYNX: "https://porter-lynx.nucypher.io/get_ursulas",
     TAPIR: "https://porter-tapir.nucypher.io/get_ursulas",
 }
+
+#
+# Domain Seednodes
+#
+
+NETWORK_SEEDNODE_STATUS_JSON_URI = {
+    MAINNET: "https://mainnet.nucypher.network:9151/status?json=true",
+    LYNX: "https://lynx.nucypher.network:9151/status?json=true",
+    TAPIR: "https://tapir.nucypher.network:9151/status?json=true",
+}
+
+#
+# DKG Ritual states as defined in the Coordinator contract
+#
+
+
+class RitualState(IntEnum):
+    NON_INITIATED = 0
+    DKG_AWAITING_TRANSCRIPTS = 1
+    DKG_AWAITING_AGGREGATIONS = 2
+    DKG_TIMEOUT = 3
+    DKG_INVALID = 4
+    ACTIVE = 5
+    EXPIRED = 6
+
+
+HEARTBEAT_ARTIFACT_FILENAME = "heartbeat-rituals.json"

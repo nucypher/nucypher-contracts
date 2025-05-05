@@ -1,7 +1,7 @@
 import json
 import os
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import requests
 import yaml
@@ -9,6 +9,7 @@ from ape import networks, project
 from ape.contracts import ContractContainer, ContractInstance
 from ape.exceptions import NetworkError
 from ape_etherscan.utils import API_KEY_ENV_KEY_MAP
+from eth_utils import to_checksum_address
 
 from deployment.constants import ARTIFACTS_DIR, MAINNET, PORTER_SAMPLING_ENDPOINTS
 from deployment.networks import is_local_network
@@ -180,6 +181,7 @@ def sample_nodes(
     random_seed: Optional[int] = None,
     duration: Optional[int] = None,
     min_version: Optional[str] = None,
+    excluded_nodes: Optional[List[str]] = None,
 ):
     porter_endpoint = PORTER_SAMPLING_ENDPOINTS.get(domain)
     if not porter_endpoint:
@@ -196,6 +198,9 @@ def sample_nodes(
         params["random_seed"] = random_seed
     if min_version:
         params["min_version"] = min_version
+    if excluded_nodes:
+        nodes = [to_checksum_address(node) for node in excluded_nodes]
+        params["exclude_ursulas"] = ",".join(nodes)
 
     response = requests.get(porter_endpoint, params=params)
     response.raise_for_status()
@@ -209,3 +214,52 @@ def sample_nodes(
 
     result = sorted(ursulas, key=lambda x: x.lower())
     return result
+
+
+def _generate_heartbeat_cohorts(addresses: List[str]) -> Tuple[Tuple[str, ...], ...]:
+    """
+    In the realm of addresses, where keys unlock boundless potential,
+    we gather them, two by two, like travelers on a shared path.
+    Yet, should a lone wanderer remain, we weave them into a final trio—
+    a constellation of three, shimmering in quiet order.
+
+    Each group, a harmony of case-insensitive sequence,
+    arranged with care, untouched in form, yet softened in placement.
+
+    No address stands alone. No ledger is left incomplete.
+    """
+    if not addresses:
+        raise ValueError("The list of Ethereum addresses cannot be empty.")
+
+    # Form pairs, stepping in twos, embracing a final trio if needed
+    groups = [tuple(addresses[i : i + 2]) for i in range(0, len(addresses) - 1, 2)]
+
+    # If unpaired, merge the last two into a final trio
+    if len(addresses) % 2:
+        groups[-1] += (addresses[-1],)
+
+    # Return each group in case-insensitive order, immutable as stone
+    return tuple(map(lambda group: tuple(sorted(group, key=str.lower)), groups))
+
+
+def get_heartbeat_cohorts(
+    taco_application: ContractContainer, excluded_nodes: Optional[List[str]] = []
+) -> Tuple[Tuple[str, ...], ...]:
+    active_stakes_data = taco_application.getActiveStakingProviders(
+        0,  # start index
+        1000,  # max number of staking providers
+        1,  # min duration of staking
+    )
+    _, staking_providers_info = active_stakes_data
+
+    staking_providers = []
+    for info in staking_providers_info:
+        staking_providers.append(to_checksum_address(info[0:20]))
+
+    # Exclude nodes that are in the excluded_nodes list
+    for node in excluded_nodes:
+        staking_providers.remove(to_checksum_address(node))
+
+    cohorts = _generate_heartbeat_cohorts(staking_providers)
+
+    return cohorts
