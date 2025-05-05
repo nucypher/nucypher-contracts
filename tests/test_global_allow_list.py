@@ -107,9 +107,9 @@ def upgradeable_global_allow_list(project, deployer, coordinator, oz_dependency)
 def initiate_ritual(coordinator, fee_model, erc20, authority, nodes, allow_logic):
     for node in nodes:
         public_key = gen_public_key()
-        assert not coordinator.isProviderPublicKeySet(node)
+        assert not coordinator.isProviderKeySet(node)
         coordinator.setProviderPublicKey(public_key, sender=node)
-        assert coordinator.isProviderPublicKeySet(node)
+        assert coordinator.isProviderKeySet(node)
 
     cost = fee_model.getRitualCost(len(nodes), DURATION)
     erc20.approve(fee_model.address, cost, sender=authority)
@@ -159,14 +159,11 @@ def test_authorize_using_global_allow_list(
     with ape.reverts("Only active rituals can set authorizations"):
         allow_list_contract.authorize(0, [deployer.address], sender=initiator)
 
-    with ape.reverts("Ritual not active"):
-        coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(digest))
-
     # Finalize ritual
     threshold = coordinator.getThresholdForRitualSize(size)
     transcript = generate_transcript(size, threshold)
     for node in nodes:
-        coordinator.postTranscript(0, transcript, sender=node)
+        coordinator.publishTranscript(0, transcript, sender=node)
 
     aggregated = transcript
     decryption_request_static_keys = [os.urandom(42) for _ in nodes]
@@ -181,7 +178,6 @@ def test_authorize_using_global_allow_list(
 
     # Authorized
     assert allow_list_contract.isAuthorized(0, bytes(signature), bytes(data))
-    assert coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(data))
     events = [event for event in tx.events if event.event_name == "AddressAuthorizationSet"]
     assert events == [
         allow_list_contract.AddressAuthorizationSet(
@@ -193,7 +189,6 @@ def test_authorize_using_global_allow_list(
     tx = allow_list_contract.deauthorize(0, [deployer.address], sender=initiator)
 
     assert not allow_list_contract.isAuthorized(0, bytes(signature), bytes(data))
-    assert not coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(data))
     events = [event for event in tx.events if event.event_name == "AddressAuthorizationSet"]
     assert events == [
         allow_list_contract.AddressAuthorizationSet(
@@ -207,10 +202,8 @@ def test_authorize_using_global_allow_list(
     signed_digest = w3.eth.account.sign_message(signable_message, private_key=initiator.private_key)
     initiator_signature = signed_digest.signature
     assert allow_list_contract.isAuthorized(0, bytes(initiator_signature), bytes(data))
-    assert coordinator.isEncryptionAuthorized(0, bytes(initiator_signature), bytes(data))
 
     assert allow_list_contract.isAuthorized(0, bytes(signature), bytes(data))
-    assert coordinator.isEncryptionAuthorized(0, bytes(signature), bytes(data))
 
     events = [event for event in tx.events if event.event_name == "AddressAuthorizationSet"]
     assert events == [

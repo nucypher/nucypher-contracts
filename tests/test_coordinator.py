@@ -221,11 +221,12 @@ def test_provider_public_key(coordinator, nodes):
     selected_provider = nodes[0]
     public_key = gen_public_key()
 
-    assert not coordinator.isProviderPublicKeySet(selected_provider)
     assert not coordinator.isProviderKeySet(selected_provider)
     tx = coordinator.setProviderPublicKey(public_key, sender=selected_provider)
-    assert coordinator.isProviderPublicKeySet(selected_provider)
     assert coordinator.isProviderKeySet(selected_provider)
+
+    with ape.reverts("Deprecated method. Upgrade your node to latest version"):
+        coordinator.isProviderPublicKeySet(selected_provider)
 
     ritual_id = coordinator.numberOfRituals()
 
@@ -254,11 +255,7 @@ def test_post_transcript(coordinator, nodes, initiator, erc20, fee_model, global
     for i, node in enumerate(nodes):
         assert coordinator.getRitualState(0) == RitualState.DKG_AWAITING_TRANSCRIPTS
 
-        # Some nodes will use a different method to post the transcript to test both methods
-        post_transcript_fn = (
-            coordinator.postTranscript if i % 2 == 0 else coordinator.publishTranscript
-        )
-        tx = post_transcript_fn(0, transcript, sender=node)
+        tx = coordinator.publishTranscript(0, transcript, sender=node)
 
         events = [event for event in tx.events if event.event_name == "TranscriptPosted"]
         assert events == [
@@ -273,6 +270,26 @@ def test_post_transcript(coordinator, nodes, initiator, erc20, fee_model, global
         assert not participant.decryptionRequestStaticKey
 
     assert coordinator.getRitualState(0) == RitualState.DKG_AWAITING_AGGREGATIONS
+
+
+def test_post_transcript_but_deprecated_method(
+    coordinator, nodes, initiator, erc20, fee_model, global_allow_list
+):
+    initiate_ritual(
+        coordinator=coordinator,
+        fee_model=fee_model,
+        erc20=erc20,
+        authority=initiator,
+        nodes=nodes,
+        allow_logic=global_allow_list,
+    )
+
+    size = len(nodes)
+    threshold = coordinator.getThresholdForRitualSize(size)
+    transcript = generate_transcript(size, threshold)
+
+    with ape.reverts("Deprecated method. Upgrade your node to latest version"):
+        coordinator.postTranscript(0, transcript, sender=initiator)
 
 
 def test_post_transcript_but_not_part_of_ritual(
@@ -292,7 +309,7 @@ def test_post_transcript_but_not_part_of_ritual(
     transcript = generate_transcript(size, threshold)
 
     with ape.reverts("Participant not part of ritual"):
-        coordinator.postTranscript(0, transcript, sender=initiator)
+        coordinator.publishTranscript(0, transcript, sender=initiator)
 
 
 def test_post_transcript_but_already_posted_transcript(
@@ -311,9 +328,9 @@ def test_post_transcript_but_already_posted_transcript(
     threshold = coordinator.getThresholdForRitualSize(size)
     transcript = generate_transcript(size, threshold)
 
-    coordinator.postTranscript(0, transcript, sender=nodes[0])
+    coordinator.publishTranscript(0, transcript, sender=nodes[0])
     with ape.reverts("Node already posted transcript"):
-        coordinator.postTranscript(0, transcript, sender=nodes[0])
+        coordinator.publishTranscript(0, transcript, sender=nodes[0])
 
 
 def test_post_transcript_but_wrong_size(
@@ -333,11 +350,11 @@ def test_post_transcript_but_wrong_size(
     bad_transcript = generate_transcript(size, threshold + 1)
 
     with ape.reverts("Invalid transcript size"):
-        coordinator.postTranscript(0, bad_transcript, sender=nodes[0])
+        coordinator.publishTranscript(0, bad_transcript, sender=nodes[0])
 
     bad_transcript = b""
     with ape.reverts("Invalid transcript size"):
-        coordinator.postTranscript(0, bad_transcript, sender=nodes[0])
+        coordinator.publishTranscript(0, bad_transcript, sender=nodes[0])
 
 
 def test_post_transcript_but_not_waiting_for_transcripts(
@@ -357,10 +374,10 @@ def test_post_transcript_but_not_waiting_for_transcripts(
     transcript = generate_transcript(size, threshold)
 
     for node in nodes:
-        coordinator.postTranscript(0, transcript, sender=node)
+        coordinator.publishTranscript(0, transcript, sender=node)
 
     with ape.reverts("Not waiting for transcripts"):
-        coordinator.postTranscript(0, transcript, sender=nodes[1])
+        coordinator.publishTranscript(0, transcript, sender=nodes[1])
 
 
 def test_get_participants(coordinator, nodes, initiator, erc20, fee_model, global_allow_list):
@@ -378,7 +395,7 @@ def test_get_participants(coordinator, nodes, initiator, erc20, fee_model, globa
     transcript = generate_transcript(size, threshold)
 
     for node in nodes:
-        _ = coordinator.postTranscript(0, transcript, sender=node)
+        _ = coordinator.publishTranscript(0, transcript, sender=node)
 
     # get all participants
     participants = coordinator.getParticipants(0, 0, len(nodes), False)
@@ -435,7 +452,7 @@ def test_get_participant(nodes, coordinator, initiator, erc20, fee_model, global
     transcript = generate_transcript(size, threshold)
 
     for node in nodes:
-        _ = coordinator.postTranscript(0, transcript, sender=node)
+        _ = coordinator.publishTranscript(0, transcript, sender=node)
 
     # find actual participants
     for i, node in enumerate(nodes):
@@ -488,7 +505,7 @@ def test_post_aggregation(
     transcript = generate_transcript(size, threshold)
 
     for node in nodes:
-        coordinator.postTranscript(ritualID, transcript, sender=node)
+        coordinator.publishTranscript(ritualID, transcript, sender=node)
 
     aggregated = transcript  # has the same size as transcript
     decryption_request_static_keys = [os.urandom(42) for _ in nodes]
@@ -550,7 +567,7 @@ def test_post_aggregation_fails(
     transcript = generate_transcript(size, threshold)
 
     for node in nodes:
-        coordinator.postTranscript(ritualID, transcript, sender=node)
+        coordinator.publishTranscript(ritualID, transcript, sender=node)
 
     aggregated = transcript  # has the same size as transcript
     decryption_request_static_keys = [os.urandom(42) for _ in nodes]

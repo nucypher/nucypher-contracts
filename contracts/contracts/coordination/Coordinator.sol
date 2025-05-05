@@ -294,11 +294,10 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     }
 
     /**
-     * @dev This method will be deprecated in the future. Use `isProviderKeySet` instead.
+     * @dev This method is deprecated. Use `isProviderKeySet` instead.
      */
-    function isProviderPublicKeySet(address provider) external view returns (bool) {
-        ParticipantKey[] storage participantHistory = participantKeysHistory[provider];
-        return participantHistory.length > 0;
+    function isProviderPublicKeySet(address) external view returns (bool) {
+        revert("Deprecated method. Upgrade your node to latest version");
     }
 
     function isProviderKeySet(address provider) external view returns (bool) {
@@ -407,10 +406,10 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     }
 
     /**
-     * @dev This method will be deprecated in the future. Use `publishTranscript` instead.
+     * @dev This method is deprecated. Use `publishTranscript` instead.
      */
-    function postTranscript(uint32 ritualId, bytes calldata transcript) external {
-        _postTranscript(ritualId, transcript);
+    function postTranscript(uint32, bytes calldata) external {
+        revert("Deprecated method. Upgrade your node to latest version");
     }
 
     function publishTranscript(uint32 ritualId, bytes calldata transcript) external {
@@ -649,13 +648,11 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
     /// @dev Deprecated, see issue #195
     function isEncryptionAuthorized(
-        uint32 ritualId,
-        bytes memory evidence,
-        bytes memory ciphertextHeader
+        uint32,
+        bytes memory,
+        bytes memory
     ) external view returns (bool) {
-        Ritual storage ritual = storageRitual(ritualId);
-        require(getRitualState(ritual) == RitualState.ACTIVE, "Ritual not active");
-        return ritual.accessController.isAuthorized(ritualId, evidence, ciphertextHeader);
+        revert("Deprecated method. Upgrade your node to latest version");
     }
 
     function processReimbursement(uint256 initialGasLeft) internal {
