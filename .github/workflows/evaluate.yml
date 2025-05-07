@@ -12,15 +12,16 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
+    - name: Install latest Rust stable
+      uses: dtolnay/rust-toolchain@stable
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.12.4'
 
     - name: Install dependencies
-      run: |
-        sed -i '/^nucypher-core==/d' requirements.txt
-        pip3 install -e . -r requirements.txt
+      run: pip3 install -e . -r requirements.txt
 
     - name: Download Artifact
       uses: actions/upload-artifact@v3

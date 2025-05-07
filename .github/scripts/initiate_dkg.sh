@@ -17,7 +17,7 @@ ape run initiate_ritual                           \
 --access-controller ${ACCESS_CONTROLLER}          \
 --authority ${DKG_AUTHORITY_ADDRESS}              \
 --fee-model ${FEE_MODEL}                          \
---duration ${DURATION}                            \
+--duration ${DURATION}
 
 echo "All Heartbeat Rituals Initiated"
 
