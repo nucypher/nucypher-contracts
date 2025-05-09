@@ -33,9 +33,10 @@ jobs:
       run: .github/scripts/eval_dkg.sh
       env:
         # Secret environment variables (secrets)
-        RPC_PROVIDER: ${{ secrets.RPC_PROVIDER }}
+        WEB3_INFURA_API_KEY: ${{ secrets.WEB3_INFURA_API_KEY }}
 
         # Non-secret environment variables (config)
         DOMAIN: ${{ vars.DOMAIN }}
         NETWORK: ${{ vars.NETWORK }}
         ECOSYSTEM: ${{ vars.ECOSYSTEM }}
+        RPC_PROVIDER: ${{ secrets.RPC_PROVIDER }}
