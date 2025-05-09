@@ -8,27 +8,26 @@ import "./IThresholdSigningMultisig.sol";
 contract ThresholdSigningMultisigCloneFactory {
     address public immutable implementation;
 
-    event ThresholdMultisigCloneDeployed(address cloneAddress, uint256 _cohortId);
+    event ThresholdMultisigCloneDeployed(address cloneAddress, uint256 cohortId);
 
     constructor(address _implementation) {
         implementation = _implementation;
     }
 
     function deploySigningMultisig(
-        address[] memory _signers,
-        uint16 _threshold,
-        address _initialOwner,
-        uint256 _cohortId
+        address[] memory signers,
+        uint16 threshold,
+        address initialOwner,
+        uint256 cohortId
     ) external returns (address) {
-        bytes32 saltBytes = bytes32(_cohortId);
+        bytes32 saltBytes = bytes32(cohortId);
         address clone = Clones.cloneDeterministic(implementation, saltBytes);
-        IThresholdSigningMultisig(clone).initialize(_signers, _threshold, _initialOwner);
-        emit ThresholdMultisigCloneDeployed(clone, _cohortId);
+        IThresholdSigningMultisig(clone).initialize(signers, threshold, initialOwner);
+        emit ThresholdMultisigCloneDeployed(clone, cohortId);
         return clone;
     }
 
-    function getCloneAddress(uint256 _cohortId) external view returns (address) {
-        return
-            Clones.predictDeterministicAddress(implementation, bytes32(_cohortId), address(this));
+    function getCloneAddress(uint256 cohortId) external view returns (address) {
+        return Clones.predictDeterministicAddress(implementation, bytes32(cohortId), address(this));
     }
 }
