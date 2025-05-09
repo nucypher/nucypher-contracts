@@ -36,7 +36,6 @@ jobs:
 
         # Secret environment variables (secrets)
         APE_ACCOUNTS_automation_PASSPHRASE: ${{ secrets.DKG_INITIATOR_PASSPHRASE }}
-        RPC_PROVIDER: ${{ secrets.RPC_PROVIDER }}
         WEB3_INFURA_API_KEY: ${{ secrets.WEB3_INFURA_API_KEY }}
         POLYGONSCAN_API_KEY: ${{ secrets.POLYGONSCAN_API_KEY }}
         EXCLUDED_NODES: ${{ secrets.EXCLUDED_NODES }}
@@ -46,6 +45,7 @@ jobs:
         DOMAIN: ${{ vars.DOMAIN }}
         NETWORK: ${{ vars.NETWORK }}
         ECOSYSTEM: ${{ vars.ECOSYSTEM }}
+        RPC_PROVIDER: ${{ vars.RPC_PROVIDER }}
         ACCESS_CONTROLLER: ${{ vars.ACCESS_CONTROLLER }}
         FEE_MODEL: ${{ vars.FEE_MODEL }}
         DURATION: ${{ vars.DURATION }}
