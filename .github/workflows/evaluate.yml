@@ -39,4 +39,4 @@ jobs:
         DOMAIN: ${{ vars.DOMAIN }}
         NETWORK: ${{ vars.NETWORK }}
         ECOSYSTEM: ${{ vars.ECOSYSTEM }}
-        RPC_PROVIDER: ${{ secrets.RPC_PROVIDER }}
+        RPC_PROVIDER: ${{ vars.RPC_PROVIDER }}
