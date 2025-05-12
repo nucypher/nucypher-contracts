@@ -1,4 +1,5 @@
 import pytest
+from eth.constants import ZERO_ADDRESS
 from eth_account.messages import _hash_eip191_message, encode_defunct
 
 from tests.conftest import ERC1271_INVALID_SIGNATURE, ERC1271_MAGIC_VALUE_BYTES, SigningRitualState
@@ -25,13 +26,6 @@ def deployer(accounts):
     deployer_index = MAX_DKG_SIZE + 2
     assert len(accounts) >= deployer_index
     return accounts[deployer_index]
-
-
-@pytest.fixture(scope="module")
-def treasury(accounts):
-    treasury_index = MAX_DKG_SIZE + 3
-    assert len(accounts) >= treasury_index
-    return accounts[treasury_index]
 
 
 @pytest.fixture()
@@ -62,18 +56,59 @@ def threshold_signing_multisig_clone_factory(project, deployer, threshold_signin
 
 
 @pytest.fixture()
+def signing_coordinator_child(
+    project, oz_dependency, deployer, threshold_signing_multisig_clone_factory
+):
+    contract = project.SigningCoordinatorChild.deploy(
+        threshold_signing_multisig_clone_factory.address,
+        sender=deployer,
+    )
+
+    proxy = oz_dependency.TransparentUpgradeableProxy.deploy(
+        contract.address,
+        deployer,
+        b"",
+        sender=deployer,
+    )
+    proxy_contract = project.SigningCoordinatorChild.at(proxy.address)
+
+    return proxy_contract
+
+
+@pytest.fixture()
+def signing_coordinator_dispatcher(
+    project, oz_dependency, chain, deployer, signing_coordinator_child
+):
+    contract = project.SigningCoordinatorDispatcher.deploy(
+        sender=deployer,
+    )
+
+    proxy = oz_dependency.TransparentUpgradeableProxy.deploy(
+        contract.address,
+        deployer,
+        b"",
+        sender=deployer,
+    )
+    proxy_contract = project.SigningCoordinatorDispatcher.at(proxy.address)
+    proxy_contract.register(
+        chain.chain_id, ZERO_ADDRESS, signing_coordinator_child.address, sender=deployer
+    )
+    return proxy_contract
+
+
+@pytest.fixture()
 def signing_coordinator(
     project,
     deployer,
     initiator,
     application,
-    threshold_signing_multisig_clone_factory,
+    signing_coordinator_dispatcher,
     oz_dependency,
 ):
     admin = deployer
     contract = project.SigningCoordinator.deploy(
         application.address,
-        threshold_signing_multisig_clone_factory.address,
+        signing_coordinator_dispatcher.address,
         sender=deployer,
     )
 
@@ -96,7 +131,7 @@ def signing_coordinator(
 
 
 def test_signing_ritual(
-    project, signing_coordinator, threshold_signing_multisig_clone_factory, initiator, nodes
+    project, chain, signing_coordinator, signing_coordinator_child, initiator, nodes
 ):
     threshold = len(nodes) // 2 + 1
     tx = signing_coordinator.initiateSigningCohort(
@@ -150,14 +185,11 @@ def test_signing_ritual(
         ]
         submitted_signatures.append(signature)
 
-    expected_multisig_address = threshold_signing_multisig_clone_factory.getCloneAddress(
-        signing_cohort_id
-    )
     events = [event for event in tx.events if event.event_name == "SigningCohortCompleted"]
     assert events == [
         signing_coordinator.SigningCohortCompleted(
             cohortId=signing_cohort_id,
-            multisig=expected_multisig_address,
+            chainId=chain.chain_id,
         )
     ]
 
@@ -193,14 +225,15 @@ def test_signing_ritual(
         assert len(signer.signature) > 0, "signature posted"
 
     # check deployed multisig
-
-    signing_cohort_struct = signing_coordinator.signingCohorts(signing_cohort_id)
-    assert signing_cohort_struct["multisig"] == expected_multisig_address
+    expected_multisig_address = project.ThresholdSigningMultisigCloneFactory.at(
+        signing_coordinator_child.signingMultisigFactory()
+    ).getCloneAddress(signing_cohort_id)
+    assert signing_coordinator_child.cohortMultisigs(signing_cohort_id) == expected_multisig_address
 
     cohort_multisig = project.ThresholdSigningMultisig.at(expected_multisig_address)
     assert cohort_multisig.getSigners() == [n.address for n in nodes]
     assert cohort_multisig.threshold() == threshold
-    assert cohort_multisig.owner() == initiator.address
+    assert cohort_multisig.owner() == signing_coordinator_child.address
 
     # ensure signatures are valid for deployed cohort multisig
     # (just need something signed by signers, why not reuse the data
