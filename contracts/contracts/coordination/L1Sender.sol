@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 import "./ICrossDomainMessenger.sol";
 
-contract OpL1Sender {
+contract L1Sender {
     address public messenger;
     address public l2Receiver;
 
