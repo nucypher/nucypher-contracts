@@ -2,9 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-interface ICrossDomainMessenger {
-    function sendMessage(address target, bytes calldata message, uint32 gasLimit) external;
-}
+import "./ICrossDomainMessenger.sol";
 
 contract OpL1Sender {
     address public messenger;

@@ -7,7 +7,9 @@ import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import "@openzeppelin-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "../../threshold/ITACoChildApplication.sol";
+import "./ISigningCoordinatorChild.sol";
 import "./ThresholdSigningMultisigCloneFactory.sol";
+import "./SigningCoordinatorDispatcher.sol";
 
 contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable {
     using MessageHashUtils for bytes32;
@@ -23,13 +25,14 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         address initiator;
         uint32 initTimestamp;
         uint32 endTimestamp;
+        // TODO: what's the point of authority if we have a single global cohort?
         address authority;
         uint16 totalSignatures;
         uint16 numSigners;
         uint16 threshold;
-        address multisig;
         bytes conditions;
         SigningCohortParticipant[] signers;
+        uint256[] chains;
     }
 
     bytes32 public constant INITIATOR_ROLE = keccak256("INITIATOR_ROLE");
@@ -47,7 +50,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         address indexed provider,
         bytes signature
     );
-    event SigningCohortCompleted(uint32 indexed cohortId, address multisig);
+    event SigningCohortCompleted(uint32 indexed cohortId, uint256 chainId);
     event SigningCohortConditionsSet(uint32 indexed cohortId, bytes conditions);
 
     enum SigningCohortState {
@@ -60,7 +63,8 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     }
 
     ITACoChildApplication public immutable application;
-    ThresholdSigningMultisigCloneFactory public immutable signingMultisigFactory;
+    SigningCoordinatorDispatcher public immutable signingCoordinatorDispatcher;
+
     uint96 private immutable minAuthorization; // TODO use child app for checking eligibility
 
     uint32 public timeout;
@@ -70,10 +74,10 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
 
     constructor(
         ITACoChildApplication _application,
-        ThresholdSigningMultisigCloneFactory _signingMultisigFactory
+        SigningCoordinatorDispatcher _signingCoordinatorDispatcher
     ) {
         application = _application;
-        signingMultisigFactory = _signingMultisigFactory;
+        signingCoordinatorDispatcher = _signingCoordinatorDispatcher;
         minAuthorization = _application.minimumAuthorization(); // TODO use child app for checking eligibility
         _disableInitializers();
     }
@@ -84,24 +88,24 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         __AccessControlDefaultAdminRules_init(0, _admin);
     }
 
-    function isCohortActive(SigningCohort storage cohort) internal view returns (bool) {
-        return getSigningCohortState(cohort) == SigningCohortState.ACTIVE;
+    function _isCohortActive(SigningCohort storage _cohort) internal view returns (bool) {
+        return _getSigningCohortState(_cohort) == SigningCohortState.ACTIVE;
     }
 
     function isCohortActive(uint32 cohortId) external view returns (bool) {
         SigningCohort storage cohort = signingCohorts[cohortId];
-        return isCohortActive(cohort);
+        return _isCohortActive(cohort);
     }
 
     function setTimeout(uint32 newTimeout) external onlyRole(DEFAULT_ADMIN_ROLE) {
         timeout = newTimeout;
     }
 
-    function findSigner(
-        SigningCohort storage cohort,
-        address provider
+    function _findSigner(
+        SigningCohort storage _cohort,
+        address _provider
     ) internal view returns (bool, SigningCohortParticipant storage) {
-        uint256 length = cohort.signers.length;
+        uint256 length = _cohort.signers.length;
         if (length == 0) {
             return (false, __sentinelSigner);
         }
@@ -109,10 +113,10 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         uint256 high = length - 1;
         while (low <= high) {
             uint256 mid = (low + high) / 2;
-            SigningCohortParticipant storage middleParticipant = cohort.signers[mid];
-            if (middleParticipant.provider == provider) {
+            SigningCohortParticipant storage middleParticipant = _cohort.signers[mid];
+            if (middleParticipant.provider == _provider) {
                 return (true, middleParticipant);
-            } else if (middleParticipant.provider < provider) {
+            } else if (middleParticipant.provider < _provider) {
                 low = mid + 1;
             } else {
                 if (mid == 0) {
@@ -127,7 +131,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
 
     function isSigner(uint32 cohortId, address provider) external view returns (bool) {
         SigningCohort storage cohort = signingCohorts[cohortId];
-        (bool found, ) = findSigner(cohort, provider);
+        (bool found, ) = _findSigner(cohort, provider);
         return found;
     }
 
@@ -135,7 +139,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         SigningCohort storage cohort,
         address provider
     ) internal view returns (SigningCohortParticipant storage) {
-        (bool found, SigningCohortParticipant storage participant) = findSigner(cohort, provider);
+        (bool found, SigningCohortParticipant storage participant) = _findSigner(cohort, provider);
         require(found, "Participant not part of ritual");
         return participant;
     }
@@ -152,6 +156,11 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     function getSigners(uint32 cohortId) external view returns (SigningCohortParticipant[] memory) {
         SigningCohort storage cohort = signingCohorts[cohortId];
         return cohort.signers;
+    }
+
+    function getChains(uint32 cohortId) external view returns (uint256[] memory) {
+        SigningCohort storage cohort = signingCohorts[cohortId];
+        return cohort.chains;
     }
 
     function initiateSigningCohort(
@@ -201,7 +210,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
 
     function setSigningCohortConditions(uint32 cohortId, bytes calldata conditions) external {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
-        SigningCohortState state = getSigningCohortState(signingCohort);
+        SigningCohortState state = _getSigningCohortState(signingCohort);
         require(
             state == SigningCohortState.AWAITING_CONDITIONS || state == SigningCohortState.ACTIVE,
             "Conditions not settable"
@@ -230,7 +239,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     function postSigningCohortSignature(uint32 cohortId, bytes calldata signature) external {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
         require(
-            getSigningCohortState(signingCohort) == SigningCohortState.AWAITING_SIGNATURES,
+            _getSigningCohortState(signingCohort) == SigningCohortState.AWAITING_SIGNATURES,
             "Not waiting for transcripts"
         );
         address provider = application.operatorToStakingProvider(msg.sender);
@@ -252,55 +261,67 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         emit SigningCohortSignaturePosted(cohortId, provider, signature);
 
         if (signingCohort.totalSignatures == signingCohort.numSigners) {
-            address[] memory signers = new address[](signingCohort.numSigners);
-            for (uint256 i = 0; i < signingCohort.signers.length; i++) {
-                // ursula operator address does signing; not staking provider
-                signers[i] = signingCohort.signers[i].operator;
-            }
-            address signingMultisig = deploySigningMultisig(
-                cohortId,
-                signers,
-                signingCohort.threshold
-            );
-            signingCohort.multisig = signingMultisig;
-            emit SigningCohortCompleted(cohortId, signingMultisig);
+            _deploySigningMultisig(block.chainid, cohortId);
         }
     }
 
-    function deploySigningMultisig(
-        uint32 cohortId,
-        address[] memory signers,
-        uint16 threshold
-    ) internal returns (address) {
+    // TODO: not yet sure about this
+    function deployAdditionalChainForSigningMultisig(
+        uint256 chainId,
+        uint32 cohortId
+    ) external onlyRole(INITIATOR_ROLE) {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
+        require(signingCohort.chains.length > 0, "Original chain not deployed");
+
+        _deploySigningMultisig(chainId, cohortId);
+    }
+
+    function _deploySigningMultisig(uint256 _chainId, uint32 _cohortId) internal {
+        SigningCohort storage signingCohort = signingCohorts[_cohortId];
         require(signingCohort.totalSignatures == signingCohort.numSigners, "Not enough signatures");
-        require(signingCohort.multisig == address(0), "Already deployed");
-        return
-            signingMultisigFactory.deploySigningMultisig(
-                signers,
-                threshold,
-                signingCohort.authority,
-                cohortId
-            );
+
+        for (uint256 i = 0; i < signingCohort.chains.length; i++) {
+            require(signingCohort.chains[i] != _chainId, "Already deployed");
+        }
+
+        address[] memory _signers = new address[](signingCohort.numSigners);
+        for (uint256 i = 0; i < signingCohort.signers.length; i++) {
+            // ursula operator address does signing; not staking provider
+            _signers[i] = signingCohort.signers[i].operator;
+        }
+
+        signingCohort.chains.push(_chainId);
+
+        signingCoordinatorDispatcher.dispatch(
+            _chainId,
+            abi.encodeWithSelector(
+                ISigningCoordinatorChild.deployCohortMultiSig.selector,
+                _cohortId,
+                _signers,
+                signingCohort.threshold
+            ),
+            500000 // TODO: what to put here
+        );
+        emit SigningCohortCompleted(_cohortId, _chainId);
     }
 
     function getSigningCohortState(
         uint32 signingCohortId
     ) public view returns (SigningCohortState) {
-        return getSigningCohortState(signingCohorts[signingCohortId]);
+        return _getSigningCohortState(signingCohorts[signingCohortId]);
     }
 
-    function getSigningCohortState(
-        SigningCohort storage signingCohort
+    function _getSigningCohortState(
+        SigningCohort storage _signingCohort
     ) internal view returns (SigningCohortState) {
-        uint32 t0 = signingCohort.initTimestamp;
+        uint32 t0 = _signingCohort.initTimestamp;
         uint32 deadline = t0 + timeout;
         if (t0 == 0) {
             return SigningCohortState.NON_INITIATED;
-        } else if (signingCohort.multisig != address(0)) {
+        } else if (_signingCohort.totalSignatures == _signingCohort.numSigners) {
             // Cohort formation was successful
-            if (block.timestamp <= signingCohort.endTimestamp) {
-                if (signingCohort.conditions.length > 0) {
+            if (block.timestamp <= _signingCohort.endTimestamp) {
+                if (_signingCohort.conditions.length > 0) {
                     return SigningCohortState.ACTIVE;
                 }
                 return SigningCohortState.AWAITING_CONDITIONS;
@@ -310,7 +331,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         } else if (block.timestamp > deadline) {
             // DKG failed due to timeout
             return SigningCohortState.TIMEOUT;
-        } else if (signingCohort.totalSignatures < signingCohort.numSigners) {
+        } else if (_signingCohort.totalSignatures < _signingCohort.numSigners) {
             return SigningCohortState.AWAITING_SIGNATURES;
         } else {
             /**
