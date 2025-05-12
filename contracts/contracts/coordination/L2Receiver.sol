@@ -6,7 +6,7 @@ interface ICrossDomainMessenger {
     function xDomainMessageSender() external view returns (address);
 }
 
-contract OpL2Receiver {
+contract L2Receiver {
     address public messenger;
     address public allowedSender;
 
