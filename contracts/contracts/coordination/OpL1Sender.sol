@@ -37,7 +37,7 @@ contract OpL1Sender is IL1Sender {
      */
     function sendData(address target, bytes calldata data) external {
         bytes memory payload = abi.encode(target, data);
-        bytes memory message = abi.encodeWithSelector(IL2Receiver.recvData.selector, payload);
-        ICrossDomainMessenger(messenger).sendMessage(l2Receiver, message, gasLimit);
+        bytes memory callData = abi.encodeWithSelector(IL2Receiver.recvData.selector, payload);
+        ICrossDomainMessenger(messenger).sendMessage(l2Receiver, callData, gasLimit);
     }
 }
