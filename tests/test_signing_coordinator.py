@@ -90,6 +90,8 @@ def signing_coordinator_dispatcher(
         sender=deployer,
     )
     proxy_contract = project.SigningCoordinatorDispatcher.at(proxy.address)
+    proxy_contract.initialize(sender=deployer)
+    # don't need a L1Sender for the same chain as signing coordinator
     proxy_contract.register(
         chain.chain_id, ZERO_ADDRESS, signing_coordinator_child.address, sender=deployer
     )
@@ -135,7 +137,7 @@ def test_signing_ritual(
 ):
     threshold = len(nodes) // 2 + 1
     tx = signing_coordinator.initiateSigningCohort(
-        initiator, nodes, threshold, DURATION, sender=initiator
+        chain.chain_id, initiator, nodes, threshold, DURATION, sender=initiator
     )
 
     signing_cohort_id = 0
@@ -144,6 +146,7 @@ def test_signing_ritual(
     event = events[0]
     assert event.cohortId == signing_cohort_id
     assert event.authority == initiator
+    assert event.chainId == chain.chain_id
     assert event.participants == [n.address for n in nodes]
 
     signing_cohort_struct = signing_coordinator.signingCohorts(signing_cohort_id)
@@ -155,6 +158,8 @@ def test_signing_ritual(
 
     assert signing_cohort_struct["numSigners"] == len(nodes)
     assert signing_cohort_struct["threshold"] == threshold
+
+    assert signing_coordinator.getChains(signing_cohort_id) == [chain.chain_id]
 
     for n in nodes:
         assert signing_coordinator.isSigner(signing_cohort_id, n.address)
@@ -185,19 +190,16 @@ def test_signing_ritual(
         ]
         submitted_signatures.append(signature)
 
-    events = [event for event in tx.events if event.event_name == "SigningCohortCompleted"]
+    events = [event for event in tx.events if event.event_name == "SigningCohortDeployed"]
     assert events == [
-        signing_coordinator.SigningCohortCompleted(
+        signing_coordinator.SigningCohortDeployed(
             cohortId=signing_cohort_id,
             chainId=chain.chain_id,
         )
     ]
 
-    assert (
-        signing_coordinator.getSigningCohortState(signing_cohort_id)
-        == SigningRitualState.AWAITING_CONDITIONS
-    )
-    assert not signing_coordinator.isCohortActive(signing_cohort_id)
+    assert signing_coordinator.getSigningCohortState(signing_cohort_id) == SigningRitualState.ACTIVE
+    assert signing_coordinator.isCohortActive(signing_cohort_id)
 
     # submit conditions
     time_condition = (
@@ -205,12 +207,13 @@ def test_signing_ritual(
         b'"returnValueTest": {"comparator": ">", "value": 0}, "conditionType": "time"}}'
     )
     tx = signing_coordinator.setSigningCohortConditions(
-        signing_cohort_id, time_condition, sender=initiator
+        signing_cohort_id, chain.chain_id, time_condition, sender=initiator
     )
     events = [event for event in tx.events if event.event_name == "SigningCohortConditionsSet"]
     assert events == [
         signing_coordinator.SigningCohortConditionsSet(
             cohortId=signing_cohort_id,
+            chainId=chain.chain_id,
             conditions=time_condition,
         )
     ]

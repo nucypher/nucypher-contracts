@@ -2,16 +2,23 @@
 
 pragma solidity ^0.8.0;
 
+import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
+import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "./ISigningCoordinatorChild.sol";
 import "./IThresholdSigningMultisig.sol";
 import "./ThresholdSigningMultisigCloneFactory.sol";
 
-contract SigningCoordinatorChild is ISigningCoordinatorChild {
+contract SigningCoordinatorChild is ISigningCoordinatorChild, Initializable, OwnableUpgradeable {
     mapping(uint32 => address) public cohortMultisigs;
     ThresholdSigningMultisigCloneFactory public immutable signingMultisigFactory;
 
     constructor(ThresholdSigningMultisigCloneFactory _signingMultisigFactory) {
         signingMultisigFactory = _signingMultisigFactory;
+        _disableInitializers();
+    }
+
+    function initialize() public initializer {
+        __Ownable_init(msg.sender);
     }
 
     function deployCohortMultiSig(
