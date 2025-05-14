@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.0;
 
+import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "./IL2Receiver.sol";
 
 interface ICrossDomainMessenger {
@@ -12,7 +13,7 @@ interface ICrossDomainMessenger {
  * @title OpL2Receiver
  * @notice Contract is used to receive data from the L1 sender contract via the bridge messenger.
  */
-contract OpL2Receiver is IL2Receiver {
+contract OpL2Receiver is IL2Receiver, Initializable {
     address public messenger;
     address public allowedSender;
 
@@ -21,8 +22,11 @@ contract OpL2Receiver is IL2Receiver {
     /**
      * @param _messenger The address of the CrossDomainMessenger contract.
      */
-    constructor(address _messenger, address _allowedSender) {
+    constructor(address _messenger) {
         messenger = _messenger;
+    }
+
+    function initialize(address _allowedSender) external initializer {
         allowedSender = _allowedSender;
     }
 
@@ -36,11 +40,10 @@ contract OpL2Receiver is IL2Receiver {
             ICrossDomainMessenger(messenger).xDomainMessageSender() == allowedSender,
             "Invalid sender"
         );
-
         (address target, bytes memory callData) = abi.decode(data, (address, bytes));
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory result) = target.call(callData);
-        require(success, "Execution failed");
+        require(success, "L2 Receiver Execution failed");
 
         emit Executed(target, result);
     }

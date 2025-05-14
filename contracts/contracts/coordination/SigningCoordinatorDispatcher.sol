@@ -39,7 +39,6 @@ contract SigningCoordinatorDispatcher is Initializable, OwnableUpgradeable {
     function dispatch(uint256 chainId, bytes calldata callData) external {
         DispatchTarget memory target = dispatchMap[chainId];
         require(target.signingCoordinatorChild != address(0), "Unknown target");
-
         if (chainId == block.chainid) {
             // Same chain → direct call
             // solhint-disable-next-line avoid-low-level-calls
