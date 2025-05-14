@@ -8,6 +8,8 @@ TIMEOUT = 1000
 MAX_DKG_SIZE = 31
 DURATION = 48 * 60 * 60
 
+OTHER_CHAIN_ID_FOR_BRIDGE = 112233445566
+
 
 @pytest.fixture(scope="module")
 def nodes(accounts):
@@ -37,30 +39,17 @@ def application(project, deployer, nodes):
     return contract
 
 
-@pytest.fixture()
-def threshold_signing_multisig(project, deployer):
-    contract = project.ThresholdSigningMultisig.deploy(
+def _signing_coordinator_child_deployment(project, oz_dependency, deployer):
+    threshold_signing_multisig = project.ThresholdSigningMultisig.deploy(
         sender=deployer,
     )
-    return contract
-
-
-@pytest.fixture()
-def threshold_signing_multisig_clone_factory(project, deployer, threshold_signing_multisig):
-    contract = project.ThresholdSigningMultisigCloneFactory.deploy(
+    signing_factory_contract = project.ThresholdSigningMultisigCloneFactory.deploy(
         threshold_signing_multisig.address,
         sender=deployer,
     )
 
-    return contract
-
-
-@pytest.fixture()
-def signing_coordinator_child(
-    project, oz_dependency, deployer, threshold_signing_multisig_clone_factory
-):
     contract = project.SigningCoordinatorChild.deploy(
-        threshold_signing_multisig_clone_factory.address,
+        signing_factory_contract.address,
         sender=deployer,
     )
 
@@ -76,8 +65,40 @@ def signing_coordinator_child(
 
 
 @pytest.fixture()
+def signing_coordinator_child(project, oz_dependency, deployer):
+    return _signing_coordinator_child_deployment(project, oz_dependency, deployer)
+
+
+@pytest.fixture()
+def other_chain_signing_coordinator_child(project, oz_dependency, deployer):
+    return _signing_coordinator_child_deployment(project, oz_dependency, deployer)
+
+
+@pytest.fixture()
+def mock_bridge_contracts(project, deployer):
+    mock_bridge_messenger = deployer.deploy(project.MockOpBridgeMessenger)
+
+    l2_receiver = deployer.deploy(project.OpL2Receiver, mock_bridge_messenger.address)
+
+    l1_sender = deployer.deploy(
+        project.OpL1Sender, mock_bridge_messenger.address, l2_receiver.address, 500_000
+    )
+    mock_bridge_messenger.initialize(l1_sender.address, sender=deployer)
+
+    l2_receiver.initialize(l1_sender.address, sender=deployer)
+
+    yield mock_bridge_messenger, l1_sender, l2_receiver
+
+
+@pytest.fixture()
 def signing_coordinator_dispatcher(
-    project, oz_dependency, chain, deployer, signing_coordinator_child
+    project,
+    oz_dependency,
+    chain,
+    deployer,
+    signing_coordinator_child,
+    other_chain_signing_coordinator_child,
+    mock_bridge_contracts,
 ):
     contract = project.SigningCoordinatorDispatcher.deploy(
         sender=deployer,
@@ -91,10 +112,22 @@ def signing_coordinator_dispatcher(
     )
     proxy_contract = project.SigningCoordinatorDispatcher.at(proxy.address)
     proxy_contract.initialize(sender=deployer)
+
     # don't need a L1Sender for the same chain as signing coordinator
+    # current chain
     proxy_contract.register(
         chain.chain_id, ZERO_ADDRESS, signing_coordinator_child.address, sender=deployer
     )
+
+    # need a L1Sender for the other chain
+    _, l1_sender, _ = mock_bridge_contracts
+    proxy_contract.register(
+        OTHER_CHAIN_ID_FOR_BRIDGE,
+        l1_sender.address,
+        other_chain_signing_coordinator_child.address,
+        sender=deployer,
+    )
+
     return proxy_contract
 
 
@@ -133,7 +166,14 @@ def signing_coordinator(
 
 
 def test_signing_ritual(
-    project, chain, signing_coordinator, signing_coordinator_child, initiator, nodes
+    project,
+    chain,
+    signing_coordinator,
+    signing_coordinator_child,
+    signing_coordinator_dispatcher,
+    initiator,
+    nodes,
+    other_chain_signing_coordinator_child,
 ):
     threshold = len(nodes) // 2 + 1
     tx = signing_coordinator.initiateSigningCohort(
@@ -206,6 +246,7 @@ def test_signing_ritual(
         b'{"version": "1.0.0", "condition": {"chain": 80002, "method": "blocktime", '
         b'"returnValueTest": {"comparator": ">", "value": 0}, "conditionType": "time"}}'
     )
+
     tx = signing_coordinator.setSigningCohortConditions(
         signing_cohort_id, chain.chain_id, time_condition, sender=initiator
     )
@@ -252,4 +293,49 @@ def test_signing_ritual(
     assert (
         cohort_multisig.isValidSignature(data_hash, b"".join(submitted_signatures))
         == ERC1271_MAGIC_VALUE_BYTES
+    )
+
+    #
+    # deploy multisig to other chain (cross-chain test)
+    #
+
+    # deploy multisig to other chain
+    tx = signing_coordinator.deployAdditionalChainForSigningMultisig(
+        OTHER_CHAIN_ID_FOR_BRIDGE, signing_cohort_id, sender=initiator
+    )
+    events = [event for event in tx.events if event.event_name == "SigningCohortDeployed"]
+    assert events == [
+        signing_coordinator.SigningCohortDeployed(
+            cohortId=signing_cohort_id,
+            chainId=OTHER_CHAIN_ID_FOR_BRIDGE,
+        )
+    ]
+    # new chain added
+    assert signing_coordinator.getChains(signing_cohort_id) == [
+        chain.chain_id,
+        OTHER_CHAIN_ID_FOR_BRIDGE,
+    ]
+
+    tx = signing_coordinator.setSigningCohortConditions(
+        signing_cohort_id, OTHER_CHAIN_ID_FOR_BRIDGE, time_condition, sender=initiator
+    )
+    events = [event for event in tx.events if event.event_name == "SigningCohortConditionsSet"]
+    assert events == [
+        signing_coordinator.SigningCohortConditionsSet(
+            cohortId=signing_cohort_id,
+            chainId=OTHER_CHAIN_ID_FOR_BRIDGE,
+            conditions=time_condition,
+        )
+    ]
+    assert (
+        signing_coordinator.getCondition(signing_cohort_id, OTHER_CHAIN_ID_FOR_BRIDGE)
+        == time_condition
+    )
+
+    other_chain_expected_multisig_address = project.ThresholdSigningMultisigCloneFactory.at(
+        other_chain_signing_coordinator_child.signingMultisigFactory()
+    ).getCloneAddress(signing_cohort_id)
+    assert (
+        other_chain_signing_coordinator_child.cohortMultisigs(signing_cohort_id)
+        == other_chain_expected_multisig_address
     )
