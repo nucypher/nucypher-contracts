@@ -165,6 +165,11 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         return cohort.chains;
     }
 
+    function getCondition(uint32 cohortId, uint256 chainId) external view returns (bytes memory) {
+        SigningCohort storage cohort = signingCohorts[cohortId];
+        return cohort.conditions[chainId];
+    }
+
     function initiateSigningCohort(
         uint256 chainId,
         address authority,
@@ -217,8 +222,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         bytes calldata conditions
     ) external {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
-        SigningCohortState state = _getSigningCohortState(signingCohort);
-        require(state == SigningCohortState.ACTIVE, "Conditions not settable");
+        require(_isCohortActive(signingCohort), "Cohort not active");
         require(
             signingCohort.authority == msg.sender,
             "Only the cohort authority can set conditions"
@@ -232,7 +236,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         uint256 chainId
     ) external view returns (bytes memory) {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
-        require(getSigningCohortState(cohortId) == SigningCohortState.ACTIVE, "Cohort not active");
+        require(_isCohortActive(signingCohort), "Cohort not active");
         return signingCohort.conditions[chainId];
     }
 
@@ -278,7 +282,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         uint32 cohortId
     ) external onlyRole(INITIATOR_ROLE) {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
-        require(signingCohort.chains.length > 0, "Original chain not deployed");
+        require(signingCohort.chains.length > 0, "Initial chain not yet deployed");
         for (uint256 i = 0; i < signingCohort.chains.length; i++) {
             require(signingCohort.chains[i] != chainId, "Already deployed");
         }
@@ -288,7 +292,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
 
     function _deploySigningMultisig(uint256 _chainId, uint32 _cohortId) internal {
         SigningCohort storage signingCohort = signingCohorts[_cohortId];
-        require(signingCohort.totalSignatures == signingCohort.numSigners, "Not enough signatures");
+        require(_isCohortActive(signingCohort), "Cohort not active");
 
         address[] memory _signers = new address[](signingCohort.numSigners);
         for (uint256 i = 0; i < signingCohort.signers.length; i++) {
