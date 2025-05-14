@@ -40,6 +40,10 @@ contract ThresholdSigningMultisig is
     bytes4 internal constant INVALID_SIGNATURE = 0xffffffff;
     mapping(bytes32 => bytes32) public validSignatures;
 
+    constructor() {
+        _disableInitializers();
+    }
+
     /**
      * @param _signers List of signers.
      * @param _threshold Threshold number of required signings
