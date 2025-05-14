@@ -2,42 +2,53 @@
 
 pragma solidity ^0.8.0;
 
-import "./ICrossDomainMessenger.sol";
+import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
+import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
+import "./ISigningCoordinatorChild.sol";
+import "./IL1Sender.sol";
 
-contract SigningCoordinatorDispatcher {
-    struct Target {
-        address xDomainSender;
-        address targetAddress;
+contract SigningCoordinatorDispatcher is Initializable, OwnableUpgradeable {
+    struct DispatchTarget {
+        address l1Sender;
+        address signingCoordinatorChild;
     }
 
-    mapping(uint256 => Target) public dispatchMap;
+    mapping(uint256 => DispatchTarget) public dispatchMap;
 
-    function register(uint256 chainId, address xDomainSender, address targetAddress) external {
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize() public initializer {
+        __Ownable_init(msg.sender);
+    }
+
+    function register(
+        uint256 chainId,
+        address l1Sender,
+        address signingCoordinatorChild
+    ) external onlyOwner {
         require(chainId != 0, "Invalid chain ID");
         if (chainId != block.chainid) {
-            require(xDomainSender != address(0), "Invalid L1 sender");
+            require(l1Sender != address(0), "Invalid L1 sender");
         }
-        require(targetAddress != address(0), "Unknown target");
-        dispatchMap[chainId] = Target(xDomainSender, targetAddress);
+        require(signingCoordinatorChild != address(0), "Invalid target");
+        dispatchMap[chainId] = DispatchTarget(l1Sender, signingCoordinatorChild);
     }
 
-    function dispatch(uint256 chainId, bytes calldata callData, uint32 gasLimit) external {
-        Target memory target = dispatchMap[chainId];
-        require(target.targetAddress != address(0), "Unknown target");
+    function dispatch(uint256 chainId, bytes calldata callData) external {
+        DispatchTarget memory target = dispatchMap[chainId];
+        require(target.signingCoordinatorChild != address(0), "Unknown target");
 
         if (chainId == block.chainid) {
             // Same chain → direct call
             // solhint-disable-next-line avoid-low-level-calls
-            (bool success, ) = target.targetAddress.call(callData);
+            (bool success, ) = target.signingCoordinatorChild.call(callData);
             require(success, "Local call failed");
         } else {
             // Cross-chain (e.g., L1 → L2)
-            require(target.xDomainSender != address(0), "Unknown L1 sender");
-            ICrossDomainMessenger(target.xDomainSender).sendMessage(
-                target.targetAddress,
-                callData,
-                gasLimit
-            );
+            require(target.l1Sender != address(0), "Unknown L1 sender");
+            IL1Sender(target.l1Sender).sendData(target.signingCoordinatorChild, callData);
         }
     }
 }
