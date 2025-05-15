@@ -6,10 +6,10 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import "@openzeppelin-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
-import "../../threshold/ITACoChildApplication.sol";
 import "./ISigningCoordinatorChild.sol";
 import "./ThresholdSigningMultisigCloneFactory.sol";
 import "./SigningCoordinatorDispatcher.sol";
+import "../TACoApplication.sol";
 
 // SigningCoordinator ----> Dispatcher ----> (Relevant) L1Sender ---------[BRIDGE]---------- L2Receiver ----> SigningCoordinatorChild (1. deploys multisig OR 2. updates multisig)
 
@@ -64,10 +64,10 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         EXPIRED
     }
 
-    ITACoChildApplication public immutable application;
+    TACoApplication public immutable application;
     SigningCoordinatorDispatcher public immutable signingCoordinatorDispatcher;
 
-    uint96 private immutable minAuthorization; // TODO use child app for checking eligibility
+    uint96 private immutable minAuthorization;
 
     uint32 public timeout;
     uint16 public maxCohortSize;
@@ -75,12 +75,12 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     SigningCohortParticipant internal __sentinelSigner;
 
     constructor(
-        ITACoChildApplication _application,
+        TACoApplication _application,
         SigningCoordinatorDispatcher _signingCoordinatorDispatcher
     ) {
         application = _application;
         signingCoordinatorDispatcher = _signingCoordinatorDispatcher;
-        minAuthorization = _application.minimumAuthorization(); // TODO use child app for checking eligibility
+        minAuthorization = _application.minimumAuthorization();
         _disableInitializers();
     }
 

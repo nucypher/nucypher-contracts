@@ -1,6 +1,7 @@
 import pytest
 from eth.constants import ZERO_ADDRESS
 from eth_account.messages import _hash_eip191_message, encode_defunct
+from web3 import Web3
 
 from tests.conftest import ERC1271_INVALID_SIGNATURE, ERC1271_MAGIC_VALUE_BYTES, SigningRitualState
 
@@ -31,12 +32,48 @@ def deployer(accounts):
 
 
 @pytest.fixture()
-def application(project, deployer, nodes):
-    contract = project.ChildApplicationForCoordinatorMock.deploy(sender=deployer)
+def application(project, oz_dependency, deployer, accounts, nodes):
+    threshold_staking = deployer.deploy(project.ThresholdStakingForTACoApplicationMock)
+
+    token = deployer.deploy(project.TestToken, 1_000_000)
+
+    min_auth = Web3.to_wei(40_000, "ether")
+    taco_application_impl = deployer.deploy(
+        project.TACoApplication,
+        token.address,
+        threshold_staking.address,
+        min_auth,
+        60 * 60 * 24,
+        60 * 60 * 24 * 7,
+        60 * 60 * 24 * 60,
+        1000,
+        60 * 60 * 24,
+        2500,
+    )
+    proxy = oz_dependency.TransparentUpgradeableProxy.deploy(
+        taco_application_impl.address,
+        deployer,
+        b"",
+        sender=deployer,
+    )
+    taco_application = project.TACoApplication.at(proxy.address)
+
+    threshold_staking.setApplication(taco_application.address, sender=deployer)
+    taco_application.initialize(sender=deployer)
+
+    child_application = project.ChildApplicationForTACoApplicationMock.deploy(
+        taco_application.address, sender=deployer
+    )
+    taco_application.setChildApplication(child_application.address, sender=deployer)
+
+    # setup stakes / nodes
     for n in nodes:
-        contract.updateOperator(n, n, sender=deployer)
-        contract.updateAuthorization(n, 42, sender=deployer)
-    return contract
+        threshold_staking.setRoles(n, sender=n)
+        threshold_staking.authorizationIncreased(n, 0, min_auth, sender=n)
+        taco_application.bondOperator(n, n, sender=n)
+        child_application.confirmOperatorAddress(n, sender=deployer)
+
+    return taco_application
 
 
 def _signing_coordinator_child_deployment(project, oz_dependency, deployer):
