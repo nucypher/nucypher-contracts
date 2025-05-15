@@ -296,10 +296,10 @@ def test_signing_ritual(
     )
 
     #
-    # deploy multisig to other chain (cross-chain test)
+    # deploy multisig to another chain (cross-chain test)
     #
 
-    # deploy multisig to other chain
+    # deploy multisig to another chain
     tx = signing_coordinator.deployAdditionalChainForSigningMultisig(
         OTHER_CHAIN_ID_FOR_BRIDGE, signing_cohort_id, sender=initiator
     )
