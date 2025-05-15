@@ -44,8 +44,8 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
 
     event InitiateSigningCohort(
         uint32 indexed cohortId,
-        address indexed authority,
         uint256 chainId,
+        address indexed authority,
         address[] participants
     );
     event SigningCohortSignaturePosted(
@@ -137,11 +137,14 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         return found;
     }
 
-    function getSigner(
-        SigningCohort storage cohort,
-        address provider
+    function _getSigner(
+        SigningCohort storage _cohort,
+        address _provider
     ) internal view returns (SigningCohortParticipant storage) {
-        (bool found, SigningCohortParticipant storage participant) = _findSigner(cohort, provider);
+        (bool found, SigningCohortParticipant storage participant) = _findSigner(
+            _cohort,
+            _provider
+        );
         require(found, "Participant not part of ritual");
         return participant;
     }
@@ -151,7 +154,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         address provider
     ) external view returns (SigningCohortParticipant memory) {
         SigningCohort storage cohort = signingCohorts[cohortId];
-        SigningCohortParticipant memory participant = getSigner(cohort, provider);
+        SigningCohortParticipant memory participant = _getSigner(cohort, provider);
         return participant;
     }
 
@@ -212,7 +215,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
             newParticipant.provider = current;
             previous = current;
         }
-        emit InitiateSigningCohort(id, authority, chainId, providers);
+        emit InitiateSigningCohort(id, chainId, authority, providers);
         return id;
     }
 
@@ -256,7 +259,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         address provider = application.operatorToStakingProvider(msg.sender);
         require(provider != address(0), "Operator has no bond with staking provider");
 
-        SigningCohortParticipant storage participant = getSigner(signingCohort, provider);
+        SigningCohortParticipant storage participant = _getSigner(signingCohort, provider);
         require(participant.provider != address(0), "Participant not part of signing ritual");
         require(participant.signature.length == 0, "Node already posted signature");
         require(application.authorizedStake(provider) > 0, "Not enough authorization");
