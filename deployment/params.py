@@ -153,9 +153,11 @@ class ContractName(Variable):
 
         if self.check_for_proxy_instances:
             # check if contract is proxied - if so return proxy contract instead
-            proxy_info = chain.contracts.get_proxy_info(contract_instance.address)
-            if proxy_info:
-                return proxy_info.address
+            proxy_info_keys = chain.contracts.proxy_infos.memory.keys()
+            for proxy_address in proxy_info_keys:
+                proxy_info = chain.contracts.get_proxy_info(proxy_address)
+                if proxy_info and proxy_info.target == contract_instance.address:
+                    return proxy_address
 
         return contract_instance.address
 
