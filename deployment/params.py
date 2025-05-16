@@ -419,7 +419,7 @@ class ProxyParameters:
                     contract_names=contract_names,
                     constants=constants,
                     contract_name=contract_name,
-                    check_for_proxy_instances=False,
+                    check_for_proxy_instances=True,
                 ),
             )
             contracts_proxy_info.update({contract_name: proxy_info})
