@@ -10,14 +10,21 @@ import "./ThresholdSigningMultisigCloneFactory.sol";
 
 contract SigningCoordinatorChild is ISigningCoordinatorChild, Initializable, OwnableUpgradeable {
     mapping(uint32 => address) public cohortMultisigs;
-    ThresholdSigningMultisigCloneFactory public immutable signingMultisigFactory;
+    ThresholdSigningMultisigCloneFactory public signingMultisigFactory;
+    address public allowedCaller;
 
-    constructor(ThresholdSigningMultisigCloneFactory _signingMultisigFactory) {
-        signingMultisigFactory = _signingMultisigFactory;
+    constructor() {
         _disableInitializers();
     }
 
-    function initialize() public initializer {
+    function initialize(
+        ThresholdSigningMultisigCloneFactory _signingMultisigFactory,
+        address _allowedCaller
+    ) public initializer {
+        require(address(_signingMultisigFactory).code.length > 0, "Factory must be contract");
+        signingMultisigFactory = _signingMultisigFactory;
+        // L2 receiver on L2; Dispatcher on L1
+        allowedCaller = _allowedCaller;
         __Ownable_init(msg.sender);
     }
 
@@ -26,6 +33,7 @@ contract SigningCoordinatorChild is ISigningCoordinatorChild, Initializable, Own
         address[] calldata signers,
         uint16 threshold
     ) external {
+        require(allowedCaller == msg.sender, "Unauthorized caller");
         require(cohortMultisigs[cohortId] == address(0), "Multisig already deployed");
         address multisig = signingMultisigFactory.deploySigningMultisig(
             signers,
@@ -43,6 +51,7 @@ contract SigningCoordinatorChild is ISigningCoordinatorChild, Initializable, Own
         uint16 threshold,
         bool clearSigners
     ) external {
+        require(allowedCaller == msg.sender, "Unauthorized caller");
         address multisig = cohortMultisigs[cohortId];
         require(multisig != address(0), "Multisig not deployed");
         IThresholdSigningMultisig multisigContract = IThresholdSigningMultisig(multisig);

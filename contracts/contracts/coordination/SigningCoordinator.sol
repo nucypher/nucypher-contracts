@@ -65,7 +65,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     }
 
     TACoApplication public immutable application;
-    SigningCoordinatorDispatcher public immutable signingCoordinatorDispatcher;
+    SigningCoordinatorDispatcher public signingCoordinatorDispatcher;
 
     uint96 private immutable minAuthorization;
 
@@ -74,19 +74,21 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
 
     SigningCohortParticipant internal __sentinelSigner;
 
-    constructor(
-        TACoApplication _application,
-        SigningCoordinatorDispatcher _signingCoordinatorDispatcher
-    ) {
+    constructor(TACoApplication _application) {
         application = _application;
-        signingCoordinatorDispatcher = _signingCoordinatorDispatcher;
         minAuthorization = _application.minimumAuthorization();
         _disableInitializers();
     }
 
-    function initialize(uint32 _timeout, uint16 _maxDkgSize, address _admin) external initializer {
+    function initialize(
+        uint32 _timeout,
+        uint16 _maxDkgSize,
+        SigningCoordinatorDispatcher _signingCoordinatorDispatcher,
+        address _admin
+    ) external initializer {
         timeout = _timeout;
         maxCohortSize = _maxDkgSize;
+        signingCoordinatorDispatcher = _signingCoordinatorDispatcher;
         __AccessControlDefaultAdminRules_init(0, _admin);
     }
 
