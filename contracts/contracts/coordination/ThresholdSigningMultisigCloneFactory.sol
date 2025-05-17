@@ -7,11 +7,14 @@ import "./IThresholdSigningMultisig.sol";
 
 contract ThresholdSigningMultisigCloneFactory {
     address public immutable implementation;
+    address public immutable signingCoordinatorChild;
 
     event ThresholdMultisigCloneDeployed(address cloneAddress, uint256 cohortId);
 
-    constructor(address _implementation) {
+    constructor(address _implementation, address _signingCoordinatorChild) {
         implementation = _implementation;
+        require(_signingCoordinatorChild.code.length > 0, "Child app must be contract");
+        signingCoordinatorChild = _signingCoordinatorChild;
     }
 
     function deploySigningMultisig(
@@ -20,6 +23,7 @@ contract ThresholdSigningMultisigCloneFactory {
         address initialOwner,
         uint256 cohortId
     ) external returns (address) {
+        require(signingCoordinatorChild == msg.sender, "Unauthorized caller");
         bytes32 saltBytes = bytes32(cohortId);
         address clone = Clones.cloneDeterministic(implementation, saltBytes);
         IThresholdSigningMultisig(clone).initialize(signers, threshold, initialOwner);
