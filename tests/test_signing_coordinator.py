@@ -32,7 +32,7 @@ def deployer(accounts):
 
 
 @pytest.fixture()
-def application(project, oz_dependency, deployer, accounts, nodes):
+def application(project, oz_dependency, deployer, nodes):
     threshold_staking = deployer.deploy(project.ThresholdStakingForTACoApplicationMock)
 
     token = deployer.deploy(project.TestToken, 1_000_000)
@@ -76,20 +76,43 @@ def application(project, oz_dependency, deployer, accounts, nodes):
     return taco_application
 
 
-def _signing_coordinator_child_deployment(project, oz_dependency, deployer):
-    threshold_signing_multisig = project.ThresholdSigningMultisig.deploy(
+@pytest.fixture()
+def signing_coordinator(
+    project,
+    deployer,
+    initiator,
+    application,
+    oz_dependency,
+):
+    contract = project.SigningCoordinator.deploy(
+        application.address,
         sender=deployer,
     )
-    signing_factory_contract = project.ThresholdSigningMultisigCloneFactory.deploy(
-        threshold_signing_multisig.address,
+    proxy = oz_dependency.TransparentUpgradeableProxy.deploy(
+        contract.address,
+        deployer,
+        b"",
         sender=deployer,
+    )
+    proxy_contract = project.SigningCoordinator.at(proxy.address)
+
+    signing_coordinator_dispatcher = project.SigningCoordinatorDispatcher.deploy(
+        proxy_contract.address,
+        sender=deployer,
+    )
+    proxy_contract.initialize(
+        TIMEOUT, MAX_DKG_SIZE, signing_coordinator_dispatcher.address, deployer.address, sender=deployer
     )
 
+    proxy_contract.grantRole(proxy_contract.INITIATOR_ROLE(), initiator, sender=deployer)
+
+    return proxy_contract
+
+
+def _signing_coordinator_child_deployment(project, oz_dependency, deployer, allowed_caller):
     contract = project.SigningCoordinatorChild.deploy(
-        signing_factory_contract.address,
         sender=deployer,
     )
-
     proxy = oz_dependency.TransparentUpgradeableProxy.deploy(
         contract.address,
         deployer,
@@ -98,104 +121,71 @@ def _signing_coordinator_child_deployment(project, oz_dependency, deployer):
     )
     proxy_contract = project.SigningCoordinatorChild.at(proxy.address)
 
+    threshold_signing_multisig = project.ThresholdSigningMultisig.deploy(
+        sender=deployer,
+    )
+    signing_factory_contract = project.ThresholdSigningMultisigCloneFactory.deploy(
+        threshold_signing_multisig.address,
+        proxy_contract.address,
+        sender=deployer,
+    )
+
+    proxy_contract.initialize(signing_factory_contract.address, allowed_caller, sender=deployer)
+
     return proxy_contract
 
 
 @pytest.fixture()
-def signing_coordinator_child(project, oz_dependency, deployer):
-    return _signing_coordinator_child_deployment(project, oz_dependency, deployer)
+def signing_coordinator_child(chain, project, oz_dependency, deployer, signing_coordinator):
+    signing_coordinator_dispatcher = project.SigningCoordinatorDispatcher.at(
+        signing_coordinator.signingCoordinatorDispatcher())
 
-
-@pytest.fixture()
-def other_chain_signing_coordinator_child(project, oz_dependency, deployer):
-    return _signing_coordinator_child_deployment(project, oz_dependency, deployer)
-
-
-@pytest.fixture()
-def mock_bridge_contracts(project, deployer):
-    mock_bridge_messenger = deployer.deploy(project.MockOpBridgeMessenger)
-
-    l2_receiver = deployer.deploy(project.OpL2Receiver, mock_bridge_messenger.address)
-
-    l1_sender = deployer.deploy(
-        project.OpL1Sender, mock_bridge_messenger.address, l2_receiver.address, 500_000
-    )
-    mock_bridge_messenger.initialize(l1_sender.address, sender=deployer)
-
-    l2_receiver.initialize(l1_sender.address, sender=deployer)
-
-    yield mock_bridge_messenger, l1_sender, l2_receiver
-
-
-@pytest.fixture()
-def signing_coordinator_dispatcher(
-    project,
-    oz_dependency,
-    chain,
-    deployer,
-    signing_coordinator_child,
-    other_chain_signing_coordinator_child,
-    mock_bridge_contracts,
-):
-    contract = project.SigningCoordinatorDispatcher.deploy(
-        sender=deployer,
-    )
-
-    proxy = oz_dependency.TransparentUpgradeableProxy.deploy(
-        contract.address,
-        deployer,
-        b"",
-        sender=deployer,
-    )
-    proxy_contract = project.SigningCoordinatorDispatcher.at(proxy.address)
-    proxy_contract.initialize(sender=deployer)
+    _signing_coordinator_child = _signing_coordinator_child_deployment(project, oz_dependency, deployer, signing_coordinator_dispatcher.address)
 
     # don't need a L1Sender for the same chain as signing coordinator
     # current chain
-    proxy_contract.register(
-        chain.chain_id, ZERO_ADDRESS, signing_coordinator_child.address, sender=deployer
+    signing_coordinator_dispatcher.register(
+        chain.chain_id, ZERO_ADDRESS, _signing_coordinator_child.address, sender=deployer
     )
 
-    # need a L1Sender for the other chain
-    _, l1_sender, _ = mock_bridge_contracts
-    proxy_contract.register(
-        OTHER_CHAIN_ID_FOR_BRIDGE,
-        l1_sender.address,
-        other_chain_signing_coordinator_child.address,
-        sender=deployer,
-    )
-
-    return proxy_contract
+    return _signing_coordinator_child
 
 
 @pytest.fixture()
-def signing_coordinator(
-    project,
-    deployer,
-    initiator,
-    application,
-    signing_coordinator_dispatcher,
-    oz_dependency,
+def mock_bridge_contracts(project, deployer, signing_coordinator):
+    mock_bridge_messenger = deployer.deploy(project.MockOpBridgeMessenger)
+
+    l1_sender = deployer.deploy(
+        project.OpL1Sender, signing_coordinator.signingCoordinatorDispatcher(),mock_bridge_messenger.address, 500_000
+    )
+
+    l2_receiver = deployer.deploy(project.OpL2Receiver, l1_sender.address, mock_bridge_messenger.address)
+
+    l1_sender.initialize(l2_receiver.address, sender=deployer)
+    mock_bridge_messenger.initialize(l1_sender.address, sender=deployer)
+
+    yield mock_bridge_messenger, l1_sender, l2_receiver
+
+@pytest.fixture()
+def other_chain_signing_coordinator_child(
+        project, oz_dependency, deployer, signing_coordinator, mock_bridge_contracts
 ):
-    admin = deployer
-    contract = project.SigningCoordinator.deploy(
-        application.address,
-        signing_coordinator_dispatcher.address,
+    _, l1_sender, l2_receiver = mock_bridge_contracts
+
+    signing_coordinator_dispatcher = project.SigningCoordinatorDispatcher.at(
+        signing_coordinator.signingCoordinatorDispatcher())
+
+    _other_signing_coordinator_child = _signing_coordinator_child_deployment(project, oz_dependency, deployer, l2_receiver.address)
+
+    # need a L1Sender for the other chain
+    signing_coordinator_dispatcher.register(
+        OTHER_CHAIN_ID_FOR_BRIDGE,
+        l1_sender.address,
+        _other_signing_coordinator_child.address,
         sender=deployer,
     )
 
-    encoded_initializer_function = contract.initialize.encode_input(TIMEOUT, MAX_DKG_SIZE, admin)
-    proxy = oz_dependency.TransparentUpgradeableProxy.deploy(
-        contract.address,
-        deployer,
-        encoded_initializer_function,
-        sender=deployer,
-    )
-    proxy_contract = project.SigningCoordinator.at(proxy.address)
-    proxy_contract.grantRole(proxy_contract.INITIATOR_ROLE(), initiator, sender=deployer)
-
-    return proxy_contract
-
+    return _other_signing_coordinator_child
 
 #
 # Signing
@@ -205,11 +195,10 @@ def signing_coordinator(
 def test_signing_ritual(
     project,
     chain,
-    signing_coordinator,
-    signing_coordinator_child,
-    signing_coordinator_dispatcher,
     initiator,
     nodes,
+    signing_coordinator,
+    signing_coordinator_child,
     other_chain_signing_coordinator_child,
 ):
     threshold = len(nodes) // 2 + 1
