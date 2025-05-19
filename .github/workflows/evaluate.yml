@@ -39,3 +39,9 @@ jobs:
         NETWORK: ${{ vars.NETWORK }}
         ECOSYSTEM: ${{ vars.ECOSYSTEM }}
         RPC_PROVIDER: ${{ vars.RPC_PROVIDER }}
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: offenders
+        path: offenders.json
