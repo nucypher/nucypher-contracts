@@ -34,37 +34,3 @@ contract ChildApplicationForCoordinatorMock is ITACoChildApplication {
     // solhint-disable-next-line no-empty-blocks
     function penalize(address _stakingProvider) external {}
 }
-
-contract ExtendedCoordinator is Coordinator {
-    constructor(ITACoChildApplication _application) Coordinator(_application) {}
-
-    function initiateOldRitual(
-        IFeeModel feeModel,
-        address[] calldata providers,
-        address authority,
-        uint32 duration,
-        IEncryptionAuthorizer accessController
-    ) external returns (uint32) {
-        uint16 length = uint16(providers.length);
-
-        uint32 id = uint32(ritualsStub.length);
-        Ritual storage ritual = ritualsStub.push();
-        ritual.initiator = msg.sender;
-        ritual.authority = authority;
-        ritual.dkgSize = length;
-        ritual.threshold = getThresholdForRitualSize(length);
-        ritual.initTimestamp = uint32(block.timestamp);
-        ritual.endTimestamp = ritual.initTimestamp + duration;
-        ritual.accessController = accessController;
-        ritual.feeModel = feeModel;
-
-        address previous = address(0);
-        for (uint256 i = 0; i < length; i++) {
-            Participant storage newParticipant = ritual.participant.push();
-            address current = providers[i];
-            newParticipant.provider = current;
-            previous = current;
-        }
-        return id;
-    }
-}

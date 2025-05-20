@@ -31,7 +31,8 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     );
 
     // Protocol administration
-    event TimeoutChanged(uint32 oldTimeout, uint32 newTimeout);
+    event DKGTimeoutChanged(uint32 oldTimeout, uint32 newTimeout);
+    event HandoverTimeoutChanged(uint32 oldTimeout, uint32 newTimeout);
     event MaxDkgSizeChanged(uint16 oldSize, uint16 newSize);
     event ReimbursementPoolSet(address indexed pool);
 
@@ -49,6 +50,23 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     event FeeModelApproved(IFeeModel feeModel);
     event RitualExtended(uint32 indexed ritualId, uint32 endTimestamp);
 
+    event HandoverRequest(
+        uint32 indexed ritualId,
+        address indexed departingParticipant,
+        address indexed incomingParticipant
+    );
+    event BlindSharePosted(uint32 indexed ritualId, address indexed departingParticipant);
+    event HandoverCanceled(
+        uint32 indexed ritualId,
+        address indexed departingParticipant,
+        address indexed incomingParticipant
+    );
+    event HandoverFinalized(
+        uint32 indexed ritualId,
+        address indexed departingParticipant,
+        address indexed incomingParticipant
+    );
+
     enum RitualState {
         NON_INITIATED,
         DKG_AWAITING_TRANSCRIPTS,
@@ -59,11 +77,21 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         EXPIRED
     }
 
+    enum HandoverState {
+        NON_INITIATED,
+        HANDOVER_AWAITING_BLIND_SHARE,
+        HANDOVER_AWAITING_FINALIZATION,
+        HANDOVER_TIMEOUT
+    }
+
     struct Participant {
         address provider;
         bool aggregated;
         bytes transcript;
         bytes decryptionRequestStaticKey;
+        uint32 handoverRequestTimestamp;
+        address incomingProvider;
+        bytes handoverBlindedShare;
         // Note: Adjust __postSentinelGap size if this struct's size changes
     }
 
@@ -94,12 +122,13 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
     bytes32 public constant TREASURY_ROLE = keccak256("TREASURY_ROLE");
     bytes32 public constant FEE_MODEL_MANAGER_ROLE = keccak256("FEE_MODEL_MANAGER_ROLE");
+    bytes32 public constant HANDOVER_SUPERVISOR_ROLE = keccak256("HANDOVER_SUPERVISOR_ROLE");
 
     ITACoChildApplication public immutable application;
     uint96 private immutable minAuthorization; // TODO use child app for checking eligibility
 
-    Ritual[] internal ritualsStub; // former rituals, "internal" for testing only
-    uint32 public timeout;
+    Ritual[] private ritualsStub; // former rituals, "internal" for testing only
+    uint32 public dkgTimeout;
     uint16 public maxDkgSize;
     bool private stub1; // former isInitiationPublic
 
@@ -112,14 +141,15 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     mapping(bytes32 => uint32) internal ritualPublicKeyRegistry;
     mapping(IFeeModel => bool) public feeModelsRegistry;
 
-    mapping(uint256 index => Ritual ritual) internal _rituals;
+    mapping(uint256 index => Ritual ritual) public rituals;
     uint256 public numberOfRituals;
+    uint32 public handoverTimeout;
     // Note: Adjust the __preSentinelGap size if more contract variables are added
 
     // Storage area for sentinel values
-    uint256[17] internal __preSentinelGap;
+    uint256[16] internal __preSentinelGap;
     Participant internal __sentinelParticipant;
-    uint256[20] internal __postSentinelGap;
+    uint256[18] internal __postSentinelGap;
 
     constructor(ITACoChildApplication _application) {
         application = _application;
@@ -130,96 +160,65 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     /**
      * @notice Initialize function for using with OpenZeppelin proxy
      */
-    function initialize(uint32 _timeout, uint16 _maxDkgSize, address _admin) external initializer {
-        timeout = _timeout;
+    function initialize(
+        uint32 _dkgTimeout,
+        uint16 _maxDkgSize,
+        address _admin
+    ) external initializer {
+        dkgTimeout = _dkgTimeout;
         maxDkgSize = _maxDkgSize;
         __AccessControlDefaultAdminRules_init(0, _admin);
     }
 
-    /// @dev use `upgradeAndCall` for upgrading together with re-initialization
-    function initializeNumberOfRituals() external reinitializer(2) {
-        if (numberOfRituals == 0) {
-            numberOfRituals = ritualsStub.length;
-        }
-    }
+    // /// @dev use `upgradeAndCall` for upgrading together with re-initialization
+    // function initializeNumberOfRituals() external reinitializer(2) {
+    //     if (numberOfRituals == 0) {
+    //         numberOfRituals = ritualsStub.length;
+    //     }
+    // }
+
+    // /// @dev use `upgradeAndCall` for upgrading together with re-initialization
+    // function reinitializeDefaultAdmin(address newDefaultAdmin) external reinitializer(3) {
+    //     _beginDefaultAdminTransfer(newDefaultAdmin);
+    // }
 
     /// @dev use `upgradeAndCall` for upgrading together with re-initialization
-    function reinitializeDefaultAdmin(address newDefaultAdmin) external reinitializer(3) {
-        _beginDefaultAdminTransfer(newDefaultAdmin);
-    }
-
-    function rituals(
-        uint256 ritualId // uint256 for backward compatibility
-    )
-        external
-        view
-        returns (
-            address initiator,
-            uint32 initTimestamp,
-            uint32 endTimestamp,
-            uint16 totalTranscripts,
-            uint16 totalAggregations,
-            //
-            address authority,
-            uint16 dkgSize,
-            uint16 threshold,
-            bool aggregationMismatch,
-            //
-            IEncryptionAuthorizer accessController,
-            BLS12381.G1Point memory publicKey,
-            bytes memory aggregatedTranscript,
-            IFeeModel feeModel
-        )
-    {
-        Ritual storage ritual = storageRitual(uint32(ritualId));
-        initiator = ritual.initiator;
-        initTimestamp = ritual.initTimestamp;
-        endTimestamp = ritual.endTimestamp;
-        totalTranscripts = ritual.totalTranscripts;
-        totalAggregations = ritual.totalAggregations;
-        authority = ritual.authority;
-        dkgSize = ritual.dkgSize;
-        threshold = ritual.threshold;
-        aggregationMismatch = ritual.aggregationMismatch;
-        accessController = ritual.accessController;
-        publicKey = ritual.publicKey;
-        aggregatedTranscript = ritual.aggregatedTranscript;
-        feeModel = ritual.feeModel;
-    }
-
-    // for backward compatibility
-    function storageRitual(uint32 ritualId) internal view returns (Ritual storage) {
-        if (ritualId < ritualsStub.length) {
-            return ritualsStub[ritualId];
-        }
-        require(ritualId < numberOfRituals, "Ritual id out of bounds");
-        return _rituals[ritualId];
+    function initializeHandoverTimeout(uint32 _handoverTimeout) external reinitializer(4) {
+        handoverTimeout = _handoverTimeout;
     }
 
     function getInitiator(uint32 ritualId) external view returns (address) {
-        return storageRitual(ritualId).initiator;
+        return rituals[ritualId].initiator;
     }
 
     function getTimestamps(
         uint32 ritualId
     ) external view returns (uint32 initTimestamp, uint32 endTimestamp) {
-        Ritual storage ritual = storageRitual(ritualId);
+        Ritual storage ritual = rituals[ritualId];
         initTimestamp = ritual.initTimestamp;
         endTimestamp = ritual.endTimestamp;
     }
 
     function getAccessController(uint32 ritualId) external view returns (IEncryptionAuthorizer) {
-        Ritual storage ritual = storageRitual(ritualId);
+        Ritual storage ritual = rituals[ritualId];
         return ritual.accessController;
     }
 
     function getFeeModel(uint32 ritualId) external view returns (IFeeModel) {
-        Ritual storage ritual = storageRitual(ritualId);
+        Ritual storage ritual = rituals[ritualId];
         return ritual.feeModel;
     }
 
     function getRitualState(uint32 ritualId) external view returns (RitualState) {
-        return getRitualState(storageRitual(ritualId));
+        return getRitualState(rituals[ritualId]);
+    }
+
+    function getHandoverState(
+        uint32 ritualId,
+        address departingParticipant
+    ) external view returns (HandoverState) {
+        Participant storage participant = getParticipant(rituals[ritualId], departingParticipant);
+        return getHandoverState(participant);
     }
 
     function isRitualActive(Ritual storage ritual) internal view returns (bool) {
@@ -227,13 +226,13 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     }
 
     function isRitualActive(uint32 ritualId) external view returns (bool) {
-        Ritual storage ritual = storageRitual(ritualId);
+        Ritual storage ritual = rituals[ritualId];
         return isRitualActive(ritual);
     }
 
     function getRitualState(Ritual storage ritual) internal view returns (RitualState) {
         uint32 t0 = ritual.initTimestamp;
-        uint32 deadline = t0 + timeout;
+        uint32 deadline = t0 + dkgTimeout;
         if (t0 == 0) {
             return RitualState.NON_INITIATED;
         } else if (ritual.totalAggregations == ritual.dkgSize) {
@@ -261,6 +260,23 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
             //   - All transcripts and all aggregations
             //   - Still within the deadline
             revert("Ambiguous ritual state");
+        }
+    }
+
+    function getHandoverState(
+        Participant storage participant
+    ) internal view returns (HandoverState) {
+        uint32 t0 = participant.handoverRequestTimestamp;
+        uint32 deadline = t0 + handoverTimeout;
+        if (t0 == 0) {
+            return HandoverState.NON_INITIATED;
+        } else if (block.timestamp > deadline) {
+            // Handover failed due to timeout
+            return HandoverState.HANDOVER_TIMEOUT;
+        } else if (participant.handoverBlindedShare.length == 0) {
+            return HandoverState.HANDOVER_AWAITING_FINALIZATION;
+        } else {
+            return HandoverState.HANDOVER_AWAITING_BLIND_SHARE;
         }
     }
 
@@ -300,14 +316,19 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         revert("Deprecated method. Upgrade your node to latest version");
     }
 
-    function isProviderKeySet(address provider) external view returns (bool) {
+    function isProviderKeySet(address provider) public view returns (bool) {
         ParticipantKey[] storage participantHistory = participantKeysHistory[provider];
         return participantHistory.length > 0;
     }
 
-    function setTimeout(uint32 newTimeout) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        emit TimeoutChanged(timeout, newTimeout);
-        timeout = newTimeout;
+    function setDKGTimeout(uint32 newTimeout) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        emit DKGTimeoutChanged(dkgTimeout, newTimeout);
+        dkgTimeout = newTimeout;
+    }
+
+    function setHandoverTimeout(uint32 newTimeout) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        emit HandoverTimeoutChanged(handoverTimeout, newTimeout);
+        handoverTimeout = newTimeout;
     }
 
     function setMaxDkgSize(uint16 newSize) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -325,7 +346,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     }
 
     function transferRitualAuthority(uint32 ritualId, address newAuthority) external {
-        Ritual storage ritual = storageRitual(ritualId);
+        Ritual storage ritual = rituals[ritualId];
         require(isRitualActive(ritual), "Ritual is not active");
         address previousAuthority = ritual.authority;
         require(msg.sender == previousAuthority, "Sender not ritual authority");
@@ -334,7 +355,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     }
 
     function getParticipants(uint32 ritualId) external view returns (Participant[] memory) {
-        Ritual storage ritual = storageRitual(ritualId);
+        Ritual storage ritual = rituals[ritualId];
         return ritual.participant;
     }
 
@@ -358,7 +379,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         require(duration >= 24 hours, "Invalid ritual duration"); // TODO: Define minimum duration #106
 
         uint32 id = uint32(numberOfRituals);
-        Ritual storage ritual = _rituals[id];
+        Ritual storage ritual = rituals[id];
         numberOfRituals += 1;
         ritual.initiator = msg.sender;
         ritual.authority = authority;
@@ -419,7 +440,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     function _postTranscript(uint32 ritualId, bytes calldata transcript) internal {
         uint256 initialGasLeft = gasleft();
 
-        Ritual storage ritual = storageRitual(ritualId);
+        Ritual storage ritual = rituals[ritualId];
         require(
             getRitualState(ritual) == RitualState.DKG_AWAITING_TRANSCRIPTS,
             "Not waiting for transcripts"
@@ -452,7 +473,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     }
 
     function getAuthority(uint32 ritualId) external view returns (address) {
-        return storageRitual(ritualId).authority;
+        return rituals[ritualId].authority;
     }
 
     function postAggregation(
@@ -463,7 +484,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     ) external {
         uint256 initialGasLeft = gasleft();
 
-        Ritual storage ritual = storageRitual(ritualId);
+        Ritual storage ritual = rituals[ritualId];
         require(
             getRitualState(ritual) == RitualState.DKG_AWAITING_AGGREGATIONS,
             "Not waiting for aggregations"
@@ -525,6 +546,88 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         processReimbursement(initialGasLeft);
     }
 
+    function handoverRequest(
+        uint32 ritualId,
+        address departingParticipant,
+        address incomingParticipant
+    ) external onlyRole(HANDOVER_SUPERVISOR_ROLE) {
+        Ritual storage ritual = rituals[ritualId];
+        require(isRitualActive(ritual), "Ritual is not active");
+
+        Participant storage participant = getParticipant(ritual, departingParticipant);
+        HandoverState state = getHandoverState(participant);
+
+        require(
+            state == HandoverState.NON_INITIATED || state == HandoverState.HANDOVER_TIMEOUT,
+            "Handover already requested"
+        );
+        require(isProviderKeySet(incomingParticipant), "Incoming provider has not set public key");
+        participant.handoverRequestTimestamp = uint32(block.timestamp);
+        participant.incomingProvider = incomingParticipant;
+        emit HandoverRequest(ritualId, departingParticipant, incomingParticipant);
+    }
+
+    function postBlindedShare(uint32 ritualId, bytes calldata blindedShare) external {
+        Ritual storage ritual = rituals[ritualId];
+        require(isRitualActive(ritual), "Ritual is not active");
+
+        address provider = application.operatorToStakingProvider(msg.sender);
+        Participant storage participant = getParticipant(ritual, provider);
+        require(
+            getHandoverState(participant) == HandoverState.HANDOVER_AWAITING_BLIND_SHARE,
+            "Not waiting for blind share"
+        );
+
+        participant.handoverBlindedShare = blindedShare;
+        emit BlindSharePosted(ritualId, provider);
+    }
+
+    function cancelHandover(
+        uint32 ritualId,
+        address departingParticipant
+    ) external onlyRole(HANDOVER_SUPERVISOR_ROLE) {
+        Ritual storage ritual = rituals[ritualId];
+        Participant storage participant = getParticipant(ritual, departingParticipant);
+        address incomingParticipant = participant.incomingProvider;
+
+        require(
+            getHandoverState(participant) != HandoverState.NON_INITIATED,
+            "Handover not requested"
+        );
+        participant.handoverRequestTimestamp = 0;
+        participant.incomingProvider = address(0);
+        delete participant.handoverBlindedShare;
+
+        emit HandoverCanceled(ritualId, departingParticipant, incomingParticipant);
+    }
+
+    function finalizeHandover(
+        uint32 ritualId,
+        address departingParticipant
+    ) external onlyRole(HANDOVER_SUPERVISOR_ROLE) {
+        Ritual storage ritual = rituals[ritualId];
+        Participant storage participant = getParticipant(ritual, departingParticipant);
+        require(
+            getHandoverState(participant) == HandoverState.HANDOVER_AWAITING_FINALIZATION,
+            "Not waiting for finalization"
+        );
+        address incomingParticipant = participant.incomingProvider;
+
+        participant.provider = incomingParticipant;
+        delete participant.handoverBlindedShare;
+        delete participant.transcript;
+
+        ritual.aggregatedTranscript = ritual.aggregatedTranscript; //handover(ritual.aggregatedTranscript, participant.handoverBlindedShare);
+        bytes32 aggregatedTranscriptDigest = keccak256(ritual.aggregatedTranscript);
+        emit AggregationPosted(ritualId, incomingParticipant, aggregatedTranscriptDigest);
+
+        participant.handoverRequestTimestamp = 0;
+        participant.incomingProvider = address(0);
+        delete participant.handoverBlindedShare;
+
+        emit HandoverFinalized(ritualId, departingParticipant, incomingParticipant);
+    }
+
     function getRitualIdFromPublicKey(
         BLS12381.G1Point memory dkgPublicKey
     ) external view returns (uint32 ritualId) {
@@ -536,7 +639,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     function getPublicKeyFromRitualId(
         uint32 ritualId
     ) external view returns (BLS12381.G1Point memory) {
-        Ritual storage ritual = storageRitual(ritualId);
+        Ritual storage ritual = rituals[ritualId];
         RitualState state = getRitualState(ritual);
         require(
             state == RitualState.ACTIVE || state == RitualState.EXPIRED,
@@ -587,7 +690,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         address provider,
         bool transcript
     ) external view returns (Participant memory) {
-        Ritual storage ritual = storageRitual(ritualId);
+        Ritual storage ritual = rituals[ritualId];
         Participant memory participant = getParticipant(ritual, provider);
         if (!transcript) {
             participant.transcript = "";
@@ -599,7 +702,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         uint32 ritualId,
         address provider
     ) external view returns (Participant memory) {
-        Ritual storage ritual = storageRitual(ritualId);
+        Ritual storage ritual = rituals[ritualId];
         Participant memory participant = getParticipant(ritual, provider);
         return participant;
     }
@@ -610,7 +713,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         uint256 maxParticipants,
         bool includeTranscript
     ) external view returns (Participant[] memory) {
-        Ritual storage ritual = storageRitual(ritualId);
+        Ritual storage ritual = rituals[ritualId];
         uint256 endIndex = ritual.participant.length;
         require(startIndex >= 0, "Invalid start index");
         require(startIndex < endIndex, "Wrong start index");
@@ -632,7 +735,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     }
 
     function getProviders(uint32 ritualId) external view returns (address[] memory) {
-        Ritual storage ritual = storageRitual(ritualId);
+        Ritual storage ritual = rituals[ritualId];
         address[] memory providers = new address[](ritual.participant.length);
         for (uint256 i = 0; i < ritual.participant.length; i++) {
             providers[i] = ritual.participant[i].provider;
@@ -641,7 +744,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     }
 
     function isParticipant(uint32 ritualId, address provider) external view returns (bool) {
-        Ritual storage ritual = storageRitual(ritualId);
+        Ritual storage ritual = rituals[ritualId];
         (bool found, ) = findParticipant(ritual, provider);
         return found;
     }
@@ -675,7 +778,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     }
 
     function extendRitual(uint32 ritualId, uint32 duration) external {
-        Ritual storage ritual = storageRitual(ritualId);
+        Ritual storage ritual = rituals[ritualId];
         require(msg.sender == ritual.initiator, "Only initiator can extend ritual");
         require(getRitualState(ritual) == RitualState.ACTIVE, "Only active ritual can be extended");
         ritual.endTimestamp += duration;
