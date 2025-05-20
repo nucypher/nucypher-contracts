@@ -101,7 +101,11 @@ def signing_coordinator(
         sender=deployer,
     )
     proxy_contract.initialize(
-        TIMEOUT, MAX_DKG_SIZE, signing_coordinator_dispatcher.address, deployer.address, sender=deployer
+        TIMEOUT,
+        MAX_DKG_SIZE,
+        signing_coordinator_dispatcher.address,
+        deployer.address,
+        sender=deployer,
     )
 
     proxy_contract.grantRole(proxy_contract.INITIATOR_ROLE(), initiator, sender=deployer)
@@ -138,9 +142,12 @@ def _signing_coordinator_child_deployment(project, oz_dependency, deployer, allo
 @pytest.fixture()
 def signing_coordinator_child(chain, project, oz_dependency, deployer, signing_coordinator):
     signing_coordinator_dispatcher = project.SigningCoordinatorDispatcher.at(
-        signing_coordinator.signingCoordinatorDispatcher())
+        signing_coordinator.signingCoordinatorDispatcher()
+    )
 
-    _signing_coordinator_child = _signing_coordinator_child_deployment(project, oz_dependency, deployer, signing_coordinator_dispatcher.address)
+    _signing_coordinator_child = _signing_coordinator_child_deployment(
+        project, oz_dependency, deployer, signing_coordinator_dispatcher.address
+    )
 
     # don't need a L1Sender for the same chain as signing coordinator
     # current chain
@@ -156,26 +163,35 @@ def mock_bridge_contracts(project, deployer, signing_coordinator):
     mock_bridge_messenger = deployer.deploy(project.MockOpBridgeMessenger)
 
     l1_sender = deployer.deploy(
-        project.OpL1Sender, signing_coordinator.signingCoordinatorDispatcher(),mock_bridge_messenger.address, 500_000
+        project.OpL1Sender,
+        signing_coordinator.signingCoordinatorDispatcher(),
+        mock_bridge_messenger.address,
+        500_000,
     )
 
-    l2_receiver = deployer.deploy(project.OpL2Receiver, l1_sender.address, mock_bridge_messenger.address)
+    l2_receiver = deployer.deploy(
+        project.OpL2Receiver, l1_sender.address, mock_bridge_messenger.address
+    )
 
     l1_sender.initialize(l2_receiver.address, sender=deployer)
     mock_bridge_messenger.initialize(l1_sender.address, sender=deployer)
 
     yield mock_bridge_messenger, l1_sender, l2_receiver
 
+
 @pytest.fixture()
 def other_chain_signing_coordinator_child(
-        project, oz_dependency, deployer, signing_coordinator, mock_bridge_contracts
+    project, oz_dependency, deployer, signing_coordinator, mock_bridge_contracts
 ):
     _, l1_sender, l2_receiver = mock_bridge_contracts
 
     signing_coordinator_dispatcher = project.SigningCoordinatorDispatcher.at(
-        signing_coordinator.signingCoordinatorDispatcher())
+        signing_coordinator.signingCoordinatorDispatcher()
+    )
 
-    _other_signing_coordinator_child = _signing_coordinator_child_deployment(project, oz_dependency, deployer, l2_receiver.address)
+    _other_signing_coordinator_child = _signing_coordinator_child_deployment(
+        project, oz_dependency, deployer, l2_receiver.address
+    )
 
     # need a L1Sender for the other chain
     signing_coordinator_dispatcher.register(
@@ -186,6 +202,7 @@ def other_chain_signing_coordinator_child(
     )
 
     return _other_signing_coordinator_child
+
 
 #
 # Signing
@@ -295,6 +312,10 @@ def test_signing_ritual(
         assert len(signer.signature) > 0, "signature posted"
 
     # check deployed multisig
+    assert (
+        signing_coordinator.getSigningCoordinatorChild(chain.chain_id)
+        == signing_coordinator_child.address
+    )
     expected_multisig_address = project.ThresholdSigningMultisigCloneFactory.at(
         signing_coordinator_child.signingMultisigFactory()
     ).getCloneAddress(signing_cohort_id)
@@ -358,6 +379,10 @@ def test_signing_ritual(
         == time_condition
     )
 
+    assert (
+        signing_coordinator.getSigningCoordinatorChild(OTHER_CHAIN_ID_FOR_BRIDGE)
+        == other_chain_signing_coordinator_child.address
+    )
     other_chain_expected_multisig_address = project.ThresholdSigningMultisigCloneFactory.at(
         other_chain_signing_coordinator_child.signingMultisigFactory()
     ).getCloneAddress(signing_cohort_id)

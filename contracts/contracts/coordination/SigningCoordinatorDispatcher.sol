@@ -25,7 +25,7 @@ contract SigningCoordinatorDispatcher is Ownable {
         address l1Sender,
         address signingCoordinatorChild
     ) external onlyOwner {
-        require(chainId > 0, "Invalid chain ID");
+        require(chainId != 0, "Invalid chain ID");
         if (chainId != block.chainid) {
             require(l1Sender != address(0), "Invalid L1 sender");
         }
@@ -34,7 +34,7 @@ contract SigningCoordinatorDispatcher is Ownable {
     }
 
     function unregister(uint256 chainId) external onlyOwner {
-        require(chainId != 0, "Invalid chain ID");
+        require(chainId > 0, "Invalid chain ID");
         delete dispatchMap[chainId];
     }
 
@@ -52,5 +52,10 @@ contract SigningCoordinatorDispatcher is Ownable {
             require(target.l1Sender != address(0), "Unknown L1 sender");
             IL1Sender(target.l1Sender).sendData(target.signingCoordinatorChild, callData);
         }
+    }
+
+    function getSigningCoordinatorChild(uint256 chainId) external view returns (address) {
+        require(chainId != 0, "Invalid chain ID");
+        return dispatchMap[chainId].signingCoordinatorChild;
     }
 }
