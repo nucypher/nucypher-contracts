@@ -317,10 +317,8 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         emit SigningCohortDeployed(_cohortId, _chainId);
     }
 
-    function getSigningCohortState(
-        uint32 signingCohortId
-    ) public view returns (SigningCohortState) {
-        return _getSigningCohortState(signingCohorts[signingCohortId]);
+    function getSigningCohortState(uint32 cohortId) public view returns (SigningCohortState) {
+        return _getSigningCohortState(signingCohorts[cohortId]);
     }
 
     function _getSigningCohortState(
@@ -350,5 +348,11 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
              */
             revert("Ambiguous ritual state");
         }
+    }
+
+    function getSigningCoordinatorChild(uint256 chainId) external view returns (address) {
+        address child = signingCoordinatorDispatcher.getSigningCoordinatorChild(chainId);
+        require(child != address(0), "No child application found");
+        return child;
     }
 }
