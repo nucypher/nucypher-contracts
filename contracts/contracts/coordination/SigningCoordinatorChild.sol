@@ -13,6 +13,9 @@ contract SigningCoordinatorChild is ISigningCoordinatorChild, Initializable, Own
     ThresholdSigningMultisigCloneFactory public signingMultisigFactory;
     address public allowedCaller;
 
+    event MultisigFactoryUpdated(address oldFactory, address newFactory);
+    event AllowedCallerUpdated(address oldCaller, address newCaller);
+
     constructor() {
         _disableInitializers();
     }
@@ -26,6 +29,21 @@ contract SigningCoordinatorChild is ISigningCoordinatorChild, Initializable, Own
         // L2 receiver on L2; Dispatcher on L1
         allowedCaller = _allowedCaller;
         __Ownable_init(msg.sender);
+    }
+
+    function setMultisigFactory(
+        ThresholdSigningMultisigCloneFactory multisigFactory
+    ) external onlyOwner {
+        require(address(multisigFactory).code.length > 0, "Factory must be contract");
+        emit MultisigFactoryUpdated(address(signingMultisigFactory), address(multisigFactory));
+        signingMultisigFactory = multisigFactory;
+    }
+
+    function setAllowedCaller(address _allowedCaller) external onlyOwner {
+        require(_allowedCaller != address(0), "Invalid address");
+        emit AllowedCallerUpdated(allowedCaller, _allowedCaller);
+        // L2 receiver on L2; Dispatcher on L1
+        allowedCaller = _allowedCaller;
     }
 
     function deployCohortMultiSig(
