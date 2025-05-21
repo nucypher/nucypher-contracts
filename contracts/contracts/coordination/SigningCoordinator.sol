@@ -56,6 +56,10 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     event SigningCohortDeployed(uint32 indexed cohortId, uint256 chainId);
     event SigningCohortConditionsSet(uint32 indexed cohortId, uint256 chainId, bytes conditions);
 
+    event TimeoutChanged(uint32 oldTimeout, uint32 newTimeout);
+    event MaxCohortSizeChanged(uint16 oldSize, uint16 newSize);
+    event DispatcherChanged(address oldDispatcher, address newDispatcher);
+
     enum SigningCohortState {
         NON_INITIATED,
         AWAITING_SIGNATURES,
@@ -92,6 +96,24 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         __AccessControlDefaultAdminRules_init(0, _admin);
     }
 
+    function setTimeout(uint32 newTimeout) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        emit TimeoutChanged(timeout, newTimeout);
+        timeout = newTimeout;
+    }
+
+    function setMaxDkgSize(uint16 newSize) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        emit MaxCohortSizeChanged(maxCohortSize, newSize);
+        maxCohortSize = newSize;
+    }
+
+    function setDispatcher(
+        SigningCoordinatorDispatcher dispatcher
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(address(dispatcher).code.length > 0, "Dispatcher must be contract");
+        emit DispatcherChanged(address(signingCoordinatorDispatcher), address(dispatcher));
+        signingCoordinatorDispatcher = dispatcher;
+    }
+
     function _isCohortActive(SigningCohort storage _cohort) internal view returns (bool) {
         return _getSigningCohortState(_cohort) == SigningCohortState.ACTIVE;
     }
@@ -99,10 +121,6 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     function isCohortActive(uint32 cohortId) external view returns (bool) {
         SigningCohort storage cohort = signingCohorts[cohortId];
         return _isCohortActive(cohort);
-    }
-
-    function setTimeout(uint32 newTimeout) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        timeout = newTimeout;
     }
 
     function _findSigner(
