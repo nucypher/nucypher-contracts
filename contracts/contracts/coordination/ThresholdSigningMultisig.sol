@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import "./IThresholdSigningMultisig.sol";
@@ -83,7 +84,15 @@ contract ThresholdSigningMultisig is
         bytes memory data,
         uint256 nonce
     ) public view returns (bytes32) {
-        return keccak256(abi.encodePacked(address(this), sender, destination, value, data, nonce));
+        bytes memory encodedData = abi.encodePacked(
+            address(this),
+            sender,
+            destination,
+            value,
+            data,
+            nonce
+        );
+        return MessageHashUtils.toEthSignedMessageHash(encodedData);
     }
 
     /**

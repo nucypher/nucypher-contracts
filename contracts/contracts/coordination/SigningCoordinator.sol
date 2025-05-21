@@ -106,6 +106,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         maxCohortSize = newSize;
     }
 
+    // TODO: this should be removed post-testing
     function setDispatcher(
         SigningCoordinatorDispatcher dispatcher
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
