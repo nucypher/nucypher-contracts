@@ -80,7 +80,9 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     uint32 public timeout;
     uint16 public maxCohortSize;
 
+    uint256[20] internal __preSentinelGap;
     SigningCohortParticipant internal __sentinelSigner;
+    uint256[20] internal __postSentinelGap;
 
     constructor(TACoApplication _application) {
         application = _application;
