@@ -17,6 +17,28 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     using MessageHashUtils for bytes32;
     using ECDSA for bytes32;
 
+    // Signing protocol
+    event InitiateSigningCohort(
+        uint32 indexed cohortId,
+        uint256 chainId,
+        address indexed authority,
+        address[] participants
+    );
+    event SigningCohortSignaturePosted(
+        uint32 indexed cohortId,
+        address indexed provider,
+        bytes signature
+    );
+    event SigningCohortDeployed(uint32 indexed cohortId, uint256 chainId);
+
+    // Cohort Administration
+    event SigningCohortConditionsSet(uint32 indexed cohortId, uint256 chainId, bytes conditions);
+
+    // Protocol Administration
+    event TimeoutChanged(uint32 oldTimeout, uint32 newTimeout);
+    event MaxCohortSizeChanged(uint16 oldSize, uint16 newSize);
+    event DispatcherChanged(address oldDispatcher, address newDispatcher);
+
     struct SigningCohortParticipant {
         address provider;
         address operator;
@@ -41,24 +63,6 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
 
     mapping(uint32 => SigningCohort) public signingCohorts;
     uint256 public numberOfSigningCohorts;
-
-    event InitiateSigningCohort(
-        uint32 indexed cohortId,
-        uint256 chainId,
-        address indexed authority,
-        address[] participants
-    );
-    event SigningCohortSignaturePosted(
-        uint32 indexed cohortId,
-        address indexed provider,
-        bytes signature
-    );
-    event SigningCohortDeployed(uint32 indexed cohortId, uint256 chainId);
-    event SigningCohortConditionsSet(uint32 indexed cohortId, uint256 chainId, bytes conditions);
-
-    event TimeoutChanged(uint32 oldTimeout, uint32 newTimeout);
-    event MaxCohortSizeChanged(uint16 oldSize, uint16 newSize);
-    event DispatcherChanged(address oldDispatcher, address newDispatcher);
 
     enum SigningCohortState {
         NON_INITIATED,
@@ -371,7 +375,6 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
 
     function getSigningCoordinatorChild(uint256 chainId) external view returns (address) {
         address child = signingCoordinatorDispatcher.getSigningCoordinatorChild(chainId);
-        require(child != address(0), "No child application found");
         return child;
     }
 }
