@@ -18,7 +18,7 @@ interface ICrossDomainMessenger {
 contract OpL1Sender is IL1Sender, Initializable {
     address public immutable messenger;
     address public immutable dispatcher;
-    uint32 public gasLimit;
+    uint32 public immutable gasLimit;
     address public l2Receiver;
 
     /**
