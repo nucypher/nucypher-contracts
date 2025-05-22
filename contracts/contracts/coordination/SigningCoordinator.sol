@@ -119,20 +119,20 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         signingCoordinatorDispatcher = dispatcher;
     }
 
-    function _isCohortActive(SigningCohort storage _cohort) internal view returns (bool) {
-        return _getSigningCohortState(_cohort) == SigningCohortState.ACTIVE;
+    function isCohortActive(SigningCohort storage cohort) internal view returns (bool) {
+        return getSigningCohortState(cohort) == SigningCohortState.ACTIVE;
     }
 
     function isCohortActive(uint32 cohortId) external view returns (bool) {
         SigningCohort storage cohort = signingCohorts[cohortId];
-        return _isCohortActive(cohort);
+        return isCohortActive(cohort);
     }
 
-    function _findSigner(
-        SigningCohort storage _cohort,
-        address _provider
+    function findSigner(
+        SigningCohort storage cohort,
+        address provider
     ) internal view returns (bool, SigningCohortParticipant storage) {
-        uint256 length = _cohort.signers.length;
+        uint256 length = cohort.signers.length;
         if (length == 0) {
             return (false, __sentinelSigner);
         }
@@ -140,10 +140,10 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         uint256 high = length - 1;
         while (low <= high) {
             uint256 mid = (low + high) / 2;
-            SigningCohortParticipant storage middleParticipant = _cohort.signers[mid];
-            if (middleParticipant.provider == _provider) {
+            SigningCohortParticipant storage middleParticipant = cohort.signers[mid];
+            if (middleParticipant.provider == provider) {
                 return (true, middleParticipant);
-            } else if (middleParticipant.provider < _provider) {
+            } else if (middleParticipant.provider < provider) {
                 low = mid + 1;
             } else {
                 if (mid == 0) {
@@ -158,18 +158,15 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
 
     function isSigner(uint32 cohortId, address provider) external view returns (bool) {
         SigningCohort storage cohort = signingCohorts[cohortId];
-        (bool found, ) = _findSigner(cohort, provider);
+        (bool found, ) = findSigner(cohort, provider);
         return found;
     }
 
-    function _getSigner(
-        SigningCohort storage _cohort,
-        address _provider
+    function getSigner(
+        SigningCohort storage cohort,
+        address provider
     ) internal view returns (SigningCohortParticipant storage) {
-        (bool found, SigningCohortParticipant storage participant) = _findSigner(
-            _cohort,
-            _provider
-        );
+        (bool found, SigningCohortParticipant storage participant) = findSigner(cohort, provider);
         require(found, "Participant not part of ritual");
         return participant;
     }
@@ -179,7 +176,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         address provider
     ) external view returns (SigningCohortParticipant memory) {
         SigningCohort storage cohort = signingCohorts[cohortId];
-        SigningCohortParticipant memory participant = _getSigner(cohort, provider);
+        SigningCohortParticipant memory participant = getSigner(cohort, provider);
         return participant;
     }
 
@@ -250,7 +247,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         bytes calldata conditions
     ) external {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
-        require(_isCohortActive(signingCohort), "Cohort not active");
+        require(isCohortActive(signingCohort), "Cohort not active");
         require(
             signingCohort.authority == msg.sender,
             "Only the cohort authority can set conditions"
@@ -264,7 +261,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         uint256 chainId
     ) external view returns (bytes memory) {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
-        require(_isCohortActive(signingCohort), "Cohort not active");
+        require(isCohortActive(signingCohort), "Cohort not active");
         return signingCohort.conditions[chainId];
     }
 
@@ -278,13 +275,13 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     function postSigningCohortSignature(uint32 cohortId, bytes calldata signature) external {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
         require(
-            _getSigningCohortState(signingCohort) == SigningCohortState.AWAITING_SIGNATURES,
+            getSigningCohortState(signingCohort) == SigningCohortState.AWAITING_SIGNATURES,
             "Not waiting for transcripts"
         );
         address provider = application.operatorToStakingProvider(msg.sender);
         require(provider != address(0), "Operator has no bond with staking provider");
 
-        SigningCohortParticipant storage participant = _getSigner(signingCohort, provider);
+        SigningCohortParticipant storage participant = getSigner(signingCohort, provider);
         require(participant.provider != address(0), "Participant not part of signing ritual");
         require(participant.signature.length == 0, "Node already posted signature");
         require(application.authorizedStake(provider) > 0, "Not enough authorization");
@@ -300,7 +297,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         emit SigningCohortSignaturePosted(cohortId, provider, signature);
 
         if (signingCohort.totalSignatures == signingCohort.numSigners) {
-            _deploySigningMultisig(signingCohort.chains[0], cohortId);
+            deploySigningMultisig(signingCohort.chains[0], cohortId);
         }
     }
 
@@ -314,13 +311,13 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         for (uint256 i = 0; i < signingCohort.chains.length; i++) {
             require(signingCohort.chains[i] != chainId, "Already deployed");
         }
-        _deploySigningMultisig(chainId, cohortId);
+        deploySigningMultisig(chainId, cohortId);
         signingCohort.chains.push(chainId);
     }
 
-    function _deploySigningMultisig(uint256 _chainId, uint32 _cohortId) internal {
-        SigningCohort storage signingCohort = signingCohorts[_cohortId];
-        require(_isCohortActive(signingCohort), "Cohort not active");
+    function deploySigningMultisig(uint256 chainId, uint32 cohortId) internal {
+        SigningCohort storage signingCohort = signingCohorts[cohortId];
+        require(isCohortActive(signingCohort), "Cohort not active");
 
         address[] memory _signers = new address[](signingCohort.numSigners);
         for (uint256 i = 0; i < signingCohort.signers.length; i++) {
@@ -329,38 +326,38 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         }
 
         signingCoordinatorDispatcher.dispatch(
-            _chainId,
+            chainId,
             abi.encodeWithSelector(
                 ISigningCoordinatorChild.deployCohortMultiSig.selector,
-                _cohortId,
+                cohortId,
                 _signers,
                 signingCohort.threshold
             )
         );
-        emit SigningCohortDeployed(_cohortId, _chainId);
+        emit SigningCohortDeployed(cohortId, chainId);
     }
 
     function getSigningCohortState(uint32 cohortId) public view returns (SigningCohortState) {
-        return _getSigningCohortState(signingCohorts[cohortId]);
+        return getSigningCohortState(signingCohorts[cohortId]);
     }
 
-    function _getSigningCohortState(
-        SigningCohort storage _signingCohort
+    function getSigningCohortState(
+        SigningCohort storage signingCohort
     ) internal view returns (SigningCohortState) {
-        uint32 t0 = _signingCohort.initTimestamp;
+        uint32 t0 = signingCohort.initTimestamp;
         uint32 deadline = t0 + timeout;
         if (t0 == 0) {
             return SigningCohortState.NON_INITIATED;
-        } else if (_signingCohort.totalSignatures == _signingCohort.numSigners) {
+        } else if (signingCohort.totalSignatures == signingCohort.numSigners) {
             // Cohort formation was successful
-            if (block.timestamp <= _signingCohort.endTimestamp) {
+            if (block.timestamp <= signingCohort.endTimestamp) {
                 return SigningCohortState.ACTIVE;
             }
             return SigningCohortState.EXPIRED;
         } else if (block.timestamp > deadline) {
             // DKG failed due to timeout
             return SigningCohortState.TIMEOUT;
-        } else if (_signingCohort.totalSignatures < _signingCohort.numSigners) {
+        } else if (signingCohort.totalSignatures < signingCohort.numSigners) {
             return SigningCohortState.AWAITING_SIGNATURES;
         } else {
             /**
