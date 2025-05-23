@@ -363,12 +363,9 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
             return SigningCohortState.AWAITING_SIGNATURES;
         } else {
             /**
-             * It shouldn't be possible to reach this state:
-             *   - No public key
-             *   - All transcripts and all aggregations
-             *   - Still within the deadline
+             * It shouldn't be possible to reach this state
              */
-            revert("Ambiguous ritual state");
+            revert("Ambiguous signing ritual state");
         }
     }
 
