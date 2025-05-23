@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.0;
 
+import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "./IL2Receiver.sol";
 
 interface ICrossDomainMessenger {
@@ -12,19 +13,21 @@ interface ICrossDomainMessenger {
  * @title OpL2Receiver
  * @notice Contract is used to receive data from the L1 sender contract via the bridge messenger.
  */
-contract OpL2Receiver is IL2Receiver {
+contract OpL2Receiver is IL2Receiver, Initializable {
     address public immutable messenger;
-    address public immutable l1Sender;
+    address public l1Sender;
 
     event Executed(address target, bytes result);
 
     /**
-     * @param _l1Sender The address of the L1 sender contract.
      * @param _messenger The address of the CrossDomainMessenger contract.
      */
-    constructor(address _l1Sender, address _messenger) {
-        l1Sender = _l1Sender;
+    constructor(address _messenger) {
         messenger = _messenger;
+    }
+
+    function initialize(address _l1Sender) external initializer {
+        l1Sender = _l1Sender;
     }
 
     /**
