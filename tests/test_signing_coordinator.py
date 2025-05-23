@@ -169,9 +169,8 @@ def mock_bridge_contracts(project, deployer, signing_coordinator):
         500_000,
     )
 
-    l2_receiver = deployer.deploy(
-        project.OpL2Receiver, l1_sender.address, mock_bridge_messenger.address
-    )
+    l2_receiver = deployer.deploy(project.OpL2Receiver, mock_bridge_messenger.address)
+    l2_receiver.initialize(l1_sender.address, sender=deployer)
 
     l1_sender.initialize(l2_receiver.address, sender=deployer)
     mock_bridge_messenger.initialize(l1_sender.address, sender=deployer)
