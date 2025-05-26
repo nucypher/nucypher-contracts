@@ -14,7 +14,7 @@ bitarray==3.3.1
 black==25.1.0; python_version >= '3.9'
 bump2version==1.0.1; python_version >= '3.5'
 cached-property==2.0.1; python_version >= '3.8'
-cachetools==6.0.0b3; python_version >= '3.9'
+cachetools==6.0.0; python_version >= '3.9'
 cchecksum==0.0.7; python_version >= '3.8' and python_version < '4'
 certifi==2025.1.31; python_version >= '3.6'
 cffi==1.17.1; python_version >= '3.8'
