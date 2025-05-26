@@ -9,19 +9,19 @@ artifacts:
 constants:
   L1_MESSENGER: "0xC34855F4De64F1840e5686e64278da901e261f20"
   L2_MESSENGER: "0x4200000000000000000000000000000000000007"
+  SIGNING_COORDINATOR_DISPATCHER: "0xC1Dc6061a0A99e31904328e3064fF8f5bC001d36"
   GAS_LIMIT: 500000
 
 contracts:
   # to be deployed on L1
   - OpL1Sender:
       constructor:
-        _dispatcher: $SigningCoordinatorDispatcher
+        _dispatcher: $SIGNING_COORDINATOR_DISPATCHER
         _messenger: $L1_MESSENGER
         _gasLimit: $GAS_LIMIT
   # to be deployed on L2 (same chain as script)
   - OpL2Receiver:
       constructor:
-        _l1Sender: $OpL1Sender
         _messenger: $L2_MESSENGER
   - SigningCoordinatorChild:
       proxy:
