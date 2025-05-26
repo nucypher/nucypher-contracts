@@ -51,11 +51,11 @@ def cli(network, constructor_params_filepath):
     _ = deployer.deploy(project.ThresholdSigningMultisig)
     signing_multisig_clone_factory = deployer.deploy(project.ThresholdSigningMultisigCloneFactory)
 
-    # for root allowed caller is the dispatcher (i.e. direct call)
+    # for child allowed caller is the l2 receiver
     deployer.transact(
         signing_coordinator_child.initialize,
         signing_multisig_clone_factory.address,
-        dispatcher.address,
+        l2_receiver.address,
     )
 
     # register bridge contracts with dispatcher
