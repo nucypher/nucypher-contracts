@@ -258,6 +258,16 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
             signingCohort.authority == msg.sender,
             "Only the cohort authority can set conditions"
         );
+        // chainId must already be deployed for the cohort
+        bool chainDeployed = false;
+        for (uint256 i = 0; i < signingCohort.chains.length; i++) {
+            if (signingCohort.chains[i] == chainId) {
+                chainDeployed = true;
+                break;
+            }
+        }
+        require(chainDeployed, "Not already deployed");
+
         signingCohort.conditions[chainId] = conditions;
         emit SigningCohortConditionsSet(cohortId, chainId, conditions);
     }
