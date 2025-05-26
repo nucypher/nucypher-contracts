@@ -7,7 +7,11 @@ from ape.cli import ConnectedProviderCommand, network_option
 
 from deployment.constants import ARTIFACTS_DIR
 from deployment.params import Deployer
-from deployment.registry import contracts_from_registry
+from deployment.registry import (
+    contracts_from_registry,
+    merge_registries,
+    registry_from_ape_deployments,
+)
 
 VERIFY = False
 
@@ -36,8 +40,10 @@ def cli(network, constructor_params_filepath):
         l1_sender = deployer.deploy(project.OpL1Sender)
 
     l2_receiver = deployer.deploy(project.OpL2Receiver)
+    deployer.transact(l2_receiver.initialize, l1_sender.address)
 
-    deployer.transact(l1_sender.initialize, l2_receiver.address)
+    with networks.ethereum.sepolia.use_provider("infura"):
+        deployer.transact(l1_sender.initialize, l2_receiver.address)
 
     # deploy child contracts
     signing_coordinator_child = deployer.deploy(project.SigningCoordinatorChild)
@@ -45,11 +51,11 @@ def cli(network, constructor_params_filepath):
     _ = deployer.deploy(project.ThresholdSigningMultisig)
     signing_multisig_clone_factory = deployer.deploy(project.ThresholdSigningMultisigCloneFactory)
 
-    # for root allowed caller is the dispatcher (i.e. direct call)
+    # for child allowed caller is the l2 receiver
     deployer.transact(
         signing_coordinator_child.initialize,
         signing_multisig_clone_factory.address,
-        dispatcher.address,
+        l2_receiver.address,
     )
 
     # register bridge contracts with dispatcher
@@ -63,16 +69,31 @@ def cli(network, constructor_params_filepath):
             signing_coordinator_child.address,
         )
 
+        # store l1 sender deployment
+        l1_deployments = [l1_sender]
+        l1_temp_registry_filepath = (
+            deployer.registry_filepath.parent
+            / deployer.registry_filepath.name.replace(".json", "_l1.json")
+        )
+        registry_from_ape_deployments(
+            deployments=l1_deployments, output_filepath=l1_temp_registry_filepath
+        )
+
+    # base deployments
     deployments = [
-        l1_sender,
         l2_receiver,
         signing_coordinator_child,
         signing_multisig_clone_factory,
-        signing_coordinator_child,
-        signing_multisig_clone_factory,
     ]
-
     deployer.finalize(deployments=deployments)
+
+    # merge both for a single registry
+    merge_registries(
+        deployer.registry_filepath, l1_temp_registry_filepath, deployer.registry_filepath
+    )
+
+    # remove l1 deployment file
+    l1_temp_registry_filepath.unlink()
 
 
 if __name__ == "__main__":
