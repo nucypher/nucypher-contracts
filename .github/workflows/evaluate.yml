@@ -27,7 +27,7 @@ jobs:
     - name: Download Artifact
       uses: dawidd6/action-download-artifact@v9
       with:
-        workflow: evaluate.yml
+        workflow: heartbeat.yml
         name: heartbeat-rituals
 
     - name: Evaluate Ritual
