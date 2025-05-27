@@ -1,6 +1,7 @@
 name: Evaluate DKG
 
 on:
+  workflow_dispatch:
   schedule:
     - cron: '0 0 * * 5' # Every Monday at 05:00
 
