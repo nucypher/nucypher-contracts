@@ -55,7 +55,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         address indexed departingParticipant,
         address indexed incomingParticipant
     );
-    event BlindSharePosted(uint32 indexed ritualId, address indexed departingParticipant);
+    event BlindedSharePosted(uint32 indexed ritualId, address indexed departingParticipant);
     event HandoverCanceled(
         uint32 indexed ritualId,
         address indexed departingParticipant,
@@ -89,10 +89,14 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         bool aggregated;
         bytes transcript;
         bytes decryptionRequestStaticKey;
+        // Note: Adjust __postSentinelGap size if this struct's size changes
+    }
+
+    struct Handover {
+        address departingProvider;
         uint32 handoverRequestTimestamp;
         address incomingProvider;
         bytes handoverBlindedShare;
-        // Note: Adjust __postSentinelGap size if this struct's size changes
     }
 
     struct Ritual {
@@ -144,12 +148,13 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     mapping(uint256 index => Ritual ritual) public rituals;
     uint256 public numberOfRituals;
     uint32 public handoverTimeout;
+    mapping(bytes32 handoverKey => Handover handover) public handovers;
     // Note: Adjust the __preSentinelGap size if more contract variables are added
 
     // Storage area for sentinel values
-    uint256[16] internal __preSentinelGap;
+    uint256[15] internal __preSentinelGap;
     Participant internal __sentinelParticipant;
-    uint256[18] internal __postSentinelGap;
+    uint256[20] internal __postSentinelGap;
 
     constructor(ITACoChildApplication _application) {
         application = _application;
@@ -217,15 +222,15 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         uint32 ritualId,
         address departingParticipant
     ) external view returns (HandoverState) {
-        Participant storage participant = getParticipant(rituals[ritualId], departingParticipant);
-        return getHandoverState(participant);
+        Handover storage handover = handovers[getHandoverKey(ritualId, departingParticipant)];
+        return getHandoverState(handover);
     }
 
     function isRitualActive(Ritual storage ritual) internal view returns (bool) {
         return getRitualState(ritual) == RitualState.ACTIVE;
     }
 
-    function isRitualActive(uint32 ritualId) external view returns (bool) {
+    function isRitualActive(uint32 ritualId) public view returns (bool) {
         Ritual storage ritual = rituals[ritualId];
         return isRitualActive(ritual);
     }
@@ -263,20 +268,25 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         }
     }
 
-    function getHandoverState(
-        Participant storage participant
-    ) internal view returns (HandoverState) {
-        uint32 t0 = participant.handoverRequestTimestamp;
+    function getHandoverKey(
+        uint32 ritualId,
+        address departingProvider
+    ) public view returns (bytes32) {
+        return keccak256(abi.encode(ritualId, departingProvider));
+    }
+
+    function getHandoverState(Handover storage handover) internal view returns (HandoverState) {
+        uint32 t0 = handover.handoverRequestTimestamp;
         uint32 deadline = t0 + handoverTimeout;
         if (t0 == 0) {
             return HandoverState.NON_INITIATED;
         } else if (block.timestamp > deadline) {
             // Handover failed due to timeout
             return HandoverState.HANDOVER_TIMEOUT;
-        } else if (participant.handoverBlindedShare.length == 0) {
-            return HandoverState.HANDOVER_AWAITING_FINALIZATION;
-        } else {
+        } else if (handover.handoverBlindedShare.length == 0) {
             return HandoverState.HANDOVER_AWAITING_BLIND_SHARE;
+        } else {
+            return HandoverState.HANDOVER_AWAITING_FINALIZATION;
         }
     }
 
@@ -551,52 +561,49 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         address departingParticipant,
         address incomingParticipant
     ) external onlyRole(HANDOVER_SUPERVISOR_ROLE) {
-        Ritual storage ritual = rituals[ritualId];
-        require(isRitualActive(ritual), "Ritual is not active");
+        require(isRitualActive(ritualId), "Ritual is not active");
 
-        Participant storage participant = getParticipant(ritual, departingParticipant);
-        HandoverState state = getHandoverState(participant);
+        Handover storage handover = handovers[getHandoverKey(ritualId, departingParticipant)];
+        HandoverState state = getHandoverState(handover);
 
         require(
             state == HandoverState.NON_INITIATED || state == HandoverState.HANDOVER_TIMEOUT,
             "Handover already requested"
         );
         require(isProviderKeySet(incomingParticipant), "Incoming provider has not set public key");
-        participant.handoverRequestTimestamp = uint32(block.timestamp);
-        participant.incomingProvider = incomingParticipant;
+        handover.handoverRequestTimestamp = uint32(block.timestamp);
+        handover.incomingProvider = incomingParticipant;
         emit HandoverRequest(ritualId, departingParticipant, incomingParticipant);
     }
 
     function postBlindedShare(uint32 ritualId, bytes calldata blindedShare) external {
-        Ritual storage ritual = rituals[ritualId];
-        require(isRitualActive(ritual), "Ritual is not active");
+        require(isRitualActive(ritualId), "Ritual is not active");
 
         address provider = application.operatorToStakingProvider(msg.sender);
-        Participant storage participant = getParticipant(ritual, provider);
+        Handover storage handover = handovers[getHandoverKey(ritualId, provider)];
         require(
-            getHandoverState(participant) == HandoverState.HANDOVER_AWAITING_BLIND_SHARE,
+            getHandoverState(handover) == HandoverState.HANDOVER_AWAITING_BLIND_SHARE,
             "Not waiting for blind share"
         );
 
-        participant.handoverBlindedShare = blindedShare;
-        emit BlindSharePosted(ritualId, provider);
+        handover.handoverBlindedShare = blindedShare;
+        emit BlindedSharePosted(ritualId, provider);
     }
 
     function cancelHandover(
         uint32 ritualId,
         address departingParticipant
     ) external onlyRole(HANDOVER_SUPERVISOR_ROLE) {
-        Ritual storage ritual = rituals[ritualId];
-        Participant storage participant = getParticipant(ritual, departingParticipant);
-        address incomingParticipant = participant.incomingProvider;
+        Handover storage handover = handovers[getHandoverKey(ritualId, departingParticipant)];
+        address incomingParticipant = handover.incomingProvider;
 
         require(
-            getHandoverState(participant) != HandoverState.NON_INITIATED,
+            getHandoverState(handover) != HandoverState.NON_INITIATED,
             "Handover not requested"
         );
-        participant.handoverRequestTimestamp = 0;
-        participant.incomingProvider = address(0);
-        delete participant.handoverBlindedShare;
+        handover.handoverRequestTimestamp = 0;
+        handover.incomingProvider = address(0);
+        delete handover.handoverBlindedShare;
 
         emit HandoverCanceled(ritualId, departingParticipant, incomingParticipant);
     }
@@ -605,25 +612,26 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         uint32 ritualId,
         address departingParticipant
     ) external onlyRole(HANDOVER_SUPERVISOR_ROLE) {
-        Ritual storage ritual = rituals[ritualId];
-        Participant storage participant = getParticipant(ritual, departingParticipant);
+        Handover storage handover = handovers[getHandoverKey(ritualId, departingParticipant)];
         require(
-            getHandoverState(participant) == HandoverState.HANDOVER_AWAITING_FINALIZATION,
+            getHandoverState(handover) == HandoverState.HANDOVER_AWAITING_FINALIZATION,
             "Not waiting for finalization"
         );
-        address incomingParticipant = participant.incomingProvider;
+        address incomingParticipant = handover.incomingProvider;
+        delete handover.handoverBlindedShare;
 
+        Ritual storage ritual = rituals[ritualId];
+        Participant storage participant = getParticipant(ritual, departingParticipant);
         participant.provider = incomingParticipant;
-        delete participant.handoverBlindedShare;
         delete participant.transcript;
 
         ritual.aggregatedTranscript = ritual.aggregatedTranscript; //handover(ritual.aggregatedTranscript, participant.handoverBlindedShare);
         bytes32 aggregatedTranscriptDigest = keccak256(ritual.aggregatedTranscript);
         emit AggregationPosted(ritualId, incomingParticipant, aggregatedTranscriptDigest);
 
-        participant.handoverRequestTimestamp = 0;
-        participant.incomingProvider = address(0);
-        delete participant.handoverBlindedShare;
+        handover.handoverRequestTimestamp = 0;
+        handover.incomingProvider = address(0);
+        delete handover.handoverBlindedShare;
 
         emit HandoverFinalized(ritualId, departingParticipant, incomingParticipant);
     }
