@@ -20,5 +20,10 @@ ape run initiate_ritual                           \
 --duration ${DURATION}                            \
 --excluded-nodes
 
-echo "All Heartbeat Rituals Initiated"
+if [ $? -ne 0 ]; then
+    echo "❗️ DKG heartbeat round failed"
+    exit 1
+fi
+
+echo "✅ All Heartbeat Rituals Initiated"
 
