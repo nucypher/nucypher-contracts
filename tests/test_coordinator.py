@@ -2,7 +2,6 @@ import os
 
 import ape
 import pytest
-from ape.utils import ZERO_ADDRESS
 from eth_account import Account
 from hexbytes import HexBytes
 from web3 import Web3
@@ -60,7 +59,7 @@ def erc20(project, initiator):
 @pytest.fixture()
 def coordinator(project, deployer, application, oz_dependency):
     admin = deployer
-    contract = project.ExtendedCoordinator.deploy(
+    contract = project.Coordinator.deploy(
         application.address,
         sender=deployer,
     )
@@ -72,7 +71,7 @@ def coordinator(project, deployer, application, oz_dependency):
         encoded_initializer_function,
         sender=deployer,
     )
-    proxy_contract = project.ExtendedCoordinator.at(proxy.address)
+    proxy_contract = project.Coordinator.at(proxy.address)
     return proxy_contract
 
 
@@ -614,88 +613,6 @@ def test_post_aggregation_fails(
     fee_model.withdrawTokens(fee_model_balance_after_refund, sender=deployer)
 
 
-def test_upgrade(
-    coordinator, nodes, initiator, erc20, fee_model, treasury, deployer, global_allow_list
-):
-    coordinator.initiateOldRitual(
-        fee_model, nodes, initiator, DURATION, global_allow_list.address, sender=initiator
-    )
-    coordinator.initiateOldRitual(
-        ZERO_ADDRESS, [nodes[0]], treasury, DURATION // 2, deployer, sender=initiator
-    )
-    assert coordinator.numberOfRituals() == 0
-    coordinator.initializeNumberOfRituals(sender=deployer)
-    assert coordinator.numberOfRituals() == 2
-
-    initiate_ritual(
-        coordinator=coordinator,
-        fee_model=fee_model,
-        erc20=erc20,
-        authority=initiator,
-        nodes=nodes,
-        allow_logic=global_allow_list,
-    )
-    assert coordinator.numberOfRituals() == 3
-
-    assert coordinator.getRitualState(0) == RitualState.DKG_AWAITING_TRANSCRIPTS
-    assert coordinator.getRitualState(1) == RitualState.DKG_AWAITING_TRANSCRIPTS
-    assert coordinator.getRitualState(2) == RitualState.DKG_AWAITING_TRANSCRIPTS
-
-    ritual_struct = coordinator.rituals(0)
-    assert ritual_struct["initiator"] == initiator
-    init, end = ritual_struct["initTimestamp"], ritual_struct["endTimestamp"]
-    assert end - init == DURATION
-    total_transcripts, total_aggregations = (
-        ritual_struct["totalTranscripts"],
-        ritual_struct["totalAggregations"],
-    )
-    assert total_transcripts == total_aggregations == 0
-    assert ritual_struct["authority"] == initiator
-    assert ritual_struct["dkgSize"] == len(nodes)
-    assert ritual_struct["threshold"] == 1 + len(nodes) // 2
-    assert not ritual_struct["aggregationMismatch"]
-    assert ritual_struct["accessController"] == global_allow_list.address
-    assert ritual_struct["publicKey"] == (b"\x00" * 32, b"\x00" * 16)
-    assert not ritual_struct["aggregatedTranscript"]
-    assert ritual_struct["feeModel"] == fee_model.address
-
-    ritual_struct = coordinator.rituals(1)
-    assert ritual_struct["initiator"] == initiator
-    init, end = ritual_struct["initTimestamp"], ritual_struct["endTimestamp"]
-    assert end - init == DURATION // 2
-    total_transcripts, total_aggregations = (
-        ritual_struct["totalTranscripts"],
-        ritual_struct["totalAggregations"],
-    )
-    assert total_transcripts == total_aggregations == 0
-    assert ritual_struct["authority"] == treasury
-    assert ritual_struct["dkgSize"] == 1
-    assert ritual_struct["threshold"] == 1  # threshold
-    assert not ritual_struct["aggregationMismatch"]  # aggregationMismatch
-    assert ritual_struct["accessController"] == deployer  # accessController
-    assert ritual_struct["publicKey"] == (b"\x00" * 32, b"\x00" * 16)  # publicKey
-    assert not ritual_struct["aggregatedTranscript"]  # aggregatedTranscript
-    assert ritual_struct["feeModel"] == ZERO_ADDRESS  # feeModel
-
-    ritual_struct = coordinator.rituals(2)
-    assert ritual_struct["initiator"] == initiator
-    init, end = ritual_struct["initTimestamp"], ritual_struct["endTimestamp"]
-    assert end - init == DURATION
-    total_transcripts, total_aggregations = (
-        ritual_struct["totalTranscripts"],
-        ritual_struct["totalAggregations"],
-    )
-    assert total_transcripts == total_aggregations == 0
-    assert ritual_struct["authority"] == initiator
-    assert ritual_struct["dkgSize"] == len(nodes)
-    assert ritual_struct["threshold"] == 1 + len(nodes) // 2  # threshold
-    assert not ritual_struct["aggregationMismatch"]  # aggregationMismatch
-    assert ritual_struct["accessController"] == global_allow_list.address  # accessController
-    assert ritual_struct["publicKey"] == (b"\x00" * 32, b"\x00" * 16)  # publicKey
-    assert not ritual_struct["aggregatedTranscript"]  # aggregatedTranscript
-    assert ritual_struct["feeModel"] == fee_model.address  # feeModel
-
-
 def test_withdraw_tokens(coordinator, initiator, erc20, treasury, deployer):
     # Let's send some tokens to Coordinator by mistake
     erc20.transfer(coordinator.address, 42, sender=initiator)
@@ -729,3 +646,95 @@ def test_transfer_ownership(
     coordinator.reinitializeDefaultAdmin(treasury.address, sender=deployer)
     coordinator.acceptDefaultAdminTransfer(sender=treasury)
     assert coordinator.defaultAdmin() == treasury.address
+
+
+def test_import_ritual(
+    coordinator, nodes, initiator, erc20, fee_model, deployer, treasury, global_allow_list
+):
+    authority, tx = initiate_ritual(
+        coordinator=coordinator,
+        fee_model=fee_model,
+        erc20=erc20,
+        authority=initiator,
+        nodes=nodes,
+        allow_logic=global_allow_list,
+    )
+    ritual_id = 0
+
+    size = len(nodes)
+    threshold = coordinator.getThresholdForRitualSize(size)
+    transcript = generate_transcript(size, threshold)
+
+    for node in nodes:
+        coordinator.postTranscript(ritual_id, transcript, sender=node)
+
+    aggregated = transcript  # has the same size as transcript
+    decryption_request_static_keys = [os.urandom(42) for _ in nodes]
+    dkg_public_key = (os.urandom(32), os.urandom(16))
+    for i, node in enumerate(nodes):
+        coordinator.postAggregation(
+            ritual_id, aggregated, dkg_public_key, decryption_request_static_keys[i], sender=node
+        )
+
+    ritual_id = coordinator.numberOfRituals()
+    ritual = coordinator.rituals(ritual_id - 1)
+
+    participants = []
+    for i, node in enumerate(nodes):
+        participants.append((nodes[i], True, transcript, decryption_request_static_keys[i]))
+
+    tx = coordinator.importRitual(
+        ritual_id,
+        ritual.initiator,
+        ritual.initTimestamp,
+        ritual.endTimestamp,
+        ritual.totalTranscripts,
+        ritual.totalAggregations,
+        ritual.authority,
+        ritual.dkgSize,
+        # ritual.threshold,
+        # ritual.aggregationMismatch,
+        # ritual.accessController,
+        ritual.publicKey,
+        ritual.aggregatedTranscript,
+        # ritual.feeModel,
+        participants,
+        sender=deployer,
+    )
+
+    events = [event for event in tx.events if event.event_name == "ImportRitual"]
+    assert len(events) == 1
+    event = events[0]
+    assert event.ritualId == ritual_id
+
+    assert coordinator.getRitualState(ritual_id) == RitualState.ACTIVE
+
+    ritual_struct = coordinator.rituals(ritual_id)
+    assert ritual_struct.initiator == initiator
+    init, end = ritual_struct.initTimestamp, ritual_struct.endTimestamp
+    assert end - init == DURATION
+    total_transcripts, total_aggregations = (
+        ritual_struct.totalTranscripts,
+        ritual_struct.totalAggregations,
+    )
+    assert total_transcripts == total_aggregations == size
+    assert ritual_struct.authority == authority
+    assert ritual_struct.dkgSize == size
+    # assert ritual_struct.threshold == 1 + size // 2  # threshold
+    assert not ritual_struct.aggregationMismatch  # aggregationMismatch
+    # assert ritual_struct.accessController == global_allow_list.address  # accessController
+    # assert ritual_struct.feeModel == fee_model.address  # feeModel
+    assert ritual_struct.publicKey == dkg_public_key  # publicKey
+    assert ritual_struct.aggregatedTranscript == aggregated  # aggregatedTranscript
+
+    participants = coordinator.getParticipants(ritual_id)
+    assert len(participants) == size
+    for i, participant in enumerate(participants):
+        assert participant.provider == nodes[i]
+        assert participant.aggregated
+        assert participant.transcript == transcript
+        assert participant.decryptionRequestStaticKey == decryption_request_static_keys[i]
+
+    retrieved_public_key = coordinator.getPublicKeyFromRitualId(ritual_id)
+    assert retrieved_public_key == dkg_public_key
+    assert coordinator.getRitualIdFromPublicKey(dkg_public_key) == ritual_id
