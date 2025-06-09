@@ -625,7 +625,8 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         participant.provider = incomingParticipant;
         delete participant.transcript;
 
-        ritual.aggregatedTranscript = ritual.aggregatedTranscript; //handover(ritual.aggregatedTranscript, participant.handoverBlindedShare);
+        uint256 startIndex = 0; // TODO get it from David
+        replaceStorageBytes(ritual.aggregatedTranscript, handover.handoverBlindedShare, startIndex);
         bytes32 aggregatedTranscriptDigest = keccak256(ritual.aggregatedTranscript);
         emit AggregationPosted(ritualId, incomingParticipant, aggregatedTranscriptDigest);
 
@@ -634,6 +635,44 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         delete handover.handoverBlindedShare;
 
         emit HandoverFinalized(ritualId, departingParticipant, incomingParticipant);
+    }
+
+    function replaceStorageBytes(
+        bytes storage _preBytes,
+        bytes memory _postBytes,
+        uint256 startIndex
+    ) internal {
+        assembly {
+            let mlength := mload(_postBytes)
+
+            // get the keccak hash to get the contents of the array
+            mstore(0x0, _preBytes.slot)
+            // Start copying to the last used word of the stored array.
+            let sc := add(keccak256(0x0, 0x20), div(startIndex, 32))
+
+            // Copy over the first `submod` bytes of the new data
+
+            let slengthmod := mod(startIndex, 32)
+            let submod := sub(32, slengthmod)
+            let mc := add(_postBytes, submod)
+            let end := add(_postBytes, mlength)
+            let mask := sub(exp(0x100, submod), 1)
+
+            sstore(sc, add(and(sload(sc), not(mask)), and(mload(mc), mask)))
+
+            for {
+                sc := add(sc, 1)
+                mc := add(mc, 0x20)
+            } lt(mc, end) {
+                sc := add(sc, 1)
+                mc := add(mc, 0x20)
+            } {
+                sstore(sc, mload(mc))
+            }
+
+            mask := sub(exp(0x100, sub(mc, end)), 1)
+            sstore(sc, add(and(sload(sc), mask), and(mload(mc), not(mask))))
+        }
     }
 
     function getRitualIdFromPublicKey(
