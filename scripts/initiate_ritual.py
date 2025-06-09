@@ -229,14 +229,17 @@ def cli(
         # TODO: Failure recovery? (not enough funds, outages, etc.)
         # Initiate the ritual(s)
         transactor = Transactor(account=account, autosign=auto)
-        result = transactor.transact(
-            coordinator_contract.initiateRitual,
-            fee_model_contract.address,
-            cohort,
-            authority,
-            duration,
-            access_controller_contract.address,
-        )
+        try:
+            result = transactor.transact(
+                coordinator_contract.initiateRitual,
+                fee_model_contract.address,
+                cohort,
+                authority,
+                duration,
+                access_controller_contract.address,
+            )
+        except Exception as e:
+            raise click.ClickException(f"Failed to initiate ritual.\n{e}")
 
         ritual_id = result.events[0].ritualId
         rituals[ritual_id] = cohort
