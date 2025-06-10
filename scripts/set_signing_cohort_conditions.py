@@ -11,7 +11,7 @@ from deployment.params import Transactor
 from deployment.types import MinInt
 
 
-@click.command(cls=ConnectedProviderCommand, name="form-signing-cohort")
+@click.command(cls=ConnectedProviderCommand, name="set-cohort-conditions")
 @account_option()
 @network_option(required=True)
 @click.option(
@@ -22,17 +22,10 @@ from deployment.types import MinInt
     required=True,
 )
 @click.option(
-    "--duration",
-    "-t",
-    help="Duration of the cohort in seconds. Must be at least 24h.",
-    type=MinInt(1),
-    required=True,
-)
-@click.option(
-    "--threshold",
-    "-th",
-    help="The threshold number of signatures required to sign the message.",
-    type=MinInt(1),
+    "--cohort-id",
+    "-cid",
+    help="The cohort ID to set conditions on.",
+    type=int,
     required=True,
 )
 @click.option(
@@ -58,27 +51,36 @@ def cli(
         domain,
         account,
         network,
-        duration,
-        threshold,
-        chain_id,
         auto,
+        cohort_id,
+        chain_id,
         condition_file,
 ):
     """
     Example:
 
-    ape run form_signing_cohort -c 84532 -th 2 -t 2592000 --account lynx-deployer --domain lynx --network ethereum:sepolia:infura
+    ape run set_signing_cohort_conditions --condition-file condition.txt -cid 2 -c 84532 --account lynx-deployer --domain lynx --network ethereum:sepolia:infura
     """
+
+    with open(condition_file, 'r') as file:
+        condition = file.read().strip().encode("utf-8")
+    if not condition:
+        raise click.ClickException("Condition file is empty or not provided.")
+
     if domain not in (LYNX, TAPIR):
         raise click.ClickException(f"Unsupported domain: {domain}. Supported domains are: {SUPPORTED_TACO_DOMAINS}")
-    providers = TESTNET_PROVIDERS[domain]
 
-    print(f"Initiating signing cohort on {domain}:{network} with account {account.address}...")
+    print(f"Setting conditions for cohort {cohort_id} on {domain}:{network} with chain ID {chain_id}")
+
     transactor = Transactor(account=account, autosign=auto)
     signing_coordinator = registry.get_contract(domain=domain, contract_name="SigningCoordinator")
 
+    print("Setting conditions...")
+    print(f"Condition: {condition}")
+    print(f"Cohort ID: {cohort_id}, Chain ID: {chain_id}")
     result = transactor.transact(
-        signing_coordinator.initiateSigningCohort,
-        chain_id, account.address, providers, threshold, duration
+        signing_coordinator.setSigningCohortConditions,
+        cohort_id, chain_id, condition,
     )
-    print(f"Signing cohort initiated with transaction: {result.txn_hash}")
+
+    print(f"Conditions set successfully: {result.transaction_hash.hex()}")
