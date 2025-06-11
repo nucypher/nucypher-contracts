@@ -32,6 +32,10 @@ ethereum:
   mainnet:
     transaction_acceptance_timeout: 600 # 10 minutes
 
+polygon:
+  mainnet:
+    transaction_acceptance_timeout: 600 # 10 minutes
+
 etherscan:
   ethereum:
     rate_limit: 5
