@@ -32,6 +32,10 @@ ethereum:
   mainnet:
     transaction_acceptance_timeout: 600 # 10 minutes
 
+etherscan:
+  ethereum:
+    rate_limit: 5
+
 test:
   mnemonic: test test test test test test test test test test test junk
   number_of_accounts: 40
