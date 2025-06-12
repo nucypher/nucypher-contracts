@@ -39,6 +39,8 @@ polygon:
 etherscan:
   ethereum:
     rate_limit: 5
+  polygon:
+    rate_limit: 5
 
 test:
   mnemonic: test test test test test test test test test test test junk
