@@ -258,7 +258,8 @@ def get_heartbeat_cohorts(
 
     # Exclude nodes that are in the excluded_nodes list
     for node in excluded_nodes:
-        staking_providers.remove(to_checksum_address(node))
+        if to_checksum_address(node) in staking_providers:
+            staking_providers.remove(to_checksum_address(node))
 
     cohorts = _generate_heartbeat_cohorts(staking_providers)
 
