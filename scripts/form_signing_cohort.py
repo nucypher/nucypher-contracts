@@ -5,7 +5,7 @@ from ape.cli import ConnectedProviderCommand, account_option, network_option
 
 from deployment import registry
 from deployment.constants import (
-    SUPPORTED_TACO_DOMAINS, TAPIR, LYNX, TESTNET_PROVIDERS,
+    SUPPORTED_TACO_DOMAINS, TESTNET_PROVIDERS,
 )
 from deployment.params import Transactor
 from deployment.types import MinInt
@@ -25,7 +25,7 @@ from deployment.types import MinInt
     "--duration",
     "-t",
     help="Duration of the cohort in seconds. Must be at least 24h.",
-    type=MinInt(1),
+    type=MinInt(60 * 60 * 24),
     required=True,
 )
 @click.option(
@@ -47,13 +47,6 @@ from deployment.types import MinInt
     help="Automatically sign transactions.",
     is_flag=True,
 )
-@click.option(
-    "--condition-file",
-    "-cf",
-    help="Path to a JSON file containing the condition to be signed.",
-    type=click.Path(exists=True, dir_okay=False, readable=True),
-    required=False,
-)
 def cli(
         domain,
         account,
@@ -62,15 +55,14 @@ def cli(
         threshold,
         chain_id,
         auto,
-        condition_file,
 ):
     """
     Example:
 
     ape run form_signing_cohort -c 84532 -th 2 -t 2592000 --account lynx-deployer --domain lynx --network ethereum:sepolia:infura
     """
-    if domain not in (LYNX, TAPIR):
-        raise click.ClickException(f"Unsupported domain: {domain}. Supported domains are: {SUPPORTED_TACO_DOMAINS}")
+    if domain not in TESTNET_PROVIDERS:
+        raise click.ClickException(f"Unsupported domain: {domain}. Supported domains are: {', '.join(TESTNET_PROVIDERS)}")
     providers = TESTNET_PROVIDERS[domain]
 
     print(f"Initiating signing cohort on {domain}:{network} with account {account.address}...")
