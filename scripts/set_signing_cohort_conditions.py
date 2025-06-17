@@ -5,10 +5,9 @@ from ape.cli import ConnectedProviderCommand, account_option, network_option
 
 from deployment import registry
 from deployment.constants import (
-    SUPPORTED_TACO_DOMAINS, TAPIR, LYNX, TESTNET_PROVIDERS,
+    SUPPORTED_TACO_DOMAINS, TESTNET_PROVIDERS,
 )
 from deployment.params import Transactor
-from deployment.types import MinInt
 
 
 @click.command(cls=ConnectedProviderCommand, name="set-cohort-conditions")
@@ -67,8 +66,8 @@ def cli(
     if not condition:
         raise click.ClickException("Condition file is empty or not provided.")
 
-    if domain not in (LYNX, TAPIR):
-        raise click.ClickException(f"Unsupported domain: {domain}. Supported domains are: {SUPPORTED_TACO_DOMAINS}")
+    if domain not in TESTNET_PROVIDERS:
+        raise click.ClickException(f"Unsupported domain: {domain}. Supported domains are: {', '.join(TESTNET_PROVIDERS)}")
 
     print(f"Setting conditions for cohort {cohort_id} on {domain}:{network} with chain ID {chain_id}")
 
