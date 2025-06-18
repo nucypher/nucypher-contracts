@@ -10,7 +10,7 @@ export interface DeployedContract {
 }
 
 // Only expose contracts that are used in the SDK
-export const contractNames = ["Coordinator", "GlobalAllowList", "SubscriptionManager"] as const;
+export const contractNames = ["Coordinator", "GlobalAllowList", "SigningCoordinator", "SubscriptionManager"] as const;
 
 export type ContractName = (typeof contractNames)[number];
 
