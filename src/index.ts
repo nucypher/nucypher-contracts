@@ -27,9 +27,9 @@ export const domainRegistry: Record<string, ContractRegistry> = {
   mainnet: mainnetRegistryJson,
 };
 
-export type Domain = "mainnet" | "oryx" | "tapir" | "lynx";
+export type Domain = "mainnet" | "tapir" | "lynx";
 
-export type ChainId = 1 | 5 | 137 | 80002;
+export type ChainId = 1 | 137 | 80002 | 11155111;
 
 export type ChecksumAddress = `0x${string}`;
 
