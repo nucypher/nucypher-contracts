@@ -187,6 +187,11 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         return cohort.signers;
     }
 
+    function getThreshold(uint32 cohortId) external view returns (uint16) {
+        SigningCohort storage cohort = signingCohorts[cohortId];
+        return cohort.threshold;
+    }
+
     function getChains(uint32 cohortId) external view returns (uint256[] memory) {
         SigningCohort storage cohort = signingCohorts[cohortId];
         return cohort.chains;
