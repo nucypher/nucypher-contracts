@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import "@openzeppelin-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "./ISigningCoordinatorChild.sol";
-import "./ThresholdSigningMultisigCloneFactory.sol";
 import "./SigningCoordinatorDispatcher.sol";
 import "../TACoApplication.sol";
 
