@@ -43,6 +43,11 @@ TAPIR_NODES = {
     "0xcbE2F626d84c556AbA674FABBbBDdbED6B39d87b": "0xb057B982fB575509047e90cf5087c9B863a2022d",
 }
 
+TESTNET_PROVIDERS = {
+    LYNX: list(sorted(LYNX_NODES)),
+    TAPIR: list(sorted(TAPIR_NODES))
+}
+
 #
 # Contracts
 #
