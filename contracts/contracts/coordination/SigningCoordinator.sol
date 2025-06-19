@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import "@openzeppelin-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "./ISigningCoordinatorChild.sol";
-import "./ThresholdSigningMultisigCloneFactory.sol";
 import "./SigningCoordinatorDispatcher.sol";
 import "../TACoApplication.sol";
 
@@ -185,6 +184,11 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     function getSigners(uint32 cohortId) external view returns (SigningCohortParticipant[] memory) {
         SigningCohort storage cohort = signingCohorts[cohortId];
         return cohort.signers;
+    }
+
+    function getThreshold(uint32 cohortId) external view returns (uint16) {
+        SigningCohort storage cohort = signingCohorts[cohortId];
+        return cohort.threshold;
     }
 
     function getChains(uint32 cohortId) external view returns (uint256[] memory) {
