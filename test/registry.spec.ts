@@ -2,14 +2,17 @@ import { describe, expect, it } from "vitest";
 
 import { ChainId, type ContractName, contractNames, type Domain, getContract } from "../src";
 
-const testCases: Array<[string, number, ContractName]> = contractNames.flatMap((contract) => [
-  ["lynx", 80002, contract],
-  ["tapir", 80002, contract],
-  ["mainnet", 137, contract],
-]);
+const polygonContractTestCases: Array<[string, number, ContractName]> = contractNames
+  // exclude SigningCoordinator which isn't on polygon
+  .filter((name) => name !== "SigningCoordinator")
+  .flatMap((contract) => [
+    ["lynx", 80002, contract],
+    ["tapir", 80002, contract],
+    ["mainnet", 137, contract],
+  ]);
 
 describe("registry", () => {
-  it.each(testCases)(
+  it.each(polygonContractTestCases)(
     `should work for domain %s, chainId %i, contract %s`,
     (domain, chainId, contract) => {
       const contractAddress = getContract(domain as Domain, chainId as ChainId, contract);
@@ -39,5 +42,15 @@ describe("registry", () => {
     const contractAddress1 = getContract("lynx", 80002, "Coordinator");
     const contractAddress2 = getContract("tapir", 80002, "Coordinator");
     expect(contractAddress1).not.toEqual(contractAddress2);
+  });
+
+  it("SigningCoordinator only present on corresponding ETH chain for lynx", () => {
+    // present for lynx
+    const contractAddress = getContract("lynx", 11155111, "SigningCoordinator");
+      expect(contractAddress).toBeDefined();
+
+    // TODO update test when SigningCoordinator is deployed for other domains
+    expect(() => getContract("tapir", 11155111, "SigningCoordinator")).toThrow();
+    expect(() => getContract("mainnet", 1, "SigningCoordinator")).toThrow();
   });
 });
