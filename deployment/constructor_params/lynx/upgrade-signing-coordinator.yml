@@ -1,0 +1,15 @@
+deployment:
+  name: lynx-upgrade-signing-coordinator
+  chain_id: 11155111  # sepolia
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: lynx-upgrade-signing-coordinator.json
+
+constants:
+  TACO_APPLICATION: "0x329bc9Df0e45f360583374726ccaFF003264a136"
+
+contracts:
+  - SigningCoordinator:
+      constructor:
+        _application: $TACO_APPLICATION
