@@ -387,4 +387,17 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         address child = signingCoordinatorDispatcher.getSigningCoordinatorChild(chainId);
         return child;
     }
+
+    function extendSigningCohortDuration(
+        uint32 cohortId,
+        uint32 additionalDuration
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        SigningCohort storage signingCohort = signingCohorts[cohortId];
+        // TODO: while it's good to check if the cohort is active, it is
+        // not necessary at the moment
+        // require(isCohortActive(signingCohort), "Cohort not active");
+        require(additionalDuration > 0, "Invalid duration");
+        uint32 newEndTimestamp = signingCohort.endTimestamp + additionalDuration;
+        signingCohort.endTimestamp = newEndTimestamp;
+    }
 }
