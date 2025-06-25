@@ -1235,6 +1235,24 @@
                 },
                 {
                     "type": "function",
+                    "name": "extendSigningCohortDuration",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "cohortId",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        },
+                        {
+                            "name": "additionalDuration",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
                     "name": "getChains",
                     "stateMutability": "view",
                     "inputs": [
