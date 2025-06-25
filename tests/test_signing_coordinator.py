@@ -211,6 +211,7 @@ def other_chain_signing_coordinator_child(
 def test_signing_ritual(
     project,
     chain,
+    deployer,
     initiator,
     nodes,
     signing_coordinator,
@@ -389,3 +390,12 @@ def test_signing_ritual(
         other_chain_signing_coordinator_child.cohortMultisigs(signing_cohort_id)
         == other_chain_expected_multisig_address
     )
+
+    # extend duration
+    additional_duration = 60 * 60 * 24
+    current_end = signing_coordinator.signingCohorts(signing_cohort_id)["endTimestamp"]
+    _ = signing_coordinator.extendSigningCohortDuration(
+        signing_cohort_id, additional_duration, sender=deployer
+    )
+    updated_end_timestamp = signing_coordinator.signingCohorts(signing_cohort_id)["endTimestamp"]
+    assert updated_end_timestamp == current_end + additional_duration
