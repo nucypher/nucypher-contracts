@@ -1,3 +1,4 @@
+import ape
 import pytest
 from eth.constants import ZERO_ADDRESS
 from eth_account.messages import _hash_eip191_message, encode_defunct
@@ -363,6 +364,17 @@ def test_signing_ritual(
         OTHER_CHAIN_ID_FOR_BRIDGE,
     ]
 
+    # try deploying to same chain again
+    with ape.reverts("Already deployed"):
+        signing_coordinator.deployAdditionalChainForSigningMultisig(
+            chain.chain_id, signing_cohort_id, sender=initiator
+        )
+
+    with ape.reverts("Already deployed"):
+        signing_coordinator.deployAdditionalChainForSigningMultisig(
+            OTHER_CHAIN_ID_FOR_BRIDGE, signing_cohort_id, sender=initiator
+        )
+
     tx = signing_coordinator.setSigningCohortConditions(
         signing_cohort_id, OTHER_CHAIN_ID_FOR_BRIDGE, time_condition, sender=initiator
     )
@@ -378,6 +390,12 @@ def test_signing_ritual(
         signing_coordinator.getCondition(signing_cohort_id, OTHER_CHAIN_ID_FOR_BRIDGE)
         == time_condition
     )
+
+    # try setting conditions for undeployed chain
+    with ape.reverts("Not already deployed"):
+        signing_coordinator.setSigningCohortConditions(
+            signing_cohort_id, 999999, time_condition, sender=initiator
+        )
 
     assert (
         signing_coordinator.getSigningCoordinatorChild(OTHER_CHAIN_ID_FOR_BRIDGE)
