@@ -196,9 +196,14 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         return cohort.chains;
     }
 
+    /**
+     * @dev This method is deprecated. Use `getSigningCohortConditions` instead.
+     */
+    // solhint-disable-next-line no-unused-vars
     function getCondition(uint32 cohortId, uint256 chainId) external view returns (bytes memory) {
-        SigningCohort storage cohort = signingCohorts[cohortId];
-        return cohort.conditions[chainId];
+        // TODO: remove this method when next doing a fresh deployment
+        //  If we remove it now lynx would't be able to be upgraded
+        revert("Deprecated: use getSigningCohortConditions instead");
     }
 
     function initiateSigningCohort(
