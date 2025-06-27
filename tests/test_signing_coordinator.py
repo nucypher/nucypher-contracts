@@ -387,7 +387,7 @@ def test_signing_ritual(
         )
     ]
     assert (
-        signing_coordinator.getCondition(signing_cohort_id, OTHER_CHAIN_ID_FOR_BRIDGE)
+        signing_coordinator.getSigningCohortConditions(signing_cohort_id, OTHER_CHAIN_ID_FOR_BRIDGE)
         == time_condition
     )
 
