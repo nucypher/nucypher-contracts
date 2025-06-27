@@ -1272,30 +1272,6 @@
                 },
                 {
                     "type": "function",
-                    "name": "getCondition",
-                    "stateMutability": "view",
-                    "inputs": [
-                        {
-                            "name": "cohortId",
-                            "type": "uint32",
-                            "internalType": "uint32"
-                        },
-                        {
-                            "name": "chainId",
-                            "type": "uint256",
-                            "internalType": "uint256"
-                        }
-                    ],
-                    "outputs": [
-                        {
-                            "name": "",
-                            "type": "bytes",
-                            "internalType": "bytes"
-                        }
-                    ]
-                },
-                {
-                    "type": "function",
                     "name": "getRoleAdmin",
                     "stateMutability": "view",
                     "inputs": [
