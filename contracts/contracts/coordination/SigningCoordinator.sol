@@ -196,11 +196,6 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         return cohort.chains;
     }
 
-    function getCondition(uint32 cohortId, uint256 chainId) external view returns (bytes memory) {
-        SigningCohort storage cohort = signingCohorts[cohortId];
-        return cohort.conditions[chainId];
-    }
-
     function initiateSigningCohort(
         uint256 chainId,
         address authority,
@@ -258,6 +253,16 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
             signingCohort.authority == msg.sender,
             "Only the cohort authority can set conditions"
         );
+        // chainId must already be deployed for the cohort
+        bool chainDeployed = false;
+        for (uint256 i = 0; i < signingCohort.chains.length; i++) {
+            if (signingCohort.chains[i] == chainId) {
+                chainDeployed = true;
+                break;
+            }
+        }
+        require(chainDeployed, "Not already deployed");
+
         signingCohort.conditions[chainId] = conditions;
         emit SigningCohortConditionsSet(cohortId, chainId, conditions);
     }
@@ -267,7 +272,6 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         uint256 chainId
     ) external view returns (bytes memory) {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
-        require(isCohortActive(signingCohort), "Cohort not active");
         return signingCohort.conditions[chainId];
     }
 
@@ -376,5 +380,18 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     function getSigningCoordinatorChild(uint256 chainId) external view returns (address) {
         address child = signingCoordinatorDispatcher.getSigningCoordinatorChild(chainId);
         return child;
+    }
+
+    function extendSigningCohortDuration(
+        uint32 cohortId,
+        uint32 additionalDuration
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        SigningCohort storage signingCohort = signingCohorts[cohortId];
+        // TODO: while it's good to check if the cohort is active, it is
+        // not necessary at the moment
+        // require(isCohortActive(signingCohort), "Cohort not active");
+        require(additionalDuration > 0, "Invalid duration");
+        uint32 newEndTimestamp = signingCohort.endTimestamp + additionalDuration;
+        signingCohort.endTimestamp = newEndTimestamp;
     }
 }
