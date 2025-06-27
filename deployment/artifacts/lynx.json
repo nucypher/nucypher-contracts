@@ -1235,6 +1235,24 @@
                 },
                 {
                     "type": "function",
+                    "name": "extendSigningCohortDuration",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "cohortId",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        },
+                        {
+                            "name": "additionalDuration",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
                     "name": "getChains",
                     "stateMutability": "view",
                     "inputs": [
@@ -1249,30 +1267,6 @@
                             "name": "",
                             "type": "uint256[]",
                             "internalType": "uint256[]"
-                        }
-                    ]
-                },
-                {
-                    "type": "function",
-                    "name": "getCondition",
-                    "stateMutability": "view",
-                    "inputs": [
-                        {
-                            "name": "cohortId",
-                            "type": "uint32",
-                            "internalType": "uint32"
-                        },
-                        {
-                            "name": "chainId",
-                            "type": "uint256",
-                            "internalType": "uint256"
-                        }
-                    ],
-                    "outputs": [
-                        {
-                            "name": "",
-                            "type": "bytes",
-                            "internalType": "bytes"
                         }
                     ]
                 },
