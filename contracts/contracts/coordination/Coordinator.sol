@@ -562,6 +562,14 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         address incomingParticipant
     ) external onlyRole(HANDOVER_SUPERVISOR_ROLE) {
         require(isRitualActive(ritualId), "Ritual is not active");
+        require(
+            isParticipant(ritualId, departingParticipant),
+            "Departing node must be a participant"
+        );
+        require(
+            !isParticipant(ritualId, incomingParticipant),
+            "Incoming node cannot be a participant"
+        );
 
         Handover storage handover = handovers[getHandoverKey(ritualId, departingParticipant)];
         HandoverState state = getHandoverState(handover);
@@ -790,7 +798,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         return providers;
     }
 
-    function isParticipant(uint32 ritualId, address provider) external view returns (bool) {
+    function isParticipant(uint32 ritualId, address provider) public view returns (bool) {
         Ritual storage ritual = rituals[ritualId];
         (bool found, ) = findParticipant(ritual, provider);
         return found;
