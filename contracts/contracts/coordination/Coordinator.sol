@@ -436,6 +436,10 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         return 40 + (dkgSize + 1) * BLS12381.G2_POINT_SIZE + threshold * BLS12381.G1_POINT_SIZE;
     }
 
+    function blindedSharePosition(uint256 index, uint16 threshold) public pure returns (uint256) {
+        return 32 + index * BLS12381.G2_POINT_SIZE + threshold * BLS12381.G1_POINT_SIZE;
+    }
+
     /**
      * @dev This method is deprecated. Use `publishTranscript` instead.
      */
@@ -626,14 +630,16 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
             "Not waiting for finalization"
         );
         address incomingParticipant = handover.incomingProvider;
-        delete handover.handoverBlindedShare;
 
         Ritual storage ritual = rituals[ritualId];
-        Participant storage participant = getParticipant(ritual, departingParticipant);
+        (, Participant storage participant, uint256 participantIndex) = findParticipant(
+            ritual,
+            departingParticipant
+        );
         participant.provider = incomingParticipant;
         delete participant.transcript;
 
-        uint256 startIndex = 0; // TODO get it from David
+        uint256 startIndex = blindedSharePosition(participantIndex, ritual.threshold);
         replaceStorageBytes(ritual.aggregatedTranscript, handover.handoverBlindedShare, startIndex);
         bytes32 aggregatedTranscriptDigest = keccak256(ritual.aggregatedTranscript);
         emit AggregationPosted(ritualId, incomingParticipant, aggregatedTranscriptDigest);
@@ -706,10 +712,10 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     function findParticipant(
         Ritual storage ritual,
         address provider
-    ) internal view returns (bool, Participant storage) {
+    ) internal view returns (bool, Participant storage, uint256 index) {
         uint256 length = ritual.participant.length;
         if (length == 0) {
-            return (false, __sentinelParticipant);
+            return (false, __sentinelParticipant, type(uint256).max);
         }
         uint256 low = 0;
         uint256 high = length - 1;
@@ -717,7 +723,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
             uint256 mid = (low + high) / 2;
             Participant storage middleParticipant = ritual.participant[mid];
             if (middleParticipant.provider == provider) {
-                return (true, middleParticipant);
+                return (true, middleParticipant, mid);
             } else if (middleParticipant.provider < provider) {
                 low = mid + 1;
             } else {
@@ -728,14 +734,14 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
                 high = mid - 1;
             }
         }
-        return (false, __sentinelParticipant);
+        return (false, __sentinelParticipant, type(uint256).max);
     }
 
     function getParticipant(
         Ritual storage ritual,
         address provider
     ) internal view returns (Participant storage) {
-        (bool found, Participant storage participant) = findParticipant(ritual, provider);
+        (bool found, Participant storage participant, ) = findParticipant(ritual, provider);
         require(found, "Participant not part of ritual");
         return participant;
     }
@@ -744,7 +750,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         uint32 ritualId,
         address provider,
         bool transcript
-    ) external view returns (Participant memory) {
+    ) public view returns (Participant memory) {
         Ritual storage ritual = rituals[ritualId];
         Participant memory participant = getParticipant(ritual, provider);
         if (!transcript) {
@@ -757,9 +763,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         uint32 ritualId,
         address provider
     ) external view returns (Participant memory) {
-        Ritual storage ritual = rituals[ritualId];
-        Participant memory participant = getParticipant(ritual, provider);
-        return participant;
+        return getParticipant(ritualId, provider, true);
     }
 
     function getParticipants(
@@ -800,7 +804,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
     function isParticipant(uint32 ritualId, address provider) public view returns (bool) {
         Ritual storage ritual = rituals[ritualId];
-        (bool found, ) = findParticipant(ritual, provider);
+        (bool found, , ) = findParticipant(ritual, provider);
         return found;
     }
 
