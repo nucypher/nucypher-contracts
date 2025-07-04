@@ -646,6 +646,31 @@ def test_withdraw_tokens(coordinator, initiator, erc20, treasury, deployer):
         coordinator.withdrawAllTokens(erc20.address, sender=treasury)
 
 
+def activate_ritual(nodes, coordinator, ritualID):
+    size = len(nodes)
+    threshold = coordinator.getThresholdForRitualSize(size)
+    transcript = generate_transcript(size, threshold)
+
+    for node in nodes:
+        coordinator.publishTranscript(ritualID, transcript, sender=node)
+
+    aggregated = transcript  # has the same size as transcript
+    decryption_request_static_keys = [os.urandom(42) for _ in nodes]
+    dkg_public_key = (os.urandom(32), os.urandom(16))
+    for i, node in enumerate(nodes):
+        coordinator.postAggregation(
+            ritualID, aggregated, dkg_public_key, decryption_request_static_keys[i], sender=node
+        )
+    return threshold, aggregated
+
+
+def setup_node(node, coordinator, application, deployer):
+    application.updateOperator(node, node, sender=deployer)
+    application.updateAuthorization(node, 42, sender=deployer)
+    public_key = gen_public_key()
+    coordinator.setProviderPublicKey(public_key, sender=node)
+
+
 def test_handover_request(
     coordinator,
     nodes,
@@ -684,20 +709,7 @@ def test_handover_request(
             ritualID, departing_node, incoming_node, sender=handover_supervisor
         )
 
-    size = len(nodes)
-    threshold = coordinator.getThresholdForRitualSize(size)
-    transcript = generate_transcript(size, threshold)
-
-    for node in nodes:
-        coordinator.publishTranscript(ritualID, transcript, sender=node)
-
-    aggregated = transcript  # has the same size as transcript
-    decryption_request_static_keys = [os.urandom(42) for _ in nodes]
-    dkg_public_key = (os.urandom(32), os.urandom(16))
-    for i, node in enumerate(nodes):
-        coordinator.postAggregation(
-            ritualID, aggregated, dkg_public_key, decryption_request_static_keys[i], sender=node
-        )
+    activate_ritual(nodes, coordinator, ritualID)
 
     handover_key = coordinator.getHandoverKey(ritualID, departing_node)
     handover = coordinator.handovers(handover_key)
@@ -718,10 +730,7 @@ def test_handover_request(
             ritualID, departing_node, incoming_node, sender=handover_supervisor
         )
 
-    application.updateOperator(incoming_node, incoming_node, sender=deployer)
-    application.updateAuthorization(incoming_node, 42, sender=deployer)
-    public_key = gen_public_key()
-    coordinator.setProviderPublicKey(public_key, sender=incoming_node)
+    setup_node(incoming_node, coordinator, application, deployer)
 
     tx = coordinator.handoverRequest(
         ritualID, departing_node, incoming_node, sender=handover_supervisor
@@ -766,10 +775,7 @@ def test_handover_request(
     assert coordinator.getHandoverState(ritualID, departing_node) == HandoverState.HANDOVER_TIMEOUT
 
     incoming_node = accounts[MAX_DKG_SIZE + 2]
-    application.updateOperator(incoming_node, incoming_node, sender=deployer)
-    application.updateAuthorization(incoming_node, 42, sender=deployer)
-    public_key = gen_public_key()
-    coordinator.setProviderPublicKey(public_key, sender=incoming_node)
+    setup_node(incoming_node, coordinator, application, deployer)
 
     tx = coordinator.handoverRequest(
         ritualID, departing_node, incoming_node, sender=handover_supervisor
@@ -828,24 +834,9 @@ def test_post_blinded_share(
     coordinator.grantRole(
         coordinator.HANDOVER_SUPERVISOR_ROLE(), handover_supervisor, sender=deployer
     )
-    size = len(nodes)
-    threshold = coordinator.getThresholdForRitualSize(size)
-    transcript = generate_transcript(size, threshold)
 
-    for node in nodes:
-        coordinator.publishTranscript(ritualID, transcript, sender=node)
-
-    aggregated = transcript  # has the same size as transcript
-    decryption_request_static_keys = [os.urandom(42) for _ in nodes]
-    dkg_public_key = (os.urandom(32), os.urandom(16))
-    for i, node in enumerate(nodes):
-        coordinator.postAggregation(
-            ritualID, aggregated, dkg_public_key, decryption_request_static_keys[i], sender=node
-        )
-    application.updateOperator(incoming_node, incoming_node, sender=deployer)
-    application.updateAuthorization(incoming_node, 42, sender=deployer)
-    public_key = gen_public_key()
-    coordinator.setProviderPublicKey(public_key, sender=incoming_node)
+    activate_ritual(nodes, coordinator, ritualID)
+    setup_node(incoming_node, coordinator, application, deployer)
 
     with ape.reverts("Not waiting for blinded share"):
         coordinator.postBlindedShare(ritualID, blinded_share, sender=departing_node)
@@ -921,24 +912,8 @@ def test_cancel_handover(
     with ape.reverts("Handover not requested"):
         coordinator.cancelHandover(ritualID, departing_node, sender=handover_supervisor)
 
-    size = len(nodes)
-    threshold = coordinator.getThresholdForRitualSize(size)
-    transcript = generate_transcript(size, threshold)
-
-    for node in nodes:
-        coordinator.publishTranscript(ritualID, transcript, sender=node)
-
-    aggregated = transcript  # has the same size as transcript
-    decryption_request_static_keys = [os.urandom(42) for _ in nodes]
-    dkg_public_key = (os.urandom(32), os.urandom(16))
-    for i, node in enumerate(nodes):
-        coordinator.postAggregation(
-            ritualID, aggregated, dkg_public_key, decryption_request_static_keys[i], sender=node
-        )
-    application.updateOperator(incoming_node, incoming_node, sender=deployer)
-    application.updateAuthorization(incoming_node, 42, sender=deployer)
-    public_key = gen_public_key()
-    coordinator.setProviderPublicKey(public_key, sender=incoming_node)
+    activate_ritual(nodes, coordinator, ritualID)
+    setup_node(incoming_node, coordinator, application, deployer)
 
     with ape.reverts("Handover not requested"):
         coordinator.cancelHandover(ritualID, departing_node, sender=handover_supervisor)
@@ -1001,7 +976,6 @@ def test_finalize_handover(
     deployer,
     global_allow_list,
     application,
-    chain,
 ):
     initiate_ritual(
         coordinator=coordinator,
@@ -1028,24 +1002,8 @@ def test_finalize_handover(
     with ape.reverts("Not waiting for finalization"):
         coordinator.finalizeHandover(ritualID, departing_node, sender=handover_supervisor)
 
-    size = len(nodes)
-    threshold = coordinator.getThresholdForRitualSize(size)
-    transcript = generate_transcript(size, threshold)
-
-    for node in nodes:
-        coordinator.publishTranscript(ritualID, transcript, sender=node)
-
-    aggregated = transcript  # has the same size as transcript
-    decryption_request_static_keys = [os.urandom(42) for _ in nodes]
-    dkg_public_key = (os.urandom(32), os.urandom(16))
-    for i, node in enumerate(nodes):
-        coordinator.postAggregation(
-            ritualID, aggregated, dkg_public_key, decryption_request_static_keys[i], sender=node
-        )
-    application.updateOperator(incoming_node, incoming_node, sender=deployer)
-    application.updateAuthorization(incoming_node, 42, sender=deployer)
-    public_key = gen_public_key()
-    coordinator.setProviderPublicKey(public_key, sender=incoming_node)
+    threshold, aggregated = activate_ritual(nodes, coordinator, ritualID)
+    setup_node(incoming_node, coordinator, application, deployer)
 
     coordinator.handoverRequest(ritualID, departing_node, incoming_node, sender=handover_supervisor)
 
