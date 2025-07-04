@@ -93,7 +93,6 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     }
 
     struct Handover {
-        address departingProvider;
         uint32 handoverRequestTimestamp;
         address incomingProvider;
         bytes handoverBlindedShare;
@@ -585,6 +584,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         require(isProviderKeySet(incomingParticipant), "Incoming provider has not set public key");
         handover.handoverRequestTimestamp = uint32(block.timestamp);
         handover.incomingProvider = incomingParticipant;
+        delete handover.handoverBlindedShare;
         emit HandoverRequest(ritualId, departingParticipant, incomingParticipant);
     }
 
@@ -595,8 +595,9 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         Handover storage handover = handovers[getHandoverKey(ritualId, provider)];
         require(
             getHandoverState(handover) == HandoverState.HANDOVER_AWAITING_BLIND_SHARE,
-            "Not waiting for blind share"
+            "Not waiting for blinded share"
         );
+        require(blindedShare.length == BLS12381.G2_POINT_SIZE, "Wrong size of blinded share");
 
         handover.handoverBlindedShare = blindedShare;
         emit BlindedSharePosted(ritualId, provider);
@@ -717,21 +718,10 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         if (length == 0) {
             return (false, __sentinelParticipant, type(uint256).max);
         }
-        uint256 low = 0;
-        uint256 high = length - 1;
-        while (low <= high) {
-            uint256 mid = (low + high) / 2;
-            Participant storage middleParticipant = ritual.participant[mid];
-            if (middleParticipant.provider == provider) {
-                return (true, middleParticipant, mid);
-            } else if (middleParticipant.provider < provider) {
-                low = mid + 1;
-            } else {
-                if (mid == 0) {
-                    // prevent underflow of unsigned int
-                    break;
-                }
-                high = mid - 1;
+        for (uint256 i = 0; i < length; i++) {
+            Participant storage participant = ritual.participant[i];
+            if (participant.provider == provider) {
+                return (true, participant, i);
             }
         }
         return (false, __sentinelParticipant, type(uint256).max);

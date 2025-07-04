@@ -2,17 +2,26 @@ import os
 
 import ape
 import pytest
+from ape.utils import ZERO_ADDRESS
 from eth_account import Account
 from hexbytes import HexBytes
 from web3 import Web3
 
-from tests.conftest import RitualState, gen_public_key, generate_transcript
+from tests.conftest import (
+    G1_SIZE,
+    G2_SIZE,
+    HandoverState,
+    RitualState,
+    gen_public_key,
+    generate_transcript,
+)
 
 TIMEOUT = 1000
 MAX_DKG_SIZE = 31
 FEE_RATE = 42
 ERC20_SUPPLY = 10**24
 DURATION = 48 * 60 * 60
+HANDOVER_TIMEOUT = 2000
 
 
 @pytest.fixture(scope="module")
@@ -72,6 +81,7 @@ def coordinator(project, deployer, application, oz_dependency):
         sender=deployer,
     )
     proxy_contract = project.Coordinator.at(proxy.address)
+    proxy_contract.initializeHandoverTimeout(HANDOVER_TIMEOUT, sender=deployer)
     return proxy_contract
 
 
@@ -634,3 +644,456 @@ def test_withdraw_tokens(coordinator, initiator, erc20, treasury, deployer):
     # Can't withdraw when there's no tokens
     with ape.reverts("Insufficient balance"):
         coordinator.withdrawAllTokens(erc20.address, sender=treasury)
+
+
+def test_handover_request(
+    coordinator,
+    nodes,
+    initiator,
+    erc20,
+    fee_model,
+    accounts,
+    deployer,
+    global_allow_list,
+    application,
+    chain,
+):
+    initiate_ritual(
+        coordinator=coordinator,
+        fee_model=fee_model,
+        erc20=erc20,
+        authority=initiator,
+        nodes=nodes,
+        allow_logic=global_allow_list,
+    )
+
+    ritualID = 0
+    departing_node = nodes[10]
+    incoming_node = accounts[MAX_DKG_SIZE + 1]
+    handover_supervisor = accounts[MAX_DKG_SIZE]
+
+    coordinator.grantRole(
+        coordinator.HANDOVER_SUPERVISOR_ROLE(), handover_supervisor, sender=deployer
+    )
+
+    with ape.reverts():
+        coordinator.handoverRequest(ritualID, departing_node, incoming_node, sender=deployer)
+
+    with ape.reverts("Ritual is not active"):
+        coordinator.handoverRequest(
+            ritualID, departing_node, incoming_node, sender=handover_supervisor
+        )
+
+    size = len(nodes)
+    threshold = coordinator.getThresholdForRitualSize(size)
+    transcript = generate_transcript(size, threshold)
+
+    for node in nodes:
+        coordinator.publishTranscript(ritualID, transcript, sender=node)
+
+    aggregated = transcript  # has the same size as transcript
+    decryption_request_static_keys = [os.urandom(42) for _ in nodes]
+    dkg_public_key = (os.urandom(32), os.urandom(16))
+    for i, node in enumerate(nodes):
+        coordinator.postAggregation(
+            ritualID, aggregated, dkg_public_key, decryption_request_static_keys[i], sender=node
+        )
+
+    handover_key = coordinator.getHandoverKey(ritualID, departing_node)
+    handover = coordinator.handovers(handover_key)
+    assert handover.handoverRequestTimestamp == 0
+    assert handover.incomingProvider == ZERO_ADDRESS
+    assert len(handover.handoverBlindedShare) == 0
+
+    assert coordinator.getHandoverState(ritualID, departing_node) == HandoverState.NON_INITIATED
+
+    with ape.reverts("Departing node must be a participant"):
+        coordinator.handoverRequest(
+            ritualID, handover_supervisor, incoming_node, sender=handover_supervisor
+        )
+    with ape.reverts("Incoming node cannot be a participant"):
+        coordinator.handoverRequest(ritualID, departing_node, nodes[0], sender=handover_supervisor)
+    with ape.reverts("Incoming provider has not set public key"):
+        coordinator.handoverRequest(
+            ritualID, departing_node, incoming_node, sender=handover_supervisor
+        )
+
+    application.updateOperator(incoming_node, incoming_node, sender=deployer)
+    application.updateAuthorization(incoming_node, 42, sender=deployer)
+    public_key = gen_public_key()
+    coordinator.setProviderPublicKey(public_key, sender=incoming_node)
+
+    tx = coordinator.handoverRequest(
+        ritualID, departing_node, incoming_node, sender=handover_supervisor
+    )
+    assert (
+        coordinator.getHandoverState(ritualID, departing_node)
+        == HandoverState.HANDOVER_AWAITING_BLIND_SHARE
+    )
+
+    timestamp = chain.pending_timestamp - 1
+    handover = coordinator.handovers(handover_key)
+    assert handover.handoverRequestTimestamp == timestamp
+    assert handover.incomingProvider == incoming_node
+    assert len(handover.handoverBlindedShare) == 0
+
+    events = [event for event in tx.events if event.event_name == "HandoverRequest"]
+    assert events == [
+        coordinator.HandoverRequest(
+            ritualId=ritualID,
+            departingParticipant=departing_node,
+            incomingParticipant=incoming_node,
+        )
+    ]
+
+    with ape.reverts("Handover already requested"):
+        coordinator.handoverRequest(
+            ritualID, departing_node, incoming_node, sender=handover_supervisor
+        )
+
+    coordinator.postBlindedShare(ritualID, os.urandom(96), sender=departing_node)
+    assert (
+        coordinator.getHandoverState(ritualID, departing_node)
+        == HandoverState.HANDOVER_AWAITING_FINALIZATION
+    )
+
+    with ape.reverts("Handover already requested"):
+        coordinator.handoverRequest(
+            ritualID, departing_node, incoming_node, sender=handover_supervisor
+        )
+
+    chain.pending_timestamp += HANDOVER_TIMEOUT
+    assert coordinator.getHandoverState(ritualID, departing_node) == HandoverState.HANDOVER_TIMEOUT
+
+    incoming_node = accounts[MAX_DKG_SIZE + 2]
+    application.updateOperator(incoming_node, incoming_node, sender=deployer)
+    application.updateAuthorization(incoming_node, 42, sender=deployer)
+    public_key = gen_public_key()
+    coordinator.setProviderPublicKey(public_key, sender=incoming_node)
+
+    tx = coordinator.handoverRequest(
+        ritualID, departing_node, incoming_node, sender=handover_supervisor
+    )
+    assert (
+        coordinator.getHandoverState(ritualID, departing_node)
+        == HandoverState.HANDOVER_AWAITING_BLIND_SHARE
+    )
+
+    timestamp = chain.pending_timestamp - 1
+    handover = coordinator.handovers(handover_key)
+    assert handover.handoverRequestTimestamp == timestamp
+    assert handover.incomingProvider == incoming_node
+    assert len(handover.handoverBlindedShare) == 0
+
+    events = [event for event in tx.events if event.event_name == "HandoverRequest"]
+    assert events == [
+        coordinator.HandoverRequest(
+            ritualId=ritualID,
+            departingParticipant=departing_node,
+            incomingParticipant=incoming_node,
+        )
+    ]
+
+
+def test_post_blinded_share(
+    coordinator,
+    nodes,
+    initiator,
+    erc20,
+    fee_model,
+    accounts,
+    deployer,
+    global_allow_list,
+    application,
+    chain,
+):
+    initiate_ritual(
+        coordinator=coordinator,
+        fee_model=fee_model,
+        erc20=erc20,
+        authority=initiator,
+        nodes=nodes,
+        allow_logic=global_allow_list,
+    )
+
+    ritualID = 0
+    departing_node = nodes[10]
+    incoming_node = accounts[MAX_DKG_SIZE + 1]
+    handover_supervisor = accounts[MAX_DKG_SIZE]
+    blinded_share = os.urandom(G2_SIZE)
+
+    with ape.reverts("Ritual is not active"):
+        coordinator.postBlindedShare(ritualID, blinded_share, sender=departing_node)
+
+    coordinator.grantRole(
+        coordinator.HANDOVER_SUPERVISOR_ROLE(), handover_supervisor, sender=deployer
+    )
+    size = len(nodes)
+    threshold = coordinator.getThresholdForRitualSize(size)
+    transcript = generate_transcript(size, threshold)
+
+    for node in nodes:
+        coordinator.publishTranscript(ritualID, transcript, sender=node)
+
+    aggregated = transcript  # has the same size as transcript
+    decryption_request_static_keys = [os.urandom(42) for _ in nodes]
+    dkg_public_key = (os.urandom(32), os.urandom(16))
+    for i, node in enumerate(nodes):
+        coordinator.postAggregation(
+            ritualID, aggregated, dkg_public_key, decryption_request_static_keys[i], sender=node
+        )
+    application.updateOperator(incoming_node, incoming_node, sender=deployer)
+    application.updateAuthorization(incoming_node, 42, sender=deployer)
+    public_key = gen_public_key()
+    coordinator.setProviderPublicKey(public_key, sender=incoming_node)
+
+    with ape.reverts("Not waiting for blinded share"):
+        coordinator.postBlindedShare(ritualID, blinded_share, sender=departing_node)
+
+    coordinator.handoverRequest(ritualID, departing_node, incoming_node, sender=handover_supervisor)
+
+    with ape.reverts("Wrong size of blinded share"):
+        coordinator.postBlindedShare(ritualID, os.urandom(16), sender=departing_node)
+
+    assert (
+        coordinator.getHandoverState(ritualID, departing_node)
+        == HandoverState.HANDOVER_AWAITING_BLIND_SHARE
+    )
+    tx = coordinator.postBlindedShare(ritualID, blinded_share, sender=departing_node)
+    assert (
+        coordinator.getHandoverState(ritualID, departing_node)
+        == HandoverState.HANDOVER_AWAITING_FINALIZATION
+    )
+    handover_key = coordinator.getHandoverKey(ritualID, departing_node)
+    handover = coordinator.handovers(handover_key)
+    assert handover.incomingProvider == incoming_node
+    assert handover.handoverBlindedShare == blinded_share
+
+    events = [event for event in tx.events if event.event_name == "BlindedSharePosted"]
+    assert events == [
+        coordinator.BlindedSharePosted(ritualId=ritualID, departingParticipant=departing_node)
+    ]
+
+    with ape.reverts("Not waiting for blinded share"):
+        coordinator.postBlindedShare(ritualID, blinded_share, sender=departing_node)
+
+    chain.pending_timestamp += HANDOVER_TIMEOUT
+    assert coordinator.getHandoverState(ritualID, departing_node) == HandoverState.HANDOVER_TIMEOUT
+
+    with ape.reverts("Not waiting for blinded share"):
+        coordinator.postBlindedShare(ritualID, blinded_share, sender=departing_node)
+
+
+def test_cancel_handover(
+    coordinator,
+    nodes,
+    initiator,
+    erc20,
+    fee_model,
+    accounts,
+    deployer,
+    global_allow_list,
+    application,
+    chain,
+):
+    initiate_ritual(
+        coordinator=coordinator,
+        fee_model=fee_model,
+        erc20=erc20,
+        authority=initiator,
+        nodes=nodes,
+        allow_logic=global_allow_list,
+    )
+
+    ritualID = 0
+    departing_node = nodes[10]
+    incoming_node = accounts[MAX_DKG_SIZE + 1]
+    handover_supervisor = accounts[MAX_DKG_SIZE]
+    blinded_share = os.urandom(G2_SIZE)
+
+    with ape.reverts():
+        coordinator.cancelHandover(ritualID, departing_node, sender=handover_supervisor)
+
+    coordinator.grantRole(
+        coordinator.HANDOVER_SUPERVISOR_ROLE(), handover_supervisor, sender=deployer
+    )
+
+    with ape.reverts("Handover not requested"):
+        coordinator.cancelHandover(ritualID, departing_node, sender=handover_supervisor)
+
+    size = len(nodes)
+    threshold = coordinator.getThresholdForRitualSize(size)
+    transcript = generate_transcript(size, threshold)
+
+    for node in nodes:
+        coordinator.publishTranscript(ritualID, transcript, sender=node)
+
+    aggregated = transcript  # has the same size as transcript
+    decryption_request_static_keys = [os.urandom(42) for _ in nodes]
+    dkg_public_key = (os.urandom(32), os.urandom(16))
+    for i, node in enumerate(nodes):
+        coordinator.postAggregation(
+            ritualID, aggregated, dkg_public_key, decryption_request_static_keys[i], sender=node
+        )
+    application.updateOperator(incoming_node, incoming_node, sender=deployer)
+    application.updateAuthorization(incoming_node, 42, sender=deployer)
+    public_key = gen_public_key()
+    coordinator.setProviderPublicKey(public_key, sender=incoming_node)
+
+    with ape.reverts("Handover not requested"):
+        coordinator.cancelHandover(ritualID, departing_node, sender=handover_supervisor)
+
+    coordinator.handoverRequest(ritualID, departing_node, incoming_node, sender=handover_supervisor)
+
+    tx = coordinator.cancelHandover(ritualID, departing_node, sender=handover_supervisor)
+    assert coordinator.getHandoverState(ritualID, departing_node) == HandoverState.NON_INITIATED
+
+    handover_key = coordinator.getHandoverKey(ritualID, departing_node)
+    handover = coordinator.handovers(handover_key)
+    assert handover.handoverRequestTimestamp == 0
+    assert handover.incomingProvider == ZERO_ADDRESS
+    assert len(handover.handoverBlindedShare) == 0
+
+    events = [event for event in tx.events if event.event_name == "HandoverCanceled"]
+    assert events == [
+        coordinator.HandoverCanceled(
+            ritualId=ritualID,
+            departingParticipant=departing_node,
+            incomingParticipant=incoming_node,
+        )
+    ]
+
+    coordinator.handoverRequest(ritualID, departing_node, incoming_node, sender=handover_supervisor)
+    coordinator.postBlindedShare(ritualID, blinded_share, sender=departing_node)
+
+    tx = coordinator.cancelHandover(ritualID, departing_node, sender=handover_supervisor)
+    assert coordinator.getHandoverState(ritualID, departing_node) == HandoverState.NON_INITIATED
+
+    handover_key = coordinator.getHandoverKey(ritualID, departing_node)
+    handover = coordinator.handovers(handover_key)
+    assert handover.handoverRequestTimestamp == 0
+    assert handover.incomingProvider == ZERO_ADDRESS
+    assert len(handover.handoverBlindedShare) == 0
+
+    events = [event for event in tx.events if event.event_name == "HandoverCanceled"]
+    assert events == [
+        coordinator.HandoverCanceled(
+            ritualId=ritualID,
+            departingParticipant=departing_node,
+            incomingParticipant=incoming_node,
+        )
+    ]
+
+    coordinator.handoverRequest(ritualID, departing_node, incoming_node, sender=handover_supervisor)
+    chain.pending_timestamp += HANDOVER_TIMEOUT + 1
+    assert coordinator.getHandoverState(ritualID, departing_node) == HandoverState.HANDOVER_TIMEOUT
+    coordinator.cancelHandover(ritualID, departing_node, sender=handover_supervisor)
+    assert coordinator.getHandoverState(ritualID, departing_node) == HandoverState.NON_INITIATED
+
+
+def test_finalize_handover(
+    coordinator,
+    nodes,
+    initiator,
+    erc20,
+    fee_model,
+    accounts,
+    deployer,
+    global_allow_list,
+    application,
+    chain,
+):
+    initiate_ritual(
+        coordinator=coordinator,
+        fee_model=fee_model,
+        erc20=erc20,
+        authority=initiator,
+        nodes=nodes,
+        allow_logic=global_allow_list,
+    )
+
+    ritualID = 0
+    departing_node = nodes[10]
+    incoming_node = accounts[MAX_DKG_SIZE + 1]
+    handover_supervisor = accounts[MAX_DKG_SIZE]
+    blinded_share = os.urandom(G2_SIZE)
+
+    with ape.reverts():
+        coordinator.finalizeHandover(ritualID, departing_node, sender=handover_supervisor)
+
+    coordinator.grantRole(
+        coordinator.HANDOVER_SUPERVISOR_ROLE(), handover_supervisor, sender=deployer
+    )
+
+    with ape.reverts("Not waiting for finalization"):
+        coordinator.finalizeHandover(ritualID, departing_node, sender=handover_supervisor)
+
+    size = len(nodes)
+    threshold = coordinator.getThresholdForRitualSize(size)
+    transcript = generate_transcript(size, threshold)
+
+    for node in nodes:
+        coordinator.publishTranscript(ritualID, transcript, sender=node)
+
+    aggregated = transcript  # has the same size as transcript
+    decryption_request_static_keys = [os.urandom(42) for _ in nodes]
+    dkg_public_key = (os.urandom(32), os.urandom(16))
+    for i, node in enumerate(nodes):
+        coordinator.postAggregation(
+            ritualID, aggregated, dkg_public_key, decryption_request_static_keys[i], sender=node
+        )
+    application.updateOperator(incoming_node, incoming_node, sender=deployer)
+    application.updateAuthorization(incoming_node, 42, sender=deployer)
+    public_key = gen_public_key()
+    coordinator.setProviderPublicKey(public_key, sender=incoming_node)
+
+    coordinator.handoverRequest(ritualID, departing_node, incoming_node, sender=handover_supervisor)
+
+    with ape.reverts("Not waiting for finalization"):
+        coordinator.finalizeHandover(ritualID, departing_node, sender=handover_supervisor)
+    coordinator.postBlindedShare(ritualID, blinded_share, sender=departing_node)
+    assert (
+        coordinator.getHandoverState(ritualID, departing_node)
+        == HandoverState.HANDOVER_AWAITING_FINALIZATION
+    )
+
+    tx = coordinator.finalizeHandover(ritualID, departing_node, sender=handover_supervisor)
+    assert coordinator.getHandoverState(ritualID, departing_node) == HandoverState.NON_INITIATED
+
+    events = [event for event in tx.events if event.event_name == "HandoverFinalized"]
+    assert events == [
+        coordinator.HandoverFinalized(
+            ritualId=ritualID,
+            departingParticipant=departing_node,
+            incomingParticipant=incoming_node,
+        )
+    ]
+
+    handover_key = coordinator.getHandoverKey(ritualID, departing_node)
+    handover = coordinator.handovers(handover_key)
+    assert handover.handoverRequestTimestamp == 0
+    assert handover.incomingProvider == ZERO_ADDRESS
+    assert len(handover.handoverBlindedShare) == 0
+
+    with ape.reverts("Participant not part of ritual"):
+        coordinator.getParticipantFromProvider(ritualID, departing_node)
+
+    p = coordinator.getParticipantFromProvider(ritualID, incoming_node)
+    assert p.provider == incoming_node
+    assert p.aggregated is True
+    assert len(p.transcript) == 0
+
+    index = 32 + 10 * G2_SIZE + threshold * G1_SIZE
+    aggregated = bytearray(aggregated)
+    aggregated[index : index + G2_SIZE] = blinded_share
+    aggregated = bytes(aggregated)
+    assert coordinator.rituals(ritualID).aggregatedTranscript == aggregated
+
+    events = [event for event in tx.events if event.event_name == "AggregationPosted"]
+    assert events == [
+        coordinator.AggregationPosted(
+            ritualId=ritualID,
+            node=incoming_node,
+            aggregatedTranscriptDigest=Web3.keccak(aggregated),
+        )
+    ]
