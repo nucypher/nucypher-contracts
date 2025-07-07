@@ -70,10 +70,12 @@ def coordinator(project, deployer, application, oz_dependency):
     admin = deployer
     contract = project.Coordinator.deploy(
         application.address,
+        TIMEOUT,
+        HANDOVER_TIMEOUT,
         sender=deployer,
     )
 
-    encoded_initializer_function = contract.initialize.encode_input(TIMEOUT, MAX_DKG_SIZE, admin)
+    encoded_initializer_function = contract.initialize.encode_input(MAX_DKG_SIZE, admin)
     proxy = oz_dependency.TransparentUpgradeableProxy.deploy(
         contract.address,
         deployer,
@@ -81,7 +83,6 @@ def coordinator(project, deployer, application, oz_dependency):
         sender=deployer,
     )
     proxy_contract = project.Coordinator.at(proxy.address)
-    proxy_contract.initializeHandoverTimeout(HANDOVER_TIMEOUT, sender=deployer)
     return proxy_contract
 
 
@@ -105,6 +106,7 @@ def global_allow_list(project, deployer, coordinator):
 def test_initial_parameters(coordinator):
     assert coordinator.maxDkgSize() == MAX_DKG_SIZE
     assert coordinator.dkgTimeout() == TIMEOUT
+    assert coordinator.handoverTimeout() == HANDOVER_TIMEOUT
     assert coordinator.numberOfRituals() == 0
 
 
@@ -713,9 +715,9 @@ def test_handover_request(
 
     handover_key = coordinator.getHandoverKey(ritualID, departing_node)
     handover = coordinator.handovers(handover_key)
-    assert handover.handoverRequestTimestamp == 0
+    assert handover.requestTimestamp == 0
     assert handover.incomingProvider == ZERO_ADDRESS
-    assert len(handover.handoverBlindedShare) == 0
+    assert len(handover.blindedShare) == 0
 
     assert coordinator.getHandoverState(ritualID, departing_node) == HandoverState.NON_INITIATED
 
@@ -742,9 +744,9 @@ def test_handover_request(
 
     timestamp = chain.pending_timestamp - 1
     handover = coordinator.handovers(handover_key)
-    assert handover.handoverRequestTimestamp == timestamp
+    assert handover.requestTimestamp == timestamp
     assert handover.incomingProvider == incoming_node
-    assert len(handover.handoverBlindedShare) == 0
+    assert len(handover.blindedShare) == 0
 
     events = [event for event in tx.events if event.event_name == "HandoverRequest"]
     assert events == [
@@ -760,7 +762,7 @@ def test_handover_request(
             ritualID, departing_node, incoming_node, sender=handover_supervisor
         )
 
-    coordinator.postBlindedShare(ritualID, os.urandom(96), sender=departing_node)
+    coordinator.postBlindedShare(ritualID, os.urandom(G2_SIZE), sender=departing_node)
     assert (
         coordinator.getHandoverState(ritualID, departing_node)
         == HandoverState.HANDOVER_AWAITING_FINALIZATION
@@ -787,9 +789,9 @@ def test_handover_request(
 
     timestamp = chain.pending_timestamp - 1
     handover = coordinator.handovers(handover_key)
-    assert handover.handoverRequestTimestamp == timestamp
+    assert handover.requestTimestamp == timestamp
     assert handover.incomingProvider == incoming_node
-    assert len(handover.handoverBlindedShare) == 0
+    assert len(handover.blindedShare) == 0
 
     events = [event for event in tx.events if event.event_name == "HandoverRequest"]
     assert events == [
@@ -858,7 +860,7 @@ def test_post_blinded_share(
     handover_key = coordinator.getHandoverKey(ritualID, departing_node)
     handover = coordinator.handovers(handover_key)
     assert handover.incomingProvider == incoming_node
-    assert handover.handoverBlindedShare == blinded_share
+    assert handover.blindedShare == blinded_share
 
     events = [event for event in tx.events if event.event_name == "BlindedSharePosted"]
     assert events == [
@@ -925,9 +927,9 @@ def test_cancel_handover(
 
     handover_key = coordinator.getHandoverKey(ritualID, departing_node)
     handover = coordinator.handovers(handover_key)
-    assert handover.handoverRequestTimestamp == 0
+    assert handover.requestTimestamp == 0
     assert handover.incomingProvider == ZERO_ADDRESS
-    assert len(handover.handoverBlindedShare) == 0
+    assert len(handover.blindedShare) == 0
 
     events = [event for event in tx.events if event.event_name == "HandoverCanceled"]
     assert events == [
@@ -946,9 +948,9 @@ def test_cancel_handover(
 
     handover_key = coordinator.getHandoverKey(ritualID, departing_node)
     handover = coordinator.handovers(handover_key)
-    assert handover.handoverRequestTimestamp == 0
+    assert handover.requestTimestamp == 0
     assert handover.incomingProvider == ZERO_ADDRESS
-    assert len(handover.handoverBlindedShare) == 0
+    assert len(handover.blindedShare) == 0
 
     events = [event for event in tx.events if event.event_name == "HandoverCanceled"]
     assert events == [
@@ -966,6 +968,7 @@ def test_cancel_handover(
     assert coordinator.getHandoverState(ritualID, departing_node) == HandoverState.NON_INITIATED
 
 
+@pytest.mark.parametrize("participant_index", range(0, MAX_DKG_SIZE, 2))
 def test_finalize_handover(
     coordinator,
     nodes,
@@ -976,6 +979,7 @@ def test_finalize_handover(
     deployer,
     global_allow_list,
     application,
+    participant_index,
 ):
     initiate_ritual(
         coordinator=coordinator,
@@ -987,7 +991,7 @@ def test_finalize_handover(
     )
 
     ritualID = 0
-    departing_node = nodes[10]
+    departing_node = nodes[participant_index]
     incoming_node = accounts[MAX_DKG_SIZE + 1]
     handover_supervisor = accounts[MAX_DKG_SIZE]
     blinded_share = os.urandom(G2_SIZE)
@@ -1029,9 +1033,9 @@ def test_finalize_handover(
 
     handover_key = coordinator.getHandoverKey(ritualID, departing_node)
     handover = coordinator.handovers(handover_key)
-    assert handover.handoverRequestTimestamp == 0
+    assert handover.requestTimestamp == 0
     assert handover.incomingProvider == ZERO_ADDRESS
-    assert len(handover.handoverBlindedShare) == 0
+    assert len(handover.blindedShare) == 0
 
     with ape.reverts("Participant not part of ritual"):
         coordinator.getParticipantFromProvider(ritualID, departing_node)
@@ -1041,7 +1045,7 @@ def test_finalize_handover(
     assert p.aggregated is True
     assert len(p.transcript) == 0
 
-    index = 32 + 10 * G2_SIZE + threshold * G1_SIZE
+    index = 32 + participant_index * G2_SIZE + threshold * G1_SIZE
     aggregated = bytearray(aggregated)
     aggregated[index : index + G2_SIZE] = blinded_share
     aggregated = bytes(aggregated)
