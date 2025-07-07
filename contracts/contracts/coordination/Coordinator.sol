@@ -21,6 +21,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
     // DKG Protocol
     event StartRitual(uint32 indexed ritualId, address indexed authority, address[] participants);
+    event ImportRitual(uint32 indexed ritualId);
     event StartAggregationRound(uint32 indexed ritualId);
     event EndRitual(uint32 indexed ritualId, bool successful);
     event TranscriptPosted(uint32 indexed ritualId, address indexed node, bytes32 transcriptDigest);
@@ -98,21 +99,15 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     ITACoChildApplication public immutable application;
     uint96 private immutable minAuthorization; // TODO use child app for checking eligibility
 
-    Ritual[] internal ritualsStub; // former rituals, "internal" for testing only
     uint32 public timeout;
     uint16 public maxDkgSize;
-    bool private stub1; // former isInitiationPublic
-
-    uint256 private stub2; // former totalPendingFees
-    mapping(uint256 => uint256) private stub3; // former pendingFees
-    address private stub4; // former feeModel
 
     IReimbursementPool internal reimbursementPool;
     mapping(address => ParticipantKey[]) internal participantKeysHistory;
     mapping(bytes32 => uint32) internal ritualPublicKeyRegistry;
     mapping(IFeeModel => bool) public feeModelsRegistry;
 
-    mapping(uint256 index => Ritual ritual) internal _rituals;
+    mapping(uint256 index => Ritual ritual) public rituals;
     uint256 public numberOfRituals;
     // Note: Adjust the __preSentinelGap size if more contract variables are added
 
@@ -137,63 +132,14 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     }
 
     /// @dev use `upgradeAndCall` for upgrading together with re-initialization
-    function initializeNumberOfRituals() external reinitializer(2) {
-        if (numberOfRituals == 0) {
-            numberOfRituals = ritualsStub.length;
-        }
-    }
-
-    /// @dev use `upgradeAndCall` for upgrading together with re-initialization
     function reinitializeDefaultAdmin(address newDefaultAdmin) external reinitializer(3) {
         _beginDefaultAdminTransfer(newDefaultAdmin);
     }
 
-    function rituals(
-        uint256 ritualId // uint256 for backward compatibility
-    )
-        external
-        view
-        returns (
-            address initiator,
-            uint32 initTimestamp,
-            uint32 endTimestamp,
-            uint16 totalTranscripts,
-            uint16 totalAggregations,
-            //
-            address authority,
-            uint16 dkgSize,
-            uint16 threshold,
-            bool aggregationMismatch,
-            //
-            IEncryptionAuthorizer accessController,
-            BLS12381.G1Point memory publicKey,
-            bytes memory aggregatedTranscript,
-            IFeeModel feeModel
-        )
-    {
-        Ritual storage ritual = storageRitual(uint32(ritualId));
-        initiator = ritual.initiator;
-        initTimestamp = ritual.initTimestamp;
-        endTimestamp = ritual.endTimestamp;
-        totalTranscripts = ritual.totalTranscripts;
-        totalAggregations = ritual.totalAggregations;
-        authority = ritual.authority;
-        dkgSize = ritual.dkgSize;
-        threshold = ritual.threshold;
-        aggregationMismatch = ritual.aggregationMismatch;
-        accessController = ritual.accessController;
-        publicKey = ritual.publicKey;
-        aggregatedTranscript = ritual.aggregatedTranscript;
-        feeModel = ritual.feeModel;
-    }
-
     // for backward compatibility
     function storageRitual(uint32 ritualId) internal view returns (Ritual storage) {
-        if (ritualId < ritualsStub.length) {
-            return ritualsStub[ritualId];
-        }
         require(ritualId < numberOfRituals, "Ritual id out of bounds");
-        return _rituals[ritualId];
+        return rituals[ritualId];
     }
 
     function getInitiator(uint32 ritualId) external view returns (address) {
@@ -358,7 +304,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         require(duration >= 24 hours, "Invalid ritual duration"); // TODO: Define minimum duration #106
 
         uint32 id = uint32(numberOfRituals);
-        Ritual storage ritual = _rituals[id];
+        Ritual storage ritual = rituals[id];
         numberOfRituals += 1;
         ritual.initiator = msg.sender;
         ritual.authority = authority;
@@ -392,6 +338,56 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
         emit StartRitual(id, ritual.authority, providers);
         return id;
+    }
+
+    function importRitual(
+        uint32 ritualId,
+        address initiator,
+        uint32 initTimestamp,
+        uint32 endTimestamp,
+        uint16 totalTranscripts,
+        uint16 totalAggregations,
+        //
+        address authority,
+        uint16 dkgSize,
+        // uint16 threshold,
+        // bool aggregationMismatch,
+        //
+        // IEncryptionAuthorizer accessController,
+        BLS12381.G1Point memory publicKey,
+        bytes memory aggregatedTranscript,
+        //IFeeModel feeModel,
+        Participant[] calldata participant
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(ritualId == numberOfRituals, "Ritual id out of bounds");
+
+        Ritual storage ritual = rituals[numberOfRituals];
+        numberOfRituals += 1;
+        ritual.initiator = initiator;
+        ritual.initTimestamp = initTimestamp;
+        ritual.endTimestamp = endTimestamp;
+        ritual.totalTranscripts = totalTranscripts;
+        ritual.totalAggregations = totalAggregations;
+        ritual.authority = authority;
+        ritual.dkgSize = dkgSize;
+        // ritual.threshold = threshold;
+        // ritual.aggregationMismatch = aggregationMismatch;
+        // ritual.accessController = accessController;
+        ritual.publicKey = publicKey;
+        ritual.aggregatedTranscript = aggregatedTranscript;
+        // ritual.feeModel = feeModel;
+
+        for (uint256 i = 0; i < participant.length; i++) {
+            Participant storage newParticipant = ritual.participant.push();
+            Participant calldata current = participant[i];
+            newParticipant.provider = current.provider;
+            newParticipant.aggregated = current.aggregated;
+            newParticipant.transcript = current.transcript;
+            newParticipant.decryptionRequestStaticKey = current.decryptionRequestStaticKey;
+        }
+        bytes32 registryKey = keccak256(abi.encodePacked(BLS12381.g1PointToBytes(publicKey)));
+        ritualPublicKeyRegistry[registryKey] = ritualId + 1;
+        emit ImportRitual(ritualId);
     }
 
     function cohortFingerprint(address[] calldata nodes) public pure returns (bytes32) {
