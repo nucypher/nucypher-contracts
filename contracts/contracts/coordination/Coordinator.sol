@@ -31,8 +31,6 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     );
 
     // Protocol administration
-    event DKGTimeoutChanged(uint32 oldTimeout, uint32 newTimeout);
-    event HandoverTimeoutChanged(uint32 oldTimeout, uint32 newTimeout);
     event MaxDkgSizeChanged(uint16 oldSize, uint16 newSize);
     event ReimbursementPoolSet(address indexed pool);
 
@@ -93,9 +91,9 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     }
 
     struct Handover {
-        uint32 handoverRequestTimestamp;
+        uint32 requestTimestamp;
         address incomingProvider;
-        bytes handoverBlindedShare;
+        bytes blindedShare;
     }
 
     struct Ritual {
@@ -130,8 +128,11 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     ITACoChildApplication public immutable application;
     uint96 private immutable minAuthorization; // TODO use child app for checking eligibility
 
+    uint32 public immutable dkgTimeout;
+    uint32 public immutable handoverTimeout;
+
     Ritual[] private ritualsStub; // former rituals, "internal" for testing only
-    uint32 public dkgTimeout;
+    uint32 public dkgTimeoutStub;
     uint16 public maxDkgSize;
     bool private stub1; // former isInitiationPublic
 
@@ -146,7 +147,6 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
     mapping(uint256 index => Ritual ritual) public rituals;
     uint256 public numberOfRituals;
-    uint32 public handoverTimeout;
     mapping(bytes32 handoverKey => Handover handover) public handovers;
     // Note: Adjust the __preSentinelGap size if more contract variables are added
 
@@ -155,8 +155,10 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     Participant internal __sentinelParticipant;
     uint256[20] internal __postSentinelGap;
 
-    constructor(ITACoChildApplication _application) {
+    constructor(ITACoChildApplication _application, uint32 _dkgTimeout, uint32 _handoverTimeout) {
         application = _application;
+        dkgTimeout = _dkgTimeout;
+        handoverTimeout = _handoverTimeout;
         minAuthorization = _application.minimumAuthorization(); // TODO use child app for checking eligibility
         _disableInitializers();
     }
@@ -164,12 +166,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     /**
      * @notice Initialize function for using with OpenZeppelin proxy
      */
-    function initialize(
-        uint32 _dkgTimeout,
-        uint16 _maxDkgSize,
-        address _admin
-    ) external initializer {
-        dkgTimeout = _dkgTimeout;
+    function initialize(uint16 _maxDkgSize, address _admin) external initializer {
         maxDkgSize = _maxDkgSize;
         __AccessControlDefaultAdminRules_init(0, _admin);
     }
@@ -185,11 +182,6 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     // function reinitializeDefaultAdmin(address newDefaultAdmin) external reinitializer(3) {
     //     _beginDefaultAdminTransfer(newDefaultAdmin);
     // }
-
-    /// @dev use `upgradeAndCall` for upgrading together with re-initialization
-    function initializeHandoverTimeout(uint32 _handoverTimeout) external reinitializer(4) {
-        handoverTimeout = _handoverTimeout;
-    }
 
     function getInitiator(uint32 ritualId) external view returns (address) {
         return rituals[ritualId].initiator;
@@ -275,14 +267,14 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     }
 
     function getHandoverState(Handover storage handover) internal view returns (HandoverState) {
-        uint32 t0 = handover.handoverRequestTimestamp;
+        uint32 t0 = handover.requestTimestamp;
         uint32 deadline = t0 + handoverTimeout;
         if (t0 == 0) {
             return HandoverState.NON_INITIATED;
         } else if (block.timestamp > deadline) {
             // Handover failed due to timeout
             return HandoverState.HANDOVER_TIMEOUT;
-        } else if (handover.handoverBlindedShare.length == 0) {
+        } else if (handover.blindedShare.length == 0) {
             return HandoverState.HANDOVER_AWAITING_BLIND_SHARE;
         } else {
             return HandoverState.HANDOVER_AWAITING_FINALIZATION;
@@ -328,16 +320,6 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     function isProviderKeySet(address provider) public view returns (bool) {
         ParticipantKey[] storage participantHistory = participantKeysHistory[provider];
         return participantHistory.length > 0;
-    }
-
-    function setDKGTimeout(uint32 newTimeout) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        emit DKGTimeoutChanged(dkgTimeout, newTimeout);
-        dkgTimeout = newTimeout;
-    }
-
-    function setHandoverTimeout(uint32 newTimeout) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        emit HandoverTimeoutChanged(handoverTimeout, newTimeout);
-        handoverTimeout = newTimeout;
     }
 
     function setMaxDkgSize(uint16 newSize) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -435,6 +417,12 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         return 40 + (dkgSize + 1) * BLS12381.G2_POINT_SIZE + threshold * BLS12381.G1_POINT_SIZE;
     }
 
+    /**
+     * Calculates postion of blinded share for particular participant
+     * @param index Participant index
+     * @param threshold Threshold
+     * @dev See https://github.com/nucypher/nucypher-contracts/issues/400
+     */
     function blindedSharePosition(uint256 index, uint16 threshold) public pure returns (uint256) {
         return 32 + index * BLS12381.G2_POINT_SIZE + threshold * BLS12381.G1_POINT_SIZE;
     }
@@ -582,9 +570,13 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
             "Handover already requested"
         );
         require(isProviderKeySet(incomingParticipant), "Incoming provider has not set public key");
-        handover.handoverRequestTimestamp = uint32(block.timestamp);
+        require(
+            application.authorizedStake(incomingParticipant) >= minAuthorization,
+            "Not enough authorization"
+        );
+        handover.requestTimestamp = uint32(block.timestamp);
         handover.incomingProvider = incomingParticipant;
-        delete handover.handoverBlindedShare;
+        delete handover.blindedShare;
         emit HandoverRequest(ritualId, departingParticipant, incomingParticipant);
     }
 
@@ -599,7 +591,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         );
         require(blindedShare.length == BLS12381.G2_POINT_SIZE, "Wrong size of blinded share");
 
-        handover.handoverBlindedShare = blindedShare;
+        handover.blindedShare = blindedShare;
         emit BlindedSharePosted(ritualId, provider);
     }
 
@@ -614,9 +606,9 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
             getHandoverState(handover) != HandoverState.NON_INITIATED,
             "Handover not requested"
         );
-        handover.handoverRequestTimestamp = 0;
+        handover.requestTimestamp = 0;
         handover.incomingProvider = address(0);
-        delete handover.handoverBlindedShare;
+        delete handover.blindedShare;
 
         emit HandoverCanceled(ritualId, departingParticipant, incomingParticipant);
     }
@@ -641,13 +633,13 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         delete participant.transcript;
 
         uint256 startIndex = blindedSharePosition(participantIndex, ritual.threshold);
-        replaceStorageBytes(ritual.aggregatedTranscript, handover.handoverBlindedShare, startIndex);
+        replaceStorageBytes(ritual.aggregatedTranscript, handover.blindedShare, startIndex);
         bytes32 aggregatedTranscriptDigest = keccak256(ritual.aggregatedTranscript);
         emit AggregationPosted(ritualId, incomingParticipant, aggregatedTranscriptDigest);
 
-        handover.handoverRequestTimestamp = 0;
+        handover.requestTimestamp = 0;
         handover.incomingProvider = address(0);
-        delete handover.handoverBlindedShare;
+        delete handover.blindedShare;
 
         emit HandoverFinalized(ritualId, departingParticipant, incomingParticipant);
     }
