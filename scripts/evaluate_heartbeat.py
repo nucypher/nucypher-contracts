@@ -89,7 +89,11 @@ def investigate_offender(
                             verify=False,
                             timeout=20,
                         )
+                        if node_status.status_code != 200:
+                            raise requests.ConnectionError
+
                         version = node_status.json().get("version", "Unknown")
+
                         offenders[ritual_id][address]["version"] = version
 
                         if version != "Unknown" and version != latest_version:

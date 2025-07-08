@@ -1,6 +1,7 @@
 name: Evaluate DKG
 
 on:
+  workflow_dispatch:
   schedule:
     - cron: '0 0 * * 5' # Every Monday at 05:00
 
@@ -24,10 +25,10 @@ jobs:
       run: pip3 install -e . -r requirements.txt
 
     - name: Download Artifact
-      uses: actions/upload-artifact@v4
+      uses: dawidd6/action-download-artifact@v9
       with:
+        workflow: heartbeat.yml
         name: heartbeat-rituals
-        path: rituals.json
 
     - name: Evaluate Ritual
       run: .github/scripts/eval_dkg.sh
@@ -40,3 +41,9 @@ jobs:
         NETWORK: ${{ vars.NETWORK }}
         ECOSYSTEM: ${{ vars.ECOSYSTEM }}
         RPC_PROVIDER: ${{ vars.RPC_PROVIDER }}
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: offenders
+        path: offenders.json

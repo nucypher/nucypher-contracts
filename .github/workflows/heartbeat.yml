@@ -33,12 +33,12 @@ jobs:
     - name: Initiate Ritual
       run: .github/scripts/initiate_dkg.sh
       env:
-
         # Secret environment variables (secrets)
         APE_ACCOUNTS_automation_PASSPHRASE: ${{ secrets.DKG_INITIATOR_PASSPHRASE }}
         WEB3_INFURA_API_KEY: ${{ secrets.WEB3_INFURA_API_KEY }}
+        WEB3_INFURA_API_SECRET: ${{ secrets.WEB3_INFURA_API_SECRET }}
+        ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
         POLYGONSCAN_API_KEY: ${{ secrets.POLYGONSCAN_API_KEY }}
-        EXCLUDED_NODES: ${{ secrets.EXCLUDED_NODES }}
 
         # Non-secret environment variables (config)
         DKG_AUTHORITY_ADDRESS: ${{ vars.DKG_AUTHORITY_ADDRESS }}
@@ -49,6 +49,7 @@ jobs:
         ACCESS_CONTROLLER: ${{ vars.ACCESS_CONTROLLER }}
         FEE_MODEL: ${{ vars.FEE_MODEL }}
         DURATION: ${{ vars.DURATION }}
+        EXCLUDED_NODES: ${{ vars.EXCLUDED_NODES }}
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4

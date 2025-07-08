@@ -17,7 +17,13 @@ ape run initiate_ritual                           \
 --access-controller ${ACCESS_CONTROLLER}          \
 --authority ${DKG_AUTHORITY_ADDRESS}              \
 --fee-model ${FEE_MODEL}                          \
---duration ${DURATION}
+--duration ${DURATION}                            \
+--excluded-nodes
 
-echo "All Heartbeat Rituals Initiated"
+if [ $? -ne 0 ]; then
+    echo "❗️ DKG heartbeat round failed"
+    exit 1
+fi
+
+echo "✅ All Heartbeat Rituals Initiated"
 
