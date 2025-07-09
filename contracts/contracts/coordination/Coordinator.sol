@@ -53,6 +53,11 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         address indexed departingParticipant,
         address indexed incomingParticipant
     );
+    event HandoverTranscriptPosted(
+        uint32 indexed ritualId,
+        address indexed departingParticipant,
+        address indexed incomingParticipant
+    );
     event BlindedSharePosted(uint32 indexed ritualId, address indexed departingParticipant);
     event HandoverCanceled(
         uint32 indexed ritualId,
@@ -77,7 +82,8 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
     enum HandoverState {
         NON_INITIATED,
-        HANDOVER_AWAITING_BLIND_SHARE,
+        HANDOVER_AWAITING_TRANSCRIPT,
+        HANDOVER_AWAITING_BLINDED_SHARE,
         HANDOVER_AWAITING_FINALIZATION,
         HANDOVER_TIMEOUT
     }
@@ -93,6 +99,8 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     struct Handover {
         uint32 requestTimestamp;
         address incomingProvider;
+        bytes transcript;
+        bytes decryptionRequestStaticKey;
         bytes blindedShare;
     }
 
@@ -170,18 +178,6 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         maxDkgSize = _maxDkgSize;
         __AccessControlDefaultAdminRules_init(0, _admin);
     }
-
-    // /// @dev use `upgradeAndCall` for upgrading together with re-initialization
-    // function initializeNumberOfRituals() external reinitializer(2) {
-    //     if (numberOfRituals == 0) {
-    //         numberOfRituals = ritualsStub.length;
-    //     }
-    // }
-
-    // /// @dev use `upgradeAndCall` for upgrading together with re-initialization
-    // function reinitializeDefaultAdmin(address newDefaultAdmin) external reinitializer(3) {
-    //     _beginDefaultAdminTransfer(newDefaultAdmin);
-    // }
 
     function getInitiator(uint32 ritualId) external view returns (address) {
         return rituals[ritualId].initiator;
@@ -274,8 +270,10 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         } else if (block.timestamp > deadline) {
             // Handover failed due to timeout
             return HandoverState.HANDOVER_TIMEOUT;
+        } else if (handover.transcript.length == 0) {
+            return HandoverState.HANDOVER_AWAITING_TRANSCRIPT;
         } else if (handover.blindedShare.length == 0) {
-            return HandoverState.HANDOVER_AWAITING_BLIND_SHARE;
+            return HandoverState.HANDOVER_AWAITING_BLINDED_SHARE;
         } else {
             return HandoverState.HANDOVER_AWAITING_FINALIZATION;
         }
@@ -427,12 +425,12 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         return 32 + index * BLS12381.G2_POINT_SIZE + threshold * BLS12381.G1_POINT_SIZE;
     }
 
-    /**
-     * @dev This method is deprecated. Use `publishTranscript` instead.
-     */
-    function postTranscript(uint32, bytes calldata) external {
-        revert("Deprecated method. Upgrade your node to latest version");
-    }
+    // /**
+    //  * @dev This method is deprecated. Use `publishTranscript` instead.
+    //  */
+    // function postTranscript(uint32, bytes calldata) external {
+    //     revert("Deprecated method. Upgrade your node to latest version");
+    // }
 
     function publishTranscript(uint32 ritualId, bytes calldata transcript) external {
         _postTranscript(ritualId, transcript);
@@ -577,7 +575,38 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         handover.requestTimestamp = uint32(block.timestamp);
         handover.incomingProvider = incomingParticipant;
         delete handover.blindedShare;
+        delete handover.transcript;
+        delete handover.decryptionRequestStaticKey;
         emit HandoverRequest(ritualId, departingParticipant, incomingParticipant);
+    }
+
+    function postHandoverTranscript(
+        uint32 ritualId,
+        address departingParticipant,
+        bytes calldata transcript,
+        bytes calldata decryptionRequestStaticKey
+    ) external {
+        require(isRitualActive(ritualId), "Ritual is not active");
+        require(
+            transcript.length > 0 && decryptionRequestStaticKey.length > 0,
+            "Parameters can't be empty"
+        );
+        require(
+            decryptionRequestStaticKey.length == 42,
+            "Invalid length for decryption request static key"
+        );
+
+        Handover storage handover = handovers[getHandoverKey(ritualId, departingParticipant)];
+        require(
+            getHandoverState(handover) == HandoverState.HANDOVER_AWAITING_TRANSCRIPT,
+            "Not waiting for transcript"
+        );
+        address provider = application.operatorToStakingProvider(msg.sender);
+        require(handover.incomingProvider == provider, "Wrong incoming provider");
+
+        handover.transcript = transcript;
+        handover.decryptionRequestStaticKey = decryptionRequestStaticKey;
+        emit HandoverTranscriptPosted(ritualId, departingParticipant, provider);
     }
 
     function postBlindedShare(uint32 ritualId, bytes calldata blindedShare) external {
@@ -586,7 +615,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         address provider = application.operatorToStakingProvider(msg.sender);
         Handover storage handover = handovers[getHandoverKey(ritualId, provider)];
         require(
-            getHandoverState(handover) == HandoverState.HANDOVER_AWAITING_BLIND_SHARE,
+            getHandoverState(handover) == HandoverState.HANDOVER_AWAITING_BLINDED_SHARE,
             "Not waiting for blinded share"
         );
         require(blindedShare.length == BLS12381.G2_POINT_SIZE, "Wrong size of blinded share");
@@ -609,6 +638,8 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         handover.requestTimestamp = 0;
         handover.incomingProvider = address(0);
         delete handover.blindedShare;
+        delete handover.transcript;
+        delete handover.decryptionRequestStaticKey;
 
         emit HandoverCanceled(ritualId, departingParticipant, incomingParticipant);
     }
@@ -630,6 +661,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
             departingParticipant
         );
         participant.provider = incomingParticipant;
+        participant.decryptionRequestStaticKey = handover.decryptionRequestStaticKey;
         delete participant.transcript;
 
         uint256 startIndex = blindedSharePosition(participantIndex, ritual.threshold);
@@ -640,6 +672,8 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         handover.requestTimestamp = 0;
         handover.incomingProvider = address(0);
         delete handover.blindedShare;
+        delete handover.transcript;
+        delete handover.decryptionRequestStaticKey;
 
         emit HandoverFinalized(ritualId, departingParticipant, incomingParticipant);
     }
@@ -790,14 +824,14 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         return found;
     }
 
-    /// @dev Deprecated, see issue #195
-    function isEncryptionAuthorized(
-        uint32,
-        bytes memory,
-        bytes memory
-    ) external view returns (bool) {
-        revert("Deprecated method. Upgrade your node to latest version");
-    }
+    // /// @dev Deprecated, see issue #195
+    // function isEncryptionAuthorized(
+    //     uint32,
+    //     bytes memory,
+    //     bytes memory
+    // ) external view returns (bool) {
+    //     revert("Deprecated method. Upgrade your node to latest version");
+    // }
 
     function processReimbursement(uint256 initialGasLeft) internal {
         if (address(reimbursementPool) != address(0)) {
@@ -832,9 +866,9 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         emit RitualExtended(ritualId, ritual.endTimestamp);
     }
 
-    function withdrawAllTokens(IERC20 token) external onlyRole(TREASURY_ROLE) {
-        uint256 tokenBalance = token.balanceOf(address(this));
-        require(tokenBalance > 0, "Insufficient balance");
-        token.safeTransfer(msg.sender, tokenBalance);
-    }
+    // function withdrawAllTokens(IERC20 token) external onlyRole(TREASURY_ROLE) {
+    //     uint256 tokenBalance = token.balanceOf(address(this));
+    //     require(tokenBalance > 0, "Insufficient balance");
+    //     token.safeTransfer(msg.sender, tokenBalance);
+    // }
 }

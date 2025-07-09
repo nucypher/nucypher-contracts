@@ -27,7 +27,8 @@ HandoverState = IntEnum(
     "HandoverState",
     [
         "NON_INITIATED",
-        "HANDOVER_AWAITING_BLIND_SHARE",
+        "HANDOVER_AWAITING_TRANSCRIPT",
+        "HANDOVER_AWAITING_BLINDED_SHARE",
         "HANDOVER_AWAITING_FINALIZATION",
         "HANDOVER_TIMEOUT",
     ],
