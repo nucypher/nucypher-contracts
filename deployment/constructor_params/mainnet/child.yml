@@ -16,7 +16,7 @@ constants:
   PRIVATE_BETA_FEE_RATE: 4050925925925 # $0.35 per day, expressed in DAI units per seconds (in Python: 35*10**16 // 86400)
   MAX_DKG_SIZE: 32
   DKG_TIMEOUT_IN_SECONDS: 3600 # One hour in seconds
-  HANDOVER_TIMEOUT_IN_SECONDS: 3600*8 # One hour in seconds
+  HANDOVER_TIMEOUT_IN_SECONDS: 86400 # One day in seconds
   FORTY_THOUSAND_TOKENS_IN_WEI_UNITS: 40000000000000000000000
 
   # Threshold Network - References:
