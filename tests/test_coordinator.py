@@ -283,26 +283,6 @@ def test_post_transcript(coordinator, nodes, initiator, erc20, fee_model, global
     assert coordinator.getRitualState(0) == RitualState.DKG_AWAITING_AGGREGATIONS
 
 
-# def test_post_transcript_but_deprecated_method(
-#     coordinator, nodes, initiator, erc20, fee_model, global_allow_list
-# ):
-#     initiate_ritual(
-#         coordinator=coordinator,
-#         fee_model=fee_model,
-#         erc20=erc20,
-#         authority=initiator,
-#         nodes=nodes,
-#         allow_logic=global_allow_list,
-#     )
-
-#     size = len(nodes)
-#     threshold = coordinator.getThresholdForRitualSize(size)
-#     transcript = generate_transcript(size, threshold)
-
-#     with ape.reverts("Deprecated method. Upgrade your node to latest version"):
-#         coordinator.postTranscript(0, transcript, sender=initiator)
-
-
 def test_post_transcript_but_not_part_of_ritual(
     coordinator, nodes, initiator, erc20, fee_model, global_allow_list
 ):
@@ -718,6 +698,8 @@ def test_handover_request(
     assert handover.requestTimestamp == 0
     assert handover.incomingProvider == ZERO_ADDRESS
     assert len(handover.blindedShare) == 0
+    assert len(handover.transcript) == 0
+    assert len(handover.decryptionRequestStaticKey) == 0
 
     assert coordinator.getHandoverState(ritualID, departing_node) == HandoverState.NON_INITIATED
 
@@ -747,6 +729,8 @@ def test_handover_request(
     assert handover.requestTimestamp == timestamp
     assert handover.incomingProvider == incoming_node
     assert len(handover.blindedShare) == 0
+    assert len(handover.transcript) == 0
+    assert len(handover.decryptionRequestStaticKey) == 0
 
     events = [event for event in tx.events if event.event_name == "HandoverRequest"]
     assert events == [
@@ -800,6 +784,8 @@ def test_handover_request(
     assert handover.requestTimestamp == timestamp
     assert handover.incomingProvider == incoming_node
     assert len(handover.blindedShare) == 0
+    assert len(handover.transcript) == 0
+    assert len(handover.decryptionRequestStaticKey) == 0
 
     events = [event for event in tx.events if event.event_name == "HandoverRequest"]
     assert events == [
@@ -1002,6 +988,8 @@ def test_post_blinded_share(
     handover = coordinator.handovers(handover_key)
     assert handover.incomingProvider == incoming_node
     assert handover.blindedShare == blinded_share
+    assert len(handover.transcript) != 0
+    assert len(handover.decryptionRequestStaticKey) != 0
 
     events = [event for event in tx.events if event.event_name == "BlindedSharePosted"]
     assert events == [
@@ -1071,6 +1059,8 @@ def test_cancel_handover(
     assert handover.requestTimestamp == 0
     assert handover.incomingProvider == ZERO_ADDRESS
     assert len(handover.blindedShare) == 0
+    assert len(handover.transcript) == 0
+    assert len(handover.decryptionRequestStaticKey) == 0
 
     events = [event for event in tx.events if event.event_name == "HandoverCanceled"]
     assert events == [
@@ -1102,6 +1092,8 @@ def test_cancel_handover(
     assert handover.requestTimestamp == 0
     assert handover.incomingProvider == ZERO_ADDRESS
     assert len(handover.blindedShare) == 0
+    assert len(handover.transcript) == 0
+    assert len(handover.decryptionRequestStaticKey) == 0
 
     events = [event for event in tx.events if event.event_name == "HandoverCanceled"]
     assert events == [

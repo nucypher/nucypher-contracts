@@ -416,7 +416,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     }
 
     /**
-     * Calculates postion of blinded share for particular participant
+     * Calculates position of blinded share for particular participant
      * @param index Participant index
      * @param threshold Threshold
      * @dev See https://github.com/nucypher/nucypher-contracts/issues/400
@@ -587,10 +587,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         bytes calldata decryptionRequestStaticKey
     ) external {
         require(isRitualActive(ritualId), "Ritual is not active");
-        require(
-            transcript.length > 0 && decryptionRequestStaticKey.length > 0,
-            "Parameters can't be empty"
-        );
+        require(transcript.length > 0, "Parameters can't be empty");
         require(
             decryptionRequestStaticKey.length == 42,
             "Invalid length for decryption request static key"
