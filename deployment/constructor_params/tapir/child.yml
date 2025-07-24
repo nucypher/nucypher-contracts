@@ -8,6 +8,7 @@ artifacts:
 
 constants:
   ONE_HOUR_IN_SECONDS: 3600
+  ONE_DAY_IN_SECONDS: 86400
   FORTY_THOUSAND_TOKENS_IN_WEI_UNITS: 40000000000000000000000
   TEN_MILLION_TOKENS_IN_WEI_UNITS: 10000000000000000000000000
   MAX_DKG_SIZE: 32
@@ -25,9 +26,11 @@ contracts:
   - Coordinator:
       proxy:
         constructor:
-          _data: $encode:initialize,$ONE_HOUR_IN_SECONDS,$MAX_DKG_SIZE,$deployer
+          _data: $encode:initialize,$MAX_DKG_SIZE,$deployer
       constructor:
         _application: $TACoChildApplication
+        _dkgTimeout: $ONE_HOUR_IN_SECONDS
+        _handoverTimeout: $ONE_DAY_IN_SECONDS
         _currency: $TapirRitualToken
         _feeRatePerSecond: 1
   - GlobalAllowList:

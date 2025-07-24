@@ -1,7 +1,8 @@
 import os
+from enum import IntEnum
+
 import pytest
 from ape import project
-from enum import IntEnum
 
 # Common constants
 G1_SIZE = 48
@@ -18,6 +19,18 @@ RitualState = IntEnum(
         "DKG_INVALID",
         "ACTIVE",
         "EXPIRED",
+    ],
+    start=0,
+)
+
+HandoverState = IntEnum(
+    "HandoverState",
+    [
+        "NON_INITIATED",
+        "HANDOVER_AWAITING_TRANSCRIPT",
+        "HANDOVER_AWAITING_BLINDED_SHARE",
+        "HANDOVER_AWAITING_FINALIZATION",
+        "HANDOVER_TIMEOUT",
     ],
     start=0,
 )

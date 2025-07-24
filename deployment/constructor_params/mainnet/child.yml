@@ -1,6 +1,6 @@
 deployment:
   name: mainnet-child
-  chain_id: 137  # Polygon Mainnet
+  chain_id: 137 # Polygon Mainnet
 
 artifacts:
   dir: ./deployment/artifacts/
@@ -13,9 +13,10 @@ constants:
   DAI_ON_POLYGON: "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063"
 
   # TACO specific constants:
-  PRIVATE_BETA_FEE_RATE: 4050925925925  # $0.35 per day, expressed in DAI units per seconds (in Python: 35*10**16 // 86400)
+  PRIVATE_BETA_FEE_RATE: 4050925925925 # $0.35 per day, expressed in DAI units per seconds (in Python: 35*10**16 // 86400)
   MAX_DKG_SIZE: 32
-  DKG_TIMEOUT_IN_SECONDS: 3600  # One hour in seconds
+  DKG_TIMEOUT_IN_SECONDS: 3600 # One hour in seconds
+  HANDOVER_TIMEOUT_IN_SECONDS: 86400 # One day in seconds
   FORTY_THOUSAND_TOKENS_IN_WEI_UNITS: 40000000000000000000000
 
   # Threshold Network - References:
@@ -38,17 +39,19 @@ contracts:
   - TACoChildApplication:
       proxy:
         constructor:
-          initialOwner: $THRESHOLD_COUNCIL_ON_POLYGON  # Upgrades owner
+          initialOwner: $THRESHOLD_COUNCIL_ON_POLYGON # Upgrades owner
       constructor:
         _rootApplication: $PolygonChild
         _minimumAuthorization: $FORTY_THOUSAND_TOKENS_IN_WEI_UNITS
   - Coordinator:
       proxy:
         constructor:
-          initialOwner: $THRESHOLD_COUNCIL_ON_POLYGON  # Upgrades owner
-          _data: $encode:initialize,$DKG_TIMEOUT_IN_SECONDS,$MAX_DKG_SIZE,$deployer
+          initialOwner: $THRESHOLD_COUNCIL_ON_POLYGON # Upgrades owner
+          _data: $encode:initialize,$MAX_DKG_SIZE,$deployer
       constructor:
         _application: $TACoChildApplication
+        _dkgTimeout: $DKG_TIMEOUT_IN_SECONDS
+        _handoverTimeout: $HANDOVER_TIMEOUT_IN_SECONDS
         _currency: $DAI_ON_POLYGON
         _feeRatePerSecond: $PRIVATE_BETA_FEE_RATE
   - GlobalAllowList:

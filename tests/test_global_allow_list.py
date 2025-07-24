@@ -60,10 +60,12 @@ def coordinator(project, deployer, application, oz_dependency):
     admin = deployer
     contract = project.Coordinator.deploy(
         application.address,
+        TIMEOUT,
+        0,
         sender=deployer,
     )
 
-    encoded_initializer_function = contract.initialize.encode_input(TIMEOUT, MAX_DKG_SIZE, admin)
+    encoded_initializer_function = contract.initialize.encode_input(MAX_DKG_SIZE, admin)
     proxy = oz_dependency.TransparentUpgradeableProxy.deploy(
         contract.address,
         deployer,
