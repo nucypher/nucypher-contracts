@@ -169,6 +169,12 @@ contract TACoApplication is
     event Penalized(address indexed stakingProvider, uint256 penaltyPercent, uint64 endPenalty);
 
     /**
+     * @notice Signals that the staking provider was released
+     * @param stakingProvider Staking provider address
+     */
+    event Released(address indexed stakingProvider);
+
+    /**
      * @notice Signals that reward was reset after penalty
      * @param stakingProvider Staking provider address
      */
@@ -219,6 +225,8 @@ contract TACoApplication is
     uint96 public authorizedOverall;
 
     address public rewardContract;
+
+    mapping(address => bool) public stakingProviderReleased;
 
     /**
      * @notice Constructor sets address of token contract and parameters for staking
@@ -579,6 +587,8 @@ contract TACoApplication is
         info.authorized = _toAmount;
         emit AuthorizationIncreased(_stakingProvider, _fromAmount, _toAmount);
         _updateAuthorization(_stakingProvider, info);
+
+        stakingProviderReleased[_stakingProvider] = false;
     }
 
     /**
@@ -662,6 +672,10 @@ contract TACoApplication is
         );
 
         uint96 toAmount = tStaking.approveAuthorizationDecrease(_stakingProvider);
+        require(
+            toAmount >= minimumAuthorization || stakingProviderReleased[_stakingProvider],
+            "Node has not finished leaving process"
+        );
 
         if (info.operatorConfirmed) {
             authorizedOverall -= effectiveDifference(info.authorized, toAmount, info);
@@ -1041,6 +1055,20 @@ contract TACoApplication is
             authorizedOverall -= before - effectiveAuthorized(info.authorized, info.penaltyPercent);
         }
         emit Penalized(_stakingProvider, info.penaltyPercent, info.endPenalty);
+    }
+
+    function release(address _stakingProvider) external override(ITACoChildToRoot) {
+        require(
+            msg.sender == address(childApplication),
+            "Only child application allowed to penalize"
+        );
+
+        if (_stakingProvider == address(0)) {
+            return;
+        }
+
+        stakingProviderReleased[_stakingProvider] = true;
+        emit Released(_stakingProvider);
     }
 
     /**

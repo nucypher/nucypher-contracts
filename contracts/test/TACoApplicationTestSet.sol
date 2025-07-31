@@ -176,4 +176,8 @@ contract ChildApplicationForTACoApplicationMock {
     function penalize(address _stakingProvider) external {
         rootApplication.penalize(_stakingProvider);
     }
+
+    function release(address _stakingProvider) external {
+        rootApplication.release(_stakingProvider);
+    }
 }
