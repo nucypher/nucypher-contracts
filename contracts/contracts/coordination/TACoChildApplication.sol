@@ -266,6 +266,22 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
     ) external view returns (uint96 allAuthorizedTokens, bytes32[] memory activeStakingProviders) {
         return getActiveStakingProviders(_startIndex, _maxStakingProviders, 0);
     }
+
+    function release(
+        address _stakingProvider
+    ) external override(ITACoRootToChild, ITACoChildToRoot) {
+        // check all rituals
+        for (uint32 i = 0; i < Coordinator(coordinator).numberOfRituals(); i++) {
+            if (
+                Coordinator(coordinator).isRitualActive(i) &&
+                Coordinator(coordinator).isParticipant(i, _stakingProvider)
+            ) {
+                // still part of the ritual
+                return;
+            }
+        }
+        rootApplication.release(_stakingProvider);
+    }
 }
 
 contract TestnetTACoChildApplication is AccessControlUpgradeable, TACoChildApplication {

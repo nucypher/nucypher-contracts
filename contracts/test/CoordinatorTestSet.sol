@@ -33,4 +33,7 @@ contract ChildApplicationForCoordinatorMock is ITACoChildApplication {
 
     // solhint-disable-next-line no-empty-blocks
     function penalize(address _stakingProvider) external {}
+
+    // solhint-disable-next-line no-empty-blocks
+    function release(address _stakingProvider) external override {}
 }

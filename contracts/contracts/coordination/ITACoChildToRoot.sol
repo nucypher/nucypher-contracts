@@ -17,4 +17,6 @@ interface ITACoChildToRoot {
     function confirmOperatorAddress(address operator) external;
 
     function penalize(address stakingProvider) external;
+
+    function release(address stakingProvider) external;
 }
