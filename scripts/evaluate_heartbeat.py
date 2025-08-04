@@ -3,6 +3,7 @@
 import json
 from collections import Counter, defaultdict
 from typing import Any, Dict
+from datetime import datetime, timezone, timedelta
 
 import click
 import requests
@@ -59,6 +60,126 @@ def get_operator(staker_address: str, taco_application: ContractContainer) -> st
         return "Unknown"
 
 
+def get_ordinal_suffix(n: int) -> str:
+    """Return the ordinal suffix for a number (1st, 2nd, 3rd, 4th, etc.)."""
+    if 10 <= n % 100 <= 20:
+        suffix = 'th'
+    else:
+        suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')
+    return suffix
+
+
+def get_heartbeat_round_info() -> tuple[int, str]:
+    """Calculate the current heartbeat round number and month name."""
+    now = datetime.now(timezone.utc)
+    
+    # Get the first Monday of the current month
+    first_day = now.replace(day=1)
+    days_until_monday = (7 - first_day.weekday()) % 7
+    first_monday = first_day + timedelta(days=days_until_monday)
+    
+    # Calculate which Monday of the month this is (1-5)
+    current_monday_number = ((now - first_monday).days // 7) + 1
+    
+    # Determine the heartbeat round (1-4, since you run 4 per month)
+    if current_monday_number <= 4:
+        heartbeat_round = current_monday_number
+    else:
+        # If it's the 5th Monday, it belongs to the next month's 1st round
+        heartbeat_round = 1
+        now = (now.replace(day=1) + timedelta(days=32)).replace(day=1)
+    
+    month_name = now.strftime("%B")
+    
+    return heartbeat_round, month_name
+
+
+def format_discord_message(
+    offenders: Dict[str, Dict[str, Any]], network_data: Dict[str, Any]
+) -> str:
+    """Formats the offender data into a Discord message."""
+    
+    # Get the latest released version of nodes
+    version_response = requests.get(LATEST_RELEASE_URL)
+    latest_version = version_response.json().get("tag_name").strip("v")
+    
+    # Get current heartbeat round and month
+    heartbeat_round, month_name = get_heartbeat_round_info()
+    
+    # Separate offenders by reason
+    unreachable_offenders = []
+    outdated_offenders = []
+    unknown_reasons_offenders = []
+    
+    for ritual_id, offender_list in offenders.items():
+        if ritual_id == "summary":  # Skip summary
+            continue
+            
+        for address, details in offender_list.items():
+            reasons = details.get("reasons", [])
+            operator = details.get("operator", "Unknown")
+            
+            # Debug output
+            click.secho(f"Processing {address}: reasons = {reasons}", fg="yellow")
+            
+            # Prioritize network investigation results over DKG violation reasons
+            # If node has unknown reasons (HTTP 500), it goes to unknown reasons list
+            if any("Unknown reasons" in reason for reason in reasons):
+                click.secho(f"  -> Adding {address} to unknown reasons list", fg="magenta")
+                unknown_reasons_offenders.append((address, operator))
+            # If node is unreachable, it goes to unreachable list regardless of DKG violations
+            elif "Node is unreachable" in reasons:
+                click.secho(f"  -> Adding {address} to unreachable list", fg="red")
+                unreachable_offenders.append((address, operator))
+            # If node is outdated, it goes to outdated list regardless of DKG violations
+            elif any("Old Version" in reason for reason in reasons):
+                click.secho(f"  -> Adding {address} to outdated list", fg="blue")
+                outdated_offenders.append((address, operator))
+            # If node is reachable and up-to-date but has DKG violations, it goes to unreachable list
+            # (since the DKG violations are likely due to connectivity/availability issues)
+            else:
+                click.secho(f"  -> Adding {address} to unreachable list (fallback)", fg="red")
+                unreachable_offenders.append((address, operator))
+    
+    # Build Discord message
+    message = "Dear TACo @Node Operator\n\n"
+    message += f"We ran the {heartbeat_round}{get_ordinal_suffix(heartbeat_round)} DKG Heartbeat Round for {month_name} period to monitor node uptime and availability.\n\n"
+    
+    if unreachable_offenders:
+        message += "The following nodes did not complete the DKG heartbeat because they are not responding:\n\n"
+        message += "```\n"
+        message += "Staking provider address                   | Operator address\n"
+        message += "---------------------------------------------------------------------------------------\n"
+        for staking_provider, operator in unreachable_offenders:
+            message += f"{staking_provider} | {operator}\n"
+        message += "```\n\n"
+    
+    if outdated_offenders:
+        message += "The following nodes did not complete the DKG heartbeat because they are running an outdated client version:\n\n"
+        message += "```\n"
+        message += "Staking provider address                   | Operator address\n"
+        message += "---------------------------------------------------------------------------------------\n"
+        for staking_provider, operator in outdated_offenders:
+            message += f"{staking_provider} | {operator}\n"
+        message += "```\n\n"
+    
+    if unknown_reasons_offenders:
+        message += "The following nodes did not complete the DKG heartbeat due to unknown reasons (server errors):\n\n"
+        message += "```\n"
+        message += "Staking provider address                   | Operator address\n"
+        message += "---------------------------------------------------------------------------------------\n"
+        for staking_provider, operator in unknown_reasons_offenders:
+            message += f"{staking_provider} | {operator}\n"
+        message += "```\n\n"
+    
+    message += f"If you're operating one of the nodes running an outdated client version, please upgrade your node to v{latest_version} (latest). "
+    message += "Otherwise if your node was unresponsive or experiencing server errors, please open a support ticket in 🙋┃support-ticket so we can help you to investigate the failure reason.\n\n"
+    message += "Finally, a reminder that we will continue to monitor the health of the network. "
+    message += "Please, be sure you claimed the @Node Operator role in 🪪┃claim-role and stay tuned to announcements in this server since we will report on failing nodes."
+    
+    return message
+
+
 def investigate_offender(
     offenders: Dict[str, Dict[str, Any]], network_data: Dict[str, Any]
 ) -> None:
@@ -89,18 +210,24 @@ def investigate_offender(
                             verify=False,
                             timeout=20,
                         )
-                        if node_status.status_code != 200:
+                        
+                        if node_status.status_code == 500:
+                            # HTTP 500 indicates server error - categorize as unknown reasons
+                            offenders[ritual_id][address]["version"] = "Unknown"
+                            offenders[ritual_id][address]["reasons"].append("Unknown reasons (HTTP 500)")
+                        elif node_status.status_code != 200:
+                            # Other non-200 status codes - treat as unreachable
                             raise requests.ConnectionError
+                        else:
+                            # HTTP 200 - node is reachable
+                            version = node_status.json().get("version", "Unknown")
+                            offenders[ritual_id][address]["version"] = version
 
-                        version = node_status.json().get("version", "Unknown")
-
-                        offenders[ritual_id][address]["version"] = version
-
-                        if version != "Unknown" and version != latest_version:
-                            offenders[ritual_id][address]["reasons"].append(
-                                f"Old Version ({version})"
-                            )
-                            outdated_nodes += 1
+                            if version != "Unknown" and version != latest_version:
+                                offenders[ritual_id][address]["reasons"].append(
+                                    f"Old Version ({version})"
+                                )
+                                outdated_nodes += 1
                     except requests.ConnectionError:
                         offenders[ritual_id][address]["version"] = "Unknown"
                         offenders[ritual_id][address]["reasons"].append("Node is unreachable")
@@ -169,13 +296,17 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
             ritual = coordinator.rituals(ritual_id)
             participants = coordinator.getParticipants(ritual_id)
 
+            # Check if all participants have submitted transcripts
+            all_transcripts_submitted = all(participant_info[2] for participant_info in participants)
+
             for participant_info in participants:
                 address, aggregated, transcript, *data = participant_info
                 reasons = []
 
                 if not transcript:
                     reasons.append("Missing transcript")
-                if not aggregated and ritual.totalTranscripts == 1:
+                # Only mark as offender for not aggregating if all transcripts were submitted
+                if not aggregated and ritual.totalTranscripts == 1 and all_transcripts_submitted:
                     reasons.append("Did not aggregate")
 
                 if reasons:
@@ -198,6 +329,20 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
         fg="green",
     )
     investigate_offender(offenders, network_data)
+    
+    # Generate and display Discord message
+    discord_message = format_discord_message(offenders, network_data)
+    
+    click.secho("\n" + "="*80, fg="cyan")
+    click.secho("📢 DISCORD MESSAGE (copy below):", fg="cyan")
+    click.secho("="*80, fg="cyan")
+    click.secho(discord_message, fg="white")
+    click.secho("="*80, fg="cyan")
+    
+    # Also save to file for easy copying
+    with open("discord_message.txt", "w") as f:
+        f.write(discord_message)
+    click.secho("💾 Discord message also saved to 'discord_message.txt'", fg="green")
 
 
 if __name__ == "__main__":
