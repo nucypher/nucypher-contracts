@@ -548,6 +548,7 @@ def test_authorization_decrease_request(
     # Emulate desync for staker with penalty
     chain.pending_timestamp += deauthorization_duration
     child_application.penalize(staking_provider, sender=staking_provider)
+    child_application.release(staking_provider, sender=staking_provider)
     assert taco_application.authorizedOverall() == value // 2 * 9 // 10
     taco_application.approveAuthorizationDecrease(staking_provider, sender=creator)
     assert taco_application.authorizedOverall() == 0
@@ -660,6 +661,13 @@ def test_finish_authorization_decrease(
     new_value = minimum_authorization // 2
     threshold_staking.setDecreaseRequest(staking_provider, new_value, sender=creator)
     chain.pending_timestamp += deauthorization_duration
+
+    # Can't approve without release
+    with ape.reverts("Node has not finished leaving process"):
+        taco_application.approveAuthorizationDecrease(staking_provider, sender=creator)
+
+    child_application.release(staking_provider, sender=creator)
+
     tx = taco_application.approveAuthorizationDecrease(staking_provider, sender=creator)
 
     assert taco_application.stakingProviderInfo(staking_provider)[AUTHORIZATION_SLOT] == new_value
@@ -692,6 +700,7 @@ def test_finish_authorization_decrease(
     threshold_staking.setDecreaseRequest(staking_provider, new_value, sender=creator)
     chain.pending_timestamp += deauthorization_duration
     child_application.penalize(staking_provider, sender=staking_provider)
+    child_application.release(staking_provider, sender=creator)
     taco_application.approveAuthorizationDecrease(staking_provider, sender=creator)
     assert taco_application.stakingProviderInfo(staking_provider)[AUTHORIZATION_SLOT] == new_value
     assert taco_application.authorizedOverall() == new_value * 9 // 10
@@ -734,6 +743,7 @@ def test_finish_authorization_decrease(
     )
     chain.pending_timestamp += deauthorization_duration
     threshold_staking.setDecreaseRequest(staking_provider, 0, sender=creator)
+    child_application.release(staking_provider, sender=creator)
     taco_application.approveAuthorizationDecrease(staking_provider, sender=creator)
     assert taco_application.authorizedStake(staking_provider) == 0
     assert taco_application.stakingProviderToOperator(staking_provider) == ZERO_ADDRESS
