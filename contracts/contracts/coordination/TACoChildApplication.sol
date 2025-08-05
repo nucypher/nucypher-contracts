@@ -38,6 +38,7 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
     mapping(address => StakingProviderInfo) public stakingProviderInfo;
     address[] public stakingProviders;
     mapping(address => address) public operatorToStakingProvider;
+    uint32[] public activeRituals;
 
     /**
      * @dev Checks caller is root application
@@ -73,6 +74,10 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         );
         coordinator = _coordinator;
         adjudicator = _adjudicator;
+    }
+
+    function setActiveRituals(uint32[] memory _activeRituals) external {
+        activeRituals = _activeRituals;
     }
 
     function authorizedStake(address _stakingProvider) external view returns (uint96) {
@@ -270,11 +275,12 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
     function release(
         address _stakingProvider
     ) external override(ITACoRootToChild, ITACoChildToRoot) {
-        // check all rituals
-        for (uint32 i = 0; i < Coordinator(coordinator).numberOfRituals(); i++) {
+        // check all active rituals
+        for (uint256 i = 0; i < activeRituals.length; i++) {
+            uint32 ritualId = activeRituals[i];
             if (
-                Coordinator(coordinator).isRitualActive(i) &&
-                Coordinator(coordinator).isParticipant(i, _stakingProvider)
+                Coordinator(coordinator).isRitualActive(ritualId) &&
+                Coordinator(coordinator).isParticipant(ritualId, _stakingProvider)
             ) {
                 // still part of the ritual
                 return;
