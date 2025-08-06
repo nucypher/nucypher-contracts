@@ -588,3 +588,21 @@ def test_reset_reward(accounts, threshold_staking, taco_application, child_appli
     assert taco_application.getPenalty(staking_provider) == [0, 0]
     assert taco_application.authorizedOverall() == min_authorization
     assert tx.events == [taco_application.RewardReset(stakingProvider=staking_provider)]
+
+
+def test_release(accounts, threshold_staking, taco_application, child_application, chain):
+    creator, staking_provider, *everyone_else = accounts[0:]
+
+    # Only child app can penalize
+    with ape.reverts("Only child application allowed to release"):
+        taco_application.release(staking_provider, sender=creator)
+
+    # Release staking provider
+    assert not taco_application.stakingProviderReleased(staking_provider)
+    tx = child_application.release(staking_provider, sender=staking_provider)
+    assert tx.events == [
+        taco_application.Released(
+            stakingProvider=staking_provider,
+        )
+    ]
+    assert taco_application.stakingProviderReleased(staking_provider)

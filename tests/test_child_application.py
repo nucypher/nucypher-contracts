@@ -22,6 +22,7 @@ from web3 import Web3
 
 OPERATOR_SLOT = 0
 CONFIRMATION_SLOT = 2
+RELEASED_SLOT = 7
 
 MIN_AUTHORIZATION = Web3.to_wei(40_000, "ether")
 DEAUTHORIZATION_DURATION = 60 * 60 * 24 * 60  # 60 days in seconds
@@ -337,3 +338,42 @@ def test_penalize(accounts, root_application, child_application, coordinator):
     tx = child_application.penalize(staking_provider, sender=creator)
     assert root_application.penalties(staking_provider)
     assert tx.events == [child_application.Penalized(stakingProvider=staking_provider)]
+
+
+def test_release(accounts, root_application, child_application, coordinator):
+    (
+        creator,
+        staking_provider,
+        staking_provider_2,
+        staking_provider_3,
+        *everyone_else,
+    ) = accounts[0:]
+
+    value = Web3.to_wei(40_000, "ether")
+    root_application.updateAuthorization(staking_provider, value, sender=creator)
+    root_application.updateAuthorization(staking_provider_2, value, sender=creator)
+    root_application.updateAuthorization(staking_provider_3, value, sender=creator)
+
+    # No active rituals set
+    tx = child_application.release(staking_provider, sender=staking_provider)
+    assert child_application.stakingProviderInfo(staking_provider)[RELEASED_SLOT]
+    assert child_application.authorizedStake(staking_provider) == 0
+    assert root_application.releases(staking_provider)
+    assert tx.events == [child_application.Released(stakingProvider=staking_provider)]
+
+    child_application.setActiveRituals([1, 2], sender=creator)
+
+    # Not a participant in active rituals
+    tx = child_application.release(staking_provider_2, sender=staking_provider_2)
+    assert child_application.authorizedStake(staking_provider_2) == 0
+    assert child_application.stakingProviderInfo(staking_provider_2)[RELEASED_SLOT]
+    assert root_application.releases(staking_provider_2)
+    assert tx.events == [child_application.Released(stakingProvider=staking_provider_2)]
+
+    coordinator.setRitualParticipant(2, staking_provider_3, sender=creator)
+
+    # Active participant
+    child_application.release(staking_provider_3, sender=staking_provider_3)
+    assert child_application.authorizedStake(staking_provider_3) == value
+    assert not child_application.stakingProviderInfo(staking_provider_3)[RELEASED_SLOT]
+    assert not root_application.releases(staking_provider_3)

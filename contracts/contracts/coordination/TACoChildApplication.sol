@@ -20,6 +20,12 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
      */
     event Penalized(address indexed stakingProvider);
 
+    /**
+     * @notice Signals that the staking provider was released
+     * @param stakingProvider Staking provider address
+     */
+    event Released(address indexed stakingProvider);
+
     struct StakingProviderInfo {
         address operator;
         uint96 authorized;
@@ -27,6 +33,8 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         uint248 index; // index in stakingProviders array + 1
         uint96 deauthorizing;
         uint64 endDeauthorization;
+        uint256 stub;
+        bool released;
     }
 
     ITACoChildToRoot public immutable rootApplication;
@@ -81,7 +89,11 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
     }
 
     function authorizedStake(address _stakingProvider) external view returns (uint96) {
-        return stakingProviderInfo[_stakingProvider].authorized;
+        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
+        if (info.released) {
+            return 0;
+        }
+        return info.authorized;
     }
 
     /**
@@ -104,6 +116,9 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         uint256 _endDate
     ) public view returns (uint96) {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
+        if (info.released) {
+            return 0;
+        }
 
         uint96 eligibleAmount = info.authorized;
         if (0 < info.endDeauthorization && info.endDeauthorization < _endDate) {
@@ -275,6 +290,10 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
     function release(
         address _stakingProvider
     ) external override(ITACoRootToChild, ITACoChildToRoot) {
+        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
+        if (info.released) {
+            return;
+        }
         // check all active rituals
         for (uint256 i = 0; i < activeRituals.length; i++) {
             uint32 ritualId = activeRituals[i];
@@ -286,6 +305,8 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
                 return;
             }
         }
+        info.released = true;
+        emit Released(_stakingProvider);
         rootApplication.release(_stakingProvider);
     }
 }
