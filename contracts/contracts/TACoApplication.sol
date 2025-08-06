@@ -673,7 +673,7 @@ contract TACoApplication is
 
         uint96 toAmount = tStaking.approveAuthorizationDecrease(_stakingProvider);
         require(
-            toAmount >= minimumAuthorization || stakingProviderReleased[_stakingProvider],
+            stakingProviderReleased[_stakingProvider] || toAmount >= minimumAuthorization,
             "Node has not finished leaving process"
         );
 
@@ -1060,7 +1060,7 @@ contract TACoApplication is
     function release(address _stakingProvider) external override(ITACoChildToRoot) {
         require(
             msg.sender == address(childApplication),
-            "Only child application allowed to penalize"
+            "Only child application allowed to release"
         );
 
         if (_stakingProvider == address(0)) {
