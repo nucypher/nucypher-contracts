@@ -84,7 +84,7 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         adjudicator = _adjudicator;
     }
 
-    function setActiveRituals(uint32[] memory _activeRituals) external {
+    function setActiveRituals(uint32[] memory _activeRituals) external reinitializer(2) {
         activeRituals = _activeRituals;
     }
 
