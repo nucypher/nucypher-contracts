@@ -16,6 +16,8 @@ contract ChildApplicationForCoordinatorMock is ITACoChildApplication {
     mapping(address => address) public operatorToStakingProvider;
     mapping(address => bool) public confirmations;
 
+    mapping(address => bool) public stakingProviderReleased;
+
     function updateOperator(address _stakingProvider, address _operator) external {
         address oldOperator = stakingProviderToOperator[_stakingProvider];
         operatorToStakingProvider[oldOperator] = address(0);
@@ -35,5 +37,7 @@ contract ChildApplicationForCoordinatorMock is ITACoChildApplication {
     function penalize(address _stakingProvider) external {}
 
     // solhint-disable-next-line no-empty-blocks
-    function release(address _stakingProvider) external override {}
+    function release(address _stakingProvider) external override {
+        stakingProviderReleased[_stakingProvider] = true;
+    }
 }

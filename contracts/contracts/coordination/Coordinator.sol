@@ -678,6 +678,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         delete handover.decryptionRequestStaticKey;
 
         emit HandoverFinalized(ritualId, departingParticipant, incomingParticipant);
+        application.release(departingParticipant);
     }
 
     function replaceStorageBytes(
