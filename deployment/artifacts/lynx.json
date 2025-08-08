@@ -4157,29 +4157,6 @@
                     "stateMutability": "nonpayable",
                     "inputs": [
                         {
-                            "name": "_timeout",
-                            "type": "uint32",
-                            "internalType": "uint32"
-                        },
-                        {
-                            "name": "_maxDkgSize",
-                            "type": "uint16",
-                            "internalType": "uint16"
-                        },
-                        {
-                            "name": "_admin",
-                            "type": "address",
-                            "internalType": "address"
-                        }
-                    ],
-                    "outputs": []
-                },
-                {
-                    "type": "function",
-                    "name": "initialize",
-                    "stateMutability": "nonpayable",
-                    "inputs": [
-                        {
                             "name": "_maxDkgSize",
                             "type": "uint16",
                             "internalType": "uint16"
@@ -4294,25 +4271,6 @@
                 {
                     "type": "function",
                     "name": "isProviderKeySet",
-                    "stateMutability": "view",
-                    "inputs": [
-                        {
-                            "name": "provider",
-                            "type": "address",
-                            "internalType": "address"
-                        }
-                    ],
-                    "outputs": [
-                        {
-                            "name": "",
-                            "type": "bool",
-                            "internalType": "bool"
-                        }
-                    ]
-                },
-                {
-                    "type": "function",
-                    "name": "isProviderPublicKeySet",
                     "stateMutability": "view",
                     "inputs": [
                         {
@@ -4612,97 +4570,6 @@
                         }
                     ],
                     "outputs": []
-                },
-                {
-                    "type": "function",
-                    "name": "rituals",
-                    "stateMutability": "view",
-                    "inputs": [
-                        {
-                            "name": "ritualId",
-                            "type": "uint256",
-                            "internalType": "uint256"
-                        }
-                    ],
-                    "outputs": [
-                        {
-                            "name": "initiator",
-                            "type": "address",
-                            "internalType": "address"
-                        },
-                        {
-                            "name": "initTimestamp",
-                            "type": "uint32",
-                            "internalType": "uint32"
-                        },
-                        {
-                            "name": "endTimestamp",
-                            "type": "uint32",
-                            "internalType": "uint32"
-                        },
-                        {
-                            "name": "totalTranscripts",
-                            "type": "uint16",
-                            "internalType": "uint16"
-                        },
-                        {
-                            "name": "totalAggregations",
-                            "type": "uint16",
-                            "internalType": "uint16"
-                        },
-                        {
-                            "name": "authority",
-                            "type": "address",
-                            "internalType": "address"
-                        },
-                        {
-                            "name": "dkgSize",
-                            "type": "uint16",
-                            "internalType": "uint16"
-                        },
-                        {
-                            "name": "threshold",
-                            "type": "uint16",
-                            "internalType": "uint16"
-                        },
-                        {
-                            "name": "aggregationMismatch",
-                            "type": "bool",
-                            "internalType": "bool"
-                        },
-                        {
-                            "name": "accessController",
-                            "type": "address",
-                            "internalType": "contract IEncryptionAuthorizer"
-                        },
-                        {
-                            "name": "publicKey",
-                            "type": "tuple",
-                            "components": [
-                                {
-                                    "name": "word0",
-                                    "type": "bytes32",
-                                    "internalType": "bytes32"
-                                },
-                                {
-                                    "name": "word1",
-                                    "type": "bytes16",
-                                    "internalType": "bytes16"
-                                }
-                            ],
-                            "internalType": "struct BLS12381.G1Point"
-                        },
-                        {
-                            "name": "aggregatedTranscript",
-                            "type": "bytes",
-                            "internalType": "bytes"
-                        },
-                        {
-                            "name": "feeModel",
-                            "type": "address",
-                            "internalType": "contract IFeeModel"
-                        }
-                    ]
                 },
                 {
                     "type": "function",
