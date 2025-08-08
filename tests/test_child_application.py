@@ -354,7 +354,7 @@ def test_release(accounts, root_application, child_application, coordinator):
     root_application.updateAuthorization(staking_provider_2, value, sender=creator)
     root_application.updateAuthorization(staking_provider_3, value, sender=creator)
 
-    with ape.reverts("Not operator or stakking provider"):
+    with ape.reverts("Can't call release"):
         child_application.release(staking_provider, sender=creator)
 
     # No active rituals set
@@ -367,7 +367,7 @@ def test_release(accounts, root_application, child_application, coordinator):
     child_application.setActiveRituals([1, 2], sender=creator)
 
     # Not a participant in active rituals
-    tx = child_application.release(staking_provider_2, sender=staking_provider_2)
+    tx = coordinator.release(staking_provider_2, sender=staking_provider_2)
     assert child_application.authorizedStake(staking_provider_2) == 0
     assert child_application.stakingProviderInfo(staking_provider_2)[RELEASED_SLOT]
     assert root_application.releases(staking_provider_2)
@@ -376,7 +376,7 @@ def test_release(accounts, root_application, child_application, coordinator):
     coordinator.setRitualParticipant(2, staking_provider_3, sender=creator)
 
     # Active participant
-    child_application.release(staking_provider_3, sender=staking_provider_3)
+    root_application.callChildRelease(staking_provider_3, sender=staking_provider_3)
     assert child_application.authorizedStake(staking_provider_3) == value
     assert not child_application.stakingProviderInfo(staking_provider_3)[RELEASED_SLOT]
     assert not root_application.releases(staking_provider_3)

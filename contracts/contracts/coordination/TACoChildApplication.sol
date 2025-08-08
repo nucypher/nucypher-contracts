@@ -292,8 +292,11 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
     ) external override(ITACoRootToChild, ITACoChildToRoot) {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         require(
-            msg.sender == _stakingProvider || msg.sender == info.operator,
-            "Not operator or stakking provider"
+            msg.sender == _stakingProvider ||
+                msg.sender == info.operator ||
+                msg.sender == address(rootApplication) ||
+                msg.sender == coordinator,
+            "Can't call release"
         );
         if (info.released) {
             return;
