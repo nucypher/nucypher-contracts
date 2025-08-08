@@ -488,6 +488,9 @@ def test_authorization_decrease_request(
         )
     ]
 
+    assert not child_application.stakingProviderReleased(staking_provider)
+    assert not taco_application.stakingProviderReleased(staking_provider)
+
     # Confirm operator address and request full decrease
     taco_application.bondOperator(staking_provider, staking_provider, sender=staking_provider)
     child_application.confirmOperatorAddress(staking_provider, sender=staking_provider)
@@ -520,6 +523,9 @@ def test_authorization_decrease_request(
             stakingProvider=staking_provider, fromAmount=value, toAmount=0
         )
     ]
+
+    assert child_application.stakingProviderReleased(staking_provider)
+    assert taco_application.stakingProviderReleased(staking_provider)
 
     # Emulate slash and desync by sending smaller fromAmount
     tx = threshold_staking.authorizationDecreaseRequested(

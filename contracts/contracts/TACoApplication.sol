@@ -655,6 +655,9 @@ contract TACoApplication is
         info.endDeauthorization = uint64(block.timestamp + deauthorizationDuration);
         emit AuthorizationDecreaseRequested(_stakingProvider, _fromAmount, _toAmount);
         _updateAuthorization(_stakingProvider, info);
+        if (_toAmount < minimumAuthorization) {
+            childApplication.release(_stakingProvider);
+        }
     }
 
     /**

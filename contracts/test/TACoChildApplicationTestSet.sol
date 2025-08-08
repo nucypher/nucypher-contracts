@@ -60,6 +60,10 @@ contract RootApplicationForTACoChildApplicationMock {
     function resetConfirmation(address _operator) external {
         confirmations[_operator] = false;
     }
+
+    function callChildRelease(address _stakingProvider) external {
+        childApplication.release(_stakingProvider);
+    }
 }
 
 contract CoordinatorForTACoChildApplicationMock {
@@ -85,5 +89,9 @@ contract CoordinatorForTACoChildApplicationMock {
 
     function isParticipant(uint32 ritualId, address provider) external view returns (bool) {
         return rituals[ritualId][provider];
+    }
+
+    function release(address _stakingProvider) external {
+        application.release(_stakingProvider);
     }
 }
