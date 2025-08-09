@@ -1174,8 +1174,10 @@ def test_finalize_handover(
         == HandoverState.HANDOVER_AWAITING_FINALIZATION
     )
 
+    assert not application.stakingProviderReleased(departing_node)
     tx = coordinator.finalizeHandover(ritualID, departing_node, sender=handover_supervisor)
     assert coordinator.getHandoverState(ritualID, departing_node) == HandoverState.NON_INITIATED
+    assert application.stakingProviderReleased(departing_node)
 
     events = [event for event in tx.events if event.event_name == "HandoverFinalized"]
     assert events == [
