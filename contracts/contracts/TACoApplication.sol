@@ -652,7 +652,7 @@ contract TACoApplication is
 
         info.authorized = _fromAmount;
         info.deauthorizing = _fromAmount - _toAmount;
-        info.endDeauthorization = uint64(block.timestamp + deauthorizationDuration);
+        info.endDeauthorization = uint64(block.timestamp);
         emit AuthorizationDecreaseRequested(_stakingProvider, _fromAmount, _toAmount);
         _updateAuthorization(_stakingProvider, info);
         if (_toAmount < minimumAuthorization) {
@@ -741,6 +741,9 @@ contract TACoApplication is
      * @notice Get all tokens delegated to the staking provider
      */
     function authorizedStake(address _stakingProvider) external view returns (uint96) {
+        if (stakingProviderReleased[_stakingProvider]) {
+            return 0;
+        }
         return stakingProviderInfo[_stakingProvider].authorized;
     }
 
@@ -755,6 +758,9 @@ contract TACoApplication is
         uint256 _endDate
     ) public view returns (uint96) {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
+        if (stakingProviderReleased[_stakingProvider]) {
+            return 0;
+        }
 
         uint96 eligibleAmount = info.authorized;
         if (0 < info.endDeauthorization && info.endDeauthorization < _endDate) {
