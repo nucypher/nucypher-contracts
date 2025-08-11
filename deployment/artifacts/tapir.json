@@ -2488,6 +2488,25 @@
                 },
                 {
                     "type": "event",
+                    "name": "BlindedSharePosted",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "internalType": "uint32",
+                            "indexed": true
+                        },
+                        {
+                            "name": "departingParticipant",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
                     "name": "DefaultAdminDelayChangeCanceled",
                     "inputs": [],
                     "anonymous": false
@@ -2564,6 +2583,106 @@
                             "type": "address",
                             "internalType": "contract IFeeModel",
                             "indexed": false
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
+                    "name": "HandoverCanceled",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "internalType": "uint32",
+                            "indexed": true
+                        },
+                        {
+                            "name": "departingParticipant",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        },
+                        {
+                            "name": "incomingParticipant",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
+                    "name": "HandoverFinalized",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "internalType": "uint32",
+                            "indexed": true
+                        },
+                        {
+                            "name": "departingParticipant",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        },
+                        {
+                            "name": "incomingParticipant",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
+                    "name": "HandoverRequest",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "internalType": "uint32",
+                            "indexed": true
+                        },
+                        {
+                            "name": "departingParticipant",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        },
+                        {
+                            "name": "incomingParticipant",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
+                    "name": "HandoverTranscriptPosted",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "internalType": "uint32",
+                            "indexed": true
+                        },
+                        {
+                            "name": "departingParticipant",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        },
+                        {
+                            "name": "incomingParticipant",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
                         }
                     ],
                     "anonymous": false
@@ -2884,6 +3003,19 @@
                 },
                 {
                     "type": "function",
+                    "name": "HANDOVER_SUPERVISOR_ROLE",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "bytes32",
+                            "internalType": "bytes32"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
                     "name": "TREASURY_ROLE",
                     "stateMutability": "view",
                     "inputs": [],
@@ -2943,9 +3075,51 @@
                 },
                 {
                     "type": "function",
+                    "name": "blindedSharePosition",
+                    "stateMutability": "pure",
+                    "inputs": [
+                        {
+                            "name": "index",
+                            "type": "uint256",
+                            "internalType": "uint256"
+                        },
+                        {
+                            "name": "threshold",
+                            "type": "uint16",
+                            "internalType": "uint16"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256",
+                            "internalType": "uint256"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
                     "name": "cancelDefaultAdminTransfer",
                     "stateMutability": "nonpayable",
                     "inputs": [],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "cancelHandover",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        },
+                        {
+                            "name": "departingParticipant",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
                     "outputs": []
                 },
                 {
@@ -3021,6 +3195,32 @@
                 },
                 {
                     "type": "function",
+                    "name": "dkgTimeout",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "dkgTimeoutStub",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
                     "name": "expectedTranscriptSize",
                     "stateMutability": "pure",
                     "inputs": [
@@ -3082,6 +3282,24 @@
                 },
                 {
                     "type": "function",
+                    "name": "finalizeHandover",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        },
+                        {
+                            "name": "departingParticipant",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
                     "name": "getAccessController",
                     "stateMutability": "view",
                     "inputs": [
@@ -3134,6 +3352,54 @@
                             "name": "",
                             "type": "address",
                             "internalType": "contract IFeeModel"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "getHandoverKey",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        },
+                        {
+                            "name": "departingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "bytes32",
+                            "internalType": "bytes32"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "getHandoverState",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        },
+                        {
+                            "name": "departingParticipant",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint8",
+                            "internalType": "enum Coordinator.HandoverState"
                         }
                     ]
                 },
@@ -3573,6 +3839,81 @@
                 },
                 {
                     "type": "function",
+                    "name": "handoverRequest",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        },
+                        {
+                            "name": "departingParticipant",
+                            "type": "address",
+                            "internalType": "address"
+                        },
+                        {
+                            "name": "incomingParticipant",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "handoverTimeout",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "handovers",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "handoverKey",
+                            "type": "bytes32",
+                            "internalType": "bytes32"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "requestTimestamp",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        },
+                        {
+                            "name": "incomingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        },
+                        {
+                            "name": "transcript",
+                            "type": "bytes",
+                            "internalType": "bytes"
+                        },
+                        {
+                            "name": "decryptionRequestStaticKey",
+                            "type": "bytes",
+                            "internalType": "bytes"
+                        },
+                        {
+                            "name": "blindedShare",
+                            "type": "bytes",
+                            "internalType": "bytes"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
                     "name": "hasRole",
                     "stateMutability": "view",
                     "inputs": [
@@ -3600,11 +3941,6 @@
                     "name": "initialize",
                     "stateMutability": "nonpayable",
                     "inputs": [
-                        {
-                            "name": "_timeout",
-                            "type": "uint32",
-                            "internalType": "uint32"
-                        },
                         {
                             "name": "_maxDkgSize",
                             "type": "uint16",
@@ -3742,7 +4078,7 @@
                     "stateMutability": "view",
                     "inputs": [
                         {
-                            "name": "provider",
+                            "name": "",
                             "type": "address",
                             "internalType": "address"
                         }
@@ -3891,6 +4227,52 @@
                 },
                 {
                     "type": "function",
+                    "name": "postBlindedShare",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        },
+                        {
+                            "name": "blindedShare",
+                            "type": "bytes",
+                            "internalType": "bytes"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "postHandoverTranscript",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        },
+                        {
+                            "name": "departingParticipant",
+                            "type": "address",
+                            "internalType": "address"
+                        },
+                        {
+                            "name": "transcript",
+                            "type": "bytes",
+                            "internalType": "bytes"
+                        },
+                        {
+                            "name": "decryptionRequestStaticKey",
+                            "type": "bytes",
+                            "internalType": "bytes"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
                     "name": "postTranscript",
                     "stateMutability": "nonpayable",
                     "inputs": [
@@ -3980,7 +4362,7 @@
                     "stateMutability": "view",
                     "inputs": [
                         {
-                            "name": "ritualId",
+                            "name": "index",
                             "type": "uint256",
                             "internalType": "uint256"
                         }
