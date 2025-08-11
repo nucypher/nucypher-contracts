@@ -179,6 +179,11 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         __AccessControlDefaultAdminRules_init(0, _admin);
     }
 
+    /// @dev for backward compatibility only
+    function timeout() external view returns (uint32) {
+        return dkgTimeout;
+    }
+
     function getInitiator(uint32 ritualId) external view returns (address) {
         return rituals[ritualId].initiator;
     }
