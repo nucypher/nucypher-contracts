@@ -10,7 +10,7 @@ from deployment.types import ChecksumAddress
 from deployment.utils import check_plugins
 
 
-@click.command(cls=ConnectedProviderCommand, name="finalize-handover")
+@click.command(cls=ConnectedProviderCommand, name="cancel-handover")
 @account_option()
 @network_option(required=True)
 @click.option(
@@ -41,7 +41,7 @@ def cli(
     departing_provider,
     auto,
 ):
-    """Finalize the handover."""
+    """Cancel the handover."""
 
     # Setup
     check_plugins()
@@ -52,12 +52,12 @@ def cli(
     transactor = Transactor(account=account, autosign=auto)
     try:
         transactor.transact(
-            coordinator_contract.finalizeHandover,
+            coordinator_contract.cancelHandover,
             ritual_id,
             departing_provider,
         )
     except Exception as e:
-        raise click.ClickException(f"Failed to finalize the handover.\n{e}")
+        raise click.ClickException(f"Failed to cancel the handover.\n{e}")
 
 
 if __name__ == "__main__":
