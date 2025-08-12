@@ -95,6 +95,10 @@ contract MockPolygonChild is Ownable, ITACoChildToRoot, ITACoRootToChild {
         );
     }
 
+    function childRelease(address _stakingProvider) external {
+        childApplication.release(_stakingProvider);
+    }
+
     // solhint-disable-next-line no-empty-blocks
     function confirmOperatorAddress(address _operator) external override {}
 
