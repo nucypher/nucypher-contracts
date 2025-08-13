@@ -1146,11 +1146,11 @@ def test_finalize_handover(
         coordinator.HANDOVER_SUPERVISOR_ROLE(), handover_supervisor, sender=deployer
     )
 
-    with ape.reverts("Not waiting for finalization"):
-        coordinator.finalizeHandover(ritualID, departing_node, sender=handover_supervisor)
-
     threshold, aggregated = activate_ritual(nodes, coordinator, ritualID)
     setup_node(incoming_node, coordinator, application, deployer)
+
+    with ape.reverts("Not waiting for finalization"):
+        coordinator.finalizeHandover(ritualID, departing_node, sender=handover_supervisor)
 
     coordinator.handoverRequest(ritualID, departing_node, incoming_node, sender=handover_supervisor)
 
