@@ -2,8 +2,9 @@
 
 from ape import project
 
-from deployment.constants import CONSTRUCTOR_PARAMS_DIR
+from deployment.constants import ARTIFACTS_DIR, CONSTRUCTOR_PARAMS_DIR
 from deployment.params import Deployer
+from deployment.registry import contracts_from_registry
 
 VERIFY = False
 CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "tapir" / "upgrade-root.yml"
@@ -11,16 +12,28 @@ CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "tapir" / "upgrade-root.y
 
 def main():
     """
-    This script upgrades TACoApplication in Tapir Sepolia.
+    This script upgrades root contracts for Tapir on Eth Sepolia.
     """
 
     deployer = Deployer.from_yaml(filepath=CONSTRUCTOR_PARAMS_FILEPATH, verify=VERIFY)
+    instances = contracts_from_registry(filepath=ARTIFACTS_DIR / "tapir.json", chain_id=11155111)
 
-    taco_app_proxy_address = "0xCcFf527698E78a536d80695D9Af4F4f3265ADA05"
-    new_taco_app_implementation = deployer.upgrade(project.TACoApplication, taco_app_proxy_address)
+    mock_threshold_staking = deployer.deploy(project.TestnetThresholdStaking)
+
+    taco_application = deployer.upgrade(
+        project.TACoApplication,
+        instances[project.TACoApplication.contract_type.name].address,
+    )
+
+    deployer.transact(mock_threshold_staking.setApplication, taco_application.address)
+
+    mock_polygon_root = deployer.deploy(project.MockPolygonRoot)
+    deployer.transact(taco_application.setChildApplication, mock_polygon_root.address)
 
     deployments = [
-        new_taco_app_implementation,
+        mock_threshold_staking,
+        taco_application,
+        mock_polygon_root,
     ]
 
     deployer.finalize(deployments=deployments)

@@ -7,18 +7,29 @@ artifacts:
   filename: tapir-root-upgrade.json
 
 constants:
+  TACO_APPLICATION_PROXY: "0xCcFf527698E78a536d80695D9Af4F4f3265ADA05"
+  TAPIR_STAKING_TOKEN: "0x28C35644F713c7Ee5C6A105e7AB0Fc144889a1Af"
   IN_SECONDS_1_HOUR: 3600
+  IN_SECONDS_1_DAY: 86400
   IN_SECONDS_7_DAYS: 604800
   IN_SECONDS_60_DAYS: 5184000
   FORTY_THOUSAND_TOKENS_IN_WEI_UNITS: 40000000000000000000000
-  TEN_MILLION_TOKENS_IN_WEI_UNITS: 10000000000000000000000000
+  PENALTY_DEFAULT: 1000 # 10%
+  PENALTY_INCREMENT: 500 # 5% increment
 
 contracts:
+  - TestnetThresholdStaking
   - TACoApplication:
       constructor:
-        _token: "0x28C35644F713c7Ee5C6A105e7AB0Fc144889a1Af"
-        _tStaking: "0x68214f94dc2f3C7F2E0b42AD22eb79E00746aA9C"
+        _token: $TAPIR_STAKING_TOKEN
+        _tStaking: $TestnetThresholdStaking
         _minimumAuthorization: $FORTY_THOUSAND_TOKENS_IN_WEI_UNITS
         _minOperatorSeconds: $IN_SECONDS_1_HOUR
         _rewardDuration: $IN_SECONDS_7_DAYS
         _deauthorizationDuration: $IN_SECONDS_60_DAYS
+        _penaltyDefault: $PENALTY_DEFAULT
+        _penaltyDuration: $IN_SECONDS_1_DAY # <= _rewardDuration
+        _penaltyIncrement: $PENALTY_INCREMENT
+  - MockPolygonRoot:
+      constructor:
+        _rootApplication: $TACO_APPLICATION_PROXY
