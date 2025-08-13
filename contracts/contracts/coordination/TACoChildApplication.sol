@@ -39,13 +39,13 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
 
     ITACoChildToRoot public immutable rootApplication;
     address public coordinator;
-    address public adjudicator;
 
     uint96 public immutable minimumAuthorization;
 
     mapping(address => StakingProviderInfo) public stakingProviderInfo;
     address[] public stakingProviders;
     mapping(address => address) public operatorToStakingProvider;
+    address public adjudicator;
     uint32[] public activeRituals;
 
     /**
