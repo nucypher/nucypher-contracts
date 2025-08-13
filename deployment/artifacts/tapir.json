@@ -2647,6 +2647,16 @@
                             "name": "_application",
                             "type": "address",
                             "internalType": "contract ITACoChildApplication"
+                        },
+                        {
+                            "name": "_dkgTimeout",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        },
+                        {
+                            "name": "_handoverTimeout",
+                            "type": "uint32",
+                            "internalType": "uint32"
                         }
                     ]
                 },
@@ -2700,33 +2710,6 @@
                 },
                 {
                     "type": "error",
-                    "name": "AddressEmptyCode",
-                    "inputs": [
-                        {
-                            "name": "target",
-                            "type": "address",
-                            "internalType": "address"
-                        }
-                    ]
-                },
-                {
-                    "type": "error",
-                    "name": "AddressInsufficientBalance",
-                    "inputs": [
-                        {
-                            "name": "account",
-                            "type": "address",
-                            "internalType": "address"
-                        }
-                    ]
-                },
-                {
-                    "type": "error",
-                    "name": "FailedInnerCall",
-                    "inputs": []
-                },
-                {
-                    "type": "error",
                     "name": "InvalidInitialization",
                     "inputs": []
                 },
@@ -2748,17 +2731,6 @@
                             "name": "value",
                             "type": "uint256",
                             "internalType": "uint256"
-                        }
-                    ]
-                },
-                {
-                    "type": "error",
-                    "name": "SafeERC20FailedOperation",
-                    "inputs": [
-                        {
-                            "name": "token",
-                            "type": "address",
-                            "internalType": "address"
                         }
                     ]
                 },
@@ -3227,25 +3199,6 @@
                             "name": "participants",
                             "type": "address[]",
                             "internalType": "address[]",
-                            "indexed": false
-                        }
-                    ],
-                    "anonymous": false
-                },
-                {
-                    "type": "event",
-                    "name": "TimeoutChanged",
-                    "inputs": [
-                        {
-                            "name": "oldTimeout",
-                            "type": "uint32",
-                            "internalType": "uint32",
-                            "indexed": false
-                        },
-                        {
-                            "name": "newTimeout",
-                            "type": "uint32",
-                            "internalType": "uint32",
                             "indexed": false
                         }
                     ],
@@ -4257,13 +4210,6 @@
                 },
                 {
                     "type": "function",
-                    "name": "initializeNumberOfRituals",
-                    "stateMutability": "nonpayable",
-                    "inputs": [],
-                    "outputs": []
-                },
-                {
-                    "type": "function",
                     "name": "initiateRitual",
                     "stateMutability": "nonpayable",
                     "inputs": [
@@ -4298,35 +4244,6 @@
                             "name": "",
                             "type": "uint32",
                             "internalType": "uint32"
-                        }
-                    ]
-                },
-                {
-                    "type": "function",
-                    "name": "isEncryptionAuthorized",
-                    "stateMutability": "view",
-                    "inputs": [
-                        {
-                            "name": "ritualId",
-                            "type": "uint32",
-                            "internalType": "uint32"
-                        },
-                        {
-                            "name": "evidence",
-                            "type": "bytes",
-                            "internalType": "bytes"
-                        },
-                        {
-                            "name": "ciphertextHeader",
-                            "type": "bytes",
-                            "internalType": "bytes"
-                        }
-                    ],
-                    "outputs": [
-                        {
-                            "name": "",
-                            "type": "bool",
-                            "internalType": "bool"
                         }
                     ]
                 },
@@ -4574,24 +4491,6 @@
                 },
                 {
                     "type": "function",
-                    "name": "postTranscript",
-                    "stateMutability": "nonpayable",
-                    "inputs": [
-                        {
-                            "name": "ritualId",
-                            "type": "uint32",
-                            "internalType": "uint32"
-                        },
-                        {
-                            "name": "transcript",
-                            "type": "bytes",
-                            "internalType": "bytes"
-                        }
-                    ],
-                    "outputs": []
-                },
-                {
-                    "type": "function",
                     "name": "publishTranscript",
                     "stateMutability": "nonpayable",
                     "inputs": [
@@ -4604,19 +4503,6 @@
                             "name": "transcript",
                             "type": "bytes",
                             "internalType": "bytes"
-                        }
-                    ],
-                    "outputs": []
-                },
-                {
-                    "type": "function",
-                    "name": "reinitializeDefaultAdmin",
-                    "stateMutability": "nonpayable",
-                    "inputs": [
-                        {
-                            "name": "newDefaultAdmin",
-                            "type": "address",
-                            "internalType": "address"
                         }
                     ],
                     "outputs": []
@@ -4813,19 +4699,6 @@
                 },
                 {
                     "type": "function",
-                    "name": "setTimeout",
-                    "stateMutability": "nonpayable",
-                    "inputs": [
-                        {
-                            "name": "newTimeout",
-                            "type": "uint32",
-                            "internalType": "uint32"
-                        }
-                    ],
-                    "outputs": []
-                },
-                {
-                    "type": "function",
                     "name": "supportsInterface",
                     "stateMutability": "view",
                     "inputs": [
@@ -4870,19 +4743,6 @@
                             "name": "newAuthority",
                             "type": "address",
                             "internalType": "address"
-                        }
-                    ],
-                    "outputs": []
-                },
-                {
-                    "type": "function",
-                    "name": "withdrawAllTokens",
-                    "stateMutability": "nonpayable",
-                    "inputs": [
-                        {
-                            "name": "token",
-                            "type": "address",
-                            "internalType": "contract IERC20"
                         }
                     ],
                     "outputs": []
@@ -5277,7 +5137,7 @@
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "MockPolygonChild": {
-            "address": "0x970b5f6A299813cA9DC45Be8446929b6513903f9",
+            "address": "0x469fBc4737f4d502d46B393E9a625EF754672644",
             "abi": [
                 {
                     "type": "constructor",
@@ -5317,9 +5177,21 @@
                             "indexed": true
                         },
                         {
-                            "name": "amount",
+                            "name": "authorized",
                             "type": "uint96",
                             "internalType": "uint96",
+                            "indexed": false
+                        },
+                        {
+                            "name": "deauthorizing",
+                            "type": "uint96",
+                            "internalType": "uint96",
+                            "indexed": false
+                        },
+                        {
+                            "name": "endDeauthorization",
+                            "type": "uint64",
+                            "internalType": "uint64",
                             "indexed": false
                         }
                     ],
@@ -5397,6 +5269,19 @@
                 },
                 {
                     "type": "function",
+                    "name": "childRelease",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
                     "name": "confirmOperatorAddress",
                     "stateMutability": "nonpayable",
                     "inputs": [
@@ -5420,6 +5305,32 @@
                             "internalType": "address"
                         }
                     ]
+                },
+                {
+                    "type": "function",
+                    "name": "penalize",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "release",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": []
                 },
                 {
                     "type": "function",
@@ -5474,6 +5385,34 @@
                 },
                 {
                     "type": "function",
+                    "name": "updateAuthorization",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        },
+                        {
+                            "name": "_authorized",
+                            "type": "uint96",
+                            "internalType": "uint96"
+                        },
+                        {
+                            "name": "_deauthorizing",
+                            "type": "uint96",
+                            "internalType": "uint96"
+                        },
+                        {
+                            "name": "_endDeauthorization",
+                            "type": "uint64",
+                            "internalType": "uint64"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
                     "name": "updateOperator",
                     "stateMutability": "nonpayable",
                     "inputs": [
@@ -5491,8 +5430,8 @@
                     "outputs": []
                 }
             ],
-            "tx_hash": "0xafc4b19b2620836601adf59c140edc206fd87a26f926014f77b2432c516b1624",
-            "block_number": 5392963,
+            "tx_hash": "0x9d02a90de77d2ce3f640f4ca1ea78340ad3288ef28d0b2fa48c36619e2b953f8",
+            "block_number": 25111963,
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "OpenAccessAuthorizer": {
@@ -6980,6 +6919,64 @@
                     "anonymous": false
                 },
                 {
+                    "type": "event",
+                    "name": "Penalized",
+                    "inputs": [
+                        {
+                            "name": "stakingProvider",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
+                    "name": "Released",
+                    "inputs": [
+                        {
+                            "name": "stakingProvider",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "function",
+                    "name": "activeRituals",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "",
+                            "type": "uint256",
+                            "internalType": "uint256"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "adjudicator",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ]
+                },
+                {
                     "type": "function",
                     "name": "authorizedStake",
                     "stateMutability": "view",
@@ -7133,6 +7130,11 @@
                             "name": "_coordinator",
                             "type": "address",
                             "internalType": "address"
+                        },
+                        {
+                            "name": "_adjudicator",
+                            "type": "address",
+                            "internalType": "address"
                         }
                     ],
                     "outputs": []
@@ -7171,6 +7173,19 @@
                 },
                 {
                     "type": "function",
+                    "name": "penalize",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
                     "name": "pendingAuthorizationDecrease",
                     "stateMutability": "view",
                     "inputs": [
@@ -7190,6 +7205,19 @@
                 },
                 {
                     "type": "function",
+                    "name": "release",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
                     "name": "rootApplication",
                     "stateMutability": "view",
                     "inputs": [],
@@ -7200,6 +7228,19 @@
                             "internalType": "contract ITACoChildToRoot"
                         }
                     ]
+                },
+                {
+                    "type": "function",
+                    "name": "setActiveRituals",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_activeRituals",
+                            "type": "uint32[]",
+                            "internalType": "uint32[]"
+                        }
+                    ],
+                    "outputs": []
                 },
                 {
                     "type": "function",
@@ -7242,6 +7283,16 @@
                             "name": "endDeauthorization",
                             "type": "uint64",
                             "internalType": "uint64"
+                        },
+                        {
+                            "name": "stub",
+                            "type": "uint256",
+                            "internalType": "uint256"
+                        },
+                        {
+                            "name": "released",
+                            "type": "bool",
+                            "internalType": "bool"
                         }
                     ]
                 },
