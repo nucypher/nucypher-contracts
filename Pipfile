@@ -12,6 +12,7 @@ ape-solidity = ">=0.8.4"
 ape-etherscan = {git = "https://github.com/derekpierre/ape-etherscan.git", ref = "flimsy-verification"}
 ape-polygon = "*"
 ape-infura = "*"
+ape-foundry = "*"
 flake8 = "*"
 isort = "*"
 nucypher-core = "*"
