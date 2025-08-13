@@ -5,8 +5,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional
 
-from ape import chain as chain_fixture
-from ape import project
+from ape import networks, project
 from ape.contracts import ContractInstance
 from eth_typing import ChecksumAddress
 from eth_utils import to_checksum_address
@@ -42,7 +41,8 @@ def _get_abi(contract_instance: ContractInstance) -> ABI:
     contract_abi = list()
 
     # check if proxy contract, use underlying implementation contract ABI
-    proxy_info = chain_fixture.contracts.get_proxy_info(contract_instance.address)
+    proxy_info = networks.provider.network.ecosystem.get_proxy_info(contract_instance.address)
+    # proxy_info = chain_fixture.contracts.get_proxy_info(contract_instance.address)
     if proxy_info:
         contract_container = get_contract_container(contract_instance.contract_type.name)
         contract_instance = contract_container.at(proxy_info.target)
@@ -59,6 +59,13 @@ def _get_name(
     Returns the optionally remapped registry name of a contract instance.
     If the contract instance is not remapped, the real contract name is returned.
     """
+    # check if proxy contract, use underlying implementation contract ABI
+    proxy_info = networks.provider.network.ecosystem.get_proxy_info(contract_instance.address)
+    # proxy_info = chain_fixture.contracts.get_proxy_info(contract_instance.address)
+    if proxy_info:
+        contract_container = get_contract_container(contract_instance.contract_type.name)
+        contract_instance = contract_container.at(proxy_info.target)
+
     real_contract_name = contract_instance.contract_type.name
     contract_name = registry_names.get(
         real_contract_name,  # look up name in registry_names
