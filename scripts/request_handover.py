@@ -57,16 +57,19 @@ def cli(
 
     # Get the contracts from the registry
     coordinator_contract = registry.get_contract(domain=domain, contract_name="Coordinator")
+
+    # Issue handover request
+    click.echo(
+        f"Requesting handover for ritual {ritual_id} from "
+        f"{departing_provider} to {incoming_provider}..."
+    )
     transactor = Transactor(account=account, autosign=auto)
-    try:
-        transactor.transact(
-            coordinator_contract.handoverRequest,
-            ritual_id,
-            departing_provider,
-            incoming_provider,
-        )
-    except Exception as e:
-        raise click.ClickException(f"Failed to request a handover.\n{e}")
+    transactor.transact(
+        coordinator_contract.handoverRequest,
+        ritual_id,
+        departing_provider,
+        incoming_provider,
+    )
 
 
 if __name__ == "__main__":

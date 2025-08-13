@@ -49,15 +49,19 @@ def cli(
 
     # Get the contracts from the registry
     coordinator_contract = registry.get_contract(domain=domain, contract_name="Coordinator")
+
+    # cancel the handover
+    click.echo(
+        f"Cancelling handover for ritual ID {ritual_id} "
+        f"and departing provider {departing_provider}..."
+    )
+
     transactor = Transactor(account=account, autosign=auto)
-    try:
-        transactor.transact(
-            coordinator_contract.cancelHandover,
-            ritual_id,
-            departing_provider,
-        )
-    except Exception as e:
-        raise click.ClickException(f"Failed to cancel the handover.\n{e}")
+    transactor.transact(
+        coordinator_contract.cancelHandover,
+        ritual_id,
+        departing_provider,
+    )
 
 
 if __name__ == "__main__":

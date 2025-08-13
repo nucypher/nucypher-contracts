@@ -49,15 +49,17 @@ def cli(
 
     # Get the contracts from the registry
     coordinator_contract = registry.get_contract(domain=domain, contract_name="Coordinator")
+
+    # Finalize the handover
+    click.echo(
+        f"Finalizing handover for ritual {ritual_id} and departing provider {departing_provider}..."
+    )
     transactor = Transactor(account=account, autosign=auto)
-    try:
-        transactor.transact(
-            coordinator_contract.finalizeHandover,
-            ritual_id,
-            departing_provider,
-        )
-    except Exception as e:
-        raise click.ClickException(f"Failed to finalize the handover.\n{e}")
+    transactor.transact(
+        coordinator_contract.finalizeHandover,
+        ritual_id,
+        departing_provider,
+    )
 
 
 if __name__ == "__main__":
