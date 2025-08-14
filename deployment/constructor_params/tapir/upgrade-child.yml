@@ -21,6 +21,6 @@ contracts:
         _minimumAuthorization: $FORTY_THOUSAND_TOKENS_IN_WEI_UNITS
   - Coordinator:
       constructor:
-        _application: $$TACO_CHILD_APPLICATION_PROXY
+        _application: $TACO_CHILD_APPLICATION_PROXY
         _dkgTimeout: $DKG_TIMEOUT_SECONDS
         _handoverTimeout: $HANDOVER_TIMEOUT_SECONDS
