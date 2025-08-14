@@ -87,7 +87,11 @@ def get_heartbeat_round_info() -> tuple[int, str]:
     else:
         # If it's the 5th Monday, it belongs to the next month's 1st round
         heartbeat_round = 1
-        now = (now.replace(day=1) + timedelta(days=32)).replace(day=1)
+        now = now.replace(
+            month=now.month + 1 if now.month < 12 else 1,
+            year=now.year + (1 if now.month == 12 else 0),
+            day=1
+        )
     
     month_name = now.strftime("%B")
     
