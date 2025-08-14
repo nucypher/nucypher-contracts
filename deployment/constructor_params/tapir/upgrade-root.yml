@@ -7,7 +7,6 @@ artifacts:
   filename: tapir-root-upgrade.json
 
 constants:
-  TACO_APPLICATION_PROXY: "0xCcFf527698E78a536d80695D9Af4F4f3265ADA05"
   TAPIR_STAKING_TOKEN: "0x28C35644F713c7Ee5C6A105e7AB0Fc144889a1Af"
   IN_SECONDS_1_HOUR: 3600
   IN_SECONDS_1_DAY: 86400
@@ -30,6 +29,3 @@ contracts:
         _penaltyDefault: $PENALTY_DEFAULT
         _penaltyDuration: $IN_SECONDS_1_DAY # <= _rewardDuration
         _penaltyIncrement: $PENALTY_INCREMENT
-  - MockPolygonRoot:
-      constructor:
-        _rootApplication: $TACO_APPLICATION_PROXY

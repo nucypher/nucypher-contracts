@@ -27,13 +27,9 @@ def main():
 
     deployer.transact(mock_threshold_staking.setApplication, taco_application.address)
 
-    mock_polygon_root = deployer.deploy(project.MockPolygonRoot)
-    deployer.transact(taco_application.setChildApplication, mock_polygon_root.address)
-
     deployments = [
         mock_threshold_staking,
         taco_application,
-        mock_polygon_root,
     ]
 
     deployer.finalize(deployments=deployments)

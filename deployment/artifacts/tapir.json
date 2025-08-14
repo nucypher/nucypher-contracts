@@ -382,33 +382,6 @@
                 },
                 {
                     "type": "error",
-                    "name": "ERC1967InvalidAdmin",
-                    "inputs": [
-                        {
-                            "name": "admin",
-                            "type": "address",
-                            "internalType": "address"
-                        }
-                    ]
-                },
-                {
-                    "type": "error",
-                    "name": "ERC1967InvalidImplementation",
-                    "inputs": [
-                        {
-                            "name": "implementation",
-                            "type": "address",
-                            "internalType": "address"
-                        }
-                    ]
-                },
-                {
-                    "type": "error",
-                    "name": "ERC1967NonPayable",
-                    "inputs": []
-                },
-                {
-                    "type": "error",
                     "name": "FailedInnerCall",
                     "inputs": []
                 },
@@ -446,11 +419,6 @@
                 },
                 {
                     "type": "error",
-                    "name": "ProxyDeniedAdminAccess",
-                    "inputs": []
-                },
-                {
-                    "type": "error",
                     "name": "SafeCastOverflowedUintDowncast",
                     "inputs": [
                         {
@@ -475,25 +443,6 @@
                             "internalType": "address"
                         }
                     ]
-                },
-                {
-                    "type": "event",
-                    "name": "AdminChanged",
-                    "inputs": [
-                        {
-                            "name": "previousAdmin",
-                            "type": "address",
-                            "internalType": "address",
-                            "indexed": false
-                        },
-                        {
-                            "name": "newAdmin",
-                            "type": "address",
-                            "internalType": "address",
-                            "indexed": false
-                        }
-                    ],
-                    "anonymous": false
                 },
                 {
                     "type": "event",
@@ -906,19 +855,6 @@
                             "type": "uint256",
                             "internalType": "uint256",
                             "indexed": false
-                        }
-                    ],
-                    "anonymous": false
-                },
-                {
-                    "type": "event",
-                    "name": "Upgraded",
-                    "inputs": [
-                        {
-                            "name": "implementation",
-                            "type": "address",
-                            "internalType": "address",
-                            "indexed": true
                         }
                     ],
                     "anonymous": false
@@ -2275,7 +2211,7 @@
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "TestnetThresholdStaking": {
-            "address": "0xaAd8B5445C81D01e41C10844534CDecc99ccE9B4",
+            "address": "0x5A2bCD91d5843ea6e2bd06056CEc0aD0fe64CCcC",
             "abi": [
                 {
                     "type": "constructor",
@@ -2335,6 +2271,19 @@
                             "internalType": "contract IApplication"
                         }
                     ]
+                },
+                {
+                    "type": "function",
+                    "name": "approveAuthorizationDecrease",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": []
                 },
                 {
                     "type": "function",
@@ -2643,8 +2592,8 @@
                     "outputs": []
                 }
             ],
-            "tx_hash": "0x03eb4dc367616f34b847edf2f328b0d3c9af3f887f08beff0f7748585fb9ced8",
-            "block_number": 8975455,
+            "tx_hash": "0xc6c1dd60ce732e2ab045e0164a4a2ce4f7974a77fd00fd5a320928536c8c0072",
+            "block_number": 8982944,
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         }
     },
