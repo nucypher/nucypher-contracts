@@ -20,7 +20,7 @@ def validate_handover_data(coordinator, ritual_id, departing_provider):
     ), "Handover transcript should be valid"
 
     ritual = coordinator.rituals(ritual_id)
-    existing_aggregated_transcript = ritual.aggregated_transcript
+    existing_aggregated_transcript = ritual.aggregatedTranscript
 
     # find the share index of the departing provider
     # FIXME: See ferveo#210 - should be probably be included in the handover data
@@ -36,7 +36,7 @@ def validate_handover_data(coordinator, ritual_id, departing_provider):
     blinded_share_position = coordinator.blindedSharePosition(share_index, ritual.threshold)
     g2point_size = 96  # G2Point size
 
-    blinded_share = handover.blinded_share
+    blinded_share = handover.blindedShare
     assert len(blinded_share) == g2point_size, "Blinded share should be of size G2Point"
 
     new_aggregate_transcript = (
@@ -48,7 +48,10 @@ def validate_handover_data(coordinator, ritual_id, departing_provider):
     # ensure that thew new aggregate transcript is valid
     # FIXME: See ferveo#209 - this should be done in ferveo
     public_key_metadata = b"0\x00\x00\x00\x00\x00\x00\x00"
-    transcript = bytes(new_aggregate_transcript) + public_key_metadata + bytes(ritual.public_key)
+    public_key = ritual.publicKey
+    transcript = (
+        bytes(new_aggregate_transcript) + public_key_metadata + (public_key[0] + public_key[1])
+    )
     assert (
         AggregatedTranscript.from_bytes(transcript) is not None
     ), "New aggregate transcript should be valid"
