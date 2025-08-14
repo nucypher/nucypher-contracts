@@ -1,7 +1,7 @@
 {
     "11155111": {
         "MockPolygonRoot": {
-            "address": "0xA08C606D6daf64FB42b73d020678a25A3b543B54",
+            "address": "0xaBDD438587189273692bcF22A0fbef7A0a0a375c",
             "abi": [
                 {
                     "type": "constructor",
@@ -198,6 +198,19 @@
                 },
                 {
                     "type": "function",
+                    "name": "rootRelease",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
                     "name": "setRootApplication",
                     "stateMutability": "nonpayable",
                     "inputs": [
@@ -287,8 +300,8 @@
                     "outputs": []
                 }
             ],
-            "tx_hash": "0x637ade9ef33e88306f7c8c74e780dbbf3e727cbf3254e7ce32867c28b713535b",
-            "block_number": 8975471,
+            "tx_hash": "0x4e309b4c02d54a36ec6187d647d300cf8e10b4cc259b6d5c23c52b9f6123dbad",
+            "block_number": 8982607,
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "TACoApplication": {
