@@ -194,6 +194,11 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
             return;
         }
 
+        // increasing authorization considered as intention to stay with the network
+        if (authorized > info.authorized) {
+            info.released = false;
+        }
+
         info.authorized = authorized;
         info.deauthorizing = deauthorizing;
         info.endDeauthorization = endDeauthorization;

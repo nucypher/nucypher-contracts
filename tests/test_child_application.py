@@ -364,6 +364,14 @@ def test_release(accounts, root_application, child_application, coordinator):
     assert root_application.releases(staking_provider)
     assert tx.events == [child_application.Released(stakingProvider=staking_provider)]
 
+    root_application.updateAuthorization(staking_provider, 0, sender=creator)
+    assert child_application.stakingProviderInfo(staking_provider)[RELEASED_SLOT]
+    assert child_application.authorizedStake(staking_provider) == 0
+
+    root_application.updateAuthorization(staking_provider, value, sender=creator)
+    assert not child_application.stakingProviderInfo(staking_provider)[RELEASED_SLOT]
+    assert child_application.authorizedStake(staking_provider) == value
+
     child_application.setActiveRituals([1, 2], sender=creator)
 
     # Not a participant in active rituals
