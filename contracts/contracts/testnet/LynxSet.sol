@@ -38,10 +38,18 @@ contract MockPolygonRoot is Ownable, ITACoChildToRoot, ITACoRootToChild {
         rootApplication.penalize(_stakingProvider);
     }
 
+    function rootRelease(address _stakingProvider) external onlyOwner {
+        rootApplication.release(_stakingProvider);
+    }
+
     function release(
         address _stakingProvider
-    ) external override(ITACoChildToRoot, ITACoRootToChild) onlyOwner {
-        rootApplication.release(_stakingProvider);
+    )
+        external
+        override(ITACoChildToRoot, ITACoRootToChild)
+    // solhint-disable-next-line no-empty-blocks
+    {
+
     }
 
     // solhint-disable-next-line no-empty-blocks
