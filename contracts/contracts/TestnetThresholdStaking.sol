@@ -45,8 +45,9 @@ contract TestnetThresholdStaking is Ownable {
         application.authorizationDecreaseRequested(_stakingProvider, _fromAmount, _toAmount);
     }
 
-    // solhint-disable-next-line no-empty-blocks
-    function approveAuthorizationDecrease(address _stakingProvider) external {}
+    function approveAuthorizationDecrease(address) external pure returns (uint96) {
+        return 0;
+    }
 
     function setRoles(
         address _stakingProvider,
