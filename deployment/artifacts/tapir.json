@@ -2211,7 +2211,7 @@
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "TestnetThresholdStaking": {
-            "address": "0x5A2bCD91d5843ea6e2bd06056CEc0aD0fe64CCcC",
+            "address": "0xcdD63981c8f4a2A684d102f7d7693A1c326CDd33",
             "abi": [
                 {
                     "type": "constructor",
@@ -2275,15 +2275,21 @@
                 {
                     "type": "function",
                     "name": "approveAuthorizationDecrease",
-                    "stateMutability": "nonpayable",
+                    "stateMutability": "pure",
                     "inputs": [
                         {
-                            "name": "_stakingProvider",
+                            "name": "",
                             "type": "address",
                             "internalType": "address"
                         }
                     ],
-                    "outputs": []
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint96",
+                            "internalType": "uint96"
+                        }
+                    ]
                 },
                 {
                     "type": "function",
@@ -2592,8 +2598,8 @@
                     "outputs": []
                 }
             ],
-            "tx_hash": "0xc6c1dd60ce732e2ab045e0164a4a2ce4f7974a77fd00fd5a320928536c8c0072",
-            "block_number": 8982944,
+            "tx_hash": "0x4c89a23f28f41ec638ecd72a08b172d50a12c9da0e27e3abf937566a5ea3a150",
+            "block_number": 8983240,
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         }
     },
