@@ -9,6 +9,7 @@ ape-infura==0.8.4; python_version >= '3.9' and python_version < '4'
 ape-polygon==0.8.0; python_version >= '3.9' and python_version < '4'
 ape-solidity==0.8.5; python_version >= '3.9' and python_version < '4'
 asttokens==2.4.1
+async-timeout==5.0.1; python_version >= '3.8'
 attrs==25.3.0; python_version >= '3.8'
 base58==1.0.3
 bitarray==3.6.1
@@ -47,6 +48,7 @@ eth-utils==4.1.1; python_version >= '3.8' and python_version < '4'
 ethpm-types==0.6.27; python_version >= '3.9' and python_version < '4'
 evm-trace==0.2.6; python_version >= '3.9' and python_version < '4'
 evmchains==0.1.5; python_version >= '3.8'
+exceptiongroup==1.3.0; python_version >= '3.7'
 executing==2.2.0; python_version >= '3.8'
 filelock==3.18.0; python_version >= '3.9'
 flake8==7.3.0; python_version >= '3.9'
@@ -72,7 +74,7 @@ msgspec==0.19.0; python_version >= '3.9'
 multidict==6.6.4; python_version >= '3.9'
 mypy-extensions==1.1.0; python_version >= '3.8'
 nodeenv==1.9.1; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6'
-nucypher-core==0.14.0
+nucypher-core @ git+https://github.com/nucypher/nucypher-core.git@1145b0c9328e8f917dbce88fa8e30d1f699a5b58#subdirectory=nucypher-core-python
 numpy==1.26.4; python_version >= '3.9'
 packaging==23.2; python_version >= '3.7'
 pandas==2.3.1; python_version >= '3.9'
@@ -124,6 +126,8 @@ six==1.17.0; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2'
 sortedcontainers==2.4.0
 sqlalchemy==2.0.43; python_version >= '3.7'
 stack-data==0.6.3
+toml==0.10.2; python_version >= '2.6' and python_version not in '3.0, 3.1, 3.2'
+tomli==2.2.1; python_version >= '3.8'
 toolz==1.0.0; python_version >= '3.8'
 tox==4.15.1; python_version >= '3.8'
 tqdm==4.67.1; python_version >= '3.7'
