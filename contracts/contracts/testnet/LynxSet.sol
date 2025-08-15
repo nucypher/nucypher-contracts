@@ -38,6 +38,20 @@ contract MockPolygonRoot is Ownable, ITACoChildToRoot, ITACoRootToChild {
         rootApplication.penalize(_stakingProvider);
     }
 
+    function rootRelease(address _stakingProvider) external onlyOwner {
+        rootApplication.release(_stakingProvider);
+    }
+
+    function release(
+        address _stakingProvider
+    )
+        external
+        override(ITACoChildToRoot, ITACoRootToChild)
+    // solhint-disable-next-line no-empty-blocks
+    {
+
+    }
+
     // solhint-disable-next-line no-empty-blocks
     function updateOperator(address stakingProvider, address operator) external {}
 
@@ -89,11 +103,25 @@ contract MockPolygonChild is Ownable, ITACoChildToRoot, ITACoRootToChild {
         );
     }
 
+    function childRelease(address _stakingProvider) external {
+        childApplication.release(_stakingProvider);
+    }
+
     // solhint-disable-next-line no-empty-blocks
     function confirmOperatorAddress(address _operator) external override {}
 
     // solhint-disable-next-line no-empty-blocks
     function penalize(address _stakingProvider) external override {}
+
+    function release(
+        address _stakingProvider
+    )
+        external
+        override(ITACoChildToRoot, ITACoRootToChild)
+    // solhint-disable-next-line no-empty-blocks
+    {
+
+    }
 }
 
 contract LynxRitualToken is ERC20("LynxRitualToken", "LRT") {

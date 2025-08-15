@@ -650,6 +650,8 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         uint32 ritualId,
         address departingParticipant
     ) external onlyRole(HANDOVER_SUPERVISOR_ROLE) {
+        require(isRitualActive(ritualId), "Ritual is not active");
+
         Handover storage handover = handovers[getHandoverKey(ritualId, departingParticipant)];
         require(
             getHandoverState(handover) == HandoverState.HANDOVER_AWAITING_FINALIZATION,
@@ -678,6 +680,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         delete handover.decryptionRequestStaticKey;
 
         emit HandoverFinalized(ritualId, departingParticipant, incomingParticipant);
+        application.release(departingParticipant);
     }
 
     function replaceStorageBytes(

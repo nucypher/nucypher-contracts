@@ -20,6 +20,12 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
      */
     event Penalized(address indexed stakingProvider);
 
+    /**
+     * @notice Signals that the staking provider was released
+     * @param stakingProvider Staking provider address
+     */
+    event Released(address indexed stakingProvider);
+
     struct StakingProviderInfo {
         address operator;
         uint96 authorized;
@@ -27,17 +33,20 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         uint248 index; // index in stakingProviders array + 1
         uint96 deauthorizing;
         uint64 endDeauthorization;
+        uint256 stub;
+        bool released;
     }
 
     ITACoChildToRoot public immutable rootApplication;
     address public coordinator;
-    address public adjudicator;
 
     uint96 public immutable minimumAuthorization;
 
     mapping(address => StakingProviderInfo) public stakingProviderInfo;
     address[] public stakingProviders;
     mapping(address => address) public operatorToStakingProvider;
+    address public adjudicator;
+    uint32[] public activeRituals;
 
     /**
      * @dev Checks caller is root application
@@ -75,8 +84,16 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         adjudicator = _adjudicator;
     }
 
+    function setActiveRituals(uint32[] memory _activeRituals) external reinitializer(2) {
+        activeRituals = _activeRituals;
+    }
+
     function authorizedStake(address _stakingProvider) external view returns (uint96) {
-        return stakingProviderInfo[_stakingProvider].authorized;
+        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
+        if (info.released) {
+            return 0;
+        }
+        return info.authorized;
     }
 
     /**
@@ -99,6 +116,9 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         uint256 _endDate
     ) public view returns (uint96) {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
+        if (info.released) {
+            return 0;
+        }
 
         uint96 eligibleAmount = info.authorized;
         if (0 < info.endDeauthorization && info.endDeauthorization < _endDate) {
@@ -172,6 +192,11 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
                 endDeauthorization == info.endDeauthorization)
         ) {
             return;
+        }
+
+        // increasing authorization considered as intention to stay with the network
+        if (authorized > info.authorized) {
+            info.released = false;
         }
 
         info.authorized = authorized;
@@ -265,6 +290,36 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         uint256 _maxStakingProviders
     ) external view returns (uint96 allAuthorizedTokens, bytes32[] memory activeStakingProviders) {
         return getActiveStakingProviders(_startIndex, _maxStakingProviders, 0);
+    }
+
+    function release(
+        address _stakingProvider
+    ) external override(ITACoRootToChild, ITACoChildToRoot) {
+        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
+        require(
+            msg.sender == _stakingProvider ||
+                msg.sender == info.operator ||
+                msg.sender == address(rootApplication) ||
+                msg.sender == coordinator,
+            "Can't call release"
+        );
+        if (info.released) {
+            return;
+        }
+        // check all active rituals
+        for (uint256 i = 0; i < activeRituals.length; i++) {
+            uint32 ritualId = activeRituals[i];
+            if (
+                Coordinator(coordinator).isRitualActive(ritualId) &&
+                Coordinator(coordinator).isParticipant(ritualId, _stakingProvider)
+            ) {
+                // still part of the ritual
+                return;
+            }
+        }
+        info.released = true;
+        emit Released(_stakingProvider);
+        rootApplication.release(_stakingProvider);
     }
 }
 
