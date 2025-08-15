@@ -7,7 +7,8 @@ artifacts:
   filename: mainnet-redeploy-taco-child.json
 
 constants:
-  POLYGON_CHILD: "0x1f5C5fd6A66723fA22a778CC53263dd3FA6851E5"  # See deployment/artifacts/mainnet.json
+  # See deployment/artifacts/mainnet.json
+  POLYGON_CHILD: "0x1f5C5fd6A66723fA22a778CC53263dd3FA6851E5"
   FORTY_THOUSAND_TOKENS_IN_WEI_UNITS: 40000000000000000000000
 
 contracts:

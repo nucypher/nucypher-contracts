@@ -44,10 +44,16 @@ foundry:
   host: auto
   fork:
     ethereum:
+      mainnet:
+        upstream_provider: infura
+        cache: false
       sepolia:
         upstream_provider: infura
         cache: false
     polygon:
+      mainnet:
+        upstream_provider: infura
+        cache: false
       amoy:
         upstream_provider: infura
         cache: false
