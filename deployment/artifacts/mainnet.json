@@ -6054,6 +6054,64 @@
                     "anonymous": false
                 },
                 {
+                    "type": "event",
+                    "name": "Penalized",
+                    "inputs": [
+                        {
+                            "name": "stakingProvider",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
+                    "name": "Released",
+                    "inputs": [
+                        {
+                            "name": "stakingProvider",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "function",
+                    "name": "activeRituals",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "",
+                            "type": "uint256",
+                            "internalType": "uint256"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "adjudicator",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ]
+                },
+                {
                     "type": "function",
                     "name": "authorizedStake",
                     "stateMutability": "view",
@@ -6207,6 +6265,11 @@
                             "name": "_coordinator",
                             "type": "address",
                             "internalType": "address"
+                        },
+                        {
+                            "name": "_adjudicator",
+                            "type": "address",
+                            "internalType": "address"
                         }
                     ],
                     "outputs": []
@@ -6245,6 +6308,19 @@
                 },
                 {
                     "type": "function",
+                    "name": "penalize",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
                     "name": "pendingAuthorizationDecrease",
                     "stateMutability": "view",
                     "inputs": [
@@ -6264,6 +6340,19 @@
                 },
                 {
                     "type": "function",
+                    "name": "release",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
                     "name": "rootApplication",
                     "stateMutability": "view",
                     "inputs": [],
@@ -6274,6 +6363,19 @@
                             "internalType": "contract ITACoChildToRoot"
                         }
                     ]
+                },
+                {
+                    "type": "function",
+                    "name": "setActiveRituals",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_activeRituals",
+                            "type": "uint32[]",
+                            "internalType": "uint32[]"
+                        }
+                    ],
+                    "outputs": []
                 },
                 {
                     "type": "function",
@@ -6316,6 +6418,16 @@
                             "name": "endDeauthorization",
                             "type": "uint64",
                             "internalType": "uint64"
+                        },
+                        {
+                            "name": "stub",
+                            "type": "uint256",
+                            "internalType": "uint256"
+                        },
+                        {
+                            "name": "released",
+                            "type": "bool",
+                            "internalType": "bool"
                         }
                     ]
                 },
