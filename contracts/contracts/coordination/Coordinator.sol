@@ -184,48 +184,26 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         return dkgTimeout;
     }
 
-    function mergeLegacyRitual(uint32 ritualId) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        Ritual storage ritual = rituals[ritualId];
-        require(ritual.initiator == address(0), "Ritual already merged");
-        Ritual storage legacyRitual = ritualsStub[ritualId];
-
-        ritual.initiator = legacyRitual.initiator;
-        ritual.initTimestamp = legacyRitual.initTimestamp;
-        ritual.endTimestamp = legacyRitual.endTimestamp;
-        ritual.totalTranscripts = legacyRitual.totalTranscripts;
-        ritual.totalAggregations = legacyRitual.totalAggregations;
-        ritual.authority = legacyRitual.authority;
-        ritual.dkgSize = legacyRitual.dkgSize;
-        ritual.threshold = legacyRitual.threshold;
-        ritual.aggregationMismatch = legacyRitual.aggregationMismatch;
-
-        ritual.accessController = legacyRitual.accessController;
-        ritual.publicKey = legacyRitual.publicKey;
-        ritual.feeModel = legacyRitual.feeModel;
-
-        for (uint256 i = 0; i < legacyRitual.participant.length; i++) {
-            Participant storage legacyParticipant = legacyRitual.participant[i];
-            Participant storage participant = ritual.participant.push();
-
-            participant.provider = legacyParticipant.provider;
-            participant.aggregated = legacyParticipant.aggregated;
-            participant.decryptionRequestStaticKey = legacyParticipant.decryptionRequestStaticKey;
-        }
-    }
-
-    function mergeTranscripts(
+    function mergeLegacy(
         uint32 ritualId,
         uint256 startIndex,
         uint256 endIndex
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         Ritual storage ritual = rituals[ritualId];
         Ritual storage legacyRitual = ritualsStub[ritualId];
+        ritual.aggregatedTranscript = legacyRitual.aggregatedTranscript;
+        if (legacyRitual.participant.length < ritual.participant.length) {
+            delete ritual.participant;
+        }
 
         for (uint256 i = startIndex; i < endIndex; i++) {
             Participant storage legacyParticipant = legacyRitual.participant[i];
             Participant storage participant = ritual.participant.push();
 
+            participant.provider = legacyParticipant.provider;
+            participant.aggregated = legacyParticipant.aggregated;
             participant.transcript = legacyParticipant.transcript;
+            participant.decryptionRequestStaticKey = legacyParticipant.decryptionRequestStaticKey;
         }
     }
 
