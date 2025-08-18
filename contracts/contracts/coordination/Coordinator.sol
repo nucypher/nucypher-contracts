@@ -209,8 +209,23 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
             participant.provider = legacyParticipant.provider;
             participant.aggregated = legacyParticipant.aggregated;
-            participant.transcript = legacyParticipant.transcript;
             participant.decryptionRequestStaticKey = legacyParticipant.decryptionRequestStaticKey;
+        }
+    }
+
+    function mergeTranscripts(
+        uint32 ritualId,
+        uint256 startIndex,
+        uint256 endIndex
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        Ritual storage ritual = rituals[ritualId];
+        Ritual storage legacyRitual = ritualsStub[ritualId];
+
+        for (uint256 i = startIndex; i < endIndex; i++) {
+            Participant storage legacyParticipant = legacyRitual.participant[i];
+            Participant storage participant = ritual.participant.push();
+
+            participant.transcript = legacyParticipant.transcript;
         }
     }
 
