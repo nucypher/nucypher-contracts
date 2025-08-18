@@ -184,6 +184,14 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         return dkgTimeout;
     }
 
+    function mergeLegacyRitual(uint32 ritualId) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        Ritual storage ritual = rituals[ritualId];
+        require(ritual.initiator == address(0), "Ritual already merged");
+        Ritual storage legacyRitual = ritualsStub[ritualId];
+
+        ritual = legacyRitual;
+    }
+
     function getInitiator(uint32 ritualId) external view returns (address) {
         return rituals[ritualId].initiator;
     }
@@ -311,13 +319,6 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         }
 
         revert("No keys found prior to the provided ritual");
-    }
-
-    /**
-     * @dev This method is deprecated. Use `isProviderKeySet` instead.
-     */
-    function isProviderPublicKeySet(address) external view returns (bool) {
-        revert("Deprecated method. Upgrade your node to latest version");
     }
 
     function isProviderKeySet(address provider) public view returns (bool) {
