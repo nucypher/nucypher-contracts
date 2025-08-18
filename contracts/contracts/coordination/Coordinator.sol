@@ -189,7 +189,29 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         require(ritual.initiator == address(0), "Ritual already merged");
         Ritual storage legacyRitual = ritualsStub[ritualId];
 
-        ritual = legacyRitual;
+        ritual.initiator = legacyRitual.initiator;
+        ritual.initTimestamp = legacyRitual.initTimestamp;
+        ritual.endTimestamp = legacyRitual.endTimestamp;
+        ritual.totalTranscripts = legacyRitual.totalTranscripts;
+        ritual.totalAggregations = legacyRitual.totalAggregations;
+        ritual.authority = legacyRitual.authority;
+        ritual.dkgSize = legacyRitual.dkgSize;
+        ritual.threshold = legacyRitual.threshold;
+        ritual.aggregationMismatch = legacyRitual.aggregationMismatch;
+
+        ritual.accessController = legacyRitual.accessController;
+        ritual.publicKey = legacyRitual.publicKey;
+        ritual.feeModel = legacyRitual.feeModel;
+
+        for (uint256 i = 0; i < legacyRitual.participant.length; i++) {
+            Participant storage legacyParticipant = legacyRitual.participant[i];
+            Participant storage participant = ritual.participant.push();
+
+            participant.provider = legacyParticipant.provider;
+            participant.aggregated = legacyParticipant.aggregated;
+            participant.transcript = legacyParticipant.transcript;
+            participant.decryptionRequestStaticKey = legacyParticipant.decryptionRequestStaticKey;
+        }
     }
 
     function getInitiator(uint32 ritualId) external view returns (address) {
@@ -551,138 +573,138 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         processReimbursement(initialGasLeft);
     }
 
-    function handoverRequest(
-        uint32 ritualId,
-        address departingParticipant,
-        address incomingParticipant
-    ) external onlyRole(HANDOVER_SUPERVISOR_ROLE) {
-        require(isRitualActive(ritualId), "Ritual is not active");
-        require(
-            isParticipant(ritualId, departingParticipant),
-            "Departing node must be a participant"
-        );
-        require(
-            !isParticipant(ritualId, incomingParticipant),
-            "Incoming node cannot be a participant"
-        );
+    // function handoverRequest(
+    //     uint32 ritualId,
+    //     address departingParticipant,
+    //     address incomingParticipant
+    // ) external onlyRole(HANDOVER_SUPERVISOR_ROLE) {
+    //     require(isRitualActive(ritualId), "Ritual is not active");
+    //     require(
+    //         isParticipant(ritualId, departingParticipant),
+    //         "Departing node must be a participant"
+    //     );
+    //     require(
+    //         !isParticipant(ritualId, incomingParticipant),
+    //         "Incoming node cannot be a participant"
+    //     );
 
-        Handover storage handover = handovers[getHandoverKey(ritualId, departingParticipant)];
-        HandoverState state = getHandoverState(handover);
+    //     Handover storage handover = handovers[getHandoverKey(ritualId, departingParticipant)];
+    //     HandoverState state = getHandoverState(handover);
 
-        require(
-            state == HandoverState.NON_INITIATED || state == HandoverState.HANDOVER_TIMEOUT,
-            "Handover already requested"
-        );
-        require(isProviderKeySet(incomingParticipant), "Incoming provider has not set public key");
-        require(
-            application.authorizedStake(incomingParticipant) >= minAuthorization,
-            "Not enough authorization"
-        );
-        handover.requestTimestamp = uint32(block.timestamp);
-        handover.incomingProvider = incomingParticipant;
-        delete handover.blindedShare;
-        delete handover.transcript;
-        delete handover.decryptionRequestStaticKey;
-        emit HandoverRequest(ritualId, departingParticipant, incomingParticipant);
-    }
+    //     require(
+    //         state == HandoverState.NON_INITIATED || state == HandoverState.HANDOVER_TIMEOUT,
+    //         "Handover already requested"
+    //     );
+    //     require(isProviderKeySet(incomingParticipant), "Incoming provider has not set public key");
+    //     require(
+    //         application.authorizedStake(incomingParticipant) >= minAuthorization,
+    //         "Not enough authorization"
+    //     );
+    //     handover.requestTimestamp = uint32(block.timestamp);
+    //     handover.incomingProvider = incomingParticipant;
+    //     delete handover.blindedShare;
+    //     delete handover.transcript;
+    //     delete handover.decryptionRequestStaticKey;
+    //     emit HandoverRequest(ritualId, departingParticipant, incomingParticipant);
+    // }
 
-    function postHandoverTranscript(
-        uint32 ritualId,
-        address departingParticipant,
-        bytes calldata transcript,
-        bytes calldata decryptionRequestStaticKey
-    ) external {
-        require(isRitualActive(ritualId), "Ritual is not active");
-        require(transcript.length > 0, "Parameters can't be empty");
-        require(
-            decryptionRequestStaticKey.length == 42,
-            "Invalid length for decryption request static key"
-        );
+    // function postHandoverTranscript(
+    //     uint32 ritualId,
+    //     address departingParticipant,
+    //     bytes calldata transcript,
+    //     bytes calldata decryptionRequestStaticKey
+    // ) external {
+    //     require(isRitualActive(ritualId), "Ritual is not active");
+    //     require(transcript.length > 0, "Parameters can't be empty");
+    //     require(
+    //         decryptionRequestStaticKey.length == 42,
+    //         "Invalid length for decryption request static key"
+    //     );
 
-        Handover storage handover = handovers[getHandoverKey(ritualId, departingParticipant)];
-        require(
-            getHandoverState(handover) == HandoverState.HANDOVER_AWAITING_TRANSCRIPT,
-            "Not waiting for transcript"
-        );
-        address provider = application.operatorToStakingProvider(msg.sender);
-        require(handover.incomingProvider == provider, "Wrong incoming provider");
+    //     Handover storage handover = handovers[getHandoverKey(ritualId, departingParticipant)];
+    //     require(
+    //         getHandoverState(handover) == HandoverState.HANDOVER_AWAITING_TRANSCRIPT,
+    //         "Not waiting for transcript"
+    //     );
+    //     address provider = application.operatorToStakingProvider(msg.sender);
+    //     require(handover.incomingProvider == provider, "Wrong incoming provider");
 
-        handover.transcript = transcript;
-        handover.decryptionRequestStaticKey = decryptionRequestStaticKey;
-        emit HandoverTranscriptPosted(ritualId, departingParticipant, provider);
-    }
+    //     handover.transcript = transcript;
+    //     handover.decryptionRequestStaticKey = decryptionRequestStaticKey;
+    //     emit HandoverTranscriptPosted(ritualId, departingParticipant, provider);
+    // }
 
-    function postBlindedShare(uint32 ritualId, bytes calldata blindedShare) external {
-        require(isRitualActive(ritualId), "Ritual is not active");
+    // function postBlindedShare(uint32 ritualId, bytes calldata blindedShare) external {
+    //     require(isRitualActive(ritualId), "Ritual is not active");
 
-        address provider = application.operatorToStakingProvider(msg.sender);
-        Handover storage handover = handovers[getHandoverKey(ritualId, provider)];
-        require(
-            getHandoverState(handover) == HandoverState.HANDOVER_AWAITING_BLINDED_SHARE,
-            "Not waiting for blinded share"
-        );
-        require(blindedShare.length == BLS12381.G2_POINT_SIZE, "Wrong size of blinded share");
+    //     address provider = application.operatorToStakingProvider(msg.sender);
+    //     Handover storage handover = handovers[getHandoverKey(ritualId, provider)];
+    //     require(
+    //         getHandoverState(handover) == HandoverState.HANDOVER_AWAITING_BLINDED_SHARE,
+    //         "Not waiting for blinded share"
+    //     );
+    //     require(blindedShare.length == BLS12381.G2_POINT_SIZE, "Wrong size of blinded share");
 
-        handover.blindedShare = blindedShare;
-        emit BlindedSharePosted(ritualId, provider);
-    }
+    //     handover.blindedShare = blindedShare;
+    //     emit BlindedSharePosted(ritualId, provider);
+    // }
 
-    function cancelHandover(
-        uint32 ritualId,
-        address departingParticipant
-    ) external onlyRole(HANDOVER_SUPERVISOR_ROLE) {
-        Handover storage handover = handovers[getHandoverKey(ritualId, departingParticipant)];
-        address incomingParticipant = handover.incomingProvider;
+    // function cancelHandover(
+    //     uint32 ritualId,
+    //     address departingParticipant
+    // ) external onlyRole(HANDOVER_SUPERVISOR_ROLE) {
+    //     Handover storage handover = handovers[getHandoverKey(ritualId, departingParticipant)];
+    //     address incomingParticipant = handover.incomingProvider;
 
-        require(
-            getHandoverState(handover) != HandoverState.NON_INITIATED,
-            "Handover not requested"
-        );
-        handover.requestTimestamp = 0;
-        handover.incomingProvider = address(0);
-        delete handover.blindedShare;
-        delete handover.transcript;
-        delete handover.decryptionRequestStaticKey;
+    //     require(
+    //         getHandoverState(handover) != HandoverState.NON_INITIATED,
+    //         "Handover not requested"
+    //     );
+    //     handover.requestTimestamp = 0;
+    //     handover.incomingProvider = address(0);
+    //     delete handover.blindedShare;
+    //     delete handover.transcript;
+    //     delete handover.decryptionRequestStaticKey;
 
-        emit HandoverCanceled(ritualId, departingParticipant, incomingParticipant);
-    }
+    //     emit HandoverCanceled(ritualId, departingParticipant, incomingParticipant);
+    // }
 
-    function finalizeHandover(
-        uint32 ritualId,
-        address departingParticipant
-    ) external onlyRole(HANDOVER_SUPERVISOR_ROLE) {
-        require(isRitualActive(ritualId), "Ritual is not active");
+    // function finalizeHandover(
+    //     uint32 ritualId,
+    //     address departingParticipant
+    // ) external onlyRole(HANDOVER_SUPERVISOR_ROLE) {
+    //     require(isRitualActive(ritualId), "Ritual is not active");
 
-        Handover storage handover = handovers[getHandoverKey(ritualId, departingParticipant)];
-        require(
-            getHandoverState(handover) == HandoverState.HANDOVER_AWAITING_FINALIZATION,
-            "Not waiting for finalization"
-        );
-        address incomingParticipant = handover.incomingProvider;
+    //     Handover storage handover = handovers[getHandoverKey(ritualId, departingParticipant)];
+    //     require(
+    //         getHandoverState(handover) == HandoverState.HANDOVER_AWAITING_FINALIZATION,
+    //         "Not waiting for finalization"
+    //     );
+    //     address incomingParticipant = handover.incomingProvider;
 
-        Ritual storage ritual = rituals[ritualId];
-        (, Participant storage participant, uint256 participantIndex) = findParticipant(
-            ritual,
-            departingParticipant
-        );
-        participant.provider = incomingParticipant;
-        participant.decryptionRequestStaticKey = handover.decryptionRequestStaticKey;
-        delete participant.transcript;
+    //     Ritual storage ritual = rituals[ritualId];
+    //     (, Participant storage participant, uint256 participantIndex) = findParticipant(
+    //         ritual,
+    //         departingParticipant
+    //     );
+    //     participant.provider = incomingParticipant;
+    //     participant.decryptionRequestStaticKey = handover.decryptionRequestStaticKey;
+    //     delete participant.transcript;
 
-        uint256 startIndex = blindedSharePosition(participantIndex, ritual.threshold);
-        replaceStorageBytes(ritual.aggregatedTranscript, handover.blindedShare, startIndex);
-        bytes32 aggregatedTranscriptDigest = keccak256(ritual.aggregatedTranscript);
-        emit AggregationPosted(ritualId, incomingParticipant, aggregatedTranscriptDigest);
+    //     uint256 startIndex = blindedSharePosition(participantIndex, ritual.threshold);
+    //     replaceStorageBytes(ritual.aggregatedTranscript, handover.blindedShare, startIndex);
+    //     bytes32 aggregatedTranscriptDigest = keccak256(ritual.aggregatedTranscript);
+    //     emit AggregationPosted(ritualId, incomingParticipant, aggregatedTranscriptDigest);
 
-        handover.requestTimestamp = 0;
-        handover.incomingProvider = address(0);
-        delete handover.blindedShare;
-        delete handover.transcript;
-        delete handover.decryptionRequestStaticKey;
+    //     handover.requestTimestamp = 0;
+    //     handover.incomingProvider = address(0);
+    //     delete handover.blindedShare;
+    //     delete handover.transcript;
+    //     delete handover.decryptionRequestStaticKey;
 
-        emit HandoverFinalized(ritualId, departingParticipant, incomingParticipant);
-        application.release(departingParticipant);
-    }
+    //     emit HandoverFinalized(ritualId, departingParticipant, incomingParticipant);
+    //     application.release(departingParticipant);
+    // }
 
     function replaceStorageBytes(
         bytes storage _preBytes,
@@ -860,7 +882,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
     function extendRitual(uint32 ritualId, uint32 duration) external {
         Ritual storage ritual = rituals[ritualId];
-        require(msg.sender == ritual.initiator, "Only initiator can extend ritual");
+        // require(msg.sender == ritual.initiator, "Only initiator can extend ritual"); // TODO temp only, uncomment when ready
         require(getRitualState(ritual) == RitualState.ACTIVE, "Only active ritual can be extended");
         ritual.endTimestamp += duration;
         ritual.feeModel.processRitualExtending(
