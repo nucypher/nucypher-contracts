@@ -857,9 +857,9 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         emit FeeModelApproved(feeModel);
     }
 
-    function extendRitual(uint32 ritualId, uint32 duration) external {
+    function extendRitual(uint32 ritualId, uint32 duration) external onlyRole(DEFAULT_ADMIN_ROLE) {
         Ritual storage ritual = rituals[ritualId];
-        require(msg.sender == ritual.initiator, "Only initiator can extend ritual");
+        // require(msg.sender == ritual.initiator, "Only initiator can extend ritual"); // TODO temp only, uncomment when ready
         require(getRitualState(ritual) == RitualState.ACTIVE, "Only active ritual can be extended");
         ritual.endTimestamp += duration;
         ritual.feeModel.processRitualExtending(
