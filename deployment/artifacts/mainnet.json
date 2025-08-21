@@ -6528,6 +6528,19 @@
                 },
                 {
                     "type": "function",
+                    "name": "resendRelease",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
                     "name": "rootApplication",
                     "stateMutability": "view",
                     "inputs": [],
