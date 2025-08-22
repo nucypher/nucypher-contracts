@@ -321,6 +321,13 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         emit Released(_stakingProvider);
         rootApplication.release(_stakingProvider);
     }
+
+    function resendRelease(address _stakingProvider) external {
+        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
+        if (info.released) {
+            rootApplication.release(_stakingProvider);
+        }
+    }
 }
 
 contract TestnetTACoChildApplication is AccessControlUpgradeable, TACoChildApplication {
