@@ -6,7 +6,7 @@ from deployment.constants import CONSTRUCTOR_PARAMS_DIR
 from deployment.params import Deployer
 
 VERIFY = False
-CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "mainnet" / "redeploy-bqeth.yml"
+CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "mainnet" / "redeploy-marlin.yml"
 
 
 def main():
