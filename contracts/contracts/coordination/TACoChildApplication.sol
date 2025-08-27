@@ -26,6 +26,12 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
      */
     event Released(address indexed stakingProvider);
 
+    /**
+     * @notice Signals that the release tx was resent
+     * @param stakingProvider Staking provider address
+     */
+    event ReleaseResent(address indexed stakingProvider);
+
     struct StakingProviderInfo {
         address operator;
         uint96 authorized;
@@ -325,6 +331,7 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
     function resendRelease(address _stakingProvider) external {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         if (info.released) {
+            emit ReleaseResent(_stakingProvider);
             rootApplication.release(_stakingProvider);
         }
     }
