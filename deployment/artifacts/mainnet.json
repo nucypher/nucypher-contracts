@@ -6243,6 +6243,19 @@
                 },
                 {
                     "type": "event",
+                    "name": "ReleaseResent",
+                    "inputs": [
+                        {
+                            "name": "stakingProvider",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
                     "name": "Released",
                     "inputs": [
                         {
@@ -6703,9 +6716,9 @@
                     "outputs": []
                 }
             ],
-            "tx_hash": "0x6eeafdcd35f18a83e9ba17ba67483b56ae21a5611b53f9b11da026ac073b5558",
-            "block_number": 50223997,
-            "deployer": "0xFfFd7092685bDeeBD121D1A0FEA3c349114Cce50"
+            "tx_hash": "0x31474ff61017606ecb0ae534778b7eed76b357cc631c7c7e99ce2237ab9f3b50",
+            "block_number": 75720593,
+            "deployer": "0x1591165F1BF8B73de7053A6BE6f239BC15076879"
         }
     }
 }
