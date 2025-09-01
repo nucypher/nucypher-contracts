@@ -129,7 +129,6 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         BLS12381.G2Point publicKey;
     }
 
-    bytes32 public constant TREASURY_ROLE = keccak256("TREASURY_ROLE");
     bytes32 public constant FEE_MODEL_MANAGER_ROLE = keccak256("FEE_MODEL_MANAGER_ROLE");
     bytes32 public constant HANDOVER_SUPERVISOR_ROLE = keccak256("HANDOVER_SUPERVISOR_ROLE");
 
@@ -140,7 +139,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     uint32 public immutable handoverTimeout;
 
     Ritual[] private ritualsStub; // former rituals, "internal" for testing only
-    uint32 public dkgTimeoutStub;
+    uint32 private timeoutStub; // former (dkg) timeout
     uint16 public maxDkgSize;
     bool private stub1; // former isInitiationPublic
 
@@ -407,10 +406,6 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
         emit StartRitual(id, ritual.authority, providers);
         return id;
-    }
-
-    function cohortFingerprint(address[] calldata nodes) public pure returns (bytes32) {
-        return keccak256(abi.encode(nodes));
     }
 
     function expectedTranscriptSize(
