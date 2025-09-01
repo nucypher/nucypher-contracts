@@ -586,6 +586,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         bytes calldata transcript,
         bytes calldata decryptionRequestStaticKey
     ) external {
+        uint256 initialGasLeft = gasleft();
         require(isRitualActive(ritualId), "Ritual is not active");
         require(transcript.length > 0, "Parameters can't be empty");
         require(
@@ -604,9 +605,11 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         handover.transcript = transcript;
         handover.decryptionRequestStaticKey = decryptionRequestStaticKey;
         emit HandoverTranscriptPosted(ritualId, departingParticipant, provider);
+        processReimbursement(initialGasLeft);
     }
 
     function postBlindedShare(uint32 ritualId, bytes calldata blindedShare) external {
+        uint256 initialGasLeft = gasleft();
         require(isRitualActive(ritualId), "Ritual is not active");
 
         address provider = application.operatorToStakingProvider(msg.sender);
@@ -619,6 +622,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
         handover.blindedShare = blindedShare;
         emit BlindedSharePosted(ritualId, provider);
+        processReimbursement(initialGasLeft);
     }
 
     function cancelHandover(
