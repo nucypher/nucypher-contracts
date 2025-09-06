@@ -129,7 +129,6 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         BLS12381.G2Point publicKey;
     }
 
-    bytes32 public constant TREASURY_ROLE = keccak256("TREASURY_ROLE");
     bytes32 public constant FEE_MODEL_MANAGER_ROLE = keccak256("FEE_MODEL_MANAGER_ROLE");
     bytes32 public constant HANDOVER_SUPERVISOR_ROLE = keccak256("HANDOVER_SUPERVISOR_ROLE");
 
@@ -140,7 +139,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     uint32 public immutable handoverTimeout;
 
     Ritual[] private ritualsStub; // former rituals, "internal" for testing only
-    uint32 public dkgTimeoutStub;
+    uint32 private timeoutStub; // former (dkg) timeout
     uint16 public maxDkgSize;
     bool private stub1; // former isInitiationPublic
 
@@ -409,10 +408,6 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         return id;
     }
 
-    function cohortFingerprint(address[] calldata nodes) public pure returns (bytes32) {
-        return keccak256(abi.encode(nodes));
-    }
-
     function expectedTranscriptSize(
         uint16 dkgSize,
         uint16 threshold
@@ -591,6 +586,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         bytes calldata transcript,
         bytes calldata decryptionRequestStaticKey
     ) external {
+        uint256 initialGasLeft = gasleft();
         require(isRitualActive(ritualId), "Ritual is not active");
         require(transcript.length > 0, "Parameters can't be empty");
         require(
@@ -609,9 +605,11 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         handover.transcript = transcript;
         handover.decryptionRequestStaticKey = decryptionRequestStaticKey;
         emit HandoverTranscriptPosted(ritualId, departingParticipant, provider);
+        processReimbursement(initialGasLeft);
     }
 
     function postBlindedShare(uint32 ritualId, bytes calldata blindedShare) external {
+        uint256 initialGasLeft = gasleft();
         require(isRitualActive(ritualId), "Ritual is not active");
 
         address provider = application.operatorToStakingProvider(msg.sender);
@@ -624,6 +622,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
         handover.blindedShare = blindedShare;
         emit BlindedSharePosted(ritualId, provider);
+        processReimbursement(initialGasLeft);
     }
 
     function cancelHandover(
