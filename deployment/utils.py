@@ -1,5 +1,6 @@
 import json
 import os
+import random
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -230,6 +231,9 @@ def _generate_heartbeat_cohorts(addresses: List[str]) -> Tuple[Tuple[str, ...], 
     """
     if not addresses:
         raise ValueError("The list of Ethereum addresses cannot be empty.")
+
+    # Shuffle addresses to ensure randomness in pairing
+    random.shuffle(addresses)
 
     # Form pairs, stepping in twos, embracing a final trio if needed
     groups = [tuple(addresses[i : i + 2]) for i in range(0, len(addresses) - 1, 2)]
