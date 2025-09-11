@@ -1,0 +1,24 @@
+deployment:
+  name: infraction
+  chain_id: 137
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: mainnet-infraction.json
+
+constants:
+  # See deployment/artifacts/mainnet.json
+  COORDINATOR_PROXY: "0xE74259e3dafe30bAA8700238e324b47aC98FE755"
+  # Threshold Network - References:
+  # - https://docs.threshold.network/resources/contract-addresses/mainnet/threshold-dao
+  # - https://github.com/keep-network/tbtc-v2/issues/594
+  THRESHOLD_COUNCIL_ON_POLYGON: "0x9F6e831c8F8939DC0C830C6e492e7cEf4f9C2F5f"
+
+contracts:
+  - InfractionCollector:
+      proxy:
+        constructor:
+          initialOwner: $THRESHOLD_COUNCIL_ON_POLYGON  # Upgrades owner
+          _data: $encode:initialize
+      constructor:
+        _coordinator: $COORDINATOR_PROXY
