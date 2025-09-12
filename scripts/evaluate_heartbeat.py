@@ -301,6 +301,16 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
     taco_application = registry.get_contract(domain=domain, contract_name="TACoChildApplication")
     offenders: Dict[str, Dict[str, Any]] = defaultdict(dict)
 
+    heartbeat_round, month_name = get_heartbeat_round_info(coordinator, artifact_data)
+
+    if heartbeat_round > 4:
+        click.secho(
+            f"⚠️ This is the heartbeat round #{heartbeat_round}, which exceeds the expected maximum"
+            + " of 4 per month.",
+        )
+        click.secho("Skipping heartbeat evaluation...")
+        return
+
     network_data = get_taco_network_data(domain)
 
     for ritual_id, cohort in artifact_data.items():
@@ -350,7 +360,7 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
     investigate_offender(offenders, network_data)
 
     # Generate and display Discord message
-    discord_message = format_discord_message(offenders, network_data)
+    discord_message = format_discord_message(offenders, heartbeat_round, month_name)
 
     click.secho("\n" + "=" * 80, fg="cyan")
     click.secho("📢 DISCORD MESSAGE (copy below):", fg="cyan")
