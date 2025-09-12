@@ -21,11 +21,18 @@ from deployment.constants import (
     RitualState,
 )
 
+from enum import Enum
+
 # Disable SSL warnings for self-signed certificates
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 LATEST_RELEASE_URL = "https://api.github.com/repos/nucypher/nucypher/releases/latest"
+
+# Reasons for node being an offender
+UNREACHABLE = "Node is unreachable"
+OUTDATED = "Node is running an outdated version"
+UNKNOWN = "Unknown reason (HTTP 500)"
 
 
 def get_eth_balance(address: str) -> float:
@@ -131,15 +138,15 @@ def format_discord_message(
 
             # Prioritize network investigation results over DKG violation reasons
             # If node has unknown reasons (HTTP 500), it goes to unknown reasons list
-            if any("Unknown reasons" in reason for reason in reasons):
+            if any(UNKNOWN in reason for reason in reasons):
                 click.secho(f"  -> Adding {address} to unknown reasons list", fg="magenta")
                 unknown_reasons_offenders.append((address, operator))
             # If node is unreachable, it goes to unreachable list regardless of DKG violations
-            elif "Node is unreachable" in reasons:
+            elif UNREACHABLE in reasons:
                 click.secho(f"  -> Adding {address} to unreachable list", fg="red")
                 unreachable_offenders.append((address, operator))
             # If node is outdated, it goes to outdated list regardless of DKG violations
-            elif any("Old Version" in reason for reason in reasons):
+            elif any(OUTDATED in reason for reason in reasons):
                 click.secho(f"  -> Adding {address} to outdated list", fg="blue")
                 outdated_offenders.append((address, operator))
             # If node is reachable and up-to-date but has DKG violations, it goes to unreachable
@@ -186,7 +193,9 @@ def format_discord_message(
     message += "If you're operating one of the nodes running an outdated client version, please"
     message += f" upgrade your node to v{latest_version} (latest)."
     message += "Otherwise if your node was unresponsive or experiencing server errors, please open"
-    message += " a support ticket in 🙋┃support-ticket so we can help you to investigate the failure"
+    message += (
+        " a support ticket in 🙋┃support-ticket so we can help you to investigate the failure"
+    )
     message += " reason.\n\n"
     message += "Finally, a reminder that we will continue to monitor the health of the network."
     message += "Please, be sure you claimed the @Node Operator role in 🪪┃claim-role and stay tuned"
@@ -229,9 +238,7 @@ def investigate_offender(
                         if node_status.status_code == 500:
                             # HTTP 500 indicates server error - categorize as unknown reasons
                             offenders[ritual_id][address]["version"] = "Unknown"
-                            offenders[ritual_id][address]["reasons"].append(
-                                "Unknown reasons (HTTP 500)"
-                            )
+                            offenders[ritual_id][address]["reasons"].append(UNKNOWN)
                         elif node_status.status_code != 200:
                             # Other non-200 status codes - treat as unreachable
                             raise requests.ConnectionError
@@ -242,12 +249,12 @@ def investigate_offender(
 
                         if version != "Unknown" and version != latest_version:
                             offenders[ritual_id][address]["reasons"].append(
-                                f"Old Version ({version})"
+                                OUTDATED
                             )
                             outdated_nodes += 1
                     except (requests.ConnectionError, requests.exceptions.ReadTimeout):
                         offenders[ritual_id][address]["version"] = "Unknown"
-                        offenders[ritual_id][address]["reasons"].append("Node is unreachable")
+                        offenders[ritual_id][address]["reasons"].append(UNREACHABLE)
                         unreachable_nodes += 1
 
                     break  # Stop searching once IP is found
@@ -307,6 +314,7 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
         click.secho(
             f"⚠️ This is the heartbeat round #{heartbeat_round}, which exceeds the expected maximum"
             + " of 4 per month.",
+            fg="yellow",
         )
         click.secho("Skipping heartbeat evaluation...")
         return
