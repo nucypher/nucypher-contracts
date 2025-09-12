@@ -10,6 +10,7 @@ import requests
 import urllib3
 from ape import chain
 from ape.cli import ConnectedProviderCommand, network_option
+from ape.contracts import ContractInstance
 from ape.contracts.base import ContractContainer
 
 from deployment import registry
@@ -69,7 +70,9 @@ def get_ordinal_suffix(n: int) -> str:
     return suffix
 
 
-def get_heartbeat_round_info() -> tuple[int, str]:
+def get_heartbeat_round_info(
+    coordinator: ContractInstance, heartbeat_rituals: Dict[str, Any]
+) -> tuple[int, str]:
     """Calculate the current heartbeat round number and month name."""
 
     def mondays_passed(date: datetime) -> int:
@@ -88,44 +91,27 @@ def get_heartbeat_round_info() -> tuple[int, str]:
             count += 1
             current += timedelta(weeks=1)
         return count
-    now = datetime.now(timezone.utc)
 
-    # Get the first Monday of the current month
-    first_day = now.replace(day=1)
-    days_until_monday = (7 - first_day.weekday()) % 7
-    first_monday = first_day + timedelta(days=days_until_monday)
+    ritual_id = list(heartbeat_rituals.keys())[0]
+    ritual_data = coordinator.rituals(ritual_id)
+    ritual_start_time = datetime.fromtimestamp(ritual_data.initTimestamp, tz=timezone.utc)
 
-    # Calculate which Monday of the month this is (1-5)
-    current_monday_number = ((now - first_monday).days // 7) + 1
+    round = mondays_passed(ritual_start_time)
+    month = ritual_start_time.strftime("%B")
 
-    # Determine the heartbeat round (1-4, since you run 4 per month)
-    if current_monday_number <= 4:
-        heartbeat_round = current_monday_number
-    else:
-        # If it's the 5th Monday, it belongs to the next month's 1st round
-        heartbeat_round = 1
-        now = now.replace(
-            month=now.month + 1 if now.month < 12 else 1,
-            year=now.year + (1 if now.month == 12 else 0),
-            day=1,
-        )
-
-    month_name = now.strftime("%B")
-
-    return heartbeat_round, month_name
+    return round, month
 
 
 def format_discord_message(
-    offenders: Dict[str, Dict[str, Any]], network_data: Dict[str, Any]
+    offenders: Dict[str, Dict[str, Any]],
+    heartbeat_round: int,
+    month_name: str,
 ) -> str:
     """Formats the offender data into a Discord message."""
 
     # Get the latest released version of nodes
     version_response = requests.get(LATEST_RELEASE_URL)
     latest_version = version_response.json().get("tag_name").strip("v")
-
-    # Get current heartbeat round and month
-    heartbeat_round, month_name = get_heartbeat_round_info()
 
     # Separate offenders by reason
     unreachable_offenders = []
