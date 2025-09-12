@@ -21,8 +21,6 @@ from deployment.constants import (
     RitualState,
 )
 
-from enum import Enum
-
 # Disable SSL warnings for self-signed certificates
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -33,6 +31,7 @@ LATEST_RELEASE_URL = "https://api.github.com/repos/nucypher/nucypher/releases/la
 UNREACHABLE = "Node is unreachable"
 OUTDATED = "Node is running an outdated version"
 UNKNOWN = "Unknown reason (HTTP 500)"
+MISSING_TRANSCRIPT = "Missing transcript"
 
 
 def get_eth_balance(address: str) -> float:
@@ -193,9 +192,7 @@ def format_discord_message(
     message += "If you're operating one of the nodes running an outdated client version, please"
     message += f" upgrade your node to v{latest_version} (latest)."
     message += "Otherwise if your node was unresponsive or experiencing server errors, please open"
-    message += (
-        " a support ticket in 🙋┃support-ticket so we can help you to investigate the failure"
-    )
+    message += " a support ticket in 🙋┃support-ticket so we can help you to investigate the failure"
     message += " reason.\n\n"
     message += "Finally, a reminder that we will continue to monitor the health of the network."
     message += "Please, be sure you claimed the @Node Operator role in 🪪┃claim-role and stay tuned"
@@ -247,11 +244,9 @@ def investigate_offender(
                             version = node_status.json().get("version", "Unknown")
                             offenders[ritual_id][address]["version"] = version
 
-                        if version != "Unknown" and version != latest_version:
-                            offenders[ritual_id][address]["reasons"].append(
-                                OUTDATED
-                            )
-                            outdated_nodes += 1
+                            if version != "Unknown" and version != latest_version:
+                                offenders[ritual_id][address]["reasons"].append(OUTDATED)
+                                outdated_nodes += 1
                     except (requests.ConnectionError, requests.exceptions.ReadTimeout):
                         offenders[ritual_id][address]["version"] = "Unknown"
                         offenders[ritual_id][address]["reasons"].append(UNREACHABLE)
@@ -306,9 +301,10 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
     artifact_data = json.load(artifact)
     coordinator = registry.get_contract(domain=domain, contract_name="Coordinator")
     taco_application = registry.get_contract(domain=domain, contract_name="TACoChildApplication")
-    offenders: Dict[str, Dict[str, Any]] = defaultdict(dict)
 
     heartbeat_round, month_name = get_heartbeat_round_info(coordinator, artifact_data)
+
+    offenders: Dict[str, Dict[str, Any]] = defaultdict(dict)
 
     if heartbeat_round > 4:
         click.secho(
@@ -328,26 +324,14 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
             continue  # Skip active rituals
 
         if ritual_status == RitualState.DKG_TIMEOUT.value:
-            ritual = coordinator.rituals(ritual_id)
             participants = coordinator.getParticipants(ritual_id)
-
-            # Check if all participants have submitted transcripts
-            all_transcripts_submitted = all(
-                participant_info[2] for participant_info in participants
-            )
 
             for participant_info in participants:
                 address, aggregated, transcript, *data = participant_info
-                reasons = []
 
                 if not transcript:
-                    reasons.append("Missing transcript")
-                # Only mark as offender for not aggregating if all transcripts were submitted
-                if not aggregated and ritual.totalTranscripts == 1 and all_transcripts_submitted:
-                    reasons.append("Did not aggregate")
+                    offenders[ritual_id][address] = {"reasons": [MISSING_TRANSCRIPT]}
 
-                if reasons:
-                    offenders[ritual_id][address] = {"reasons": reasons}
                     click.secho(
                         f"🧐 Investigating offender {address} in ritual {ritual_id}", fg="yellow"
                     )
