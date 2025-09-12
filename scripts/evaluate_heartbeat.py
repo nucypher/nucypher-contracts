@@ -2,8 +2,8 @@
 
 import json
 from collections import Counter, defaultdict
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict
-from datetime import datetime, timezone, timedelta
 
 import click
 import requests
@@ -63,9 +63,9 @@ def get_operator(staker_address: str, taco_application: ContractContainer) -> st
 def get_ordinal_suffix(n: int) -> str:
     """Return the ordinal suffix for a number (1st, 2nd, 3rd, 4th, etc.)."""
     if 10 <= n % 100 <= 20:
-        suffix = 'th'
+        suffix = "th"
     else:
-        suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
     return suffix
 
 
@@ -90,7 +90,7 @@ def get_heartbeat_round_info() -> tuple[int, str]:
         now = now.replace(
             month=now.month + 1 if now.month < 12 else 1,
             year=now.year + (1 if now.month == 12 else 0),
-            day=1
+            day=1,
         )
 
     month_name = now.strftime("%B")
@@ -139,47 +139,55 @@ def format_discord_message(
             elif any("Old Version" in reason for reason in reasons):
                 click.secho(f"  -> Adding {address} to outdated list", fg="blue")
                 outdated_offenders.append((address, operator))
-            # If node is reachable and up-to-date but has DKG violations, it goes to unreachable list
-            # (since the DKG violations are likely due to connectivity/availability issues)
+            # If node is reachable and up-to-date but has DKG violations, it goes to unreachable
+            # list (since the DKG violations are likely due to connectivity/availability issues)
             else:
                 click.secho(f"  -> Adding {address} to unreachable list (fallback)", fg="red")
                 unreachable_offenders.append((address, operator))
 
     # Build Discord message
     message = "Dear TACo @Node Operator\n\n"
-    message += f"We ran the {heartbeat_round}{get_ordinal_suffix(heartbeat_round)} DKG Heartbeat Round for {month_name} period to monitor node uptime and availability.\n\n"
+    message += f"We ran the {heartbeat_round}{get_ordinal_suffix(heartbeat_round)} DKG Heartbeat"
+    message += f" Round for {month_name} period to monitor node uptime and availability.\n\n"
 
     if unreachable_offenders:
-        message += "The following nodes did not complete the DKG heartbeat because they are not responding:\n\n"
+        message += "The following nodes did not complete the DKG heartbeat because they are not"
+        message += " responding:\n\n"
         message += "```\n"
         message += "Staking provider address                   | Operator address\n"
-        message += "---------------------------------------------------------------------------------------\n"
+        message += "----------------------------------------------------------------------------\n"
         for staking_provider, operator in unreachable_offenders:
             message += f"{staking_provider} | {operator}\n"
         message += "```\n\n"
 
     if outdated_offenders:
-        message += "The following nodes did not complete the DKG heartbeat because they are running an outdated client version:\n\n"
+        message += "The following nodes did not complete the DKG heartbeat because they are running"
+        message += " an outdated client version:\n\n"
         message += "```\n"
         message += "Staking provider address                   | Operator address\n"
-        message += "---------------------------------------------------------------------------------------\n"
+        message += "----------------------------------------------------------------------------\n"
         for staking_provider, operator in outdated_offenders:
             message += f"{staking_provider} | {operator}\n"
         message += "```\n\n"
 
     if unknown_reasons_offenders:
-        message += "The following nodes did not complete the DKG heartbeat due to unknown reasons (server errors):\n\n"
+        message += "The following nodes did not complete the DKG heartbeat due to unknown reasons"
+        message += " (server errors):\n\n"
         message += "```\n"
         message += "Staking provider address                   | Operator address\n"
-        message += "---------------------------------------------------------------------------------------\n"
+        message += "----------------------------------------------------------------------------\n"
         for staking_provider, operator in unknown_reasons_offenders:
             message += f"{staking_provider} | {operator}\n"
         message += "```\n\n"
 
-    message += f"If you're operating one of the nodes running an outdated client version, please upgrade your node to v{latest_version} (latest). "
-    message += "Otherwise if your node was unresponsive or experiencing server errors, please open a support ticket in 🙋┃support-ticket so we can help you to investigate the failure reason.\n\n"
-    message += "Finally, a reminder that we will continue to monitor the health of the network. "
-    message += "Please, be sure you claimed the @Node Operator role in 🪪┃claim-role and stay tuned to announcements in this server since we will report on failing nodes."
+    message += "If you're operating one of the nodes running an outdated client version, please"
+    message += f" upgrade your node to v{latest_version} (latest)."
+    message += "Otherwise if your node was unresponsive or experiencing server errors, please open"
+    message += " a support ticket in 🙋┃support-ticket so we can help you to investigate the failure"
+    message += " reason.\n\n"
+    message += "Finally, a reminder that we will continue to monitor the health of the network."
+    message += "Please, be sure you claimed the @Node Operator role in 🪪┃claim-role and stay tuned"
+    message += " to announcements in this server since we will report on failing nodes."
 
     return message
 
@@ -218,7 +226,9 @@ def investigate_offender(
                         if node_status.status_code == 500:
                             # HTTP 500 indicates server error - categorize as unknown reasons
                             offenders[ritual_id][address]["version"] = "Unknown"
-                            offenders[ritual_id][address]["reasons"].append("Unknown reasons (HTTP 500)")
+                            offenders[ritual_id][address]["reasons"].append(
+                                "Unknown reasons (HTTP 500)"
+                            )
                         elif node_status.status_code != 200:
                             # Other non-200 status codes - treat as unreachable
                             raise requests.ConnectionError
@@ -301,7 +311,9 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
             participants = coordinator.getParticipants(ritual_id)
 
             # Check if all participants have submitted transcripts
-            all_transcripts_submitted = all(participant_info[2] for participant_info in participants)
+            all_transcripts_submitted = all(
+                participant_info[2] for participant_info in participants
+            )
 
             for participant_info in participants:
                 address, aggregated, transcript, *data = participant_info
@@ -337,11 +349,11 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
     # Generate and display Discord message
     discord_message = format_discord_message(offenders, network_data)
 
-    click.secho("\n" + "="*80, fg="cyan")
+    click.secho("\n" + "=" * 80, fg="cyan")
     click.secho("📢 DISCORD MESSAGE (copy below):", fg="cyan")
-    click.secho("="*80, fg="cyan")
+    click.secho("=" * 80, fg="cyan")
     click.secho(discord_message, fg="white")
-    click.secho("="*80, fg="cyan")
+    click.secho("=" * 80, fg="cyan")
 
     # Also save to file for easy copying
     with open("discord_message.txt", "w") as f:
