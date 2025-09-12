@@ -71,6 +71,23 @@ def get_ordinal_suffix(n: int) -> str:
 
 def get_heartbeat_round_info() -> tuple[int, str]:
     """Calculate the current heartbeat round number and month name."""
+
+    def mondays_passed(date: datetime) -> int:
+        """Returns the number of Mondays that have passed in the month up to the given date."""
+        first_day_of_month = date.replace(day=1)
+
+        # find the first Monday of the month
+        first_monday = first_day_of_month
+        while first_monday.weekday() != 0:  # Monday = 0
+            first_monday += timedelta(days=1)
+
+        # Count Mondays up to the give date
+        count = 0
+        current = first_monday
+        while current <= date:
+            count += 1
+            current += timedelta(weeks=1)
+        return count
     now = datetime.now(timezone.utc)
 
     # Get the first Monday of the current month
