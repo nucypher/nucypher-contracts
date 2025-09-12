@@ -169,6 +169,12 @@ contract TACoApplication is
     event Penalized(address indexed stakingProvider, uint256 penaltyPercent, uint64 endPenalty);
 
     /**
+     * @notice Signals that the staking provider was released
+     * @param stakingProvider Staking provider address
+     */
+    event Released(address indexed stakingProvider);
+
+    /**
      * @notice Signals that reward was reset after penalty
      * @param stakingProvider Staking provider address
      */
@@ -219,6 +225,8 @@ contract TACoApplication is
     uint96 public authorizedOverall;
 
     address public rewardContract;
+
+    mapping(address => bool) public stakingProviderReleased;
 
     /**
      * @notice Constructor sets address of token contract and parameters for staking
@@ -579,6 +587,8 @@ contract TACoApplication is
         info.authorized = _toAmount;
         emit AuthorizationIncreased(_stakingProvider, _fromAmount, _toAmount);
         _updateAuthorization(_stakingProvider, info);
+
+        stakingProviderReleased[_stakingProvider] = false;
     }
 
     /**
@@ -642,9 +652,12 @@ contract TACoApplication is
 
         info.authorized = _fromAmount;
         info.deauthorizing = _fromAmount - _toAmount;
-        info.endDeauthorization = uint64(block.timestamp + deauthorizationDuration);
+        info.endDeauthorization = uint64(block.timestamp);
         emit AuthorizationDecreaseRequested(_stakingProvider, _fromAmount, _toAmount);
         _updateAuthorization(_stakingProvider, info);
+        if (_toAmount < minimumAuthorization) {
+            childApplication.release(_stakingProvider);
+        }
     }
 
     /**
@@ -662,6 +675,10 @@ contract TACoApplication is
         );
 
         uint96 toAmount = tStaking.approveAuthorizationDecrease(_stakingProvider);
+        require(
+            stakingProviderReleased[_stakingProvider] || toAmount >= minimumAuthorization,
+            "Node has not finished leaving process"
+        );
 
         if (info.operatorConfirmed) {
             authorizedOverall -= effectiveDifference(info.authorized, toAmount, info);
@@ -724,6 +741,9 @@ contract TACoApplication is
      * @notice Get all tokens delegated to the staking provider
      */
     function authorizedStake(address _stakingProvider) external view returns (uint96) {
+        if (stakingProviderReleased[_stakingProvider]) {
+            return 0;
+        }
         return stakingProviderInfo[_stakingProvider].authorized;
     }
 
@@ -738,6 +758,9 @@ contract TACoApplication is
         uint256 _endDate
     ) public view returns (uint96) {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
+        if (stakingProviderReleased[_stakingProvider]) {
+            return 0;
+        }
 
         uint96 eligibleAmount = info.authorized;
         if (0 < info.endDeauthorization && info.endDeauthorization < _endDate) {
@@ -1041,6 +1064,20 @@ contract TACoApplication is
             authorizedOverall -= before - effectiveAuthorized(info.authorized, info.penaltyPercent);
         }
         emit Penalized(_stakingProvider, info.penaltyPercent, info.endPenalty);
+    }
+
+    function release(address _stakingProvider) external override(ITACoChildToRoot) {
+        require(
+            msg.sender == address(childApplication),
+            "Only child application allowed to release"
+        );
+
+        if (_stakingProvider == address(0)) {
+            return;
+        }
+
+        stakingProviderReleased[_stakingProvider] = true;
+        emit Released(_stakingProvider);
     }
 
     /**

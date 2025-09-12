@@ -1,0 +1,17 @@
+deployment:
+  name: tapir-taco-child-app-upgrade
+  chain_id: 80002
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: tapir-taco-child-app-upgrade.json
+
+constants:
+  MOCK_POLYGON_CHILD: "0x469fBc4737f4d502d46B393E9a625EF754672644"
+  FORTY_THOUSAND_TOKENS_IN_WEI_UNITS: 40000000000000000000000
+
+contracts:
+  - TACoChildApplication:
+      constructor:
+        _rootApplication: $MOCK_POLYGON_CHILD
+        _minimumAuthorization: $FORTY_THOUSAND_TOKENS_IN_WEI_UNITS

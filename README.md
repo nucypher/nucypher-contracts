@@ -55,7 +55,7 @@ $ npm test
 
 ## Deploy to Production
 
-##### 1. Setup Deployment Parameters
+### 1. Setup Deployment Parameters
 
 Configurations for the deployments are in `deployments/constructor_params/<domain>/<filename>.yaml`.
 
@@ -81,7 +81,7 @@ contracts:
       _list_parameter: [123456, 789012]
 ```
 
-##### 2. Create Deployment Script
+### 2. Create Deployment Script
 
 Deployment scripts are located in `scripts/<domain>/<name>.py`.
 Here is a simple example deployment script, but you can also find a full example in `scripts/lynx/deploy_root.py`:
@@ -117,7 +117,7 @@ def main():
     deployer.finalize(deployments=deployments)
 ```
 
-##### 3. Setup Deployment Account (production only)
+### 3. Setup Deployment Account (production only)
 
 In order to deploy to **production** you will need to import an account into ape:
 ```
@@ -130,7 +130,7 @@ Then you can check the account was imported correctly:
 $ ape accounts list
 ```
 
-##### 4. Deploy
+### 4. Deploy
 
 Clear your ape database before deploying to production to avoid conflicts with upgradeable proxies.
 Please note that this will delete all ape deployment artifacts, so make sure you have a
@@ -144,9 +144,34 @@ Next, Run deployment scripts:
 ```bash
 
 $ ape run <domain> <script_name> --network ethereum:local:test
-$ ape run <domain> <script_name> --network polygon:mumbai:infura
-$ ape run <domain> <script_name>  --network ethereum:goerli:infura
+$ ape run <domain> <script_name> --network polygon:amoy:infura
+$ ape run <domain> <script_name>  --network ethereum:sepolia:infura
 ```
+
+#### Testing on Local Forks
+If you want to test on a local fork of a live network, for example when testing upgrades of contracts, 
+you can use [`foundry`](https://getfoundry.sh/). 
+
+Install `foundry` by running:
+
+```bash
+$ curl -L https://foundry.paradigm.xyz | bash
+$ foundryup
+```
+
+Ensure that the following command runs:
+
+```bash
+$ anvil --version
+```
+
+Subsequently, you can run the respective deployment script by providing the relevant network:
+- Sepolia: `--network ethereum:sepolia-fork:foundry`
+- Amoy: `--network polygon:amoy-fork:foundry`
+
+The script will be executed against the local fork based on the latest live block, allowing you to 
+test contract deployments and interactions as if they were on the live network.
+
 
 ## NPM publishing process
 

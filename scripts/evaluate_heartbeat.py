@@ -252,7 +252,8 @@ def investigate_offender(
                                     OUTDATED
                                 )
                                 outdated_nodes += 1
-                    except requests.ConnectionError:
+                    except (requests.ConnectionError, requests.exceptions.ReadTimeout):
+                      
                         offenders[ritual_id][address]["version"] = "Unknown"
                         offenders[ritual_id][address]["reasons"].append(UNREACHABLE)
                         unreachable_nodes += 1

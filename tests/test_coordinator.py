@@ -1146,11 +1146,11 @@ def test_finalize_handover(
         coordinator.HANDOVER_SUPERVISOR_ROLE(), handover_supervisor, sender=deployer
     )
 
-    with ape.reverts("Not waiting for finalization"):
-        coordinator.finalizeHandover(ritualID, departing_node, sender=handover_supervisor)
-
     threshold, aggregated = activate_ritual(nodes, coordinator, ritualID)
     setup_node(incoming_node, coordinator, application, deployer)
+
+    with ape.reverts("Not waiting for finalization"):
+        coordinator.finalizeHandover(ritualID, departing_node, sender=handover_supervisor)
 
     coordinator.handoverRequest(ritualID, departing_node, incoming_node, sender=handover_supervisor)
 
@@ -1174,8 +1174,10 @@ def test_finalize_handover(
         == HandoverState.HANDOVER_AWAITING_FINALIZATION
     )
 
+    assert not application.stakingProviderReleased(departing_node)
     tx = coordinator.finalizeHandover(ritualID, departing_node, sender=handover_supervisor)
     assert coordinator.getHandoverState(ritualID, departing_node) == HandoverState.NON_INITIATED
+    assert application.stakingProviderReleased(departing_node)
 
     events = [event for event in tx.events if event.event_name == "HandoverFinalized"]
     assert events == [

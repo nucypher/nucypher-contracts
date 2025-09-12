@@ -8,16 +8,19 @@ artifacts:
 
 constants:
   FORTY_THOUSAND_TOKENS_IN_WEI_UNITS: 40000000000000000000000
-  MOCK_POLYGON_CHILD: "0x970b5f6A299813cA9DC45Be8446929b6513903f9"
   TAPIR_RITUAL_TOKEN: "0xf91afFE7cf1d9c367Cb56eDd70C0941a4E8570d9"
+  TACO_CHILD_APPLICATION_PROXY: "0x489287Ed5BdF7a35fEE411FBdCc47331093D0769"
+  DKG_TIMEOUT_SECONDS: 3600  # 1 hour
+  HANDOVER_TIMEOUT_SECONDS: 900  # 15 minutes
 
 contracts:
+  - MockPolygonChild
   - TACoChildApplication:
       constructor:
-        _rootApplication: $MOCK_POLYGON_CHILD
+        _rootApplication: $MockPolygonChild
         _minimumAuthorization: $FORTY_THOUSAND_TOKENS_IN_WEI_UNITS
   - Coordinator:
       constructor:
-        _application: "0x489287Ed5BdF7a35fEE411FBdCc47331093D0769"
-        _currency: $TAPIR_RITUAL_TOKEN
-        _feeRatePerSecond: 1
+        _application: $TACO_CHILD_APPLICATION_PROXY
+        _dkgTimeout: $DKG_TIMEOUT_SECONDS
+        _handoverTimeout: $HANDOVER_TIMEOUT_SECONDS

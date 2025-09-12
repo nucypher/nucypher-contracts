@@ -1,0 +1,16 @@
+deployment:
+  name: tapir-mock-polygon-root-upgrade
+  chain_id: 11155111 # sepolia
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: tapir-mock-polygon-root-upgrade.json
+
+constants:
+  TACO_APPLICATION: "0xCcFf527698E78a536d80695D9Af4F4f3265ADA05"
+
+
+contracts:
+  - MockPolygonRoot:
+      constructor:
+        _rootApplication: $TACO_APPLICATION

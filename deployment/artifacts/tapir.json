@@ -1,7 +1,7 @@
 {
     "11155111": {
         "MockPolygonRoot": {
-            "address": "0xB0fD1cC270B7B4f6dd2Bc7a122eEfb3AC9D6b292",
+            "address": "0xaBDD438587189273692bcF22A0fbef7A0a0a375c",
             "abi": [
                 {
                     "type": "constructor",
@@ -47,9 +47,21 @@
                             "indexed": true
                         },
                         {
-                            "name": "amount",
+                            "name": "authorized",
                             "type": "uint96",
                             "internalType": "uint96",
+                            "indexed": false
+                        },
+                        {
+                            "name": "deauthorizing",
+                            "type": "uint96",
+                            "internalType": "uint96",
+                            "indexed": false
+                        },
+                        {
+                            "name": "endDeauthorization",
+                            "type": "uint64",
+                            "internalType": "uint64",
                             "indexed": false
                         }
                     ],
@@ -140,6 +152,32 @@
                 },
                 {
                     "type": "function",
+                    "name": "penalize",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "release",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
                     "name": "renounceOwnership",
                     "stateMutability": "nonpayable",
                     "inputs": [],
@@ -157,6 +195,19 @@
                             "internalType": "contract ITACoChildToRoot"
                         }
                     ]
+                },
+                {
+                    "type": "function",
+                    "name": "rootRelease",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": []
                 },
                 {
                     "type": "function",
@@ -195,9 +246,37 @@
                             "internalType": "address"
                         },
                         {
-                            "name": "amount",
+                            "name": "authorized",
                             "type": "uint96",
                             "internalType": "uint96"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "updateAuthorization",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        },
+                        {
+                            "name": "authorized",
+                            "type": "uint96",
+                            "internalType": "uint96"
+                        },
+                        {
+                            "name": "deauthorizing",
+                            "type": "uint96",
+                            "internalType": "uint96"
+                        },
+                        {
+                            "name": "endDeauthorization",
+                            "type": "uint64",
+                            "internalType": "uint64"
                         }
                     ],
                     "outputs": []
@@ -221,8 +300,8 @@
                     "outputs": []
                 }
             ],
-            "tx_hash": "0x5f459939b306d38d89c61757035293d189d7282f4e1d547ac1ef5bfb42e8a968",
-            "block_number": 5048626,
+            "tx_hash": "0x4e309b4c02d54a36ec6187d647d300cf8e10b4cc259b6d5c23c52b9f6123dbad",
+            "block_number": 8982607,
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "TACoApplication": {
@@ -263,14 +342,19 @@
                             "internalType": "uint256"
                         },
                         {
-                            "name": "_commitmentDurationOptions",
-                            "type": "uint64[]",
-                            "internalType": "uint64[]"
+                            "name": "_penaltyDefault",
+                            "type": "uint192",
+                            "internalType": "uint192"
                         },
                         {
-                            "name": "_commitmentDeadline",
-                            "type": "uint64",
-                            "internalType": "uint64"
+                            "name": "_penaltyDuration",
+                            "type": "uint256",
+                            "internalType": "uint256"
+                        },
+                        {
+                            "name": "_penaltyIncrement",
+                            "type": "uint192",
+                            "internalType": "uint192"
                         }
                     ]
                 },
@@ -487,25 +571,6 @@
                 },
                 {
                     "type": "event",
-                    "name": "CommitmentMade",
-                    "inputs": [
-                        {
-                            "name": "stakingProvider",
-                            "type": "address",
-                            "internalType": "address",
-                            "indexed": true
-                        },
-                        {
-                            "name": "endCommitment",
-                            "type": "uint256",
-                            "internalType": "uint256",
-                            "indexed": false
-                        }
-                    ],
-                    "anonymous": false
-                },
-                {
-                    "type": "event",
                     "name": "Initialized",
                     "inputs": [
                         {
@@ -625,6 +690,44 @@
                 },
                 {
                     "type": "event",
+                    "name": "Penalized",
+                    "inputs": [
+                        {
+                            "name": "stakingProvider",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        },
+                        {
+                            "name": "penaltyPercent",
+                            "type": "uint256",
+                            "internalType": "uint256",
+                            "indexed": false
+                        },
+                        {
+                            "name": "endPenalty",
+                            "type": "uint64",
+                            "internalType": "uint64",
+                            "indexed": false
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
+                    "name": "Released",
+                    "inputs": [
+                        {
+                            "name": "stakingProvider",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
                     "name": "RewardAdded",
                     "inputs": [
                         {
@@ -632,6 +735,19 @@
                             "type": "uint256",
                             "internalType": "uint256",
                             "indexed": false
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
+                    "name": "RewardContractSet",
+                    "inputs": [
+                        {
+                            "name": "rewardContract",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
                         }
                     ],
                     "anonymous": false
@@ -654,6 +770,12 @@
                     "name": "RewardPaid",
                     "inputs": [
                         {
+                            "name": "sender",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        },
+                        {
                             "name": "stakingProvider",
                             "type": "address",
                             "internalType": "address",
@@ -670,6 +792,19 @@
                             "type": "uint256",
                             "internalType": "uint256",
                             "indexed": false
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
+                    "name": "RewardReset",
+                    "inputs": [
+                        {
+                            "name": "stakingProvider",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
                         }
                     ],
                     "anonymous": false
@@ -723,6 +858,19 @@
                         }
                     ],
                     "anonymous": false
+                },
+                {
+                    "type": "function",
+                    "name": "PENALTY_BASE",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint192",
+                            "internalType": "uint192"
+                        }
+                    ]
                 },
                 {
                     "type": "function",
@@ -916,71 +1064,6 @@
                 },
                 {
                     "type": "function",
-                    "name": "commitmentDeadline",
-                    "stateMutability": "view",
-                    "inputs": [],
-                    "outputs": [
-                        {
-                            "name": "",
-                            "type": "uint64",
-                            "internalType": "uint64"
-                        }
-                    ]
-                },
-                {
-                    "type": "function",
-                    "name": "commitmentDurationOption1",
-                    "stateMutability": "view",
-                    "inputs": [],
-                    "outputs": [
-                        {
-                            "name": "",
-                            "type": "uint64",
-                            "internalType": "uint64"
-                        }
-                    ]
-                },
-                {
-                    "type": "function",
-                    "name": "commitmentDurationOption2",
-                    "stateMutability": "view",
-                    "inputs": [],
-                    "outputs": [
-                        {
-                            "name": "",
-                            "type": "uint64",
-                            "internalType": "uint64"
-                        }
-                    ]
-                },
-                {
-                    "type": "function",
-                    "name": "commitmentDurationOption3",
-                    "stateMutability": "view",
-                    "inputs": [],
-                    "outputs": [
-                        {
-                            "name": "",
-                            "type": "uint64",
-                            "internalType": "uint64"
-                        }
-                    ]
-                },
-                {
-                    "type": "function",
-                    "name": "commitmentDurationOption4",
-                    "stateMutability": "view",
-                    "inputs": [],
-                    "outputs": [
-                        {
-                            "name": "",
-                            "type": "uint64",
-                            "internalType": "uint64"
-                        }
-                    ]
-                },
-                {
-                    "type": "function",
                     "name": "confirmOperatorAddress",
                     "stateMutability": "nonpayable",
                     "inputs": [
@@ -1079,6 +1162,30 @@
                             "name": "beneficiary",
                             "type": "address",
                             "internalType": "address payable"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "getPenalty",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "penalty",
+                            "type": "uint192",
+                            "internalType": "uint192"
+                        },
+                        {
+                            "name": "endPenalty",
+                            "type": "uint64",
+                            "internalType": "uint64"
                         }
                     ]
                 },
@@ -1191,24 +1298,6 @@
                 },
                 {
                     "type": "function",
-                    "name": "makeCommitment",
-                    "stateMutability": "nonpayable",
-                    "inputs": [
-                        {
-                            "name": "_stakingProvider",
-                            "type": "address",
-                            "internalType": "address"
-                        },
-                        {
-                            "name": "_commitmentDuration",
-                            "type": "uint64",
-                            "internalType": "uint64"
-                        }
-                    ],
-                    "outputs": []
-                },
-                {
-                    "type": "function",
                     "name": "manualChildSynchronization",
                     "stateMutability": "nonpayable",
                     "inputs": [
@@ -1280,6 +1369,58 @@
                 },
                 {
                     "type": "function",
+                    "name": "penalize",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "penaltyDefault",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint192",
+                            "internalType": "uint192"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "penaltyDuration",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256",
+                            "internalType": "uint256"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "penaltyIncrement",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint192",
+                            "internalType": "uint192"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
                     "name": "pendingAuthorizationDecrease",
                     "stateMutability": "view",
                     "inputs": [
@@ -1338,6 +1479,19 @@
                 },
                 {
                     "type": "function",
+                    "name": "release",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
                     "name": "remainingAuthorizationDecreaseDelay",
                     "stateMutability": "view",
                     "inputs": [
@@ -1364,6 +1518,19 @@
                 },
                 {
                     "type": "function",
+                    "name": "resetReward",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
                     "name": "resynchronizeAuthorization",
                     "stateMutability": "nonpayable",
                     "inputs": [
@@ -1374,6 +1541,19 @@
                         }
                     ],
                     "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "rewardContract",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ]
                 },
                 {
                     "type": "function",
@@ -1468,6 +1648,19 @@
                 },
                 {
                     "type": "function",
+                    "name": "setRewardContract",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_rewardContract",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
                     "name": "setRewardDistributor",
                     "stateMutability": "nonpayable",
                     "inputs": [
@@ -1555,9 +1748,43 @@
                             "internalType": "uint160"
                         },
                         {
-                            "name": "endCommitment",
+                            "name": "legacyEndCommitment",
                             "type": "uint64",
                             "internalType": "uint64"
+                        },
+                        {
+                            "name": "stub",
+                            "type": "uint256",
+                            "internalType": "uint256"
+                        },
+                        {
+                            "name": "penaltyPercent",
+                            "type": "uint192",
+                            "internalType": "uint192"
+                        },
+                        {
+                            "name": "endPenalty",
+                            "type": "uint64",
+                            "internalType": "uint64"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "stakingProviderReleased",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "bool",
+                            "internalType": "bool"
                         }
                     ]
                 },
@@ -1984,7 +2211,7 @@
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "TestnetThresholdStaking": {
-            "address": "0x68214f94dc2f3C7F2E0b42AD22eb79E00746aA9C",
+            "address": "0xcdD63981c8f4a2A684d102f7d7693A1c326CDd33",
             "abi": [
                 {
                     "type": "constructor",
@@ -2044,6 +2271,48 @@
                             "internalType": "contract IApplication"
                         }
                     ]
+                },
+                {
+                    "type": "function",
+                    "name": "approveAuthorizationDecrease",
+                    "stateMutability": "pure",
+                    "inputs": [
+                        {
+                            "name": "",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint96",
+                            "internalType": "uint96"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "authorizationDecreaseRequested",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        },
+                        {
+                            "name": "_fromAmount",
+                            "type": "uint96",
+                            "internalType": "uint96"
+                        },
+                        {
+                            "name": "_toAmount",
+                            "type": "uint96",
+                            "internalType": "uint96"
+                        }
+                    ],
+                    "outputs": []
                 },
                 {
                     "type": "function",
@@ -2329,8 +2598,8 @@
                     "outputs": []
                 }
             ],
-            "tx_hash": "0x8d8bfcb431fd01d234859fecde80d7b18373a8b81e6ff1c9cf253ffc1cbe9da1",
-            "block_number": 5048610,
+            "tx_hash": "0x4c89a23f28f41ec638ecd72a08b172d50a12c9da0e27e3abf937566a5ea3a150",
+            "block_number": 8983240,
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         }
     },
@@ -2346,6 +2615,16 @@
                             "name": "_application",
                             "type": "address",
                             "internalType": "contract ITACoChildApplication"
+                        },
+                        {
+                            "name": "_dkgTimeout",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        },
+                        {
+                            "name": "_handoverTimeout",
+                            "type": "uint32",
+                            "internalType": "uint32"
                         }
                     ]
                 },
@@ -2399,33 +2678,6 @@
                 },
                 {
                     "type": "error",
-                    "name": "AddressEmptyCode",
-                    "inputs": [
-                        {
-                            "name": "target",
-                            "type": "address",
-                            "internalType": "address"
-                        }
-                    ]
-                },
-                {
-                    "type": "error",
-                    "name": "AddressInsufficientBalance",
-                    "inputs": [
-                        {
-                            "name": "account",
-                            "type": "address",
-                            "internalType": "address"
-                        }
-                    ]
-                },
-                {
-                    "type": "error",
-                    "name": "FailedInnerCall",
-                    "inputs": []
-                },
-                {
-                    "type": "error",
                     "name": "InvalidInitialization",
                     "inputs": []
                 },
@@ -2451,17 +2703,6 @@
                     ]
                 },
                 {
-                    "type": "error",
-                    "name": "SafeERC20FailedOperation",
-                    "inputs": [
-                        {
-                            "name": "token",
-                            "type": "address",
-                            "internalType": "address"
-                        }
-                    ]
-                },
-                {
                     "type": "event",
                     "name": "AggregationPosted",
                     "inputs": [
@@ -2482,6 +2723,25 @@
                             "type": "bytes32",
                             "internalType": "bytes32",
                             "indexed": false
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
+                    "name": "BlindedSharePosted",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "internalType": "uint32",
+                            "indexed": true
+                        },
+                        {
+                            "name": "departingParticipant",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
                         }
                     ],
                     "anonymous": false
@@ -2564,6 +2824,106 @@
                             "type": "address",
                             "internalType": "contract IFeeModel",
                             "indexed": false
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
+                    "name": "HandoverCanceled",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "internalType": "uint32",
+                            "indexed": true
+                        },
+                        {
+                            "name": "departingParticipant",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        },
+                        {
+                            "name": "incomingParticipant",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
+                    "name": "HandoverFinalized",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "internalType": "uint32",
+                            "indexed": true
+                        },
+                        {
+                            "name": "departingParticipant",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        },
+                        {
+                            "name": "incomingParticipant",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
+                    "name": "HandoverRequest",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "internalType": "uint32",
+                            "indexed": true
+                        },
+                        {
+                            "name": "departingParticipant",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        },
+                        {
+                            "name": "incomingParticipant",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
+                    "name": "HandoverTranscriptPosted",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "internalType": "uint32",
+                            "indexed": true
+                        },
+                        {
+                            "name": "departingParticipant",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        },
+                        {
+                            "name": "incomingParticipant",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
                         }
                     ],
                     "anonymous": false
@@ -2814,25 +3174,6 @@
                 },
                 {
                     "type": "event",
-                    "name": "TimeoutChanged",
-                    "inputs": [
-                        {
-                            "name": "oldTimeout",
-                            "type": "uint32",
-                            "internalType": "uint32",
-                            "indexed": false
-                        },
-                        {
-                            "name": "newTimeout",
-                            "type": "uint32",
-                            "internalType": "uint32",
-                            "indexed": false
-                        }
-                    ],
-                    "anonymous": false
-                },
-                {
-                    "type": "event",
                     "name": "TranscriptPosted",
                     "inputs": [
                         {
@@ -2872,6 +3213,19 @@
                 {
                     "type": "function",
                     "name": "FEE_MODEL_MANAGER_ROLE",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "bytes32",
+                            "internalType": "bytes32"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "HANDOVER_SUPERVISOR_ROLE",
                     "stateMutability": "view",
                     "inputs": [],
                     "outputs": [
@@ -2943,9 +3297,51 @@
                 },
                 {
                     "type": "function",
+                    "name": "blindedSharePosition",
+                    "stateMutability": "pure",
+                    "inputs": [
+                        {
+                            "name": "index",
+                            "type": "uint256",
+                            "internalType": "uint256"
+                        },
+                        {
+                            "name": "threshold",
+                            "type": "uint16",
+                            "internalType": "uint16"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256",
+                            "internalType": "uint256"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
                     "name": "cancelDefaultAdminTransfer",
                     "stateMutability": "nonpayable",
                     "inputs": [],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "cancelHandover",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        },
+                        {
+                            "name": "departingParticipant",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
                     "outputs": []
                 },
                 {
@@ -3021,6 +3417,32 @@
                 },
                 {
                     "type": "function",
+                    "name": "dkgTimeout",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "dkgTimeoutStub",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
                     "name": "expectedTranscriptSize",
                     "stateMutability": "pure",
                     "inputs": [
@@ -3082,6 +3504,24 @@
                 },
                 {
                     "type": "function",
+                    "name": "finalizeHandover",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        },
+                        {
+                            "name": "departingParticipant",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
                     "name": "getAccessController",
                     "stateMutability": "view",
                     "inputs": [
@@ -3134,6 +3574,54 @@
                             "name": "",
                             "type": "address",
                             "internalType": "contract IFeeModel"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "getHandoverKey",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        },
+                        {
+                            "name": "departingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "bytes32",
+                            "internalType": "bytes32"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "getHandoverState",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        },
+                        {
+                            "name": "departingParticipant",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint8",
+                            "internalType": "enum Coordinator.HandoverState"
                         }
                     ]
                 },
@@ -3573,6 +4061,81 @@
                 },
                 {
                     "type": "function",
+                    "name": "handoverRequest",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        },
+                        {
+                            "name": "departingParticipant",
+                            "type": "address",
+                            "internalType": "address"
+                        },
+                        {
+                            "name": "incomingParticipant",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "handoverTimeout",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "handovers",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "handoverKey",
+                            "type": "bytes32",
+                            "internalType": "bytes32"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "requestTimestamp",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        },
+                        {
+                            "name": "incomingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        },
+                        {
+                            "name": "transcript",
+                            "type": "bytes",
+                            "internalType": "bytes"
+                        },
+                        {
+                            "name": "decryptionRequestStaticKey",
+                            "type": "bytes",
+                            "internalType": "bytes"
+                        },
+                        {
+                            "name": "blindedShare",
+                            "type": "bytes",
+                            "internalType": "bytes"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
                     "name": "hasRole",
                     "stateMutability": "view",
                     "inputs": [
@@ -3601,11 +4164,6 @@
                     "stateMutability": "nonpayable",
                     "inputs": [
                         {
-                            "name": "_timeout",
-                            "type": "uint32",
-                            "internalType": "uint32"
-                        },
-                        {
                             "name": "_maxDkgSize",
                             "type": "uint16",
                             "internalType": "uint16"
@@ -3616,13 +4174,6 @@
                             "internalType": "address"
                         }
                     ],
-                    "outputs": []
-                },
-                {
-                    "type": "function",
-                    "name": "initializeNumberOfRituals",
-                    "stateMutability": "nonpayable",
-                    "inputs": [],
                     "outputs": []
                 },
                 {
@@ -3661,35 +4212,6 @@
                             "name": "",
                             "type": "uint32",
                             "internalType": "uint32"
-                        }
-                    ]
-                },
-                {
-                    "type": "function",
-                    "name": "isEncryptionAuthorized",
-                    "stateMutability": "view",
-                    "inputs": [
-                        {
-                            "name": "ritualId",
-                            "type": "uint32",
-                            "internalType": "uint32"
-                        },
-                        {
-                            "name": "evidence",
-                            "type": "bytes",
-                            "internalType": "bytes"
-                        },
-                        {
-                            "name": "ciphertextHeader",
-                            "type": "bytes",
-                            "internalType": "bytes"
-                        }
-                    ],
-                    "outputs": [
-                        {
-                            "name": "",
-                            "type": "bool",
-                            "internalType": "bool"
                         }
                     ]
                 },
@@ -3742,7 +4264,7 @@
                     "stateMutability": "view",
                     "inputs": [
                         {
-                            "name": "provider",
+                            "name": "",
                             "type": "address",
                             "internalType": "address"
                         }
@@ -3891,7 +4413,7 @@
                 },
                 {
                     "type": "function",
-                    "name": "postTranscript",
+                    "name": "postBlindedShare",
                     "stateMutability": "nonpayable",
                     "inputs": [
                         {
@@ -3900,7 +4422,35 @@
                             "internalType": "uint32"
                         },
                         {
+                            "name": "blindedShare",
+                            "type": "bytes",
+                            "internalType": "bytes"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "postHandoverTranscript",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "ritualId",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        },
+                        {
+                            "name": "departingParticipant",
+                            "type": "address",
+                            "internalType": "address"
+                        },
+                        {
                             "name": "transcript",
+                            "type": "bytes",
+                            "internalType": "bytes"
+                        },
+                        {
+                            "name": "decryptionRequestStaticKey",
                             "type": "bytes",
                             "internalType": "bytes"
                         }
@@ -3921,19 +4471,6 @@
                             "name": "transcript",
                             "type": "bytes",
                             "internalType": "bytes"
-                        }
-                    ],
-                    "outputs": []
-                },
-                {
-                    "type": "function",
-                    "name": "reinitializeDefaultAdmin",
-                    "stateMutability": "nonpayable",
-                    "inputs": [
-                        {
-                            "name": "newDefaultAdmin",
-                            "type": "address",
-                            "internalType": "address"
                         }
                     ],
                     "outputs": []
@@ -3980,7 +4517,7 @@
                     "stateMutability": "view",
                     "inputs": [
                         {
-                            "name": "ritualId",
+                            "name": "index",
                             "type": "uint256",
                             "internalType": "uint256"
                         }
@@ -4130,19 +4667,6 @@
                 },
                 {
                     "type": "function",
-                    "name": "setTimeout",
-                    "stateMutability": "nonpayable",
-                    "inputs": [
-                        {
-                            "name": "newTimeout",
-                            "type": "uint32",
-                            "internalType": "uint32"
-                        }
-                    ],
-                    "outputs": []
-                },
-                {
-                    "type": "function",
                     "name": "supportsInterface",
                     "stateMutability": "view",
                     "inputs": [
@@ -4187,19 +4711,6 @@
                             "name": "newAuthority",
                             "type": "address",
                             "internalType": "address"
-                        }
-                    ],
-                    "outputs": []
-                },
-                {
-                    "type": "function",
-                    "name": "withdrawAllTokens",
-                    "stateMutability": "nonpayable",
-                    "inputs": [
-                        {
-                            "name": "token",
-                            "type": "address",
-                            "internalType": "contract IERC20"
                         }
                     ],
                     "outputs": []
@@ -4594,7 +5105,7 @@
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "MockPolygonChild": {
-            "address": "0x970b5f6A299813cA9DC45Be8446929b6513903f9",
+            "address": "0x469fBc4737f4d502d46B393E9a625EF754672644",
             "abi": [
                 {
                     "type": "constructor",
@@ -4634,9 +5145,21 @@
                             "indexed": true
                         },
                         {
-                            "name": "amount",
+                            "name": "authorized",
                             "type": "uint96",
                             "internalType": "uint96",
+                            "indexed": false
+                        },
+                        {
+                            "name": "deauthorizing",
+                            "type": "uint96",
+                            "internalType": "uint96",
+                            "indexed": false
+                        },
+                        {
+                            "name": "endDeauthorization",
+                            "type": "uint64",
+                            "internalType": "uint64",
                             "indexed": false
                         }
                     ],
@@ -4714,6 +5237,19 @@
                 },
                 {
                     "type": "function",
+                    "name": "childRelease",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
                     "name": "confirmOperatorAddress",
                     "stateMutability": "nonpayable",
                     "inputs": [
@@ -4737,6 +5273,32 @@
                             "internalType": "address"
                         }
                     ]
+                },
+                {
+                    "type": "function",
+                    "name": "penalize",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "release",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": []
                 },
                 {
                     "type": "function",
@@ -4791,6 +5353,34 @@
                 },
                 {
                     "type": "function",
+                    "name": "updateAuthorization",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        },
+                        {
+                            "name": "_authorized",
+                            "type": "uint96",
+                            "internalType": "uint96"
+                        },
+                        {
+                            "name": "_deauthorizing",
+                            "type": "uint96",
+                            "internalType": "uint96"
+                        },
+                        {
+                            "name": "_endDeauthorization",
+                            "type": "uint64",
+                            "internalType": "uint64"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
                     "name": "updateOperator",
                     "stateMutability": "nonpayable",
                     "inputs": [
@@ -4808,8 +5398,8 @@
                     "outputs": []
                 }
             ],
-            "tx_hash": "0xafc4b19b2620836601adf59c140edc206fd87a26f926014f77b2432c516b1624",
-            "block_number": 5392963,
+            "tx_hash": "0x9d02a90de77d2ce3f640f4ca1ea78340ad3288ef28d0b2fa48c36619e2b953f8",
+            "block_number": 25111963,
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "OpenAccessAuthorizer": {
@@ -6297,6 +6887,64 @@
                     "anonymous": false
                 },
                 {
+                    "type": "event",
+                    "name": "Penalized",
+                    "inputs": [
+                        {
+                            "name": "stakingProvider",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
+                    "name": "Released",
+                    "inputs": [
+                        {
+                            "name": "stakingProvider",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "function",
+                    "name": "activeRituals",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "",
+                            "type": "uint256",
+                            "internalType": "uint256"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "adjudicator",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ]
+                },
+                {
                     "type": "function",
                     "name": "authorizedStake",
                     "stateMutability": "view",
@@ -6450,6 +7098,11 @@
                             "name": "_coordinator",
                             "type": "address",
                             "internalType": "address"
+                        },
+                        {
+                            "name": "_adjudicator",
+                            "type": "address",
+                            "internalType": "address"
                         }
                     ],
                     "outputs": []
@@ -6488,6 +7141,19 @@
                 },
                 {
                     "type": "function",
+                    "name": "penalize",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
                     "name": "pendingAuthorizationDecrease",
                     "stateMutability": "view",
                     "inputs": [
@@ -6507,6 +7173,19 @@
                 },
                 {
                     "type": "function",
+                    "name": "release",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
                     "name": "rootApplication",
                     "stateMutability": "view",
                     "inputs": [],
@@ -6517,6 +7196,19 @@
                             "internalType": "contract ITACoChildToRoot"
                         }
                     ]
+                },
+                {
+                    "type": "function",
+                    "name": "setActiveRituals",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_activeRituals",
+                            "type": "uint32[]",
+                            "internalType": "uint32[]"
+                        }
+                    ],
+                    "outputs": []
                 },
                 {
                     "type": "function",
@@ -6559,6 +7251,16 @@
                             "name": "endDeauthorization",
                             "type": "uint64",
                             "internalType": "uint64"
+                        },
+                        {
+                            "name": "stub",
+                            "type": "uint256",
+                            "internalType": "uint256"
+                        },
+                        {
+                            "name": "released",
+                            "type": "bool",
+                            "internalType": "bool"
                         }
                     ]
                 },

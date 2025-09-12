@@ -1,0 +1,49 @@
+deployment:
+  name: marlin-upgrade
+  chain_id: 137
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: marlin-upgrade.json
+
+constants:
+  # See deployment/artifacts/mainnet.json
+  COORDINATOR_PROXY: "0xE74259e3dafe30bAA8700238e324b47aC98FE755"
+  GLOBAL_ALLOWLIST: "0x3E37C7A9a83B326a0d156DE3Ee6B18fd8079f698"
+
+  # See https://github.com/nucypher/tdec/issues/137#issuecomment-1881525878
+  # and https://app.safe.global/home?safe=matic:0x861aa915C785dEe04684444560fC7A2AB43a1543
+  NUCO_MULTISIG: "0x861aa915C785dEe04684444560fC7A2AB43a1543"
+
+  # DAI Token on Polygon PoS - References:
+  # - https://polygonscan.com/token/0x8f3cf7ad23cd3cadbd9735aff958023239c6a063
+  # - https://github.com/search?q=0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063&type=code
+  DAI_ON_POLYGON: "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063"
+
+  # Subscription Parameters
+  # See https://github.com/nucypher/tdec/issues/169
+
+  MAX_NODES: 30
+
+  # - Fee parameters:
+  INITIAL_BASE_FEE_RATE: 5787037037037  # $0.5 per day, in DAI units per second (in Python: 50*10**16 // 86400)
+  ENCRYPTOR_FEE_RATE: 79274479959  # $2.5 per year, in DAI units per second (in Python: 250 * 10**16 // 86400 // 365)
+  BASE_FEE_RATE_INCREASE_PER_PERIOD: 500  # 5%/year, expressed in basis points (0.01%)
+  # - Duration parameters --> 1 period = 365 days
+  ONE_YEAR_IN_SECONDS: 31536000  # 365 days (~1 year)
+  THREE_MONTHS_IN_SECONDS: 7776000  # 90 day (~3 months)
+
+contracts:
+  - StandardSubscription:
+      constructor:
+        _coordinator: $COORDINATOR_PROXY
+        _accessController: $GLOBAL_ALLOWLIST
+        _feeToken: $DAI_ON_POLYGON
+        _adopterSetter: $NUCO_MULTISIG
+        _initialBaseFeeRate: $INITIAL_BASE_FEE_RATE
+        _baseFeeRateIncrease: $BASE_FEE_RATE_INCREASE_PER_PERIOD
+        _encryptorFeeRate: $ENCRYPTOR_FEE_RATE
+        _maxNodes: $MAX_NODES
+        _subscriptionPeriodDuration: $ONE_YEAR_IN_SECONDS
+        _yellowPeriodDuration: $THREE_MONTHS_IN_SECONDS
+        _redPeriodDuration: $THREE_MONTHS_IN_SECONDS

@@ -13,6 +13,7 @@ contract RootApplicationForTACoChildApplicationMock {
 
     mapping(address => bool) public confirmations;
     mapping(address => bool) public penalties;
+    mapping(address => bool) public releases;
 
     function setChildApplication(ITACoRootToChild _childApplication) external {
         childApplication = _childApplication;
@@ -48,13 +49,27 @@ contract RootApplicationForTACoChildApplicationMock {
         penalties[_stakingProvider] = true;
     }
 
+    function release(address _stakingProvider) external {
+        releases[_stakingProvider] = true;
+    }
+
+    function resetRelease(address _stakingProvider) external {
+        releases[_stakingProvider] = false;
+    }
+
     function resetConfirmation(address _operator) external {
         confirmations[_operator] = false;
+    }
+
+    function callChildRelease(address _stakingProvider) external {
+        childApplication.release(_stakingProvider);
     }
 }
 
 contract CoordinatorForTACoChildApplicationMock {
     ITACoChildToRoot public immutable application;
+
+    mapping(uint32 ritualId => mapping(address provider => bool participant)) internal rituals;
 
     constructor(ITACoChildToRoot _application) {
         application = _application;
@@ -62,5 +77,21 @@ contract CoordinatorForTACoChildApplicationMock {
 
     function confirmOperatorAddress(address _operator) external {
         application.confirmOperatorAddress(_operator);
+    }
+
+    function setRitualParticipant(uint32 ritualId, address provider) external {
+        rituals[ritualId][provider] = true;
+    }
+
+    function isRitualActive(uint32) external pure returns (bool) {
+        return true;
+    }
+
+    function isParticipant(uint32 ritualId, address provider) external view returns (bool) {
+        return rituals[ritualId][provider];
+    }
+
+    function release(address _stakingProvider) external {
+        application.release(_stakingProvider);
     }
 }
