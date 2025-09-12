@@ -216,7 +216,6 @@ def test_involuntary_authorization_decrease(
 
     creator, staking_provider = accounts[0:2]
     minimum_authorization = MIN_AUTHORIZATION
-    deauthorization_duration = DEAUTHORIZATION_DURATION
     value = minimum_authorization
 
     # Prepare staking providers
@@ -268,7 +267,7 @@ def test_involuntary_authorization_decrease(
         staking_provider, value // 2, 0, sender=creator
     )
     timestamp = chain.pending_timestamp - 1
-    end_deauthorization = timestamp + deauthorization_duration
+    end_deauthorization = timestamp
 
     authorization = value // 4
     tx = threshold_staking.involuntaryAuthorizationDecrease(
@@ -280,7 +279,7 @@ def test_involuntary_authorization_decrease(
     )
     assert taco_application.pendingAuthorizationDecrease(staking_provider) == authorization
     assert taco_application.authorizedOverall() == 0
-    assert taco_application.authorizedStake(staking_provider) == authorization
+    assert taco_application.authorizedStake(staking_provider) == 0
     assert child_application.stakingProviderInfo(staking_provider) == (
         authorization,
         authorization,
@@ -313,7 +312,7 @@ def test_involuntary_authorization_decrease(
     )
     assert taco_application.pendingAuthorizationDecrease(staking_provider) == authorization
     assert taco_application.authorizedOverall() == authorization
-    assert taco_application.authorizedStake(staking_provider) == authorization
+    assert taco_application.authorizedStake(staking_provider) == 0
     assert child_application.stakingProviderInfo(staking_provider) == (
         authorization,
         authorization,
@@ -463,7 +462,7 @@ def test_authorization_decrease_request(
     assert (
         taco_application.pendingAuthorizationDecrease(staking_provider) == minimum_authorization + 1
     )
-    end_deauthorization = timestamp + deauthorization_duration
+    end_deauthorization = timestamp
     assert (
         taco_application.stakingProviderInfo(staking_provider)[END_DEAUTHORIZATION_SLOT]
         == end_deauthorization
@@ -476,10 +475,6 @@ def test_authorization_decrease_request(
         end_deauthorization,
     )
     assert taco_application.isAuthorized(staking_provider)
-    assert (
-        taco_application.remainingAuthorizationDecreaseDelay(staking_provider)
-        == deauthorization_duration
-    )
 
     events = [event for event in tx.events if event.event_name == "AuthorizationDecreaseRequested"]
     assert events == [
@@ -487,6 +482,9 @@ def test_authorization_decrease_request(
             stakingProvider=staking_provider, fromAmount=value, toAmount=minimum_authorization
         )
     ]
+
+    assert not child_application.stakingProviderReleased(staking_provider)
+    assert not taco_application.stakingProviderReleased(staking_provider)
 
     # Confirm operator address and request full decrease
     taco_application.bondOperator(staking_provider, staking_provider, sender=staking_provider)
@@ -496,23 +494,19 @@ def test_authorization_decrease_request(
     timestamp = chain.pending_timestamp - 1
     assert taco_application.stakingProviderInfo(staking_provider)[AUTHORIZATION_SLOT] == value
     assert taco_application.pendingAuthorizationDecrease(staking_provider) == value
-    end_deauthorization = timestamp + deauthorization_duration
+    end_deauthorization = timestamp
     assert (
         taco_application.stakingProviderInfo(staking_provider)[END_DEAUTHORIZATION_SLOT]
         == end_deauthorization
     )
     assert taco_application.authorizedOverall() == value
-    assert taco_application.authorizedStake(staking_provider) == value
+    assert taco_application.authorizedStake(staking_provider) == 0
     assert child_application.stakingProviderInfo(staking_provider) == (
         value,
         value,
         end_deauthorization,
     )
     assert taco_application.isAuthorized(staking_provider)
-    assert (
-        taco_application.remainingAuthorizationDecreaseDelay(staking_provider)
-        == deauthorization_duration
-    )
 
     events = [event for event in tx.events if event.event_name == "AuthorizationDecreaseRequested"]
     assert events == [
@@ -521,17 +515,20 @@ def test_authorization_decrease_request(
         )
     ]
 
+    assert child_application.stakingProviderReleased(staking_provider)
+    assert taco_application.stakingProviderReleased(staking_provider)
+
     # Emulate slash and desync by sending smaller fromAmount
     tx = threshold_staking.authorizationDecreaseRequested(
         staking_provider, value // 2, 0, sender=creator
     )
 
     timestamp = chain.pending_timestamp - 1
-    end_deauthorization = timestamp + deauthorization_duration
+    end_deauthorization = timestamp
     assert taco_application.stakingProviderInfo(staking_provider)[AUTHORIZATION_SLOT] == value // 2
     assert taco_application.pendingAuthorizationDecrease(staking_provider) == value // 2
     assert taco_application.authorizedOverall() == value // 2
-    assert taco_application.authorizedStake(staking_provider) == value // 2
+    assert taco_application.authorizedStake(staking_provider) == 0
     assert child_application.stakingProviderInfo(staking_provider) == (
         value // 2,
         value // 2,
@@ -548,6 +545,7 @@ def test_authorization_decrease_request(
     # Emulate desync for staker with penalty
     chain.pending_timestamp += deauthorization_duration
     child_application.penalize(staking_provider, sender=staking_provider)
+    child_application.release(staking_provider, sender=staking_provider)
     assert taco_application.authorizedOverall() == value // 2 * 9 // 10
     taco_application.approveAuthorizationDecrease(staking_provider, sender=creator)
     assert taco_application.authorizedOverall() == 0
@@ -618,19 +616,7 @@ def test_finish_authorization_decrease(
         staking_provider, value, new_value, sender=creator
     )
 
-    # Can't approve decrease before end timestamp
-    with ape.reverts("Authorization decrease has not finished yet"):
-        taco_application.approveAuthorizationDecrease(staking_provider, sender=creator)
-
-    chain.pending_timestamp += deauthorization_duration // 4
-    remaining_duration = deauthorization_duration - deauthorization_duration // 4
-    assert (
-        taco_application.remainingAuthorizationDecreaseDelay(staking_provider)
-        == remaining_duration - 1
-    )
-
     # Wait some time
-    chain.pending_timestamp += deauthorization_duration
     assert taco_application.remainingAuthorizationDecreaseDelay(staking_provider) == 0
     tx = taco_application.approveAuthorizationDecrease(staking_provider, sender=creator)
     assert taco_application.stakingProviderInfo(staking_provider)[AUTHORIZATION_SLOT] == new_value
@@ -660,6 +646,13 @@ def test_finish_authorization_decrease(
     new_value = minimum_authorization // 2
     threshold_staking.setDecreaseRequest(staking_provider, new_value, sender=creator)
     chain.pending_timestamp += deauthorization_duration
+
+    # Can't approve without release
+    with ape.reverts("Node has not finished leaving process"):
+        taco_application.approveAuthorizationDecrease(staking_provider, sender=creator)
+
+    child_application.release(staking_provider, sender=creator)
+
     tx = taco_application.approveAuthorizationDecrease(staking_provider, sender=creator)
 
     assert taco_application.stakingProviderInfo(staking_provider)[AUTHORIZATION_SLOT] == new_value
@@ -668,7 +661,7 @@ def test_finish_authorization_decrease(
     assert taco_application.stakingProviderToOperator(staking_provider) == staking_provider
     assert taco_application.operatorToStakingProvider(staking_provider) == staking_provider
     assert taco_application.authorizedOverall() == new_value
-    assert taco_application.authorizedStake(staking_provider) == new_value
+    assert taco_application.authorizedStake(staking_provider) == 0
     assert child_application.stakingProviderInfo(staking_provider) == (new_value, 0, 0)
     assert taco_application.isAuthorized(staking_provider)
     assert taco_application.isOperatorConfirmed(staking_provider)
@@ -692,6 +685,7 @@ def test_finish_authorization_decrease(
     threshold_staking.setDecreaseRequest(staking_provider, new_value, sender=creator)
     chain.pending_timestamp += deauthorization_duration
     child_application.penalize(staking_provider, sender=staking_provider)
+    child_application.release(staking_provider, sender=creator)
     taco_application.approveAuthorizationDecrease(staking_provider, sender=creator)
     assert taco_application.stakingProviderInfo(staking_provider)[AUTHORIZATION_SLOT] == new_value
     assert taco_application.authorizedOverall() == new_value * 9 // 10
@@ -734,6 +728,7 @@ def test_finish_authorization_decrease(
     )
     chain.pending_timestamp += deauthorization_duration
     threshold_staking.setDecreaseRequest(staking_provider, 0, sender=creator)
+    child_application.release(staking_provider, sender=creator)
     taco_application.approveAuthorizationDecrease(staking_provider, sender=creator)
     assert taco_application.authorizedStake(staking_provider) == 0
     assert taco_application.stakingProviderToOperator(staking_provider) == ZERO_ADDRESS
@@ -746,7 +741,6 @@ def test_resync(accounts, threshold_staking, taco_application, child_application
 
     creator, staking_provider = accounts[0:2]
     minimum_authorization = MIN_AUTHORIZATION
-    deauthorization_duration = DEAUTHORIZATION_DURATION
     value = 3 * minimum_authorization
 
     # Nothing sync for not staking provider
@@ -827,7 +821,7 @@ def test_resync(accounts, threshold_staking, taco_application, child_application
     threshold_staking.authorizationDecreaseRequested(staking_provider, value, 0, sender=creator)
     new_value = minimum_authorization // 2
     timestamp = chain.pending_timestamp - 1
-    end_deauthorization = timestamp + deauthorization_duration
+    end_deauthorization = timestamp
 
     threshold_staking.setAuthorized(staking_provider, new_value, sender=creator)
     tx = taco_application.resynchronizeAuthorization(staking_provider, sender=creator)
@@ -838,7 +832,7 @@ def test_resync(accounts, threshold_staking, taco_application, child_application
     assert taco_application.stakingProviderToOperator(staking_provider) == staking_provider
     assert taco_application.operatorToStakingProvider(staking_provider) == staking_provider
     assert taco_application.authorizedOverall() == new_value
-    assert taco_application.authorizedStake(staking_provider) == new_value
+    assert taco_application.authorizedStake(staking_provider) == 0
     assert child_application.stakingProviderInfo(staking_provider) == (
         new_value,
         new_value,
@@ -888,7 +882,6 @@ def test_child_sync(accounts, threshold_staking, taco_application, child_applica
 
     creator, staking_provider, operator = accounts[0:3]
     minimum_authorization = MIN_AUTHORIZATION
-    deauthorization_duration = DEAUTHORIZATION_DURATION
     value = 3 * minimum_authorization
 
     # Can't sync zero address
@@ -989,7 +982,7 @@ def test_child_sync(accounts, threshold_staking, taco_application, child_applica
         staking_provider, value, 2 * value // 3, sender=creator
     )
     timestamp = chain.pending_timestamp - 1
-    end_deauthorization = timestamp + deauthorization_duration
+    end_deauthorization = timestamp
     child_application.updateAuthorization(staking_provider, 2 * value // 3, 0, 0, sender=creator)
 
     assert taco_application.authorizedStake(staking_provider) == value

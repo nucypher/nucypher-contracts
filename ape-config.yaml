@@ -5,6 +5,8 @@ plugins:
   - name: solidity
   - name: polygon
   - name: ape-etherscan
+  - name: foundry
+  - name: infura
 
 dependencies:
   - name: openzeppelin
@@ -35,6 +37,26 @@ ethereum:
 polygon:
   mainnet:
     transaction_acceptance_timeout: 600 # 10 minutes
+  amoy:
+    gas_limit: auto  # because we are cutting it close with Coordinator
+
+foundry:
+  host: auto
+  fork:
+    ethereum:
+      mainnet:
+        upstream_provider: infura
+        cache: false
+      sepolia:
+        upstream_provider: infura
+        cache: false
+    polygon:
+      mainnet:
+        upstream_provider: infura
+        cache: false
+      amoy:
+        upstream_provider: infura
+        cache: false
 
 etherscan:
   ethereum:

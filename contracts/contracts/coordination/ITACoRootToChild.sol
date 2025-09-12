@@ -25,4 +25,6 @@ interface ITACoRootToChild {
         uint96 deauthorizing,
         uint64 endDeauthorization
     ) external;
+
+    function release(address stakingProvider) external;
 }

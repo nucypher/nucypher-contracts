@@ -179,6 +179,11 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         __AccessControlDefaultAdminRules_init(0, _admin);
     }
 
+    /// @dev for backward compatibility only
+    function timeout() external view returns (uint32) {
+        return dkgTimeout;
+    }
+
     function getInitiator(uint32 ritualId) external view returns (address) {
         return rituals[ritualId].initiator;
     }
@@ -645,6 +650,8 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         uint32 ritualId,
         address departingParticipant
     ) external onlyRole(HANDOVER_SUPERVISOR_ROLE) {
+        require(isRitualActive(ritualId), "Ritual is not active");
+
         Handover storage handover = handovers[getHandoverKey(ritualId, departingParticipant)];
         require(
             getHandoverState(handover) == HandoverState.HANDOVER_AWAITING_FINALIZATION,
@@ -673,6 +680,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         delete handover.decryptionRequestStaticKey;
 
         emit HandoverFinalized(ritualId, departingParticipant, incomingParticipant);
+        application.release(departingParticipant);
     }
 
     function replaceStorageBytes(
@@ -849,9 +857,9 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         emit FeeModelApproved(feeModel);
     }
 
-    function extendRitual(uint32 ritualId, uint32 duration) external {
+    function extendRitual(uint32 ritualId, uint32 duration) external onlyRole(DEFAULT_ADMIN_ROLE) {
         Ritual storage ritual = rituals[ritualId];
-        require(msg.sender == ritual.initiator, "Only initiator can extend ritual");
+        // require(msg.sender == ritual.initiator, "Only initiator can extend ritual"); // TODO temp only, uncomment when ready
         require(getRitualState(ritual) == RitualState.ACTIVE, "Only active ritual can be extended");
         ritual.endTimestamp += duration;
         ritual.feeModel.processRitualExtending(

@@ -146,6 +146,8 @@ contract ChildApplicationForTACoApplicationMock {
     mapping(address => address) public stakingProviderToOperator;
     mapping(address => address) public operatorToStakingProvider;
 
+    mapping(address => bool) public stakingProviderReleased;
+
     constructor(TACoApplication _rootApplication) {
         rootApplication = _rootApplication;
     }
@@ -175,5 +177,10 @@ contract ChildApplicationForTACoApplicationMock {
 
     function penalize(address _stakingProvider) external {
         rootApplication.penalize(_stakingProvider);
+    }
+
+    function release(address _stakingProvider) external {
+        stakingProviderReleased[_stakingProvider] = true;
+        rootApplication.release(_stakingProvider);
     }
 }
