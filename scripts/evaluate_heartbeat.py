@@ -12,6 +12,7 @@ from ape import chain
 from ape.cli import ConnectedProviderCommand, network_option
 from ape.contracts import ContractInstance
 from ape.contracts.base import ContractContainer
+from packaging.version import Version
 
 from deployment import registry
 from deployment.constants import (
@@ -64,6 +65,30 @@ def get_operator(staker_address: str, taco_application: ContractContainer) -> st
         return info.operator
     except Exception as e:
         click.secho(f"⚠️ Failed to fetch operator for {staker_address}: {e}", fg="red")
+        return "Unknown"
+
+
+def get_node_version(staker_address: str, network_data: Dict[str, Any]) -> str:
+    if network_data.get("staker_address") == staker_address:
+        return network_data.get("version", UNREACHABLE)
+    else:
+        nodes = network_data["known_nodes"]
+        for node in nodes:
+            if node.get("staker_address") == staker_address:
+                rest_url = node["rest_url"]
+                try:
+                    node_status = requests.get(
+                        f"https://{rest_url}/status/",
+                        params={"json": "true"},
+                        verify=False,
+                        timeout=30,
+                    )
+                    if node_status.status_code == 200:
+                        return network_data.get("version", UNREACHABLE)
+
+                except (requests.ConnectionError, requests.exceptions.ReadTimeout):
+                    return UNREACHABLE
+
         return "Unknown"
 
 
@@ -315,47 +340,47 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
         click.secho("Skipping heartbeat evaluation...", fg="yellow")
         return
 
+    network_data = get_taco_network_data(domain)
+
     for ritual_id, cohort in artifact_data.items():
         ritual_status = coordinator.getRitualState(ritual_id)
+        participants = coordinator.getParticipants(ritual_id)
 
-        # TODO: maybe check for version here
+        for participant_info in participants:
+            address, aggregated, transcript, *data = participant_info
 
-        if ritual_status == RitualState.ACTIVE.value:
-            continue  # Skip active rituals
+            offenders[address] = {"ritual": ritual_id, "reasons": []}
 
-        if ritual_status == RitualState.DKG_TIMEOUT.value:
-            participants = coordinator.getParticipants(ritual_id)
+            version = get_node_version(address, network_data)
 
-            for participant_info in participants:
-                address, aggregated, transcript, *data = participant_info
+            offenders[address]["version"] = version
 
+            # check if node is reachable and its version
+            if version == UNREACHABLE:
+                offenders[address]["reasons"].append(UNREACHABLE)
+            # TODO: add logic for grace period
+            elif Version(version) < Version("7.6.0"):
+                offenders[address]["reasons"].append(OUTDATED)
+
+            # Check ritual status for DKG violations
+            if ritual_status == RitualState.DKG_TIMEOUT.value:
                 if not transcript:
-                    if address in list(offenders.keys()):
-                        click.secho(
-                            f"⚠️  Spotted node {address} twice as offender.\n"
-                            + "Did the node participate in more than one ritual in this heartbeat?",
-                            fg="yellow",
-                        )
-                    offenders[address] = {"ritual": ritual_id}
-                    offenders[address]["reasons"] = [MISSING_TRANSCRIPT]
+                    offenders[address]["reasons"].append(MISSING_TRANSCRIPT)
 
-                    click.secho(
-                        f"-> Investigating offender {address} in ritual {ritual_id}", fg="cyan"
-                    )
-
-                    # Fetch additional offender details
-                    operator_address = get_operator(address, taco_application=taco_application)
-                    offenders[address]["operator"] = operator_address
-                    offenders[address]["eth_balance"] = get_eth_balance(operator_address)
+            # Fetch additional offender details for the report
+            if offenders[address]["reasons"]:
+                operator_address = get_operator(address, taco_application=taco_application)
+                offenders[address]["operator"] = operator_address
+                offenders[address]["eth_balance"] = get_eth_balance(operator_address)
+            else:
+                # Remove non-offenders
+                offenders.pop(address, None)
 
     # Save offenders before network investigation
     with open("offenders.json", "w") as f:
         json.dump(offenders, f, indent=4)
 
-    click.secho(
-        f"📄 Offender report saved with {sum(len(o) for o in offenders.values())} offenders.",
-        fg="green",
-    )
+    click.secho("📄 Offender report saved.", fg="green")
 
     breakpoint()
 
