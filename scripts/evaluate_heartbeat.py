@@ -192,8 +192,8 @@ def format_discord_message(
     message += "If you're operating one of the nodes running an outdated client version, please"
     message += f" upgrade your node to v{latest_version} (latest)."
     message += "Otherwise if your node was unresponsive or experiencing server errors, please open"
-    message += " a support ticket in 🙋┃support-ticket so we can help you to investigate the failure"
-    message += " reason.\n\n"
+    message += " a support ticket in 🙋┃support-ticket so we can help you to investigate the"
+    message += " failure reason.\n\n"
     message += "Finally, a reminder that we will continue to monitor the health of the network."
     message += "Please, be sure you claimed the @Node Operator role in 🪪┃claim-role and stay tuned"
     message += " to announcements in this server since we will report on failing nodes."
@@ -312,13 +312,13 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
             + " of 4 per month.",
             fg="yellow",
         )
-        click.secho("Skipping heartbeat evaluation...")
+        click.secho("Skipping heartbeat evaluation...", fg="yellow")
         return
-
-    network_data = get_taco_network_data(domain)
 
     for ritual_id, cohort in artifact_data.items():
         ritual_status = coordinator.getRitualState(ritual_id)
+
+        # TODO: maybe check for version here
 
         if ritual_status == RitualState.ACTIVE.value:
             continue  # Skip active rituals
@@ -330,16 +330,23 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
                 address, aggregated, transcript, *data = participant_info
 
                 if not transcript:
-                    offenders[ritual_id][address] = {"reasons": [MISSING_TRANSCRIPT]}
+                    if address in list(offenders.keys()):
+                        click.secho(
+                            f"⚠️  Spotted node {address} twice as offender.\n"
+                            + "Did the node participate in more than one ritual in this heartbeat?",
+                            fg="yellow",
+                        )
+                    offenders[address] = {"ritual": ritual_id}
+                    offenders[address]["reasons"] = [MISSING_TRANSCRIPT]
 
                     click.secho(
-                        f"🧐 Investigating offender {address} in ritual {ritual_id}", fg="yellow"
+                        f"-> Investigating offender {address} in ritual {ritual_id}", fg="cyan"
                     )
 
                     # Fetch additional offender details
                     operator_address = get_operator(address, taco_application=taco_application)
-                    offenders[ritual_id][address]["operator"] = operator_address
-                    offenders[ritual_id][address]["eth_balance"] = get_eth_balance(operator_address)
+                    offenders[address]["operator"] = operator_address
+                    offenders[address]["eth_balance"] = get_eth_balance(operator_address)
 
     # Save offenders before network investigation
     with open("offenders.json", "w") as f:
@@ -349,6 +356,10 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
         f"📄 Offender report saved with {sum(len(o) for o in offenders.values())} offenders.",
         fg="green",
     )
+
+    breakpoint()
+
+    network_data = get_taco_network_data(domain)
     investigate_offenders(offenders, network_data)
 
     # Generate and display Discord message
