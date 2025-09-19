@@ -201,7 +201,7 @@ def format_discord_message(
     return message
 
 
-def investigate_offender(
+def investigate_offenders(
     offenders: Dict[str, Dict[str, Any]], network_data: Dict[str, Any]
 ) -> None:
     """Investigates the network status of offenders and adds a summary."""
@@ -349,7 +349,7 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
         f"📄 Offender report saved with {sum(len(o) for o in offenders.values())} offenders.",
         fg="green",
     )
-    investigate_offender(offenders, network_data)
+    investigate_offenders(offenders, network_data)
 
     # Generate and display Discord message
     discord_message = format_discord_message(offenders, heartbeat_round, month_name)
