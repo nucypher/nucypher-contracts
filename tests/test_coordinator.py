@@ -1248,22 +1248,48 @@ def test_reorder_participants(
     pairs = [[0, 3], [1, 2], [5, 10]]
 
     activate_ritual(nodes, coordinator, ritualID)
-    participant_1 = coordinator.getParticipantFromProvider(ritualID, nodes[0])
-    participant_2 = coordinator.getParticipantFromProvider(ritualID, nodes[1])
-    participant_3 = coordinator.getParticipantFromProvider(ritualID, nodes[2])
-    participant_4 = coordinator.getParticipantFromProvider(ritualID, nodes[3])
-    participant_6 = coordinator.getParticipantFromProvider(ritualID, nodes[5])
-    participant_11 = coordinator.getParticipantFromProvider(ritualID, nodes[10])
+
+    # Get old participants with getParticipants() for later comparison
+    old_participants = coordinator.getParticipants(ritualID)
+
+    # Get individual participants via getParticipantFromProvider()
+    participant_0 = coordinator.getParticipantFromProvider(ritualID, nodes[0])
+    participant_1 = coordinator.getParticipantFromProvider(ritualID, nodes[1])
+    participant_2 = coordinator.getParticipantFromProvider(ritualID, nodes[2])
+    participant_3 = coordinator.getParticipantFromProvider(ritualID, nodes[3])
+    participant_5 = coordinator.getParticipantFromProvider(ritualID, nodes[5])
+    participant_10 = coordinator.getParticipantFromProvider(ritualID, nodes[10])
 
     with ape.reverts():
         coordinator.reorderParticipants(ritualID, pairs, sender=nodes[0])
 
     coordinator.reorderParticipants(ritualID, pairs, sender=deployer)
 
+    # Check participants have been reordered
     participants = coordinator.getParticipants(ritualID)
-    assert participants[0] == participant_4
-    assert participants[3] == participant_1
-    assert participants[2] == participant_2
-    assert participants[1] == participant_3
-    assert participants[5] == participant_11
-    assert participants[10] == participant_6
+    assert participants[0] == participant_3 
+    assert participants[3] == participant_0
+    assert participants[2] == participant_1
+    assert participants[1] == participant_2
+    assert participants[5] == participant_10
+    assert participants[10] == participant_5
+
+    assert participants[0] == old_participants[3]
+    assert participants[3] == old_participants[0]
+    assert participants[2] == old_participants[1]
+    assert participants[1] == old_participants[2]
+    assert participants[5] == old_participants[10]
+    assert participants[10] == old_participants[5]
+
+    # Check participants pagination still works
+    max_page = 6
+    participants_page_1 = coordinator.getParticipants(ritualID, 0, max_page, True)
+    participants_page_2 = coordinator.getParticipants(ritualID, max_page, max_page, True)
+    
+    assert participants_page_1[0] == old_participants[3]
+    assert participants_page_1[3] == old_participants[0]
+    assert participants_page_1[2] == old_participants[1]
+    assert participants_page_1[1] == old_participants[2]
+    assert participants_page_1[5] == old_participants[10]
+
+    assert participants_page_2[10 - max_page] == old_participants[5]
