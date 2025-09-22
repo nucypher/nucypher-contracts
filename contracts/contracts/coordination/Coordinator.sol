@@ -69,7 +69,6 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         address indexed departingParticipant,
         address indexed incomingParticipant
     );
-    event ParticipantsReordered(uint32 indexed ritualId, uint256 index1, uint256 index2);
 
     enum RitualState {
         NON_INITIATED,
@@ -880,12 +879,11 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
     function reorderParticipants(
         uint32 ritualId,
-        uint256[][2] calldata pairs
+        uint256[2][] calldata pairs
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         Ritual storage ritual = rituals[ritualId];
         for (uint256 i = 0; i < pairs.length; i++) {
             reorderParticipants(ritual, pairs[i][0], pairs[i][1]);
-            emit ParticipantsReordered(ritualId, pairs[i][0], pairs[i][1]);
         }
     }
 

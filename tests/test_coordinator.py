@@ -1245,13 +1245,15 @@ def test_reorder_participants(
     )
 
     ritualID = 0
-    pairs = [[0, 3], [1, 2]]
+    pairs = [[0, 3], [1, 2], [5, 10]]
 
     activate_ritual(nodes, coordinator, ritualID)
     participant_1 = coordinator.getParticipantFromProvider(ritualID, nodes[0])
     participant_2 = coordinator.getParticipantFromProvider(ritualID, nodes[1])
     participant_3 = coordinator.getParticipantFromProvider(ritualID, nodes[2])
     participant_4 = coordinator.getParticipantFromProvider(ritualID, nodes[3])
+    participant_6 = coordinator.getParticipantFromProvider(ritualID, nodes[5])
+    participant_11 = coordinator.getParticipantFromProvider(ritualID, nodes[10])
 
     with ape.reverts():
         coordinator.reorderParticipants(ritualID, pairs, sender=nodes[0])
@@ -1263,3 +1265,5 @@ def test_reorder_participants(
     assert participants[3] == participant_1
     assert participants[2] == participant_2
     assert participants[1] == participant_3
+    assert participants[5] == participant_11
+    assert participants[10] == participant_6
