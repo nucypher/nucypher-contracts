@@ -3,7 +3,7 @@
 import json
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict
+from typing import Any, Dict, List, Tuple
 
 import click
 import requests
@@ -12,7 +12,7 @@ from ape import chain
 from ape.cli import ConnectedProviderCommand, network_option
 from ape.contracts import ContractInstance
 from ape.contracts.base import ContractContainer
-from packaging.version import Version
+from packaging.version import InvalidVersion, Version
 
 from deployment import registry
 from deployment.constants import (
@@ -26,7 +26,8 @@ from deployment.constants import (
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
-LATEST_RELEASE_URL = "https://api.github.com/repos/nucypher/nucypher/releases/latest"
+RELEASES_URL = "https://api.github.com/repos/nucypher/nucypher/releases"
+NODE_UPDATE_GRACE_PERIOD = timedelta(weeks=3)
 
 # Reasons for node being an offender
 UNREACHABLE = "Node is unreachable"
@@ -90,6 +91,27 @@ def get_node_version(staker_address: str, network_data: Dict[str, Any]) -> str:
                     return UNREACHABLE
 
         return "Unknown"
+
+
+def get_valid_versions() -> List[Version]:
+    """Fetches valid releases considering the grace period."""
+    releases_response = requests.get(RELEASES_URL).json()
+
+    # GitHub seems to return releases in published_at descending order
+    latest_release = releases_response[0]
+    valid_versions = [Version(latest_release.get("tag_name"))]
+    # get rid of the latest release from the list to avoid processing it again
+    releases_response = releases_response[1:]
+
+    # filter the releases that are considered valid to run
+    for release in releases_response:
+        release_date = datetime.fromisoformat(release["published_at"])
+        deadline = release_date + NODE_UPDATE_GRACE_PERIOD
+        if deadline > datetime.now(tz=timezone.utc):
+            version = Version(release.get("tag_name"))
+            valid_versions.append(version)
+
+    return valid_versions
 
 
 def get_ordinal_suffix(n: int) -> str:
@@ -322,6 +344,8 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
     """Evaluates the heartbeat artifact and analyzes offenders."""
 
     click.secho("🔍 Analyzing DKG protocol violations...", fg="cyan")
+
+    valid_releases = get_valid_releases()
 
     artifact_data = json.load(artifact)
     coordinator = registry.get_contract(domain=domain, contract_name="Coordinator")
