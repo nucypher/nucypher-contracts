@@ -3,7 +3,7 @@
 import json
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
 import click
 import requests
@@ -26,7 +26,6 @@ from deployment.constants import (
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
-RELEASES_URL = "https://api.github.com/repos/nucypher/nucypher/releases"
 NODE_UPDATE_GRACE_PERIOD = timedelta(weeks=3)
 
 # Reasons for node being an offender
@@ -52,7 +51,12 @@ def get_taco_network_data(domain) -> Dict[str, Any]:
     domain_api = NETWORK_SEEDNODE_STATUS_JSON_URI.get(domain)
 
     try:
-        response = requests.get(domain_api, params={"json": "true"}, verify=False, timeout=20)
+        response = requests.get(
+            domain_api,
+            params={"json": "true"},
+            verify=False,
+            timeout=20
+        )
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
@@ -96,10 +100,11 @@ def get_node_version(staker_address: str, network_data: Dict[str, Any]) -> str:
 
 
 def get_valid_versions() -> List[Version]:
-    """Fetches valid releases considering the grace period."""
-    releases_response = requests.get(RELEASES_URL).json()
+    """Fetches valid versions considering the update grace period."""
+    releases_url = "https://api.github.com/repos/nucypher/nucypher/releases"
+    releases_response = requests.get(releases_url).json()
 
-    # GitHub seems to return releases in published_at descending order
+    # GitHub seems to return releases in published_at-descending-order
     latest_release = releases_response[0]
     valid_versions = [Version(latest_release.get("tag_name"))]
     # get rid of the latest release from the list to avoid processing it again
@@ -131,7 +136,10 @@ def get_heartbeat_round_info(
     """Calculate the current heartbeat round number and month name."""
 
     def mondays_passed(date: datetime) -> int:
-        """Returns the number of Mondays that have passed in the month up to the given date."""
+        """
+        Returns the number of Mondays that have passed in the month up to the
+        given date.
+        """
         first_day_of_month = date.replace(day=1)
 
         # find the first Monday of the month
@@ -268,7 +276,11 @@ def format_discord_message(
     default=False,
 )
 def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
-    """Evaluates the heartbeat artifact and analyzes offenders."""
+    """
+    Evaluates the heartbeat artifact and analyzes offenders.
+    This script is intended to be run shortly after a DKG heartbeat timeout to
+    check the reasons of the DKG failures.
+    """
 
     click.secho("🔍 Analyzing DKG protocol violations...", fg="cyan")
 
@@ -283,8 +295,8 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
 
     if heartbeat_round > 4:
         click.secho(
-            f"⚠️ This is the heartbeat round #{heartbeat_round}, which exceeds the expected maximum"
-            + " of 4 per month.",
+            f"⚠️ This is the heartbeat round #{heartbeat_round}, which exceeds"
+            + " the expected maximum of 4 per month.",
             fg="yellow",
         )
         click.secho("Skipping heartbeat evaluation...", fg="yellow")
@@ -303,7 +315,7 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
 
             version = get_node_version(address, network_data)
 
-            offenders[address]["version"] = version
+            offenders[address] = {"ritual": ritual_id, "reasons": [], "version": version}
 
             # check if node is reachable and running a valid version
             if version == UNREACHABLE:
