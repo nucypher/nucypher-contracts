@@ -3,7 +3,7 @@
 import json
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import click
 import requests
@@ -31,7 +31,6 @@ NODE_UPDATE_GRACE_PERIOD = timedelta(weeks=3)
 # Reasons for node being an offender
 UNREACHABLE = "Node is unreachable"
 OUTDATED = "Node is running an outdated version"
-UNKNOWN_REASON = "Unknown reason (HTTP 500)"
 UNRECOGNIZED_VERSION = "Unrecognized version"
 MISSING_TRANSCRIPT = "Missing transcript"
 
@@ -51,12 +50,7 @@ def get_taco_network_data(domain) -> Dict[str, Any]:
     domain_api = NETWORK_SEEDNODE_STATUS_JSON_URI.get(domain)
 
     try:
-        response = requests.get(
-            domain_api,
-            params={"json": "true"},
-            verify=False,
-            timeout=20
-        )
+        response = requests.get(domain_api, params={"json": "true"}, verify=False, timeout=20)
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
@@ -121,15 +115,6 @@ def get_valid_versions() -> List[Version]:
     return valid_versions
 
 
-def get_ordinal_suffix(n: int) -> str:
-    """Return the ordinal suffix for a number (1st, 2nd, 3rd, 4th, etc.)."""
-    if 10 <= n % 100 <= 20:
-        suffix = "th"
-    else:
-        suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
-    return suffix
-
-
 def get_heartbeat_round_info(
     coordinator: ContractInstance, heartbeat_rituals: Dict[str, Any]
 ) -> tuple[int, str]:
@@ -159,9 +144,7 @@ def get_heartbeat_round_info(
     try:
         ritual_data = coordinator.rituals(ritual_id)
     except Exception as e:
-        click.secho(
-            f"⚠️ Failed to fetch ritual data for {ritual_id}: {e}", fg="red"
-        )
+        click.secho(f"⚠️ Failed to fetch ritual data for {ritual_id}: {e}", fg="red")
         raise
     ritual_start_time = datetime.fromtimestamp(ritual_data.initTimestamp, tz=timezone.utc)
 
@@ -175,47 +158,36 @@ def format_discord_message(
     offenders: Dict[str, Dict[str, Any]],
     heartbeat_round: int,
     month_name: str,
+    latest_version: str,
 ) -> str:
     """Formats the offender data into a Discord message."""
 
-    # Get the latest released version of nodes
-    version_response = requests.get(LATEST_RELEASE_URL)
-    latest_version = version_response.json().get("tag_name").strip("v")
+    def get_ordinal_suffix(n: int) -> str:
+        """Return the ordinal suffix for a number (1st, 2nd, 3rd, 4th, etc.)."""
+        if 10 <= n % 100 <= 20:
+            suffix = "th"
+        else:
+            suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+        return suffix
 
     # Separate offenders by reason
-    unreachable_offenders = []
-    outdated_offenders = []
-    unknown_reasons_offenders = []
+    unreachable_offenders: Tuple[str, str] = []
+    outdated_offenders: Tuple[str, str] = []
+    unknown_reasons_offenders: Tuple[str, str] = []
 
-    for ritual_id, offender_list in offenders.items():
-        if ritual_id == "summary":  # Skip summary
-            continue
+    for address, details in offenders.items():
+        operator = details.get("operator")
+        reasons = details.get("reasons", [])
 
-        for address, details in offender_list.items():
-            reasons = details.get("reasons", [])
-            operator = details.get("operator", "Unknown")
-
-            # Debug output
-            click.secho(f"Processing {address}: reasons = {reasons}", fg="yellow")
-
-            # Prioritize network investigation results over DKG violation reasons
-            # If node has unknown reasons (HTTP 500), it goes to unknown reasons list
-            if any(UNKNOWN_REASON in reason for reason in reasons):
-                click.secho(f"  -> Adding {address} to unknown reasons list", fg="magenta")
-                unknown_reasons_offenders.append((address, operator))
-            # If node is unreachable, it goes to unreachable list regardless of DKG violations
-            elif UNREACHABLE in reasons:
-                click.secho(f"  -> Adding {address} to unreachable list", fg="red")
-                unreachable_offenders.append((address, operator))
-            # If node is outdated, it goes to outdated list regardless of DKG violations
-            elif any(OUTDATED in reason for reason in reasons):
-                click.secho(f"  -> Adding {address} to outdated list", fg="blue")
-                outdated_offenders.append((address, operator))
-            # If node is reachable and up-to-date but has DKG violations, it goes to unreachable
-            # list (since the DKG violations are likely due to connectivity/availability issues)
-            else:
-                click.secho(f"  -> Adding {address} to unreachable list (fallback)", fg="red")
-                unreachable_offenders.append((address, operator))
+        if UNREACHABLE in reasons:
+            unreachable_offenders.append((address, operator))
+        elif OUTDATED in reasons:
+            outdated_offenders.append((address, operator))
+        elif UNRECOGNIZED_VERSION in reasons or MISSING_TRANSCRIPT in reasons:
+            unknown_reasons_offenders.append((address, operator))
+        else:
+            click.secho(f"⚠️ {address} has unclassified reasons: {reasons}", fg="yellow")
+            unknown_reasons_offenders.append((address, operator))
 
     # Build Discord message
     message = "Dear TACo @Node Operator\n\n"
@@ -286,6 +258,8 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
     Evaluates the heartbeat artifact and analyzes offenders.
     This script is intended to be run shortly after a DKG heartbeat timeout to
     check the reasons of the DKG failures.
+    The reasons can be:
+    UNREACHABLE, OUTDATED, UNRECOGNIZED_VERSION, MISSING_TRANSCRIPT
     """
 
     click.secho("🔍 Analyzing DKG protocol violations...", fg="cyan")
@@ -315,10 +289,7 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
             ritual_status = coordinator.getRitualState(ritual_id)
             participants = coordinator.getParticipants(ritual_id)
         except Exception as e:
-            click.secho(
-                f"⚠️ Failed to fetch ritual data for {ritual_id}: {e}",
-                fg="red"
-            )
+            click.secho(f"⚠️ Failed to fetch ritual data for {ritual_id}: {e}", fg="red")
             return
 
         for participant_info in participants:
@@ -370,9 +341,15 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
     # Print summary of offenders
     total_nodes = sum(len(nodes) for nodes in artifact_data.values())
     total_offenders = len(offenders.keys())
-    unreachable_nodes = sum(1 for offender in offenders.values() if UNREACHABLE in offender.get("reasons", []))
-    outdated_nodes = sum(1 for offender in offenders.values() if OUTDATED in offender.get("reasons", []))
-    missing_transcripts = sum(1 for offender in offenders.values() if MISSING_TRANSCRIPT in offender.get("reasons", []))
+    unreachable_nodes = sum(
+        1 for offender in offenders.values() if UNREACHABLE in offender.get("reasons", [])
+    )
+    outdated_nodes = sum(
+        1 for offender in offenders.values() if OUTDATED in offender.get("reasons", [])
+    )
+    missing_transcripts = sum(
+        1 for offender in offenders.values() if MISSING_TRANSCRIPT in offender.get("reasons", [])
+    )
 
     click.secho("Offenders summary:")
     click.secho(f"  - Total nodes evaluated: {total_nodes}")
@@ -380,7 +357,6 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
     click.secho(f"  - Unreachable nodes: {unreachable_nodes}")
     click.secho(f"  - Outdated nodes: {outdated_nodes}")
     click.secho(f"  - Nodes with missing transcripts: {missing_transcripts}")
-
 
     # Generate and display Discord message
     latest_version = str(valid_versions[0])
