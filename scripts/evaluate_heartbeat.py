@@ -156,7 +156,13 @@ def get_heartbeat_round_info(
         return count
 
     ritual_id = list(heartbeat_rituals.keys())[0]
-    ritual_data = coordinator.rituals(ritual_id)
+    try:
+        ritual_data = coordinator.rituals(ritual_id)
+    except Exception as e:
+        click.secho(
+            f"⚠️ Failed to fetch ritual data for {ritual_id}: {e}", fg="red"
+        )
+        raise
     ritual_start_time = datetime.fromtimestamp(ritual_data.initTimestamp, tz=timezone.utc)
 
     round = mondays_passed(ritual_start_time)
@@ -305,13 +311,18 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
     network_data = get_taco_network_data(domain)
 
     for ritual_id, _ in artifact_data.items():
-        ritual_status = coordinator.getRitualState(ritual_id)
-        participants = coordinator.getParticipants(ritual_id)
+        try:
+            ritual_status = coordinator.getRitualState(ritual_id)
+            participants = coordinator.getParticipants(ritual_id)
+        except Exception as e:
+            click.secho(
+                f"⚠️ Failed to fetch ritual data for {ritual_id}: {e}",
+                fg="red"
+            )
+            return
 
         for participant_info in participants:
             address, _, transcript, _ = participant_info
-
-            offenders[address] = {"ritual": ritual_id, "reasons": []}
 
             version = get_node_version(address, network_data)
 
