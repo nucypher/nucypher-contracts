@@ -189,6 +189,11 @@ def format_discord_message(
             click.secho(f"⚠️ {address} has unclassified reasons: {reasons}", fg="yellow")
             unknown_reasons_offenders.append((address, operator))
 
+    # Sort each list by staking provider address
+    unreachable_offenders = sorted(unreachable_offenders, key=lambda x: str.lower(x[0]))
+    outdated_offenders = sorted(outdated_offenders, key=lambda x: str.lower(x[0]))
+    unknown_reasons_offenders = sorted(unknown_reasons_offenders, key=lambda x: str.lower(x[0]))
+
     # Build Discord message
     message = "Dear TACo @Node Operator\n\n"
     message += f"We ran the {heartbeat_round}{get_ordinal_suffix(heartbeat_round)} DKG Heartbeat"
