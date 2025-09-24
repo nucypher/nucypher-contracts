@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import json
-from collections import Counter, defaultdict
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 
@@ -331,23 +331,26 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
             # check if node is reachable and running a valid version
             if version == UNREACHABLE:
                 offenders[address]["reasons"].append(UNREACHABLE)
+                click.secho(f"Node {address} is unreachable", fg="cyan")
             else:
                 try:
                     version = Version(version)
                     if version not in valid_versions:
                         offenders[address]["reasons"].append(OUTDATED)
+                        click.secho(f"Node {address} is outdated: {version}", fg="cyan")
 
                 # if version string isn't well formed (not semantic version)
                 except InvalidVersion:
+                    offenders[address]["reasons"].append(UNRECOGNIZED_VERSION)
                     click.secho(
                         f"⚠️ Got an invalid version for node {address}: {version}", fg="yellow"
                     )
-                    offenders[address]["reasons"].append(UNRECOGNIZED_VERSION)
 
             # Check ritual status for DKG violations
             if ritual_status == RitualState.DKG_TIMEOUT.value:
                 if not transcript:
                     offenders[address]["reasons"].append(MISSING_TRANSCRIPT)
+                    click.secho(f"Node {address} didn't send transcript", fg="cyan")
 
             # Fetch additional offender details for the report
             if offenders[address]["reasons"]:
@@ -379,8 +382,9 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
     click.secho(f"  - Nodes with missing transcripts: {missing_transcripts}")
 
 
-    # # Generate and display Discord message
-    discord_message = format_discord_message(offenders, heartbeat_round, month_name)
+    # Generate and display Discord message
+    latest_version = str(valid_versions[0])
+    discord_message = format_discord_message(offenders, heartbeat_round, month_name, latest_version)
 
     click.secho("\n" + "=" * 80, fg="cyan")
     click.secho("📢 DISCORD MESSAGE (copy below):", fg="cyan")
