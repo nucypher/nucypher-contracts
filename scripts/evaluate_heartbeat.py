@@ -364,12 +364,22 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
 
     click.secho("📄 Offender report saved.", fg="green")
 
-    breakpoint()
+    # Print summary of offenders
+    total_nodes = sum(len(nodes) for nodes in artifact_data.values())
+    total_offenders = len(offenders.keys())
+    unreachable_nodes = sum(1 for offender in offenders.values() if UNREACHABLE in offender.get("reasons", []))
+    outdated_nodes = sum(1 for offender in offenders.values() if OUTDATED in offender.get("reasons", []))
+    missing_transcripts = sum(1 for offender in offenders.values() if MISSING_TRANSCRIPT in offender.get("reasons", []))
 
-    network_data = get_taco_network_data(domain)
-    investigate_offenders(offenders, network_data)
+    click.secho("Offenders summary:")
+    click.secho(f"  - Total nodes evaluated: {total_nodes}")
+    click.secho(f"  - Total offenders: {total_offenders}")
+    click.secho(f"  - Unreachable nodes: {unreachable_nodes}")
+    click.secho(f"  - Outdated nodes: {outdated_nodes}")
+    click.secho(f"  - Nodes with missing transcripts: {missing_transcripts}")
 
-    # Generate and display Discord message
+
+    # # Generate and display Discord message
     discord_message = format_discord_message(offenders, heartbeat_round, month_name)
 
     click.secho("\n" + "=" * 80, fg="cyan")
