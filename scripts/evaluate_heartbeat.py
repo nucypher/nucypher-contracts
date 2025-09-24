@@ -32,7 +32,8 @@ NODE_UPDATE_GRACE_PERIOD = timedelta(weeks=3)
 # Reasons for node being an offender
 UNREACHABLE = "Node is unreachable"
 OUTDATED = "Node is running an outdated version"
-UNKNOWN = "Unknown reason (HTTP 500)"
+UNKNOWN_REASON = "Unknown reason (HTTP 500)"
+UNRECOGNIZED_VERSION = "Unrecognized version"
 MISSING_TRANSCRIPT = "Missing transcript"
 
 
@@ -70,6 +71,7 @@ def get_operator(staker_address: str, taco_application: ContractContainer) -> st
 
 
 def get_node_version(staker_address: str, network_data: Dict[str, Any]) -> str:
+    # if this node is the one that provided the network data, return it directly
     if network_data.get("staker_address") == staker_address:
         return network_data.get("version", UNREACHABLE)
     else:
@@ -90,7 +92,7 @@ def get_node_version(staker_address: str, network_data: Dict[str, Any]) -> str:
                 except (requests.ConnectionError, requests.exceptions.ReadTimeout):
                     return UNREACHABLE
 
-        return "Unknown"
+        return UNREACHABLE
 
 
 def get_valid_versions() -> List[Version]:
@@ -184,7 +186,7 @@ def format_discord_message(
 
             # Prioritize network investigation results over DKG violation reasons
             # If node has unknown reasons (HTTP 500), it goes to unknown reasons list
-            if any(UNKNOWN in reason for reason in reasons):
+            if any(UNKNOWN_REASON in reason for reason in reasons):
                 click.secho(f"  -> Adding {address} to unknown reasons list", fg="magenta")
                 unknown_reasons_offenders.append((address, operator))
             # If node is unreachable, it goes to unreachable list regardless of DKG violations
@@ -282,7 +284,7 @@ def investigate_offenders(
                         if node_status.status_code == 500:
                             # HTTP 500 indicates server error - categorize as unknown reasons
                             offenders[ritual_id][address]["version"] = "Unknown"
-                            offenders[ritual_id][address]["reasons"].append(UNKNOWN)
+                            offenders[ritual_id][address]["reasons"].append(UNKNOWN_REASON)
                         elif node_status.status_code != 200:
                             # Other non-200 status codes - treat as unreachable
                             raise requests.ConnectionError
@@ -345,8 +347,7 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
 
     click.secho("🔍 Analyzing DKG protocol violations...", fg="cyan")
 
-    valid_releases = get_valid_releases()
-
+    valid_versions = get_valid_versions()
     artifact_data = json.load(artifact)
     coordinator = registry.get_contract(domain=domain, contract_name="Coordinator")
     taco_application = registry.get_contract(domain=domain, contract_name="TACoChildApplication")
@@ -366,12 +367,12 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
 
     network_data = get_taco_network_data(domain)
 
-    for ritual_id, cohort in artifact_data.items():
+    for ritual_id, _ in artifact_data.items():
         ritual_status = coordinator.getRitualState(ritual_id)
         participants = coordinator.getParticipants(ritual_id)
 
         for participant_info in participants:
-            address, aggregated, transcript, *data = participant_info
+            address, _, transcript, _ = participant_info
 
             offenders[address] = {"ritual": ritual_id, "reasons": []}
 
@@ -379,12 +380,21 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
 
             offenders[address]["version"] = version
 
-            # check if node is reachable and its version
+            # check if node is reachable and running a valid version
             if version == UNREACHABLE:
                 offenders[address]["reasons"].append(UNREACHABLE)
-            # TODO: add logic for grace period
-            elif Version(version) < Version("7.6.0"):
-                offenders[address]["reasons"].append(OUTDATED)
+            else:
+                try:
+                    version = Version(version)
+                    if version not in valid_versions:
+                        offenders[address]["reasons"].append(OUTDATED)
+
+                # if version string isn't well formed (not semantic version)
+                except InvalidVersion:
+                    click.secho(
+                        f"⚠️ Got an invalid version for node {address}: {version}", fg="yellow"
+                    )
+                    offenders[address]["reasons"].append(UNRECOGNIZED_VERSION)
 
             # Check ritual status for DKG violations
             if ritual_status == RitualState.DKG_TIMEOUT.value:
