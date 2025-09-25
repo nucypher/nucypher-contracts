@@ -110,7 +110,17 @@ def get_valid_versions() -> List[Version]:
 
     # GitHub seems to return releases in published_at-descending-order
     for i, release in enumerate(releases_response):
-        version = Version(release.get("tag_name"))
+        version_str = release.get("tag_name")
+        try:
+            version = Version(version_str)
+        except InvalidVersion:
+            click.secho(
+                f"⚠️  Failed to parse version from release {version_str}"
+                + " Not semantic versioning format?",
+                fg="red",
+            )
+            return []
+
         if i == 0:
             valid_versions.append(version)
         else:
@@ -278,6 +288,10 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
     click.secho("🔍 Analyzing DKG protocol violations...", fg="cyan")
 
     valid_versions = get_valid_versions()
+    if not valid_versions:
+        click.secho("⚠️  Could not determine valid versions", fg="red")
+        return
+
     artifact_data = json.load(artifact)
     coordinator = registry.get_contract(domain=domain, contract_name="Coordinator")
     taco_application = registry.get_contract(domain=domain, contract_name="TACoChildApplication")
