@@ -102,7 +102,9 @@ def get_node_version(staker_address: str, network_data: Dict[str, Any]) -> str:
 def get_valid_versions() -> List[Version]:
     """Fetches valid versions considering the update grace period."""
     releases_url = "https://api.github.com/repos/nucypher/nucypher/releases"
-    releases_response = requests.get(releases_url).json()
+    releases_response = requests.get(releases_url)
+    releases_response.raise_for_status()
+    releases_response = releases_response.json()
 
     valid_versions: List[Version] = []
 
