@@ -171,9 +171,9 @@ def format_discord_message(
         return suffix
 
     # Separate offenders by reason
-    unreachable_offenders: Tuple[str, str] = []
-    outdated_offenders: Tuple[str, str] = []
-    unknown_reasons_offenders: Tuple[str, str] = []
+    unreachable_offenders: List[Tuple[str, str]] = []
+    outdated_offenders: List[Tuple[str, str]] = []
+    unknown_reasons_offenders: List[Tuple[str, str]] = []
 
     for address, details in offenders.items():
         operator = details.get("operator")
