@@ -85,7 +85,7 @@ def get_node_version(staker_address: str, network_data: Dict[str, Any]) -> str:
                         timeout=30,
                     )
                     if node_status.status_code == 200:
-                        return network_data.get("version", UNREACHABLE)
+                        return node_status.json().get("version", UNREACHABLE)
 
                 except (requests.ConnectionError, requests.exceptions.ReadTimeout):
                     return UNREACHABLE
