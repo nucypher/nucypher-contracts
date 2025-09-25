@@ -129,6 +129,9 @@ def get_valid_versions() -> List[Version]:
             # filter the versions that are considered valid to run
             if deadline > datetime.now(tz=timezone.utc):
                 valid_versions.append(version)
+            else:
+                # invalid, so all prior versions are also invalid
+                break
 
     return valid_versions
 
