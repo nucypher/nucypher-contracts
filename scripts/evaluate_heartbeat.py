@@ -297,6 +297,12 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
     taco_application = registry.get_contract(domain=domain, contract_name="TACoChildApplication")
 
     heartbeat_round, month_name = get_heartbeat_round_info(coordinator, artifact_data)
+    try:
+        dkg_timeout_secs = coordinator.dkgTimeout()
+        dkg_timeout = timedelta(seconds=dkg_timeout_secs)
+    except Exception:
+        click.secho("⚠️ Failed to fetch DKG timeout from coordinator", fg="red")
+        return
 
     offenders: Dict[str, Dict[str, Any]] = defaultdict(dict)
 
@@ -315,8 +321,19 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
         try:
             ritual_status = coordinator.getRitualState(ritual_id)
             participants = coordinator.getParticipants(ritual_id)
+            init_timeout_timestamp, _ = coordinator.getTimestamps(ritual_id)
         except Exception as e:
             click.secho(f"⚠️ Failed to fetch ritual data for {ritual_id}: {e}", fg="red")
+            return
+
+        # let's check if we gave enough time to timeout: no rituals in progress
+        init_timeout = datetime.fromtimestamp(init_timeout_timestamp, tz=timezone.utc)
+        if init_timeout + dkg_timeout > datetime.now(tz=timezone.utc):
+            click.secho(
+                f"⚠️ The DKG ritual {ritual_id} is still within the timeout period."
+                + " The evaluation was run too early?",
+                fg="red",
+            )
             return
 
         for participant_info in participants:
