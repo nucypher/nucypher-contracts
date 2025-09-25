@@ -104,19 +104,19 @@ def get_valid_versions() -> List[Version]:
     releases_url = "https://api.github.com/repos/nucypher/nucypher/releases"
     releases_response = requests.get(releases_url).json()
 
-    # GitHub seems to return releases in published_at-descending-order
-    latest_release = releases_response[0]
-    valid_versions = [Version(latest_release.get("tag_name"))]
-    # get rid of the latest release from the list to avoid processing it again
-    releases_response = releases_response[1:]
+    valid_versions: List[Version] = []
 
-    # filter the releases that are considered valid to run
-    for release in releases_response:
-        release_date = datetime.fromisoformat(release["published_at"])
-        deadline = release_date + NODE_UPDATE_GRACE_PERIOD
-        if deadline > datetime.now(tz=timezone.utc):
-            version = Version(release.get("tag_name"))
+    # GitHub seems to return releases in published_at-descending-order
+    for i, release in enumerate(releases_response):
+        version = Version(release.get("tag_name"))
+        if i == 0:
             valid_versions.append(version)
+        else:
+            previous_release_date = datetime.fromisoformat(releases_response[i - 1]["published_at"])
+            deadline = previous_release_date + NODE_UPDATE_GRACE_PERIOD
+            # filter the versions that are considered valid to run
+            if deadline > datetime.now(tz=timezone.utc):
+                valid_versions.append(version)
 
     return valid_versions
 
