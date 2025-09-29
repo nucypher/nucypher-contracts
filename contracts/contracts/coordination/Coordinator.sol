@@ -300,7 +300,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
     function getProviderPublicKey(
         address provider,
-        uint256 ritualId
+        uint256
     ) external view returns (BLS12381.G2Point memory) {
         ParticipantKey[] storage participantHistory = participantKeysHistory[provider];
         return participantHistory[participantHistory.length - 1].publicKey;
