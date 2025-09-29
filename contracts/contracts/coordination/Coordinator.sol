@@ -306,12 +306,12 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         return participantHistory[participantHistory.length - 1].publicKey;
     }
 
-    /**
-     * @dev This method is deprecated. Use `isProviderKeySet` instead.
-     */
-    function isProviderPublicKeySet(address) external view returns (bool) {
-        revert("Deprecated method. Upgrade your node to latest version");
-    }
+    // /**
+    //  * @dev This method is deprecated. Use `isProviderKeySet` instead.
+    //  */
+    // function isProviderPublicKeySet(address) external view returns (bool) {
+    //     revert("Deprecated method. Upgrade your node to latest version");
+    // }
 
     function isProviderKeySet(address provider) public view returns (bool) {
         ParticipantKey[] storage participantHistory = participantKeysHistory[provider];
