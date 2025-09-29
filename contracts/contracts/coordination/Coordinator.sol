@@ -303,14 +303,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         uint256 ritualId
     ) external view returns (BLS12381.G2Point memory) {
         ParticipantKey[] storage participantHistory = participantKeysHistory[provider];
-
-        for (uint256 i = participantHistory.length; i > 0; i--) {
-            if (participantHistory[i - 1].lastRitualId <= ritualId) {
-                return participantHistory[i - 1].publicKey;
-            }
-        }
-
-        revert("No keys found prior to the provided ritual");
+        return participantHistory[participantHistory.length - 1].publicKey;
     }
 
     /**
