@@ -286,6 +286,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     function setProviderPublicKey(BLS12381.G2Point calldata publicKey) external {
         uint32 lastRitualId = uint32(numberOfRituals);
         address stakingProvider = application.operatorToStakingProvider(msg.sender);
+        require(!isProviderKeySet(msg.sender), "Provider has already set public key");
         require(stakingProvider != address(0), "Operator has no bond with staking provider");
 
         ParticipantKey memory newRecord = ParticipantKey(lastRitualId, publicKey);
