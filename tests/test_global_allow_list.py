@@ -61,7 +61,6 @@ def coordinator(project, deployer, application, oz_dependency):
     contract = project.Coordinator.deploy(
         application.address,
         TIMEOUT,
-        0,
         sender=deployer,
     )
 
