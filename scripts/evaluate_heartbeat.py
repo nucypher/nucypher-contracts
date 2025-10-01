@@ -367,7 +367,7 @@ def cli(
                     if version not in valid_versions:
                         if version > valid_versions[0]:
                             click.secho(
-                                f"⚠️ Node {address} is running a future version: {version}",
+                                f"⚠️ Node {address} is running an experimental version: {version}",
                                 fg="yellow",
                             )
                         else:
