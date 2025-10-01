@@ -1,7 +1,7 @@
 # Usage:
 #  > ape run --interactive simulate_coordinator_upgrade --network polygon:mainnet-fork:foundry
 
-from ape import accounts, chain, project
+from ape import accounts, chain, networks, project
 
 from deployment.constants import CONSTRUCTOR_PARAMS_DIR
 from deployment.params import Deployer

@@ -44,10 +44,10 @@ def deployer(accounts):
 
 
 @pytest.fixture(scope="module")
-def treasury(accounts):
-    treasury_index = MAX_DKG_SIZE + 3
-    assert len(accounts) >= treasury_index
-    return accounts[treasury_index]
+def fee_manager(accounts):
+    fee_manager_index = MAX_DKG_SIZE + 3
+    assert len(accounts) >= fee_manager_index
+    return accounts[fee_manager_index]
 
 
 @pytest.fixture()
@@ -87,13 +87,12 @@ def coordinator(project, deployer, application, oz_dependency):
 
 
 @pytest.fixture()
-def fee_model(project, deployer, coordinator, erc20, treasury):
+def fee_model(project, deployer, coordinator, erc20, fee_manager):
     contract = project.FlatRateFeeModel.deploy(
         coordinator.address, erc20.address, FEE_RATE, sender=deployer
     )
-    coordinator.grantRole(coordinator.FEE_MODEL_MANAGER_ROLE(), treasury, sender=deployer)
-    coordinator.approveFeeModel(contract.address, sender=treasury)
-    coordinator.grantRole(coordinator.TREASURY_ROLE(), treasury, sender=deployer)
+    coordinator.grantRole(coordinator.FEE_MODEL_MANAGER_ROLE(), fee_manager, sender=deployer)
+    coordinator.approveFeeModel(contract.address, sender=fee_manager)
     return contract
 
 
@@ -178,7 +177,7 @@ def initiate_ritual(coordinator, fee_model, erc20, authority, nodes, allow_logic
 
 
 def test_initiate_ritual(
-    coordinator, nodes, initiator, erc20, fee_model, deployer, treasury, global_allow_list
+    coordinator, nodes, initiator, erc20, fee_model, deployer, fee_manager, global_allow_list
 ):
     authority, tx = initiate_ritual(
         coordinator=coordinator,
@@ -222,7 +221,7 @@ def test_initiate_ritual(
     assert fee_model.pendingFees(ritualID) == fee
 
     with ape.reverts():
-        fee_model.withdrawTokens(1, sender=treasury)
+        fee_model.withdrawTokens(1, sender=fee_manager)
 
     with ape.reverts("Can't withdraw pending fees"):
         fee_model.withdrawTokens(1, sender=deployer)
@@ -479,7 +478,7 @@ def test_get_participant(nodes, coordinator, initiator, erc20, fee_model, global
 
 
 def test_post_aggregation(
-    coordinator, nodes, initiator, erc20, fee_model, treasury, deployer, global_allow_list
+    coordinator, nodes, initiator, erc20, fee_model, fee_manager, deployer, global_allow_list
 ):
     initiate_ritual(
         coordinator=coordinator,
@@ -527,7 +526,7 @@ def test_post_aggregation(
     assert retrieved_public_key == dkg_public_key
     assert coordinator.getRitualIdFromPublicKey(dkg_public_key) == ritualID
 
-    fee_model.processPendingFee(ritualID, sender=treasury)
+    fee_model.processPendingFee(ritualID, sender=fee_manager)
     fee = fee_model.getRitualCost(len(nodes), DURATION)
     assert erc20.balanceOf(fee_model) == fee
     assert fee_model.totalPendingFees() == 0
@@ -539,7 +538,7 @@ def test_post_aggregation(
 
 
 def test_post_aggregation_fails(
-    coordinator, nodes, initiator, erc20, fee_model, treasury, deployer, global_allow_list
+    coordinator, nodes, initiator, erc20, fee_model, fee_manager, deployer, global_allow_list
 ):
     initiator_balance_before_payment = erc20.balanceOf(initiator)
 
@@ -593,7 +592,7 @@ def test_post_aggregation_fails(
     initiator_balance_before_refund = erc20.balanceOf(initiator)
     assert initiator_balance_before_refund == initiator_balance_before_payment - fee
 
-    fee_model.processPendingFee(ritualID, sender=treasury)
+    fee_model.processPendingFee(ritualID, sender=fee_manager)
 
     initiator_balance_after_refund = erc20.balanceOf(initiator)
     fee_model_balance_after_refund = erc20.balanceOf(fee_model)

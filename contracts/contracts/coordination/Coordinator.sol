@@ -129,7 +129,6 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         BLS12381.G2Point publicKey;
     }
 
-    bytes32 public constant TREASURY_ROLE = keccak256("TREASURY_ROLE");
     bytes32 public constant FEE_MODEL_MANAGER_ROLE = keccak256("FEE_MODEL_MANAGER_ROLE");
     bytes32 public constant HANDOVER_SUPERVISOR_ROLE = keccak256("HANDOVER_SUPERVISOR_ROLE");
 
@@ -140,7 +139,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     uint32 public immutable handoverTimeout;
 
     Ritual[] private ritualsStub; // former rituals, "internal" for testing only
-    uint32 public dkgTimeoutStub;
+    uint32 private timeoutStub; // former (dkg) timeout
     uint16 public maxDkgSize;
     bool private stub1; // former isInitiationPublic
 
@@ -287,6 +286,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     function setProviderPublicKey(BLS12381.G2Point calldata publicKey) external {
         uint32 lastRitualId = uint32(numberOfRituals);
         address stakingProvider = application.operatorToStakingProvider(msg.sender);
+        require(!isProviderKeySet(msg.sender), "Provider has already set public key");
         require(stakingProvider != address(0), "Operator has no bond with staking provider");
 
         ParticipantKey memory newRecord = ParticipantKey(lastRitualId, publicKey);
@@ -300,25 +300,18 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
     function getProviderPublicKey(
         address provider,
-        uint256 ritualId
+        uint256
     ) external view returns (BLS12381.G2Point memory) {
         ParticipantKey[] storage participantHistory = participantKeysHistory[provider];
-
-        for (uint256 i = participantHistory.length; i > 0; i--) {
-            if (participantHistory[i - 1].lastRitualId <= ritualId) {
-                return participantHistory[i - 1].publicKey;
-            }
-        }
-
-        revert("No keys found prior to the provided ritual");
+        return participantHistory[participantHistory.length - 1].publicKey;
     }
 
-    /**
-     * @dev This method is deprecated. Use `isProviderKeySet` instead.
-     */
-    function isProviderPublicKeySet(address) external view returns (bool) {
-        revert("Deprecated method. Upgrade your node to latest version");
-    }
+    // /**
+    //  * @dev This method is deprecated. Use `isProviderKeySet` instead.
+    //  */
+    // function isProviderPublicKeySet(address) external view returns (bool) {
+    //     revert("Deprecated method. Upgrade your node to latest version");
+    // }
 
     function isProviderKeySet(address provider) public view returns (bool) {
         ParticipantKey[] storage participantHistory = participantKeysHistory[provider];
@@ -407,10 +400,6 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
         emit StartRitual(id, ritual.authority, providers);
         return id;
-    }
-
-    function cohortFingerprint(address[] calldata nodes) public pure returns (bytes32) {
-        return keccak256(abi.encode(nodes));
     }
 
     function expectedTranscriptSize(
@@ -591,6 +580,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         bytes calldata transcript,
         bytes calldata decryptionRequestStaticKey
     ) external {
+        uint256 initialGasLeft = gasleft();
         require(isRitualActive(ritualId), "Ritual is not active");
         require(transcript.length > 0, "Parameters can't be empty");
         require(
@@ -609,9 +599,11 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         handover.transcript = transcript;
         handover.decryptionRequestStaticKey = decryptionRequestStaticKey;
         emit HandoverTranscriptPosted(ritualId, departingParticipant, provider);
+        processReimbursement(initialGasLeft);
     }
 
     function postBlindedShare(uint32 ritualId, bytes calldata blindedShare) external {
+        uint256 initialGasLeft = gasleft();
         require(isRitualActive(ritualId), "Ritual is not active");
 
         address provider = application.operatorToStakingProvider(msg.sender);
@@ -624,6 +616,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
         handover.blindedShare = blindedShare;
         emit BlindedSharePosted(ritualId, provider);
+        processReimbursement(initialGasLeft);
     }
 
     function cancelHandover(
