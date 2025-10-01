@@ -274,12 +274,21 @@ def format_discord_message(
     default=HEARTBEAT_ARTIFACT_FILENAME,
 )
 @click.option(
+    "--skip-5th-heartbeat-check",
+    "-s",
+    help="Run the evaluation even if it's the 5th heartbeat of the month.",
+    is_flag=True,
+    default=False,
+)
+@click.option(
     "--report-infractions",
     help="Report infractions to the InfractionCollector.",
     is_flag=True,
     default=False,
 )
-def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
+def cli(
+    domain: str, artifact: Any, skip_5th_heartbeat_check: bool, report_infractions: bool
+) -> None:
     """
     Evaluates the heartbeat artifact and analyzes offenders.
     This script is intended to be run shortly after a DKG heartbeat timeout to
@@ -301,7 +310,6 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
     coordinator = registry.get_contract(domain=domain, contract_name="Coordinator")
     taco_application = registry.get_contract(domain=domain, contract_name="TACoChildApplication")
 
-    heartbeat_round, month_name = get_heartbeat_round_info(coordinator, artifact_data)
     try:
         dkg_timeout_secs = coordinator.dkgTimeout()
         dkg_timeout = timedelta(seconds=dkg_timeout_secs)
@@ -311,7 +319,8 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
 
     offenders: Dict[str, Dict[str, Any]] = defaultdict(dict)
 
-    if heartbeat_round > 4:
+    heartbeat_round, month_name = get_heartbeat_round_info(coordinator, artifact_data)
+    if not skip_5th_heartbeat_check and heartbeat_round > 4:
         click.secho(
             f"⚠️ This is the heartbeat round #{heartbeat_round}, which exceeds"
             + " the expected maximum of 4 per month.",
