@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, List
 
 from ape import chain, networks, project
-from ape.api import AccountAPI, ReceiptAPI
+from ape.api import AccountAPI, ImpersonatedAccount, ReceiptAPI
 from ape.cli.choices import select_account
 from ape.contracts.base import ContractContainer, ContractInstance, ContractTransactionHandler
 from ape.utils import EMPTY_BYTES32, ZERO_ADDRESS
@@ -490,7 +490,7 @@ class Transactor:
         if autosign:
             print("WARNING: Autosign is enabled. Transactions will be signed automatically.")
         self._autosign = autosign
-        if not isinstance(self._account, TestAccount):
+        if not isinstance(self._account, (TestAccount, ImpersonatedAccount)):
             self._account.set_autosign(autosign)
 
     def get_account(self) -> AccountAPI:
