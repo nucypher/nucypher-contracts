@@ -291,6 +291,8 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
     click.secho("🔍 Analyzing DKG protocol violations...", fg="cyan")
 
     valid_versions = get_valid_versions()
+    click.secho(f"List of valid versions: {', '.join(map(str, valid_versions))}", fg="cyan")
+
     if not valid_versions:
         click.secho("⚠️  Could not determine valid versions", fg="red")
         return
@@ -354,8 +356,14 @@ def cli(domain: str, artifact: Any, report_infractions: bool) -> None:
                 try:
                     version = Version(version)
                     if version not in valid_versions:
-                        offenders[address]["reasons"].append(OUTDATED)
-                        click.secho(f"Node {address} is outdated: {version}", fg="cyan")
+                        if version > valid_versions[0]:
+                            click.secho(
+                                f"⚠️ Node {address} is running a future version: {version}",
+                                fg="yellow",
+                            )
+                        else:
+                            offenders[address]["reasons"].append(OUTDATED)
+                            click.secho(f"Node {address} is outdated: {version}", fg="cyan")
 
                 # if version string isn't well formed (not semantic version)
                 except InvalidVersion:
