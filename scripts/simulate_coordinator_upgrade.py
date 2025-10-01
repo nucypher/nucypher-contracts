@@ -20,14 +20,16 @@ def main():
 
     proxy_admin = OZ_DEPENDENCY.ProxyAdmin.at(PROXY_ADMIN_ADDRESS)
     assert proxy_admin.owner() == nuco_multisig.address
-    
+
     # Deploy new Coordinator implementation
-    deployer = Deployer.from_yaml(filepath=CONSTRUCTOR_PARAMS_FILEPATH, verify=False, account=nuco_multisig, autosign=True)
+    deployer = Deployer.from_yaml(
+        filepath=CONSTRUCTOR_PARAMS_FILEPATH, verify=False, account=nuco_multisig, autosign=True
+    )
     new_coordinator = deployer.deploy(project.Coordinator)
 
     # Upgrade Coordinator proxy to new implementation
     coordinator = project.Coordinator.at(COORDINATOR_PROXY_ADDRESS)
-    tx = proxy_admin.upgradeAndCall(coordinator.address, new_coordinator, b"", sender=nuco_multisig)  
+    tx = proxy_admin.upgradeAndCall(coordinator.address, new_coordinator, b"", sender=nuco_multisig)
 
     print(f"Upgraded Coordinator to {new_coordinator.address} via ProxyAdmin {proxy_admin.address}")
 
