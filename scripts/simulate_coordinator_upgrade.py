@@ -15,9 +15,14 @@ NUCO_MULTISIG_ADDRESS = "0x861aa915C785dEe04684444560fC7A2AB43a1543"
 
 
 def main():
+    if networks.active_provider.network.name != "mainnet-fork":
+        raise RuntimeError("This script must be run on mainnet-fork only!")
+
+    # Impersonate NuCo Multisig
     nuco_multisig = accounts.test_accounts.impersonate_account(NUCO_MULTISIG_ADDRESS)
     chain.set_balance(nuco_multisig.address, "5 ether")
 
+    # Ensure ProxyAdmin is as expected on mainnet
     proxy_admin = OZ_DEPENDENCY.ProxyAdmin.at(PROXY_ADMIN_ADDRESS)
     assert proxy_admin.owner() == nuco_multisig.address
 
