@@ -6,7 +6,7 @@ from eth_account import Account
 from hexbytes import HexBytes
 from web3 import Web3
 
-from tests.conftest import RitualState, gen_public_key, generate_transcript
+from tests.conftest import G1_SIZE, G2_SIZE, RitualState, gen_public_key, generate_transcript
 
 TIMEOUT = 1000
 MAX_DKG_SIZE = 31
@@ -614,3 +614,95 @@ def test_post_aggregation_fails(
 #     # Can't withdraw when there's no tokens
 #     with ape.reverts("Insufficient balance"):
 #         coordinator.withdrawAllTokens(erc20.address, sender=treasury)
+
+
+def test_update_participant(
+    coordinator, nodes, initiator, erc20, fee_model, deployer, global_allow_list
+):
+    initiate_ritual(
+        coordinator=coordinator,
+        fee_model=fee_model,
+        erc20=erc20,
+        authority=initiator,
+        nodes=nodes,
+        allow_logic=global_allow_list,
+    )
+
+    coordinator.initializeHandoverCoordinator(deployer.address, sender=deployer)
+    ritual_id = 0
+    size = len(nodes)
+    threshold = coordinator.getThresholdForRitualSize(size)
+    transcript = generate_transcript(size, threshold)
+    decryption_request_static_key = os.urandom(42)
+
+    with ape.reverts("Caller must be the handover coordinator"):
+        coordinator.updateParticipant(
+            ritual_id,
+            nodes[0],
+            deployer.address,
+            True,
+            transcript,
+            decryption_request_static_key,
+            sender=initiator,
+        )
+
+    coordinator.updateParticipant(
+        ritual_id,
+        nodes[0],
+        deployer.address,
+        True,
+        transcript,
+        decryption_request_static_key,
+        sender=deployer,
+    )
+    p = coordinator.getParticipantFromProvider(ritual_id, deployer.address)
+    assert p.provider == deployer.address
+    assert p.aggregated is True
+    assert p.transcript == transcript
+    assert p.decryptionRequestStaticKey == decryption_request_static_key
+
+
+def test_replace_aggregated_transcript_bytes(
+    coordinator, nodes, initiator, erc20, fee_model, deployer, global_allow_list
+):
+    initiate_ritual(
+        coordinator=coordinator,
+        fee_model=fee_model,
+        erc20=erc20,
+        authority=initiator,
+        nodes=nodes,
+        allow_logic=global_allow_list,
+    )
+
+    coordinator.initializeHandoverCoordinator(deployer.address, sender=deployer)
+    ritual_id = 0
+    size = len(nodes)
+    threshold = coordinator.getThresholdForRitualSize(size)
+    transcript = generate_transcript(size, threshold)
+    blinded_share = os.urandom(G2_SIZE)
+
+    for node in nodes:
+        coordinator.publishTranscript(ritual_id, transcript, sender=node)
+
+    aggregated = transcript  # has the same size as transcript
+    decryption_request_static_keys = [os.urandom(42) for _ in nodes]
+    dkg_public_key = (os.urandom(32), os.urandom(16))
+    for i, node in enumerate(nodes):
+        coordinator.postAggregation(
+            ritual_id, aggregated, dkg_public_key, decryption_request_static_keys[i], sender=node
+        )
+
+    participant_index = 1
+    index = 32 + participant_index * G2_SIZE + threshold * G1_SIZE
+    with ape.reverts("Caller must be the handover coordinator"):
+        coordinator.replaceAggregatedTranscriptBytes(
+            ritual_id, nodes[1], blinded_share, index, sender=initiator
+        )
+
+    coordinator.replaceAggregatedTranscriptBytes(
+        ritual_id, nodes[1], blinded_share, index, sender=deployer
+    )
+    aggregated = bytearray(aggregated)
+    aggregated[index : index + G2_SIZE] = blinded_share
+    aggregated = bytes(aggregated)
+    assert coordinator.rituals(ritual_id).aggregatedTranscript == aggregated
