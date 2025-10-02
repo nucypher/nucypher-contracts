@@ -274,8 +274,8 @@ def format_discord_message(
     default=HEARTBEAT_ARTIFACT_FILENAME,
 )
 @click.option(
-    "--skip-5th-heartbeat-check",
-    "-s",
+    "--include-5th-heartbeat",
+    "-i",
     help="Run the evaluation even if it's the 5th heartbeat of the month.",
     is_flag=True,
     default=False,
@@ -286,9 +286,7 @@ def format_discord_message(
     is_flag=True,
     default=False,
 )
-def cli(
-    domain: str, artifact: Any, skip_5th_heartbeat_check: bool, report_infractions: bool
-) -> None:
+def cli(domain: str, artifact: Any, include_5th_heartbeat: bool, report_infractions: bool) -> None:
     """
     Evaluates the heartbeat artifact and analyzes offenders.
     This script is intended to be run shortly after a DKG heartbeat timeout to
@@ -320,7 +318,7 @@ def cli(
     offenders: Dict[str, Dict[str, Any]] = defaultdict(dict)
 
     heartbeat_round, month_name = get_heartbeat_round_info(coordinator, artifact_data)
-    if heartbeat_round > 4 and not skip_5th_heartbeat_check:
+    if heartbeat_round > 4 and not include_5th_heartbeat:
         click.secho(
             f"⚠️ This is the heartbeat round #{heartbeat_round}, which exceeds"
             + " the expected maximum of 4 per month.",
