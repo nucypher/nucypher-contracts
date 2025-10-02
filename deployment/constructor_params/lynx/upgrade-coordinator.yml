@@ -16,4 +16,3 @@ contracts:
       constructor:
         _application: $TACO_CHILD_APPLICATION
         _dkgTimeout: $DKG_TIMEOUT_SECONDS
-        _handoverTimeout: $HANDOVER_TIMEOUT_SECONDS

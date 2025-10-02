@@ -30,7 +30,6 @@ contracts:
       constructor:
         _application: $TACoChildApplication
         _dkgTimeout: $ONE_HOUR_IN_SECONDS
-        _handoverTimeout: $ONE_DAY_IN_SECONDS
   - GlobalAllowList:
       constructor:
         _coordinator: $Coordinator

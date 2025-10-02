@@ -51,7 +51,6 @@ contracts:
       constructor:
         _application: $TACoChildApplication
         _dkgTimeout: $DKG_TIMEOUT_IN_SECONDS
-        _handoverTimeout: $HANDOVER_TIMEOUT_IN_SECONDS
         _currency: $DAI_ON_POLYGON
         _feeRatePerSecond: $PRIVATE_BETA_FEE_RATE
   - GlobalAllowList:

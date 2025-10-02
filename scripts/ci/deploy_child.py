@@ -20,7 +20,7 @@ FINAL_DEPLOYMENT_ARTIFACT = ARTIFACTS_DIR / "ci-final.json"
 
 
 def create_upgrade_coordinator_yaml(
-    output_file: Path, taco_child_application_address: str, dkg_timeout: int, handover_timeout: int
+    output_file: Path, taco_child_application_address: str, dkg_timeout: int
 ) -> None:
     """
     Creates a YAML file for the upgrade process.
@@ -38,7 +38,6 @@ contracts:
       constructor:
         _application: "{taco_child_application_address}"
         _dkgTimeout: {dkg_timeout}
-        _handoverTimeout: {handover_timeout}
     """
     with open(output_file, "w") as file:
         file.write(yaml_text)
@@ -82,7 +81,6 @@ def main():
         UPGRADE_PARAMS_FILEPATH,
         str(taco_child_application.address),
         coordinator.dkgTimeout(),
-        coordinator.handoverTimeout(),
     )
 
     with networks.ethereum.local.use_provider("test"):
