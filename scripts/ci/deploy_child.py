@@ -64,6 +64,8 @@ def main():
 
         coordinator = deployer.deploy(project.Coordinator)
 
+        handover_coordinator = deployer.deploy(project.HandoverCoordinator)
+
         global_allow_list = deployer.deploy(project.GlobalAllowList)
 
     deployments = [
@@ -71,6 +73,7 @@ def main():
         taco_child_application,
         ritual_token,
         coordinator,
+        handover_coordinator,
         global_allow_list,
     ]
 
