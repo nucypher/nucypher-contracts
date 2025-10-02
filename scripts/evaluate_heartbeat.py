@@ -320,7 +320,7 @@ def cli(
     offenders: Dict[str, Dict[str, Any]] = defaultdict(dict)
 
     heartbeat_round, month_name = get_heartbeat_round_info(coordinator, artifact_data)
-    if not skip_5th_heartbeat_check and heartbeat_round > 4:
+    if heartbeat_round > 4 and not skip_5th_heartbeat_check:
         click.secho(
             f"⚠️ This is the heartbeat round #{heartbeat_round}, which exceeds"
             + " the expected maximum of 4 per month.",
