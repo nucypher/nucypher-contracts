@@ -10,11 +10,9 @@ constants:
   # See deployment/artifacts/mainnet.json
   TACO_CHILD_APPLICATION: "0xFa07aaB78062Fac4C36995bF28F6D677667973F5"
   DKG_TIMEOUT_SECONDS: 10800  # 3 hours (existing value)
-  HANDOVER_TIMEOUT_SECONDS: 3600  # 1 hour
 
 contracts:
   - Coordinator:
       constructor:
         _application: $TACO_CHILD_APPLICATION
         _dkgTimeout: $DKG_TIMEOUT_SECONDS
-        _handoverTimeout: $HANDOVER_TIMEOUT_SECONDS

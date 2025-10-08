@@ -48,28 +48,6 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     event FeeModelApproved(IFeeModel feeModel);
     event RitualExtended(uint32 indexed ritualId, uint32 endTimestamp);
 
-    event HandoverRequest(
-        uint32 indexed ritualId,
-        address indexed departingParticipant,
-        address indexed incomingParticipant
-    );
-    event HandoverTranscriptPosted(
-        uint32 indexed ritualId,
-        address indexed departingParticipant,
-        address indexed incomingParticipant
-    );
-    event BlindedSharePosted(uint32 indexed ritualId, address indexed departingParticipant);
-    event HandoverCanceled(
-        uint32 indexed ritualId,
-        address indexed departingParticipant,
-        address indexed incomingParticipant
-    );
-    event HandoverFinalized(
-        uint32 indexed ritualId,
-        address indexed departingParticipant,
-        address indexed incomingParticipant
-    );
-
     enum RitualState {
         NON_INITIATED,
         DKG_AWAITING_TRANSCRIPTS,
@@ -80,28 +58,12 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         EXPIRED
     }
 
-    enum HandoverState {
-        NON_INITIATED,
-        HANDOVER_AWAITING_TRANSCRIPT,
-        HANDOVER_AWAITING_BLINDED_SHARE,
-        HANDOVER_AWAITING_FINALIZATION,
-        HANDOVER_TIMEOUT
-    }
-
     struct Participant {
         address provider;
         bool aggregated;
         bytes transcript;
         bytes decryptionRequestStaticKey;
         // Note: Adjust __postSentinelGap size if this struct's size changes
-    }
-
-    struct Handover {
-        uint32 requestTimestamp;
-        address incomingProvider;
-        bytes transcript;
-        bytes decryptionRequestStaticKey;
-        bytes blindedShare;
     }
 
     struct Ritual {
@@ -130,13 +92,11 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     }
 
     bytes32 public constant FEE_MODEL_MANAGER_ROLE = keccak256("FEE_MODEL_MANAGER_ROLE");
-    bytes32 public constant HANDOVER_SUPERVISOR_ROLE = keccak256("HANDOVER_SUPERVISOR_ROLE");
 
     ITACoChildApplication public immutable application;
     uint96 private immutable minAuthorization; // TODO use child app for checking eligibility
 
     uint32 public immutable dkgTimeout;
-    uint32 public immutable handoverTimeout;
 
     Ritual[] private ritualsStub; // former rituals, "internal" for testing only
     uint32 private timeoutStub; // former (dkg) timeout
@@ -154,18 +114,23 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
     mapping(uint256 index => Ritual ritual) public rituals;
     uint256 public numberOfRituals;
-    mapping(bytes32 handoverKey => Handover handover) public handovers;
+    bytes32 public stub5; // former handovers
+    address public handoverCoordinator;
     // Note: Adjust the __preSentinelGap size if more contract variables are added
 
     // Storage area for sentinel values
-    uint256[15] internal __preSentinelGap;
+    uint256[14] internal __preSentinelGap;
     Participant internal __sentinelParticipant;
     uint256[20] internal __postSentinelGap;
 
-    constructor(ITACoChildApplication _application, uint32 _dkgTimeout, uint32 _handoverTimeout) {
+    modifier onlyHandoverCoordinator() {
+        require(msg.sender == handoverCoordinator, "Caller must be the handover coordinator");
+        _;
+    }
+
+    constructor(ITACoChildApplication _application, uint32 _dkgTimeout) {
         application = _application;
         dkgTimeout = _dkgTimeout;
-        handoverTimeout = _handoverTimeout;
         minAuthorization = _application.minimumAuthorization(); // TODO use child app for checking eligibility
         _disableInitializers();
     }
@@ -178,6 +143,10 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         __AccessControlDefaultAdminRules_init(0, _admin);
     }
 
+    function initializeHandoverCoordinator(address _handoverCoordinator) external reinitializer(2) {
+        handoverCoordinator = _handoverCoordinator;
+    }
+
     /// @dev for backward compatibility only
     function timeout() external view returns (uint32) {
         return dkgTimeout;
@@ -185,6 +154,30 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
     function getInitiator(uint32 ritualId) external view returns (address) {
         return rituals[ritualId].initiator;
+    }
+
+    function getThreshold(uint32 ritualId) external view returns (uint16) {
+        return rituals[ritualId].threshold;
+    }
+
+    function getAggregatedTranscript(uint32 ritualId) external view returns (bytes memory) {
+        return rituals[ritualId].aggregatedTranscript;
+    }
+
+    function updateParticipant(
+        uint32 ritualId,
+        address provider,
+        address newProvider,
+        bool newAggregated,
+        bytes memory newTranscript,
+        bytes memory newDecryptionRequestStaticKey
+    ) external onlyHandoverCoordinator {
+        Ritual storage ritual = rituals[ritualId];
+        Participant storage participant = getParticipant(ritual, provider);
+        participant.provider = newProvider;
+        participant.aggregated = newAggregated;
+        participant.transcript = newTranscript;
+        participant.decryptionRequestStaticKey = newDecryptionRequestStaticKey;
     }
 
     function getTimestamps(
@@ -207,14 +200,6 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
     function getRitualState(uint32 ritualId) external view returns (RitualState) {
         return getRitualState(rituals[ritualId]);
-    }
-
-    function getHandoverState(
-        uint32 ritualId,
-        address departingParticipant
-    ) external view returns (HandoverState) {
-        Handover storage handover = handovers[getHandoverKey(ritualId, departingParticipant)];
-        return getHandoverState(handover);
     }
 
     function isRitualActive(Ritual storage ritual) internal view returns (bool) {
@@ -256,30 +241,6 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
             //   - All transcripts and all aggregations
             //   - Still within the deadline
             revert("Ambiguous ritual state");
-        }
-    }
-
-    function getHandoverKey(
-        uint32 ritualId,
-        address departingProvider
-    ) public view returns (bytes32) {
-        return keccak256(abi.encode(ritualId, departingProvider));
-    }
-
-    function getHandoverState(Handover storage handover) internal view returns (HandoverState) {
-        uint32 t0 = handover.requestTimestamp;
-        uint32 deadline = t0 + handoverTimeout;
-        if (t0 == 0) {
-            return HandoverState.NON_INITIATED;
-        } else if (block.timestamp > deadline) {
-            // Handover failed due to timeout
-            return HandoverState.HANDOVER_TIMEOUT;
-        } else if (handover.transcript.length == 0) {
-            return HandoverState.HANDOVER_AWAITING_TRANSCRIPT;
-        } else if (handover.blindedShare.length == 0) {
-            return HandoverState.HANDOVER_AWAITING_BLINDED_SHARE;
-        } else {
-            return HandoverState.HANDOVER_AWAITING_FINALIZATION;
         }
     }
 
@@ -409,16 +370,6 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         return 40 + (dkgSize + 1) * BLS12381.G2_POINT_SIZE + threshold * BLS12381.G1_POINT_SIZE;
     }
 
-    /**
-     * Calculates position of blinded share for particular participant
-     * @param index Participant index
-     * @param threshold Threshold
-     * @dev See https://github.com/nucypher/nucypher-contracts/issues/400
-     */
-    function blindedSharePosition(uint256 index, uint16 threshold) public pure returns (uint256) {
-        return 32 + index * BLS12381.G2_POINT_SIZE + threshold * BLS12381.G1_POINT_SIZE;
-    }
-
     // /**
     //  * @dev This method is deprecated. Use `publishTranscript` instead.
     //  */
@@ -537,181 +488,6 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         }
 
         processReimbursement(initialGasLeft);
-    }
-
-    function handoverRequest(
-        uint32 ritualId,
-        address departingParticipant,
-        address incomingParticipant
-    ) external onlyRole(HANDOVER_SUPERVISOR_ROLE) {
-        require(isRitualActive(ritualId), "Ritual is not active");
-        require(
-            isParticipant(ritualId, departingParticipant),
-            "Departing node must be a participant"
-        );
-        require(
-            !isParticipant(ritualId, incomingParticipant),
-            "Incoming node cannot be a participant"
-        );
-
-        Handover storage handover = handovers[getHandoverKey(ritualId, departingParticipant)];
-        HandoverState state = getHandoverState(handover);
-
-        require(
-            state == HandoverState.NON_INITIATED || state == HandoverState.HANDOVER_TIMEOUT,
-            "Handover already requested"
-        );
-        require(isProviderKeySet(incomingParticipant), "Incoming provider has not set public key");
-        require(
-            application.authorizedStake(incomingParticipant) >= minAuthorization,
-            "Not enough authorization"
-        );
-        handover.requestTimestamp = uint32(block.timestamp);
-        handover.incomingProvider = incomingParticipant;
-        delete handover.blindedShare;
-        delete handover.transcript;
-        delete handover.decryptionRequestStaticKey;
-        emit HandoverRequest(ritualId, departingParticipant, incomingParticipant);
-    }
-
-    function postHandoverTranscript(
-        uint32 ritualId,
-        address departingParticipant,
-        bytes calldata transcript,
-        bytes calldata decryptionRequestStaticKey
-    ) external {
-        uint256 initialGasLeft = gasleft();
-        require(isRitualActive(ritualId), "Ritual is not active");
-        require(transcript.length > 0, "Parameters can't be empty");
-        require(
-            decryptionRequestStaticKey.length == 42,
-            "Invalid length for decryption request static key"
-        );
-
-        Handover storage handover = handovers[getHandoverKey(ritualId, departingParticipant)];
-        require(
-            getHandoverState(handover) == HandoverState.HANDOVER_AWAITING_TRANSCRIPT,
-            "Not waiting for transcript"
-        );
-        address provider = application.operatorToStakingProvider(msg.sender);
-        require(handover.incomingProvider == provider, "Wrong incoming provider");
-
-        handover.transcript = transcript;
-        handover.decryptionRequestStaticKey = decryptionRequestStaticKey;
-        emit HandoverTranscriptPosted(ritualId, departingParticipant, provider);
-        processReimbursement(initialGasLeft);
-    }
-
-    function postBlindedShare(uint32 ritualId, bytes calldata blindedShare) external {
-        uint256 initialGasLeft = gasleft();
-        require(isRitualActive(ritualId), "Ritual is not active");
-
-        address provider = application.operatorToStakingProvider(msg.sender);
-        Handover storage handover = handovers[getHandoverKey(ritualId, provider)];
-        require(
-            getHandoverState(handover) == HandoverState.HANDOVER_AWAITING_BLINDED_SHARE,
-            "Not waiting for blinded share"
-        );
-        require(blindedShare.length == BLS12381.G2_POINT_SIZE, "Wrong size of blinded share");
-
-        handover.blindedShare = blindedShare;
-        emit BlindedSharePosted(ritualId, provider);
-        processReimbursement(initialGasLeft);
-    }
-
-    function cancelHandover(
-        uint32 ritualId,
-        address departingParticipant
-    ) external onlyRole(HANDOVER_SUPERVISOR_ROLE) {
-        Handover storage handover = handovers[getHandoverKey(ritualId, departingParticipant)];
-        address incomingParticipant = handover.incomingProvider;
-
-        require(
-            getHandoverState(handover) != HandoverState.NON_INITIATED,
-            "Handover not requested"
-        );
-        handover.requestTimestamp = 0;
-        handover.incomingProvider = address(0);
-        delete handover.blindedShare;
-        delete handover.transcript;
-        delete handover.decryptionRequestStaticKey;
-
-        emit HandoverCanceled(ritualId, departingParticipant, incomingParticipant);
-    }
-
-    function finalizeHandover(
-        uint32 ritualId,
-        address departingParticipant
-    ) external onlyRole(HANDOVER_SUPERVISOR_ROLE) {
-        require(isRitualActive(ritualId), "Ritual is not active");
-
-        Handover storage handover = handovers[getHandoverKey(ritualId, departingParticipant)];
-        require(
-            getHandoverState(handover) == HandoverState.HANDOVER_AWAITING_FINALIZATION,
-            "Not waiting for finalization"
-        );
-        address incomingParticipant = handover.incomingProvider;
-
-        Ritual storage ritual = rituals[ritualId];
-        (, Participant storage participant, uint256 participantIndex) = findParticipant(
-            ritual,
-            departingParticipant
-        );
-        participant.provider = incomingParticipant;
-        participant.decryptionRequestStaticKey = handover.decryptionRequestStaticKey;
-        delete participant.transcript;
-
-        uint256 startIndex = blindedSharePosition(participantIndex, ritual.threshold);
-        replaceStorageBytes(ritual.aggregatedTranscript, handover.blindedShare, startIndex);
-        bytes32 aggregatedTranscriptDigest = keccak256(ritual.aggregatedTranscript);
-        emit AggregationPosted(ritualId, incomingParticipant, aggregatedTranscriptDigest);
-
-        handover.requestTimestamp = 0;
-        handover.incomingProvider = address(0);
-        delete handover.blindedShare;
-        delete handover.transcript;
-        delete handover.decryptionRequestStaticKey;
-
-        emit HandoverFinalized(ritualId, departingParticipant, incomingParticipant);
-        application.release(departingParticipant);
-    }
-
-    function replaceStorageBytes(
-        bytes storage _preBytes,
-        bytes memory _postBytes,
-        uint256 startIndex
-    ) internal {
-        assembly {
-            let mlength := mload(_postBytes)
-
-            // get the keccak hash to get the contents of the array
-            mstore(0x0, _preBytes.slot)
-            // Start copying to the last used word of the stored array.
-            let sc := add(keccak256(0x0, 0x20), div(startIndex, 32))
-
-            // Copy over the first `submod` bytes of the new data
-
-            let slengthmod := mod(startIndex, 32)
-            let submod := sub(32, slengthmod)
-            let mc := add(_postBytes, submod)
-            let end := add(_postBytes, mlength)
-            let mask := sub(exp(0x100, submod), 1)
-
-            sstore(sc, add(and(sload(sc), not(mask)), and(mload(mc), mask)))
-
-            for {
-                sc := add(sc, 1)
-                mc := add(mc, 0x20)
-            } lt(mc, end) {
-                sc := add(sc, 1)
-                mc := add(mc, 0x20)
-            } {
-                sstore(sc, mload(mc))
-            }
-
-            mask := sub(exp(0x100, sub(mc, end)), 1)
-            sstore(sc, add(and(sload(sc), mask), and(mload(mc), not(mask))))
-        }
     }
 
     function getRitualIdFromPublicKey(
@@ -869,4 +645,54 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
     //     require(tokenBalance > 0, "Insufficient balance");
     //     token.safeTransfer(msg.sender, tokenBalance);
     // }
+
+    function replaceAggregatedTranscriptBytes(
+        uint32 ritualId,
+        address incomingParticipant,
+        bytes memory newBytes,
+        uint256 startIndex
+    ) external onlyHandoverCoordinator {
+        Ritual storage ritual = rituals[ritualId];
+        replaceStorageBytes(ritual.aggregatedTranscript, newBytes, startIndex);
+        bytes32 aggregatedTranscriptDigest = keccak256(ritual.aggregatedTranscript);
+        emit AggregationPosted(ritualId, incomingParticipant, aggregatedTranscriptDigest);
+    }
+
+    function replaceStorageBytes(
+        bytes storage _preBytes,
+        bytes memory _postBytes,
+        uint256 startIndex
+    ) internal {
+        assembly {
+            let mlength := mload(_postBytes)
+
+            // get the keccak hash to get the contents of the array
+            mstore(0x0, _preBytes.slot)
+            // Start copying to the last used word of the stored array.
+            let sc := add(keccak256(0x0, 0x20), div(startIndex, 32))
+
+            // Copy over the first `submod` bytes of the new data
+
+            let slengthmod := mod(startIndex, 32)
+            let submod := sub(32, slengthmod)
+            let mc := add(_postBytes, submod)
+            let end := add(_postBytes, mlength)
+            let mask := sub(exp(0x100, submod), 1)
+
+            sstore(sc, add(and(sload(sc), not(mask)), and(mload(mc), mask)))
+
+            for {
+                sc := add(sc, 1)
+                mc := add(mc, 0x20)
+            } lt(mc, end) {
+                sc := add(sc, 1)
+                mc := add(mc, 0x20)
+            } {
+                sstore(sc, mload(mc))
+            }
+
+            mask := sub(exp(0x100, sub(mc, end)), 1)
+            sstore(sc, add(and(sload(sc), mask), and(mload(mc), not(mask))))
+        }
+    }
 }

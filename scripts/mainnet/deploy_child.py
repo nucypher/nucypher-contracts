@@ -10,7 +10,6 @@ CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "mainnet" / "child.yml"
 
 
 def main():
-
     deployer = Deployer.from_yaml(filepath=CONSTRUCTOR_PARAMS_FILEPATH, verify=VERIFY)
 
     polygon_child = deployer.deploy(project.PolygonChild)
@@ -23,27 +22,26 @@ def main():
 
     deployer.transact(taco_child_application.initialize, coordinator.address)
 
+    handover_coordinator = deployer.deploy(project.HandoverCoordinator)
+
+    deployer.transact(coordinator.initializeHandoverCoordinator, handover_coordinator.address)
+
     # Grant TREASURY_ROLE to Treasury Guild Multisig on Polygon (0xc3Bf49eBA094AF346830dF4dbB42a07dE378EeB6)
     TREASURY_ROLE = coordinator.TREASURY_ROLE()
     deployer.transact(
-        coordinator.grantRole,
-        TREASURY_ROLE,
-        deployer.constants.TREASURY_GUILD_ON_POLYGON
+        coordinator.grantRole, TREASURY_ROLE, deployer.constants.TREASURY_GUILD_ON_POLYGON
     )
 
     # Grant INITIATOR_ROLE to Integrations Guild
     INITIATOR_ROLE = coordinator.INITIATOR_ROLE()
     deployer.transact(
-        coordinator.grantRole,
-        INITIATOR_ROLE,
-        deployer.constants.INTEGRATIONS_GUILD_ON_POLYGON
-    ) 
+        coordinator.grantRole, INITIATOR_ROLE, deployer.constants.INTEGRATIONS_GUILD_ON_POLYGON
+    )
     # TODO: BetaProgramInitiator will be deployed separately, so council will grant the role later
-    
+
     # Change Coordinator admin to Council on Polygon
     deployer.transact(
-        coordinator.beginDefaultAdminTransfer,
-        deployer.constants.THRESHOLD_COUNCIL_ON_POLYGON
+        coordinator.beginDefaultAdminTransfer, deployer.constants.THRESHOLD_COUNCIL_ON_POLYGON
     )
     # This requires the Council accepting the transfer by calling acceptDefaultAdminTransfer()
 
@@ -53,6 +51,7 @@ def main():
         polygon_child,
         taco_child_application,
         coordinator,
+        handover_coordinator,
         global_allow_list,
     ]
 

@@ -51,9 +51,14 @@ contracts:
       constructor:
         _application: $TACoChildApplication
         _dkgTimeout: $DKG_TIMEOUT_IN_SECONDS
+  - HandoverCoordinator:
+      proxy:
+        constructor:
+          _data: $encode:initialize,$deployer
+      constructor:
+        _application: $TACoChildApplication
+        _coordinator: $Coordinator
         _handoverTimeout: $HANDOVER_TIMEOUT_IN_SECONDS
-        _currency: $DAI_ON_POLYGON
-        _feeRatePerSecond: $PRIVATE_BETA_FEE_RATE
   - GlobalAllowList:
       constructor:
         _coordinator: $Coordinator
