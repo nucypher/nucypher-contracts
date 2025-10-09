@@ -3777,9 +3777,9 @@
                     "outputs": []
                 }
             ],
-            "tx_hash": "0xbfdb1ba47830e495dcae80c93943c4a0be539f0e94f795f0330d8e33e6c025fb",
-            "block_number": 70938418,
-            "deployer": "0x0224B7B41E9204550b8B3Fdc1afd6200446576E8"
+            "tx_hash": "0xf92bec2dd7b3d6c26d144d18c3cd99b8699ebc178fc5452dbe528841f54cf6bd",
+            "block_number": 77130992,
+            "deployer": "0x1591165F1BF8B73de7053A6BE6f239BC15076879"
         },
         "FreeFeeModel": {
             "address": "0x1acaf2677B987e690A09296BabdCe6376712213d",
