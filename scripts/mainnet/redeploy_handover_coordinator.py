@@ -6,7 +6,9 @@ from deployment.constants import CONSTRUCTOR_PARAMS_DIR
 from deployment.params import Deployer
 
 VERIFY = False
-CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "mainnet" / "deploy-handover-coordinator.yml"
+CONSTRUCTOR_PARAMS_FILEPATH = (
+    CONSTRUCTOR_PARAMS_DIR / "mainnet" / "redeploy-handover-coordinator.yml"
+)
 
 
 def main():
