@@ -26,6 +26,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     event SigningCohortSignaturePosted(
         uint32 indexed cohortId,
         address indexed provider,
+        address indexed signer,
         bytes signature
     );
     event SigningCohortDeployed(uint32 indexed cohortId, uint256 chainId);
@@ -41,7 +42,9 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     struct SigningCohortParticipant {
         address provider;
         address operator;
+        address signerAddress;
         bytes signature;
+        uint256[20] gap;
     }
 
     struct SigningCohort {
@@ -282,7 +285,11 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         return dataHash;
     }
 
-    function postSigningCohortSignature(uint32 cohortId, bytes calldata signature) external {
+    function postSigningCohortSignature(
+        uint32 cohortId,
+        address signerAddress,
+        bytes calldata signature
+    ) external {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
         require(
             getSigningCohortState(signingCohort) == SigningCohortState.AWAITING_SIGNATURES,
@@ -298,13 +305,14 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
 
         bytes32 dataHash = getSigningCohortDataHash(cohortId);
         address recovered = dataHash.toEthSignedMessageHash().recover(signature);
-        require(recovered == msg.sender, "Operator signature mismatch");
+        require(recovered == signerAddress, "Signer signature mismatch");
 
         participant.operator = msg.sender;
+        participant.signerAddress = signerAddress;
         participant.signature = signature;
         signingCohort.totalSignatures++;
 
-        emit SigningCohortSignaturePosted(cohortId, provider, signature);
+        emit SigningCohortSignaturePosted(cohortId, provider, signerAddress, signature);
 
         if (signingCohort.totalSignatures == signingCohort.numSigners) {
             deploySigningMultisig(signingCohort.chains[0], cohortId);
@@ -332,7 +340,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         address[] memory _signers = new address[](signingCohort.numSigners);
         for (uint256 i = 0; i < signingCohort.signers.length; i++) {
             // ursula operator address does signing; not staking provider
-            _signers[i] = signingCohort.signers[i].operator;
+            _signers[i] = signingCohort.signers[i].signerAddress;
         }
 
         signingCoordinatorDispatcher.dispatch(
