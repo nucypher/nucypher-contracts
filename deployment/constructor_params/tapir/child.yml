@@ -30,9 +30,14 @@ contracts:
       constructor:
         _application: $TACoChildApplication
         _dkgTimeout: $ONE_HOUR_IN_SECONDS
+  - HandoverCoordinator:
+      proxy:
+        constructor:
+          _data: $encode:initialize,$deployer
+      constructor:
+        _application: $TACoChildApplication
+        _coordinator: $Coordinator
         _handoverTimeout: $ONE_DAY_IN_SECONDS
-        _currency: $TapirRitualToken
-        _feeRatePerSecond: 1
   - GlobalAllowList:
       constructor:
         _coordinator: $Coordinator
