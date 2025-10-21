@@ -41,7 +41,6 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
 
     struct SigningCohortParticipant {
         address provider;
-        address operator;
         address signerAddress;
         bytes signature;
         uint256[20] gap;
@@ -307,7 +306,6 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         address recovered = dataHash.toEthSignedMessageHash().recover(signature);
         require(recovered == signerAddress, "Signer signature mismatch");
 
-        participant.operator = msg.sender;
         participant.signerAddress = signerAddress;
         participant.signature = signature;
         signingCohort.totalSignatures++;
