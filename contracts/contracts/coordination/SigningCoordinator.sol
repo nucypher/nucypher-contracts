@@ -26,6 +26,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     event SigningCohortSignaturePosted(
         uint32 indexed cohortId,
         address indexed provider,
+        address indexed signer,
         bytes signature
     );
     event SigningCohortDeployed(uint32 indexed cohortId, uint256 chainId);
@@ -40,8 +41,8 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
 
     struct SigningCohortParticipant {
         address provider;
-        address operator;
-        bytes signature;
+        address signerAddress;
+        uint256[20] gap;
     }
 
     struct SigningCohort {
@@ -275,10 +276,13 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         return signingCohort.conditions[chainId];
     }
 
-    function getSigningCohortDataHash(uint32 cohortId) public view returns (bytes32) {
+    function getSigningCohortDataHash(
+        uint32 cohortId,
+        address operator
+    ) public view returns (bytes32) {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
         require(signingCohort.initiator != address(0), "Signing cohort not set");
-        bytes32 dataHash = keccak256(abi.encode(cohortId, signingCohort.authority));
+        bytes32 dataHash = keccak256(abi.encode(cohortId, signingCohort.authority, operator));
         return dataHash;
     }
 
@@ -293,18 +297,16 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
 
         SigningCohortParticipant storage participant = getSigner(signingCohort, provider);
         require(participant.provider != address(0), "Participant not part of signing ritual");
-        require(participant.signature.length == 0, "Node already posted signature");
+        require(participant.signerAddress == address(0), "Node already posted signature");
         require(application.authorizedStake(provider) > 0, "Not enough authorization");
 
-        bytes32 dataHash = getSigningCohortDataHash(cohortId);
-        address recovered = dataHash.toEthSignedMessageHash().recover(signature);
-        require(recovered == msg.sender, "Operator signature mismatch");
+        bytes32 dataHash = getSigningCohortDataHash(cohortId, msg.sender);
+        address signerAddress = dataHash.toEthSignedMessageHash().recover(signature);
 
-        participant.operator = msg.sender;
-        participant.signature = signature;
+        participant.signerAddress = signerAddress;
         signingCohort.totalSignatures++;
 
-        emit SigningCohortSignaturePosted(cohortId, provider, signature);
+        emit SigningCohortSignaturePosted(cohortId, provider, signerAddress, signature);
 
         if (signingCohort.totalSignatures == signingCohort.numSigners) {
             deploySigningMultisig(signingCohort.chains[0], cohortId);
@@ -332,7 +334,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         address[] memory _signers = new address[](signingCohort.numSigners);
         for (uint256 i = 0; i < signingCohort.signers.length; i++) {
             // ursula operator address does signing; not staking provider
-            _signers[i] = signingCohort.signers[i].operator;
+            _signers[i] = signingCohort.signers[i].signerAddress;
         }
 
         signingCoordinatorDispatcher.dispatch(

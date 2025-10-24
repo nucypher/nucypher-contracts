@@ -19,15 +19,20 @@ def nodes(accounts):
 
 
 @pytest.fixture(scope="module")
+def signers(accounts):
+    return sorted(accounts[MAX_DKG_SIZE : 2 * MAX_DKG_SIZE], key=lambda x: x.address.lower())
+
+
+@pytest.fixture(scope="module")
 def initiator(accounts):
-    initiator_index = MAX_DKG_SIZE + 1
+    initiator_index = 2 * MAX_DKG_SIZE + 1
     assert len(accounts) >= initiator_index
     return accounts[initiator_index]
 
 
 @pytest.fixture(scope="module")
 def deployer(accounts):
-    deployer_index = MAX_DKG_SIZE + 2
+    deployer_index = 2 * MAX_DKG_SIZE + 2
     assert len(accounts) >= deployer_index
     return accounts[deployer_index]
 
@@ -215,6 +220,7 @@ def test_signing_ritual(
     deployer,
     initiator,
     nodes,
+    signers,
     signing_coordinator,
     signing_coordinator_child,
     other_chain_signing_coordinator_child,
@@ -253,13 +259,14 @@ def test_signing_ritual(
         == SigningRitualState.AWAITING_SIGNATURES
     )
 
-    submitted_signatures = []
-    data_hash = signing_coordinator.getSigningCohortDataHash(signing_cohort_id)
-    signable_message = encode_defunct(data_hash)
+    signable_message = None
 
     # submit signatures
     for i, node in enumerate(nodes):
-        signature = node.sign_message(signable_message).encode_rsv()
+        signer = signers[i]
+        data_hash = signing_coordinator.getSigningCohortDataHash(signing_cohort_id, node.address)
+        signable_message = encode_defunct(data_hash)
+        signature = signer.sign_message(signable_message).encode_rsv()
         tx = signing_coordinator.postSigningCohortSignature(
             signing_cohort_id, signature, sender=node
         )
@@ -269,10 +276,9 @@ def test_signing_ritual(
         ]
         assert events == [
             signing_coordinator.SigningCohortSignaturePosted(
-                cohortId=signing_cohort_id, provider=node, signature=signature
+                cohortId=signing_cohort_id, provider=node, signer=signer, signature=signature
             )
         ]
-        submitted_signatures.append(signature)
 
     events = [event for event in tx.events if event.event_name == "SigningCohortDeployed"]
     assert events == [
@@ -310,7 +316,7 @@ def test_signing_ritual(
         assert signing_coordinator.isSigner(signing_cohort_id, node.address)
         signer = signing_coordinator.getSigner(signing_cohort_id, node.address)
         assert signer.provider == node.address
-        assert len(signer.signature) > 0, "signature posted"
+        assert signer.signerAddress == signers[i]
 
     # check deployed multisig
     assert (
@@ -323,13 +329,21 @@ def test_signing_ritual(
     assert signing_coordinator_child.cohortMultisigs(signing_cohort_id) == expected_multisig_address
 
     cohort_multisig = project.ThresholdSigningMultisig.at(expected_multisig_address)
-    assert cohort_multisig.getSigners() == [n.address for n in nodes]
+    assert cohort_multisig.getSigners() == [n.address for n in signers]
     assert cohort_multisig.threshold() == threshold
     assert cohort_multisig.owner() == signing_coordinator_child.address
 
     # ensure signatures are valid for deployed cohort multisig
-    # (just need something signed by signers, why not reuse the data
-    #  from posting of the signature in the ritual)
+    submitted_signatures = []
+    data_hash = signing_coordinator.getSigningCohortDataHash(signing_cohort_id, node.address)
+    signable_message = encode_defunct(data_hash)
+
+    # submit signatures
+    for i, node in enumerate(nodes):
+        signer = signers[i]
+        signature = signer.sign_message(signable_message).encode_rsv()
+        submitted_signatures.append(signature)
+
     data_hash = _hash_eip191_message(signable_message)
 
     # signatures must be all unique (no repeats)
