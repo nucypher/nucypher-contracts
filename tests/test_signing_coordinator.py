@@ -259,16 +259,16 @@ def test_signing_ritual(
         == SigningRitualState.AWAITING_SIGNATURES
     )
 
-    submitted_signatures = []
-    data_hash = signing_coordinator.getSigningCohortDataHash(signing_cohort_id)
-    signable_message = encode_defunct(data_hash)
+    signable_message = None
 
     # submit signatures
     for i, node in enumerate(nodes):
         signer = signers[i]
+        data_hash = signing_coordinator.getSigningCohortDataHash(signing_cohort_id, node.address)
+        signable_message = encode_defunct(data_hash)
         signature = signer.sign_message(signable_message).encode_rsv()
         tx = signing_coordinator.postSigningCohortSignature(
-            signing_cohort_id, signer, signature, sender=node
+            signing_cohort_id, signature, sender=node
         )
 
         events = [
@@ -279,7 +279,6 @@ def test_signing_ritual(
                 cohortId=signing_cohort_id, provider=node, signer=signer, signature=signature
             )
         ]
-        submitted_signatures.append(signature)
 
     events = [event for event in tx.events if event.event_name == "SigningCohortDeployed"]
     assert events == [
@@ -317,7 +316,7 @@ def test_signing_ritual(
         assert signing_coordinator.isSigner(signing_cohort_id, node.address)
         signer = signing_coordinator.getSigner(signing_cohort_id, node.address)
         assert signer.provider == node.address
-        assert len(signer.signature) > 0, "signature posted"
+        assert signer.signerAddress == signers[i]
 
     # check deployed multisig
     assert (
@@ -335,8 +334,16 @@ def test_signing_ritual(
     assert cohort_multisig.owner() == signing_coordinator_child.address
 
     # ensure signatures are valid for deployed cohort multisig
-    # (just need something signed by signers, why not reuse the data
-    #  from posting of the signature in the ritual)
+    submitted_signatures = []
+    data_hash = signing_coordinator.getSigningCohortDataHash(signing_cohort_id, node.address)
+    signable_message = encode_defunct(data_hash)
+
+    # submit signatures
+    for i, node in enumerate(nodes):
+        signer = signers[i]
+        signature = signer.sign_message(signable_message).encode_rsv()
+        submitted_signatures.append(signature)
+
     data_hash = _hash_eip191_message(signable_message)
 
     # signatures must be all unique (no repeats)
