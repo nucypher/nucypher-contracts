@@ -42,7 +42,6 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     struct SigningCohortParticipant {
         address provider;
         address signerAddress;
-        bytes signature;
         uint256[20] gap;
     }
 
@@ -277,18 +276,17 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         return signingCohort.conditions[chainId];
     }
 
-    function getSigningCohortDataHash(uint32 cohortId) public view returns (bytes32) {
+    function getSigningCohortDataHash(
+        uint32 cohortId,
+        address operator
+    ) public view returns (bytes32) {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
         require(signingCohort.initiator != address(0), "Signing cohort not set");
-        bytes32 dataHash = keccak256(abi.encode(cohortId, signingCohort.authority));
+        bytes32 dataHash = keccak256(abi.encode(cohortId, signingCohort.authority, operator));
         return dataHash;
     }
 
-    function postSigningCohortSignature(
-        uint32 cohortId,
-        address signerAddress,
-        bytes calldata signature
-    ) external {
+    function postSigningCohortSignature(uint32 cohortId, bytes calldata signature) external {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
         require(
             getSigningCohortState(signingCohort) == SigningCohortState.AWAITING_SIGNATURES,
@@ -299,15 +297,13 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
 
         SigningCohortParticipant storage participant = getSigner(signingCohort, provider);
         require(participant.provider != address(0), "Participant not part of signing ritual");
-        require(participant.signature.length == 0, "Node already posted signature");
+        require(participant.signerAddress == address(0), "Node already posted signature");
         require(application.authorizedStake(provider) > 0, "Not enough authorization");
 
-        bytes32 dataHash = getSigningCohortDataHash(cohortId);
-        address recovered = dataHash.toEthSignedMessageHash().recover(signature);
-        require(recovered == signerAddress, "Signer signature mismatch");
+        bytes32 dataHash = getSigningCohortDataHash(cohortId, msg.sender);
+        address signerAddress = dataHash.toEthSignedMessageHash().recover(signature);
 
         participant.signerAddress = signerAddress;
-        participant.signature = signature;
         signingCohort.totalSignatures++;
 
         emit SigningCohortSignaturePosted(cohortId, provider, signerAddress, signature);
