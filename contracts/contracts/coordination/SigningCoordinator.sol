@@ -42,6 +42,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     struct SigningCohortParticipant {
         address provider;
         address signerAddress;
+        bytes signingRequestStaticKey;
         uint256[20] gap;
     }
 
@@ -286,7 +287,11 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         return dataHash;
     }
 
-    function postSigningCohortSignature(uint32 cohortId, bytes calldata signature) external {
+    function postSigningCohortData(
+        uint32 cohortId,
+        bytes calldata signature,
+        bytes calldata signingRequestStaticKey
+    ) external {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
         require(
             getSigningCohortState(signingCohort) == SigningCohortState.AWAITING_SIGNATURES,
@@ -305,6 +310,16 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
 
         participant.signerAddress = signerAddress;
         signingCohort.totalSignatures++;
+
+        require(
+            participant.signingRequestStaticKey.length == 0,
+            "Node already provided signing request static key"
+        );
+        require(
+            signingRequestStaticKey.length == 42,
+            "Invalid length for signing request static key"
+        );
+        participant.signingRequestStaticKey = signingRequestStaticKey;
 
         emit SigningCohortSignaturePosted(cohortId, provider, signerAddress, signature);
 
