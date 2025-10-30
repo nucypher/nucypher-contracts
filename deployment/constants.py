@@ -51,6 +51,11 @@ ADDITIONAL_TEMPORARY_TAPIR_NODES = {
     "0xb947c457a14d38229C7C5188bcc0B8925458AF04": "0xd8b9aB3f5Da9C0428a95d56b53f8D996c03a7093",
 }
 
+TESTNET_PROVIDERS = {
+    LYNX: list(sorted(LYNX_NODES, key=lambda x: int(x, 16))),
+    TAPIR: list(sorted(TAPIR_NODES, key=lambda x: int(x, 16))),
+}
+
 #
 # Contracts
 #
