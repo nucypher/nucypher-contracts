@@ -1,3 +1,5 @@
+import os
+
 import ape
 import pytest
 from eth.constants import ZERO_ADDRESS
@@ -253,6 +255,9 @@ def test_signing_ritual(
 
     for n in nodes:
         assert signing_coordinator.isSigner(signing_cohort_id, n.address)
+        assert not signing_coordinator.getSigner(
+            signing_cohort_id, n.address
+        ).signingRequestStaticKey
 
     assert (
         signing_coordinator.getSigningCohortState(signing_cohort_id)
@@ -262,13 +267,14 @@ def test_signing_ritual(
     signable_message = None
 
     # submit signatures
+    signing_request_static_keys = [os.urandom(42) for _ in nodes]
     for i, node in enumerate(nodes):
         signer = signers[i]
         data_hash = signing_coordinator.getSigningCohortDataHash(signing_cohort_id, node.address)
         signable_message = encode_defunct(data_hash)
         signature = signer.sign_message(signable_message).encode_rsv()
-        tx = signing_coordinator.postSigningCohortSignature(
-            signing_cohort_id, signature, sender=node
+        tx = signing_coordinator.postSigningCohortData(
+            signing_cohort_id, signature, signing_request_static_keys[i], sender=node
         )
 
         events = [
@@ -317,6 +323,7 @@ def test_signing_ritual(
         signer = signing_coordinator.getSigner(signing_cohort_id, node.address)
         assert signer.provider == node.address
         assert signer.signerAddress == signers[i]
+        assert signer.signingRequestStaticKey == signing_request_static_keys[i]
 
     # check deployed multisig
     assert (
