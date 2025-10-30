@@ -131,6 +131,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
 
     bytes32 public constant FEE_MODEL_MANAGER_ROLE = keccak256("FEE_MODEL_MANAGER_ROLE");
     bytes32 public constant HANDOVER_SUPERVISOR_ROLE = keccak256("HANDOVER_SUPERVISOR_ROLE");
+    uint256 public constant DECRYPTION_REQUEST_KEY_LENGTH = 42;
 
     ITACoChildApplication public immutable application;
     uint96 private immutable minAuthorization; // TODO use child app for checking eligibility
@@ -495,7 +496,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         );
 
         require(
-            decryptionRequestStaticKey.length == 42,
+            decryptionRequestStaticKey.length == DECRYPTION_REQUEST_KEY_LENGTH,
             "Invalid length for decryption request static key"
         );
 
@@ -584,7 +585,7 @@ contract Coordinator is Initializable, AccessControlDefaultAdminRulesUpgradeable
         require(isRitualActive(ritualId), "Ritual is not active");
         require(transcript.length > 0, "Parameters can't be empty");
         require(
-            decryptionRequestStaticKey.length == 42,
+            decryptionRequestStaticKey.length == DECRYPTION_REQUEST_KEY_LENGTH,
             "Invalid length for decryption request static key"
         );
 
