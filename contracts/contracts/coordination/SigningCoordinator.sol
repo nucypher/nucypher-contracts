@@ -61,6 +61,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     }
 
     bytes32 public constant INITIATOR_ROLE = keccak256("INITIATOR_ROLE");
+    uint256 public constant SIGNING_REQUEST_KEY_LENGTH = 42;
 
     mapping(uint32 => SigningCohort) public signingCohorts;
     uint256 public numberOfSigningCohorts;
@@ -295,7 +296,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         SigningCohort storage signingCohort = signingCohorts[cohortId];
         require(
             getSigningCohortState(signingCohort) == SigningCohortState.AWAITING_SIGNATURES,
-            "Not waiting for transcripts"
+            "Not waiting for signatures"
         );
         address provider = application.operatorToStakingProvider(msg.sender);
         require(provider != address(0), "Operator has no bond with staking provider");
@@ -316,7 +317,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
             "Node already provided signing request static key"
         );
         require(
-            signingRequestStaticKey.length == 42,
+            signingRequestStaticKey.length == SIGNING_REQUEST_KEY_LENGTH,
             "Invalid length for signing request static key"
         );
         participant.signingRequestStaticKey = signingRequestStaticKey;
