@@ -52,8 +52,8 @@ ADDITIONAL_TEMPORARY_TAPIR_NODES = {
 }
 
 TESTNET_PROVIDERS = {
-    LYNX: list(sorted(LYNX_NODES)),
-    TAPIR: list(sorted(TAPIR_NODES))
+    LYNX: list(sorted(LYNX_NODES, key=lambda x: int(x, 16))),
+    TAPIR: list(sorted(TAPIR_NODES, key=lambda x: int(x, 16))),
 }
 
 #
