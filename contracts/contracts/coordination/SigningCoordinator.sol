@@ -42,6 +42,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     struct SigningCohortParticipant {
         address provider;
         address signerAddress;
+        bytes signingRequestStaticKey;
         uint256[20] gap;
     }
 
@@ -60,6 +61,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     }
 
     bytes32 public constant INITIATOR_ROLE = keccak256("INITIATOR_ROLE");
+    uint256 public constant SIGNING_REQUEST_KEY_LENGTH = 42;
 
     mapping(uint32 => SigningCohort) public signingCohorts;
     uint256 public numberOfSigningCohorts;
@@ -286,11 +288,15 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         return dataHash;
     }
 
-    function postSigningCohortSignature(uint32 cohortId, bytes calldata signature) external {
+    function postSigningCohortData(
+        uint32 cohortId,
+        bytes calldata signature,
+        bytes calldata signingRequestStaticKey
+    ) external {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
         require(
             getSigningCohortState(signingCohort) == SigningCohortState.AWAITING_SIGNATURES,
-            "Not waiting for transcripts"
+            "Not waiting for signatures"
         );
         address provider = application.operatorToStakingProvider(msg.sender);
         require(provider != address(0), "Operator has no bond with staking provider");
@@ -305,6 +311,16 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
 
         participant.signerAddress = signerAddress;
         signingCohort.totalSignatures++;
+
+        require(
+            participant.signingRequestStaticKey.length == 0,
+            "Node already provided signing request static key"
+        );
+        require(
+            signingRequestStaticKey.length == SIGNING_REQUEST_KEY_LENGTH,
+            "Invalid length for signing request static key"
+        );
+        participant.signingRequestStaticKey = signingRequestStaticKey;
 
         emit SigningCohortSignaturePosted(cohortId, provider, signerAddress, signature);
 
