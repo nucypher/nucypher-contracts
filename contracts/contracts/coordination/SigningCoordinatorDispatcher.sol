@@ -2,11 +2,12 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
+import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "./ISigningCoordinatorChild.sol";
 import "./IL1Sender.sol";
 
-contract SigningCoordinatorDispatcher is Ownable {
+contract SigningCoordinatorDispatcher is Initializable, OwnableUpgradeable {
     struct DispatchTarget {
         address l1Sender;
         address signingCoordinatorChild;
@@ -15,9 +16,14 @@ contract SigningCoordinatorDispatcher is Ownable {
     address public immutable signingCoordinator;
     mapping(uint256 => DispatchTarget) public dispatchMap;
 
-    constructor(address _signingCoordinator) Ownable(msg.sender) {
+    constructor(address _signingCoordinator) {
         require(_signingCoordinator.code.length > 0, "Signing app must be contract");
         signingCoordinator = _signingCoordinator;
+        _disableInitializers();
+    }
+
+    function initialize() external initializer {
+        __Ownable_init(msg.sender);
     }
 
     function register(

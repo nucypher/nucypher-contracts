@@ -96,29 +96,42 @@ def signing_coordinator(
         application.address,
         sender=deployer,
     )
-    proxy = oz_dependency.TransparentUpgradeableProxy.deploy(
+    coordinator_proxy = oz_dependency.TransparentUpgradeableProxy.deploy(
         contract.address,
         deployer,
         b"",
         sender=deployer,
     )
-    proxy_contract = project.SigningCoordinator.at(proxy.address)
+    signing_coordinator_proxy = project.SigningCoordinator.at(coordinator_proxy.address)
 
+    # deploy proxied dispatcher
     signing_coordinator_dispatcher = project.SigningCoordinatorDispatcher.deploy(
-        proxy_contract.address,
+        signing_coordinator_proxy.address,
         sender=deployer,
     )
-    proxy_contract.initialize(
+    encoded_initializer_function = signing_coordinator_dispatcher.initialize.encode_input()
+    dispatcher_proxy = oz_dependency.TransparentUpgradeableProxy.deploy(
+        signing_coordinator_dispatcher.address,
+        deployer,
+        encoded_initializer_function,
+        sender=deployer,
+    )
+    dispatcher_proxy_contract = project.SigningCoordinatorDispatcher.at(dispatcher_proxy.address)
+
+    # initialize signing coordinator proxy
+    signing_coordinator_proxy.initialize(
         TIMEOUT,
         MAX_DKG_SIZE,
-        signing_coordinator_dispatcher.address,
+        dispatcher_proxy_contract.address,
         deployer.address,
         sender=deployer,
     )
 
-    proxy_contract.grantRole(proxy_contract.INITIATOR_ROLE(), initiator, sender=deployer)
+    signing_coordinator_proxy.grantRole(
+        signing_coordinator_proxy.INITIATOR_ROLE(), initiator, sender=deployer
+    )
 
-    return proxy_contract
+    return signing_coordinator_proxy
 
 
 def _signing_coordinator_child_deployment(project, oz_dependency, deployer, allowed_caller):
