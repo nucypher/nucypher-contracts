@@ -1,0 +1,25 @@
+deployment:
+  name: lynx-update-child-signing-infra-base
+  chain_id: 84532  # base
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: lynx-update-child-signing-infra-base.json
+
+constants:
+  L1_MESSENGER: "0xC34855F4De64F1840e5686e64278da901e261f20"
+  L2_MESSENGER: "0x4200000000000000000000000000000000000007"
+  SIGNING_COORDINATOR_DISPATCHER: "0x66a720797DDA0b103ed54158600F918Bb775aCA4"
+  GAS_LIMIT: 500000
+
+contracts:
+  # to be deployed on L1
+  - OpL1Sender:
+      constructor:
+        _dispatcher: $SIGNING_COORDINATOR_DISPATCHER
+        _messenger: $L1_MESSENGER
+        _gasLimit: $GAS_LIMIT
+  # to be deployed on L2 (same chain as script)
+  - OpL2Receiver:
+      constructor:
+        _messenger: $L2_MESSENGER
