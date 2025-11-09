@@ -688,7 +688,7 @@
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "SigningCoordinator": {
-            "address": "0xF81a0568c33Ed6728De7b0D1030aD89A93f028DA",
+            "address": "0xAb5572e5f1A07EA73E878E5c0f8AEb7ada17E573",
             "abi": [
                 {
                     "type": "constructor",
@@ -1070,6 +1070,12 @@
                             "indexed": true
                         },
                         {
+                            "name": "signer",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        },
+                        {
                             "name": "signature",
                             "type": "bytes",
                             "internalType": "bytes",
@@ -1120,6 +1126,19 @@
                             "name": "",
                             "type": "bytes32",
                             "internalType": "bytes32"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "SIGNING_REQUEST_KEY_LENGTH",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256",
+                            "internalType": "uint256"
                         }
                     ]
                 },
@@ -1316,14 +1335,19 @@
                                     "internalType": "address"
                                 },
                                 {
-                                    "name": "operator",
+                                    "name": "signerAddress",
                                     "type": "address",
                                     "internalType": "address"
                                 },
                                 {
-                                    "name": "signature",
+                                    "name": "signingRequestStaticKey",
                                     "type": "bytes",
                                     "internalType": "bytes"
+                                },
+                                {
+                                    "name": "gap",
+                                    "type": "uint256[20]",
+                                    "internalType": "uint256[20]"
                                 }
                             ],
                             "internalType": "struct SigningCoordinator.SigningCohortParticipant"
@@ -1352,14 +1376,19 @@
                                     "internalType": "address"
                                 },
                                 {
-                                    "name": "operator",
+                                    "name": "signerAddress",
                                     "type": "address",
                                     "internalType": "address"
                                 },
                                 {
-                                    "name": "signature",
+                                    "name": "signingRequestStaticKey",
                                     "type": "bytes",
                                     "internalType": "bytes"
+                                },
+                                {
+                                    "name": "gap",
+                                    "type": "uint256[20]",
+                                    "internalType": "uint256[20]"
                                 }
                             ],
                             "internalType": "struct SigningCoordinator.SigningCohortParticipant[]"
@@ -1399,6 +1428,11 @@
                             "name": "cohortId",
                             "type": "uint32",
                             "internalType": "uint32"
+                        },
+                        {
+                            "name": "operator",
+                            "type": "address",
+                            "internalType": "address"
                         }
                     ],
                     "outputs": [
@@ -1695,7 +1729,7 @@
                 },
                 {
                     "type": "function",
-                    "name": "postSigningCohortSignature",
+                    "name": "postSigningCohortData",
                     "stateMutability": "nonpayable",
                     "inputs": [
                         {
@@ -1705,6 +1739,11 @@
                         },
                         {
                             "name": "signature",
+                            "type": "bytes",
+                            "internalType": "bytes"
+                        },
+                        {
+                            "name": "signingRequestStaticKey",
                             "type": "bytes",
                             "internalType": "bytes"
                         }
@@ -1911,8 +1950,8 @@
                     ]
                 }
             ],
-            "tx_hash": "0x0452f290abfbfea99590e2b672eaffd326f92b21839df8955a7e6f9f4dd10671",
-            "block_number": 8390383,
+            "tx_hash": "0xf71b8701a759a5adc17f815be3aa70d5e5bd49d114d2797cc7553913527ad8e0",
+            "block_number": 9593536,
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "SigningCoordinatorChild": {
@@ -2260,7 +2299,7 @@
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "SigningCoordinatorDispatcher": {
-            "address": "0xC1Dc6061a0A99e31904328e3064fF8f5bC001d36",
+            "address": "0x75380B6CD5FbF7271e57B60164b20Dc27f239966",
             "abi": [
                 {
                     "type": "constructor",
@@ -2272,6 +2311,16 @@
                             "internalType": "address"
                         }
                     ]
+                },
+                {
+                    "type": "error",
+                    "name": "InvalidInitialization",
+                    "inputs": []
+                },
+                {
+                    "type": "error",
+                    "name": "NotInitializing",
+                    "inputs": []
                 },
                 {
                     "type": "error",
@@ -2294,6 +2343,19 @@
                             "internalType": "address"
                         }
                     ]
+                },
+                {
+                    "type": "event",
+                    "name": "Initialized",
+                    "inputs": [
+                        {
+                            "name": "version",
+                            "type": "uint64",
+                            "internalType": "uint64",
+                            "indexed": false
+                        }
+                    ],
+                    "anonymous": false
                 },
                 {
                     "type": "event",
@@ -2374,6 +2436,13 @@
                             "internalType": "address"
                         }
                     ]
+                },
+                {
+                    "type": "function",
+                    "name": "initialize",
+                    "stateMutability": "nonpayable",
+                    "inputs": [],
+                    "outputs": []
                 },
                 {
                     "type": "function",
@@ -2458,8 +2527,8 @@
                     "outputs": []
                 }
             ],
-            "tx_hash": "0x6ca4d4df7fa14a188abe6c6fd2b482813e60fe007c731252af5e576b924bc6ff",
-            "block_number": 8390387,
+            "tx_hash": "0x8724f4ae9675b01b9298aa17c6c31a7bdb4836d9d42ff78638864a92ef573e70",
+            "block_number": 9593544,
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "TACoApplication": {
