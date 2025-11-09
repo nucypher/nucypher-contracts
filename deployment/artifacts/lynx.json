@@ -553,7 +553,7 @@
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "OpL1Sender": {
-            "address": "0x17d3f4cF42D18bc709E911F674132a795Bf2b1D1",
+            "address": "0xF429C1f2d42765FE2b04CC62ab037564C2C66e5E",
             "abi": [
                 {
                     "type": "constructor",
@@ -683,8 +683,8 @@
                     "outputs": []
                 }
             ],
-            "tx_hash": "0x8678468cb19d45d2d4e383bdda147f7f68d05fbdae34d73cd491d183bb0cccf0",
-            "block_number": 9593652,
+            "tx_hash": "0x9903c3be4d7e7e0b7638bb52850292adb780039b9ea1ab2d299e8a9b1136dcec",
+            "block_number": 9595247,
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "SigningCoordinator": {
@@ -10032,7 +10032,7 @@
     },
     "84532": {
         "OpL2Receiver": {
-            "address": "0x489287Ed5BdF7a35fEE411FBdCc47331093D0769",
+            "address": "0x9BA321B30173b433c68767961D6e53e420AEa382",
             "abi": [
                 {
                     "type": "constructor",
@@ -10140,12 +10140,12 @@
                     "outputs": []
                 }
             ],
-            "tx_hash": "0xc775bd02c6c3ece3abb909eb41e335aced5694e7945b5dde92af8650f8ee9122",
-            "block_number": 33466755,
+            "tx_hash": "0xe473bd42d00b2516d91a49f6863fe30f66c0f2b1739c5c771b35d8cf9de87978",
+            "block_number": 33477157,
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "SigningCoordinatorChild": {
-            "address": "0x543B9ae0c69692DfA21365600caa40b036f48ce5",
+            "address": "0xcc537b292d142dABe2424277596d8FFCC3e6A12D",
             "abi": [
                 {
                     "type": "constructor",
@@ -10484,12 +10484,12 @@
                     "outputs": []
                 }
             ],
-            "tx_hash": "0x5851a5622f0722b950019da3a2ed78a9d8cb18d479ac15e7381985bc425a9fca",
-            "block_number": 26128736,
+            "tx_hash": "0x69df870d8072902eb3850e34db9c9354c02b08b6915d0d4c360372124339ca52",
+            "block_number": 33477198,
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "ThresholdSigningMultisigCloneFactory": {
-            "address": "0x899B961131f0503572F4E9E25904D2c6940D286F",
+            "address": "0x418e991fD07cfA950855F820023AF6191E18B6df",
             "abi": [
                 {
                     "type": "constructor",
@@ -10611,8 +10611,8 @@
                     ]
                 }
             ],
-            "tx_hash": "0xff41f185b13db6e6dc949bd6fc6c1d1067821e98630ead9ff45900e61cd64571",
-            "block_number": 26128748,
+            "tx_hash": "0xe11920d17f1b6aa3032ad1f2dcba7c5178a7d900a9732a7679b68b225d9615ed",
+            "block_number": 33477209,
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         }
     }
