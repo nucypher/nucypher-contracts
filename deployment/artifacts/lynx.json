@@ -553,7 +553,7 @@
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "OpL1Sender": {
-            "address": "0xc5A34a725757a9B467147c1cf60f7a318308Fe05",
+            "address": "0x17d3f4cF42D18bc709E911F674132a795Bf2b1D1",
             "abi": [
                 {
                     "type": "constructor",
@@ -683,8 +683,8 @@
                     "outputs": []
                 }
             ],
-            "tx_hash": "0xd22c6d3aed6152fc5299412dd70d6496165a2e2d137a6940827f1860c85fe814",
-            "block_number": 8391146,
+            "tx_hash": "0x8678468cb19d45d2d4e383bdda147f7f68d05fbdae34d73cd491d183bb0cccf0",
+            "block_number": 9593652,
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "SigningCoordinator": {
@@ -10032,7 +10032,7 @@
     },
     "84532": {
         "OpL2Receiver": {
-            "address": "0xc73383491f7F5a4A8e25fBd56bc611D879F63951",
+            "address": "0x489287Ed5BdF7a35fEE411FBdCc47331093D0769",
             "abi": [
                 {
                     "type": "constructor",
@@ -10140,8 +10140,8 @@
                     "outputs": []
                 }
             ],
-            "tx_hash": "0x9c59f0387d96eb868d60a241611665d8b066a7f76801025602c8e6c9292716ea",
-            "block_number": 26128701,
+            "tx_hash": "0xc775bd02c6c3ece3abb909eb41e335aced5694e7945b5dde92af8650f8ee9122",
+            "block_number": 33466755,
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "SigningCoordinatorChild": {
