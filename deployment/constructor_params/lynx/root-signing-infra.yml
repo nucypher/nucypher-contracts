@@ -18,6 +18,9 @@ contracts:
       constructor:
         _application: $TACO_APPLICATION
   - SigningCoordinatorDispatcher:
+      proxy:
+        constructor:
+          _data: $encode:initialize
       constructor:
         _signingCoordinator: $SigningCoordinator
   # child contracts on root itself (no L1 sender since on same chain)
