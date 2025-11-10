@@ -8,7 +8,7 @@ from deployment.constants import SUPPORTED_TACO_DOMAINS
 from deployment.params import Transactor
 
 
-@click.command(cls=ConnectedProviderCommand, name="deploy-addition-chain-signing-cohort")
+@click.command(cls=ConnectedProviderCommand)
 @account_option()
 @network_option(required=True)
 @click.option(
