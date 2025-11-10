@@ -15,7 +15,7 @@ ape-infura = "*"
 ape-foundry = "*"
 flake8 = "*"
 isort = "*"
-nucypher-core = { git = "https://github.com/nucypher/nucypher-core.git", ref = "handover", subdirectory = "nucypher-core-python" }
+nucypher-core = { git = "https://github.com/nucypher/nucypher-core.git", ref = "main", subdirectory = "nucypher-core-python" }
 pre-commit = "*"
 tox = "*"
 pyyaml = "*"

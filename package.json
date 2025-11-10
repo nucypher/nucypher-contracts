@@ -1,6 +1,6 @@
 {
   "name": "@nucypher/nucypher-contracts",
-  "version": "0.26.0-alpha.1",
+  "version": "0.26.0-alpha.2",
   "license": "AGPL-3.0-or-later",
   "description": "Threshold Access Control (TACo) Smart Contracts",
   "author": "NuCypher",

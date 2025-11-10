@@ -553,7 +553,7 @@
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "OpL1Sender": {
-            "address": "0xc5A34a725757a9B467147c1cf60f7a318308Fe05",
+            "address": "0xF429C1f2d42765FE2b04CC62ab037564C2C66e5E",
             "abi": [
                 {
                     "type": "constructor",
@@ -683,12 +683,12 @@
                     "outputs": []
                 }
             ],
-            "tx_hash": "0xd22c6d3aed6152fc5299412dd70d6496165a2e2d137a6940827f1860c85fe814",
-            "block_number": 8391146,
+            "tx_hash": "0x9903c3be4d7e7e0b7638bb52850292adb780039b9ea1ab2d299e8a9b1136dcec",
+            "block_number": 9595247,
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "SigningCoordinator": {
-            "address": "0xF81a0568c33Ed6728De7b0D1030aD89A93f028DA",
+            "address": "0x4A0cdd9f96D980A898C34efdD7F17431572a8EEe",
             "abi": [
                 {
                     "type": "constructor",
@@ -1070,6 +1070,12 @@
                             "indexed": true
                         },
                         {
+                            "name": "signer",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        },
+                        {
                             "name": "signature",
                             "type": "bytes",
                             "internalType": "bytes",
@@ -1120,6 +1126,19 @@
                             "name": "",
                             "type": "bytes32",
                             "internalType": "bytes32"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "SIGNING_REQUEST_KEY_LENGTH",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint256",
+                            "internalType": "uint256"
                         }
                     ]
                 },
@@ -1316,14 +1335,19 @@
                                     "internalType": "address"
                                 },
                                 {
-                                    "name": "operator",
+                                    "name": "signerAddress",
                                     "type": "address",
                                     "internalType": "address"
                                 },
                                 {
-                                    "name": "signature",
+                                    "name": "signingRequestStaticKey",
                                     "type": "bytes",
                                     "internalType": "bytes"
+                                },
+                                {
+                                    "name": "gap",
+                                    "type": "uint256[20]",
+                                    "internalType": "uint256[20]"
                                 }
                             ],
                             "internalType": "struct SigningCoordinator.SigningCohortParticipant"
@@ -1352,14 +1376,19 @@
                                     "internalType": "address"
                                 },
                                 {
-                                    "name": "operator",
+                                    "name": "signerAddress",
                                     "type": "address",
                                     "internalType": "address"
                                 },
                                 {
-                                    "name": "signature",
+                                    "name": "signingRequestStaticKey",
                                     "type": "bytes",
                                     "internalType": "bytes"
+                                },
+                                {
+                                    "name": "gap",
+                                    "type": "uint256[20]",
+                                    "internalType": "uint256[20]"
                                 }
                             ],
                             "internalType": "struct SigningCoordinator.SigningCohortParticipant[]"
@@ -1399,6 +1428,11 @@
                             "name": "cohortId",
                             "type": "uint32",
                             "internalType": "uint32"
+                        },
+                        {
+                            "name": "operator",
+                            "type": "address",
+                            "internalType": "address"
                         }
                     ],
                     "outputs": [
@@ -1695,7 +1729,7 @@
                 },
                 {
                     "type": "function",
-                    "name": "postSigningCohortSignature",
+                    "name": "postSigningCohortData",
                     "stateMutability": "nonpayable",
                     "inputs": [
                         {
@@ -1705,6 +1739,11 @@
                         },
                         {
                             "name": "signature",
+                            "type": "bytes",
+                            "internalType": "bytes"
+                        },
+                        {
+                            "name": "signingRequestStaticKey",
                             "type": "bytes",
                             "internalType": "bytes"
                         }
@@ -1911,12 +1950,12 @@
                     ]
                 }
             ],
-            "tx_hash": "0x0452f290abfbfea99590e2b672eaffd326f92b21839df8955a7e6f9f4dd10671",
-            "block_number": 8390383,
+            "tx_hash": "0x2c5f2a3f124b46338b9e97178ae821fe3f75256e7538b8bfac101e06a6d84d45",
+            "block_number": 9595153,
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "SigningCoordinatorChild": {
-            "address": "0x664a829AfdAB29fE53417fd8F069228811500dE8",
+            "address": "0xC3085b0feB8C348D0BD7fabF4299c93dc2aE11d7",
             "abi": [
                 {
                     "type": "constructor",
@@ -2255,12 +2294,12 @@
                     "outputs": []
                 }
             ],
-            "tx_hash": "0x2058616b80f2c811112a114383f5f15f88a47a92c94f540f305cd8b0ddb2f05c",
-            "block_number": 8390403,
+            "tx_hash": "0xe32268eb5f109a5ef883604bae1d2e190cc68ad0c4daafa5665b4b7411980243",
+            "block_number": 9595176,
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "SigningCoordinatorDispatcher": {
-            "address": "0xC1Dc6061a0A99e31904328e3064fF8f5bC001d36",
+            "address": "0xa99FF0056A98AA8800c769C4eCB4fA103e38E95E",
             "abi": [
                 {
                     "type": "constructor",
@@ -2272,6 +2311,16 @@
                             "internalType": "address"
                         }
                     ]
+                },
+                {
+                    "type": "error",
+                    "name": "InvalidInitialization",
+                    "inputs": []
+                },
+                {
+                    "type": "error",
+                    "name": "NotInitializing",
+                    "inputs": []
                 },
                 {
                     "type": "error",
@@ -2294,6 +2343,19 @@
                             "internalType": "address"
                         }
                     ]
+                },
+                {
+                    "type": "event",
+                    "name": "Initialized",
+                    "inputs": [
+                        {
+                            "name": "version",
+                            "type": "uint64",
+                            "internalType": "uint64",
+                            "indexed": false
+                        }
+                    ],
+                    "anonymous": false
                 },
                 {
                     "type": "event",
@@ -2374,6 +2436,13 @@
                             "internalType": "address"
                         }
                     ]
+                },
+                {
+                    "type": "function",
+                    "name": "initialize",
+                    "stateMutability": "nonpayable",
+                    "inputs": [],
+                    "outputs": []
                 },
                 {
                     "type": "function",
@@ -2458,8 +2527,8 @@
                     "outputs": []
                 }
             ],
-            "tx_hash": "0x6ca4d4df7fa14a188abe6c6fd2b482813e60fe007c731252af5e576b924bc6ff",
-            "block_number": 8390387,
+            "tx_hash": "0xf559688736cd4247268b894636b9918d0fb40fc2b25e2287220710809ffc5e99",
+            "block_number": 9595161,
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "TACoApplication": {
@@ -4459,7 +4528,7 @@
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "ThresholdSigningMultisigCloneFactory": {
-            "address": "0xc7590Ba497d1A7AB82c1BD61f7Dcd2685990986e",
+            "address": "0x18B04d0eB283086C2DaF41F715acDf3f974290Ad",
             "abi": [
                 {
                     "type": "constructor",
@@ -4581,8 +4650,8 @@
                     ]
                 }
             ],
-            "tx_hash": "0xb73234776ccbc827fa6bac968eae4ab8619b3dc3b365c48b031a2a0c27fd1d80",
-            "block_number": 8390411,
+            "tx_hash": "0x1057e9da3709920e6bb8a0277f673f841acaaa1777636b4cffce247009a1c2fe",
+            "block_number": 9595185,
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         }
     },
@@ -9963,7 +10032,7 @@
     },
     "84532": {
         "OpL2Receiver": {
-            "address": "0xc73383491f7F5a4A8e25fBd56bc611D879F63951",
+            "address": "0x9BA321B30173b433c68767961D6e53e420AEa382",
             "abi": [
                 {
                     "type": "constructor",
@@ -10071,12 +10140,12 @@
                     "outputs": []
                 }
             ],
-            "tx_hash": "0x9c59f0387d96eb868d60a241611665d8b066a7f76801025602c8e6c9292716ea",
-            "block_number": 26128701,
+            "tx_hash": "0xe473bd42d00b2516d91a49f6863fe30f66c0f2b1739c5c771b35d8cf9de87978",
+            "block_number": 33477157,
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "SigningCoordinatorChild": {
-            "address": "0x543B9ae0c69692DfA21365600caa40b036f48ce5",
+            "address": "0xcc537b292d142dABe2424277596d8FFCC3e6A12D",
             "abi": [
                 {
                     "type": "constructor",
@@ -10415,12 +10484,12 @@
                     "outputs": []
                 }
             ],
-            "tx_hash": "0x5851a5622f0722b950019da3a2ed78a9d8cb18d479ac15e7381985bc425a9fca",
-            "block_number": 26128736,
+            "tx_hash": "0x69df870d8072902eb3850e34db9c9354c02b08b6915d0d4c360372124339ca52",
+            "block_number": 33477198,
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         },
         "ThresholdSigningMultisigCloneFactory": {
-            "address": "0x899B961131f0503572F4E9E25904D2c6940D286F",
+            "address": "0x418e991fD07cfA950855F820023AF6191E18B6df",
             "abi": [
                 {
                     "type": "constructor",
@@ -10542,8 +10611,8 @@
                     ]
                 }
             ],
-            "tx_hash": "0xff41f185b13db6e6dc949bd6fc6c1d1067821e98630ead9ff45900e61cd64571",
-            "block_number": 26128748,
+            "tx_hash": "0xe11920d17f1b6aa3032ad1f2dcba7c5178a7d900a9732a7679b68b225d9615ed",
+            "block_number": 33477209,
             "deployer": "0x3B42d26E19FF860bC4dEbB920DD8caA53F93c600"
         }
     }
