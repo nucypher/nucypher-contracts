@@ -34,6 +34,9 @@ contract SigningCoordinatorDispatcher is Initializable, OwnableUpgradeable {
         require(chainId != 0, "Invalid chain ID");
         if (chainId != block.chainid) {
             require(l1Sender != address(0), "Invalid L1 sender");
+        } else {
+            // same chain so no L1 sender needed
+            require(l1Sender == address(0), "L1 sender not needed for same chain");
         }
         require(signingCoordinatorChild != address(0), "Invalid target");
         dispatchMap[chainId] = DispatchTarget(l1Sender, signingCoordinatorChild);
