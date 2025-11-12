@@ -32,7 +32,12 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     event SigningCohortDeployed(uint32 indexed cohortId, uint256 chainId);
 
     // Cohort Administration
-    event SigningCohortConditionsSet(uint32 indexed cohortId, uint256 chainId, bytes conditions);
+    event SigningCohortConditionsSet(
+        uint32 indexed cohortId,
+        address indexed admin,
+        uint256 chainId,
+        bytes conditions
+    );
 
     // Protocol Administration
     event TimeoutChanged(uint32 oldTimeout, uint32 newTimeout);
@@ -46,6 +51,11 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         uint256[20] gap;
     }
 
+    struct ServerAdmin {
+        bool active;
+        mapping(uint256 chainId => bytes conditions) conditions;
+    }
+
     struct SigningCohort {
         address initiator;
         uint32 initTimestamp;
@@ -57,7 +67,9 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         uint16 threshold;
         SigningCohortParticipant[] signers;
         uint256[] chains;
-        mapping(uint256 => bytes) conditions; // TODO: chainId -> condition itself or hash(condition)
+        mapping(uint256 chainId => bytes conditions) conditions; // TODO: chainId -> condition itself or hash(condition)
+        address[] serverAdmins;
+        mapping(address serverAdmin => ServerAdmin) serverAdminConditions;
     }
 
     bytes32 public constant INITIATOR_ROLE = keccak256("INITIATOR_ROLE");
@@ -245,6 +257,25 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         return id;
     }
 
+    function setServerAdmin(uint32 cohortId, address[] memory serverAdmins) external {
+        SigningCohort storage signingCohort = signingCohorts[cohortId];
+        require(isCohortActive(signingCohort), "Cohort not active");
+        require(
+            signingCohort.authority == msg.sender,
+            "Only the cohort authority can set server admin"
+        );
+        for (uint256 i = 0; i < signingCohort.serverAdmins.length; i++) {
+            address serverAdmin = signingCohort.serverAdmins[i];
+            signingCohort.serverAdminConditions[serverAdmin].active = false;
+        }
+        signingCohort.serverAdmins = serverAdmins;
+        for (uint256 i = 0; i < signingCohort.serverAdmins.length; i++) {
+            address serverAdmin = signingCohort.serverAdmins[i];
+            signingCohort.serverAdminConditions[serverAdmin].active = true;
+        }
+        // TODO emit event
+    }
+
     function setSigningCohortConditions(
         uint32 cohortId,
         uint256 chainId,
@@ -252,10 +283,6 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     ) external {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
         require(isCohortActive(signingCohort), "Cohort not active");
-        require(
-            signingCohort.authority == msg.sender,
-            "Only the cohort authority can set conditions"
-        );
         // chainId must already be deployed for the cohort
         bool chainDeployed = false;
         for (uint256 i = 0; i < signingCohort.chains.length; i++) {
@@ -265,17 +292,45 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
             }
         }
         require(chainDeployed, "Not already deployed");
+        ServerAdmin storage serverAdmin = signingCohort.serverAdminConditions[msg.sender];
 
-        signingCohort.conditions[chainId] = conditions;
-        emit SigningCohortConditionsSet(cohortId, chainId, conditions);
+        require(
+            signingCohort.authority == msg.sender || serverAdmin.active,
+            "Only the cohort authority or a server admin can set conditions"
+        );
+        if (serverAdmin.active) {
+            serverAdmin.conditions[chainId] = conditions;
+        } else {
+            signingCohort.conditions[chainId] = conditions;
+        }
+        emit SigningCohortConditionsSet(cohortId, msg.sender, chainId, conditions);
     }
 
     function getSigningCohortConditions(
         uint32 cohortId,
         uint256 chainId
-    ) external view returns (bytes memory) {
+    ) external view returns (bytes[] memory) {
+        return getSigningCohortConditions(cohortId, chainId, address(0));
+    }
+
+    function getSigningCohortConditions(
+        uint32 cohortId,
+        uint256 chainId,
+        address serverAdmin
+    ) public view returns (bytes[] memory conditions) {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
-        return signingCohort.conditions[chainId];
+        bytes memory coreConditions = signingCohort.conditions[chainId];
+        bytes memory serverAdminConditions = signingCohort
+            .serverAdminConditions[serverAdmin]
+            .conditions[chainId];
+        if (serverAdminConditions.length > 0) {
+            conditions = new bytes[](2);
+            conditions[1] = serverAdminConditions;
+        } else {
+            conditions = new bytes[](1);
+        }
+        conditions[0] = coreConditions;
+        return conditions;
     }
 
     function getSigningCohortDataHash(
