@@ -68,6 +68,7 @@ def test_signing_multisig_add_signer(
     multisig.addSigner(new_signer.address, sender=deployer)
 
     assert new_signer.address in multisig.getSigners()
+    assert multisig.isSigner(new_signer.address) is True
     assert len(multisig.getSigners()) == len(initial_signers) + 1
 
 
@@ -82,6 +83,7 @@ def test_signing_multisig_remove_signer(
     multisig.removeSigner(signer_to_remove.address, sender=deployer)
 
     assert signer_to_remove.address not in multisig.getSigners()
+    assert multisig.isSigner(signer_to_remove.address) is False
     assert len(multisig.getSigners()) == len(initial_signers) - 1
 
 
@@ -153,7 +155,9 @@ def test_signing_multisig_replace_signer(
     multisig.replaceSigner(signer_to_replace.address, new_signer.address, sender=deployer)
 
     assert signer_to_replace.address not in multisig.getSigners()
+    assert multisig.isSigner(signer_to_replace.address) is False
     assert new_signer.address in multisig.getSigners()
+    assert multisig.isSigner(new_signer.address) is True
     assert len(multisig.getSigners()) == len(initial_signers)
 
 
@@ -206,6 +210,7 @@ def test_signing_multisig_update_parameters_bulk_replacement(
     assert threshold_signing_multisig.threshold() == new_threshold
     for old_signer in initial_signers:
         assert old_signer.address not in updated_signers
+        assert threshold_signing_multisig.isSigner(old_signer.address) is False
 
     message = b"Test message"
     signable_message = encode_defunct(primitive=message)
@@ -258,8 +263,10 @@ def test_signing_multisig_update_parameters_bulk_change_no_replacement(
     assert len(updated_signers) == NUM_SIGNERS * 2
     for signer in initial_signers:
         assert signer.address in updated_signers
+        assert threshold_signing_multisig.isSigner(signer.address) is True
     for signer in new_signers:
         assert signer.address in updated_signers
+        assert threshold_signing_multisig.isSigner(signer.address) is True
     assert threshold_signing_multisig.threshold() == new_threshold
 
     message = b"Test message"
