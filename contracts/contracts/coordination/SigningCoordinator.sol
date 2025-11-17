@@ -51,8 +51,9 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         uint256[20] gap;
     }
 
-    struct ServerAdmin {
-        bool active;
+    struct Server {
+        address[] serverAdmins;
+        mapping(address serverAdmin => bool active) activeServerAdmins;
         mapping(uint256 chainId => bytes conditions) conditions;
     }
 
@@ -68,8 +69,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         SigningCohortParticipant[] signers;
         uint256[] chains;
         mapping(uint256 chainId => bytes conditions) conditions; // TODO: chainId -> condition itself or hash(condition)
-        address[] serverAdmins;
-        mapping(address serverAdmin => ServerAdmin) serverAdminConditions;
+        mapping(uint256 serverId => Server) serverConditions;
     }
 
     bytes32 public constant INITIATOR_ROLE = keccak256("INITIATOR_ROLE");
@@ -257,31 +257,32 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         return id;
     }
 
-    function setServerAdmin(uint32 cohortId, address[] memory serverAdmins) external {
+    function setServerAdmins(
+        uint32 cohortId,
+        uint256 serverId,
+        address[] memory serverAdmins
+    ) external {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
         require(isCohortActive(signingCohort), "Cohort not active");
         require(
             signingCohort.authority == msg.sender,
             "Only the cohort authority can set server admin"
         );
-        for (uint256 i = 0; i < signingCohort.serverAdmins.length; i++) {
-            address serverAdmin = signingCohort.serverAdmins[i];
-            signingCohort.serverAdminConditions[serverAdmin].active = false;
+        require(serverId > 0, "Server id can't be zero");
+        Server storage server = signingCohort.serverConditions[serverId];
+        for (uint256 i = 0; i < server.serverAdmins.length; i++) {
+            address serverAdmin = server.serverAdmins[i];
+            server.activeServerAdmins[serverAdmin] = false;
         }
-        signingCohort.serverAdmins = serverAdmins;
-        for (uint256 i = 0; i < signingCohort.serverAdmins.length; i++) {
-            address serverAdmin = signingCohort.serverAdmins[i];
-            signingCohort.serverAdminConditions[serverAdmin].active = true;
+        server.serverAdmins = serverAdmins;
+        for (uint256 i = 0; i < server.serverAdmins.length; i++) {
+            address serverAdmin = server.serverAdmins[i];
+            server.activeServerAdmins[serverAdmin] = true;
         }
         // TODO emit event
     }
 
-    function setSigningCohortConditions(
-        uint32 cohortId,
-        uint256 chainId,
-        bytes calldata conditions
-    ) external {
-        SigningCohort storage signingCohort = signingCohorts[cohortId];
+    function conditionsCheck(SigningCohort storage signingCohort, uint256 chainId) internal view {
         require(isCohortActive(signingCohort), "Cohort not active");
         // chainId must already be deployed for the cohort
         bool chainDeployed = false;
@@ -292,40 +293,62 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
             }
         }
         require(chainDeployed, "Not already deployed");
-        ServerAdmin storage serverAdmin = signingCohort.serverAdminConditions[msg.sender];
+    }
+
+    function setSigningCohortConditions(
+        uint32 cohortId,
+        uint256 chainId,
+        bytes calldata conditions
+    ) external {
+        SigningCohort storage signingCohort = signingCohorts[cohortId];
+        conditionsCheck(signingCohort, chainId);
+        require(
+            signingCohort.authority == msg.sender,
+            "Only the cohort authority can set conditions"
+        );
+        signingCohort.conditions[chainId] = conditions;
+        emit SigningCohortConditionsSet(cohortId, msg.sender, chainId, conditions);
+    }
+
+    function setSigningCohortConditions(
+        uint32 cohortId,
+        uint256 chainId,
+        bytes calldata conditions,
+        uint256 serverId
+    ) external {
+        SigningCohort storage signingCohort = signingCohorts[cohortId];
+        conditionsCheck(signingCohort, chainId);
+        require(serverId > 0, "Server id can't be zero");
+        Server storage server = signingCohort.serverConditions[serverId];
 
         require(
-            signingCohort.authority == msg.sender || serverAdmin.active,
+            signingCohort.authority == msg.sender || server.activeServerAdmins[msg.sender],
             "Only the cohort authority or a server admin can set conditions"
         );
-        if (serverAdmin.active) {
-            serverAdmin.conditions[chainId] = conditions;
-        } else {
-            signingCohort.conditions[chainId] = conditions;
-        }
-        emit SigningCohortConditionsSet(cohortId, msg.sender, chainId, conditions);
+        server.conditions[chainId] = conditions;
+        emit SigningCohortConditionsSet(cohortId, msg.sender, chainId, conditions); // TODO log serverId
     }
 
     function getSigningCohortConditions(
         uint32 cohortId,
         uint256 chainId
     ) external view returns (bytes[] memory) {
-        return getSigningCohortConditions(cohortId, chainId, address(0));
+        return getSigningCohortConditions(cohortId, chainId, 0);
     }
 
     function getSigningCohortConditions(
         uint32 cohortId,
         uint256 chainId,
-        address serverAdmin
+        uint256 serverId
     ) public view returns (bytes[] memory conditions) {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
         bytes memory coreConditions = signingCohort.conditions[chainId];
-        bytes memory serverAdminConditions = signingCohort
-            .serverAdminConditions[serverAdmin]
-            .conditions[chainId];
-        if (serverAdminConditions.length > 0) {
+        bytes memory serverConditions = signingCohort.serverConditions[serverId].conditions[
+            chainId
+        ];
+        if (serverConditions.length > 0) {
             conditions = new bytes[](2);
-            conditions[1] = serverAdminConditions;
+            conditions[1] = serverConditions;
         } else {
             conditions = new bytes[](1);
         }
