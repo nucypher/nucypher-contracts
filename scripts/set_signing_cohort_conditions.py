@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import json
 
 import click
 from ape.cli import ConnectedProviderCommand, account_option, network_option
@@ -62,7 +63,8 @@ def cli(
     """
 
     with open(condition_file, 'r') as file:
-        condition = file.read().strip().encode("utf-8")
+        condition = json.dumps(json.loads(file.read().strip().encode("utf-8"))).encode("utf-8")
+
     if not condition:
         raise click.ClickException("Condition file is empty or not provided.")
 
