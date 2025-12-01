@@ -1,0 +1,39 @@
+deployment:
+  name: mainnet-root-signing-infra
+  chain_id: 1  # Ethereum Mainnet
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: mainnet-root-signing-infra.json
+
+constants:
+  # Constants used in script
+  SIGNING_RITUAL_TIMEOUT_SECONDS: 3600  # 1 hour
+  MAX_COHORT_SIZE: 32
+  TACO_APPLICATION: "0x347CC7ede7e5517bD47D20620B2CF1b406edcF07"
+  NUCO_MULTISIG: "0x861aa915C785dEe04684444560fC7A2AB43a1543"
+
+contracts:
+  - SigningCoordinator:
+      proxy:
+        constructor:
+          initialOwner: $NUCO_MULTISIG
+      constructor:
+        _application: $TACO_APPLICATION
+  - SigningCoordinatorDispatcher:
+      proxy:
+        constructor:
+          initialOwner: $NUCO_MULTISIG
+          _data: $encode:initialize
+      constructor:
+        _signingCoordinator: $SigningCoordinator
+  # child contracts on root itself (no L1 sender since on same chain)
+  - SigningCoordinatorChild:
+      proxy:
+        constructor:
+          initialOwner: $NUCO_MULTISIG
+  - ThresholdSigningMultisig
+  - ThresholdSigningMultisigCloneFactory:
+      constructor:
+        _implementation: $ThresholdSigningMultisig
+        _signingCoordinatorChild: $SigningCoordinatorChild
