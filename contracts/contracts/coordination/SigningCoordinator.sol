@@ -7,7 +7,9 @@ import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import "@openzeppelin-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "./ISigningCoordinatorChild.sol";
+import "./SigningCoordinatorChild.sol";
 import "./SigningCoordinatorDispatcher.sol";
+import "./ThresholdSigningMultisig.sol";
 import "../TACoApplication.sol";
 
 // SigningCoordinator ----> Dispatcher ----> (Relevant) L1Sender ---------[BRIDGE]---------- L2Receiver ----> SigningCoordinatorChild (1. deploys multisig OR 2. updates multisig)
@@ -310,11 +312,25 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         emit SigningCohortConditionsSet(cohortId, msg.sender, chainId, conditions);
     }
 
+    function getUnsignedTransactionHash(
+        ThresholdSigningMultisig multisig,
+        address serverAdmin,
+        uint32 cohortId,
+        uint256 chainId,
+        bytes memory conditions,
+        uint256 serverId
+    ) public view returns (bytes32) {
+        bytes memory data = abi.encodePacked(cohortId, serverId, chainId, conditions);
+        uint256 nonce = multisig.nonce();
+        return multisig.getUnsignedTransactionHash(serverAdmin, address(this), 0, data, nonce);
+    }
+
     function setSigningCohortConditions(
         uint32 cohortId,
         uint256 chainId,
         bytes calldata conditions,
-        uint256 serverId
+        uint256 serverId,
+        bytes calldata signature
     ) external {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
         conditionsCheck(signingCohort, chainId);
@@ -324,6 +340,26 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         require(
             signingCohort.authority == msg.sender || server.activeServerAdmins[msg.sender],
             "Only the cohort authority or a server admin can set conditions"
+        );
+
+        SigningCoordinatorChild child = SigningCoordinatorChild(
+            getSigningCoordinatorChild(block.chainid)
+        );
+        ThresholdSigningMultisig multisig = ThresholdSigningMultisig(
+            child.cohortMultisigs(cohortId)
+        );
+
+        bytes32 hash = getUnsignedTransactionHash(
+            multisig,
+            msg.sender,
+            cohortId,
+            chainId,
+            conditions,
+            serverId
+        );
+        require(
+            multisig.isValidSignature(hash, signature) == multisig.MAGICVALUE(),
+            "Invalid Signature"
         );
         server.conditions[chainId] = conditions;
         emit SigningCohortConditionsSet(cohortId, msg.sender, chainId, conditions); // TODO log serverId
@@ -473,7 +509,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         }
     }
 
-    function getSigningCoordinatorChild(uint256 chainId) external view returns (address) {
+    function getSigningCoordinatorChild(uint256 chainId) public view returns (address) {
         address child = signingCoordinatorDispatcher.getSigningCoordinatorChild(chainId);
         return child;
     }
