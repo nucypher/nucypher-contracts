@@ -1,0 +1,33 @@
+deployment:
+  name: tapir-root-signing-infra
+  chain_id: 11155111 # sepolia
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: tapir-root-signing-infra.json
+
+constants:
+  # Constants used in script
+  HALF_HOUR_IN_SECONDS: 1800
+  MAX_DKG_SIZE: 6
+  TACO_APPLICATION: "0xCcFf527698E78a536d80695D9Af4F4f3265ADA05"
+
+contracts:
+  - SigningCoordinator:
+      proxy:
+      constructor:
+        _application: $TACO_APPLICATION
+  - SigningCoordinatorDispatcher:
+      proxy:
+        constructor:
+          _data: $encode:initialize
+      constructor:
+        _signingCoordinator: $SigningCoordinator
+  # child contracts on root itself (no L1 sender since on same chain)
+  - SigningCoordinatorChild:
+      proxy:
+  - ThresholdSigningMultisig
+  - ThresholdSigningMultisigCloneFactory:
+      constructor:
+        _implementation: $ThresholdSigningMultisig
+        _signingCoordinatorChild: $SigningCoordinatorChild
