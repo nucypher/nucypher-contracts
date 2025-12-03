@@ -27,7 +27,12 @@ def main():
         deployer.constants.SIGNING_RITUAL_TIMEOUT_SECONDS,
         deployer.constants.MAX_COHORT_SIZE,
         signing_coordinator_dispatcher.address,
-        deployer.constants.NUCO_MULTISIG,
+        deployer.get_account().address,  # TODO Change back to NUCO_MULTISIG
+    )
+    deployer.transact(
+        signing_coordinator.grantRole,
+        signing_coordinator.INITIATOR_ROLE(),
+        deployer.get_account().address,
     )
 
     # deploy child contracts on same root chain (ethereum mainnet)
@@ -53,10 +58,12 @@ def main():
     )
 
     # transfer ownership to NuCo multisig
-    deployer.transact(
-        signing_coordinator_dispatcher.transferOwnership, deployer.constants.NUCO_MULTISIG
-    )
-    deployer.transact(signing_coordinator_child.transferOwnership, deployer.constants.NUCO_MULTISIG)
+    # deployer.transact(
+    #     signing_coordinator_dispatcher.transferOwnership, deployer.constants.NUCO_MULTISIG
+    # )
+    # deployer.transact(
+    #     signing_coordinator_child.transferOwnership, deployer.constants.NUCO_MULTISIG
+    # )
 
     # write to registry
     deployments = [
