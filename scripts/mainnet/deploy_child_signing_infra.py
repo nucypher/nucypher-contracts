@@ -59,9 +59,7 @@ def cli(network, constructor_params_filepath):
     )
 
     # transfer ownership to NuCo multisig
-    # deployer.transact(
-    #     signing_coordinator_child.transferOwnership, deployer.constants.NUCO_MULTISIG
-    # )
+    deployer.transact(signing_coordinator_child.transferOwnership, deployer.constants.NUCO_MULTISIG)
 
     # register bridge contracts with dispatcher
     child_chain_id = networks.active_provider.chain_id
