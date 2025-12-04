@@ -44,14 +44,9 @@ describe("registry", () => {
     expect(contractAddress1).not.toEqual(contractAddress2);
   });
 
-  it("SigningCoordinator only present on corresponding ETH chain for lynx, tapir", () => {
-    // present for lynx
+  it("SigningCoordinator present on corresponding ETH chain for lynx, tapir, mainnet", () => {
     expect(getContract("lynx", 11155111, "SigningCoordinator")).toBeDefined();
-
-    // present for tapir
     expect(getContract("tapir", 11155111, "SigningCoordinator")).toBeDefined();
-
-    // TODO update test when SigningCoordinator is deployed for other domains
-    expect(() => getContract("mainnet", 1, "SigningCoordinator")).toThrow();
+    expect(getContract("mainnet", 1, "SigningCoordinator")).toBeDefined();
   });
 });

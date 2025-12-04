@@ -1,0 +1,35 @@
+deployment:
+  name: mainnet-child-signing-infra-base
+  chain_id: 8453  # base
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: mainnet-child-signing-infra-base.json
+
+constants:
+  L1_MESSENGER: "0x866E82a600A1414e583f7F13623F1aC5d58b0Afa"
+  L2_MESSENGER: "0x4200000000000000000000000000000000000007"
+  SIGNING_COORDINATOR_DISPATCHER: "0x0F393FC4378f9BE175919102de636fDD69964D54"
+  GAS_LIMIT: 500000
+  NUCO_MULTISIG: "0x861aa915C785dEe04684444560fC7A2AB43a1543"
+
+contracts:
+  # to be deployed on L1
+  - OpL1Sender:
+      constructor:
+        _dispatcher: $SIGNING_COORDINATOR_DISPATCHER
+        _messenger: $L1_MESSENGER
+        _gasLimit: $GAS_LIMIT
+  # to be deployed on L2 (same chain as script)
+  - OpL2Receiver:
+      constructor:
+        _messenger: $L2_MESSENGER
+  - SigningCoordinatorChild:
+      proxy:
+        constructor:
+          initialOwner: $NUCO_MULTISIG
+  - ThresholdSigningMultisig
+  - ThresholdSigningMultisigCloneFactory:
+      constructor:
+        _implementation: $ThresholdSigningMultisig
+        _signingCoordinatorChild: $SigningCoordinatorChild

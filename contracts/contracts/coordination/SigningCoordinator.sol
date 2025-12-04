@@ -37,7 +37,6 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     // Protocol Administration
     event TimeoutChanged(uint32 oldTimeout, uint32 newTimeout);
     event MaxCohortSizeChanged(uint16 oldSize, uint16 newSize);
-    event DispatcherChanged(address oldDispatcher, address newDispatcher);
 
     struct SigningCohortParticipant {
         address provider;
@@ -112,15 +111,6 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     function setMaxDkgSize(uint16 newSize) external onlyRole(DEFAULT_ADMIN_ROLE) {
         emit MaxCohortSizeChanged(maxCohortSize, newSize);
         maxCohortSize = newSize;
-    }
-
-    // TODO: this should be removed post-testing
-    function setDispatcher(
-        SigningCoordinatorDispatcher dispatcher
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(address(dispatcher).code.length > 0, "Dispatcher must be contract");
-        emit DispatcherChanged(address(signingCoordinatorDispatcher), address(dispatcher));
-        signingCoordinatorDispatcher = dispatcher;
     }
 
     function isCohortActive(SigningCohort storage cohort) internal view returns (bool) {
