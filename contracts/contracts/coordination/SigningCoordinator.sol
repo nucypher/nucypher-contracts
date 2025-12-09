@@ -53,9 +53,9 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         uint256[20] gap;
     }
 
-    struct Server {
-        address[] serverAdmins;
-        mapping(address serverAdmin => bool active) activeServerAdmins;
+    struct Domain {
+        address[] domainAdmins;
+        mapping(address domainAdmin => bool active) activeDomainAdmins;
         mapping(uint256 chainId => bytes conditions) conditions;
     }
 
@@ -71,7 +71,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         SigningCohortParticipant[] signers;
         uint256[] chains;
         mapping(uint256 chainId => bytes conditions) conditions; // TODO: chainId -> condition itself or hash(condition)
-        mapping(uint256 serverId => Server) serverConditions;
+        mapping(uint256 domainId => Domain) domainConditions;
     }
 
     bytes32 public constant INITIATOR_ROLE = keccak256("INITIATOR_ROLE");
@@ -259,27 +259,27 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         return id;
     }
 
-    function setServerAdmins(
+    function setDomainAdmins(
         uint32 cohortId,
-        uint256 serverId,
-        address[] memory serverAdmins
+        uint256 domainId,
+        address[] memory domainAdmins
     ) external {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
         require(isCohortActive(signingCohort), "Cohort not active");
         require(
             signingCohort.authority == msg.sender,
-            "Only the cohort authority can set server admin"
+            "Only the cohort authority can set domain admin"
         );
-        require(serverId > 0, "Server id can't be zero");
-        Server storage server = signingCohort.serverConditions[serverId];
-        for (uint256 i = 0; i < server.serverAdmins.length; i++) {
-            address serverAdmin = server.serverAdmins[i];
-            server.activeServerAdmins[serverAdmin] = false;
+        require(domainId > 0, "Domain id can't be zero");
+        Domain storage domain = signingCohort.domainConditions[domainId];
+        for (uint256 i = 0; i < domain.domainAdmins.length; i++) {
+            address domainAdmin = domain.domainAdmins[i];
+            domain.activeDomainAdmins[domainAdmin] = false;
         }
-        server.serverAdmins = serverAdmins;
-        for (uint256 i = 0; i < server.serverAdmins.length; i++) {
-            address serverAdmin = server.serverAdmins[i];
-            server.activeServerAdmins[serverAdmin] = true;
+        domain.domainAdmins = domainAdmins;
+        for (uint256 i = 0; i < domain.domainAdmins.length; i++) {
+            address domainAdmin = domain.domainAdmins[i];
+            domain.activeDomainAdmins[domainAdmin] = true;
         }
         // TODO emit event
     }
@@ -313,33 +313,30 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     }
 
     function getUnsignedTransactionHash(
-        ThresholdSigningMultisig multisig,
-        address serverAdmin,
         uint32 cohortId,
         uint256 chainId,
         bytes memory conditions,
-        uint256 serverId
-    ) public view returns (bytes32) {
-        bytes memory data = abi.encodePacked(cohortId, serverId, chainId, conditions);
-        uint256 nonce = multisig.nonce();
-        return multisig.getUnsignedTransactionHash(serverAdmin, address(this), 0, data, nonce);
+        uint256 domainId
+    ) public view returns (bytes32 dataHash) {
+        bytes memory data = abi.encodePacked(cohortId, domainId, chainId, conditions);
+        dataHash = keccak256(data);
     }
 
     function setSigningCohortConditions(
         uint32 cohortId,
         uint256 chainId,
         bytes calldata conditions,
-        uint256 serverId,
+        uint256 domainId,
         bytes calldata signature
     ) external {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
         conditionsCheck(signingCohort, chainId);
-        require(serverId > 0, "Server id can't be zero");
-        Server storage server = signingCohort.serverConditions[serverId];
+        require(domainId > 0, "Domain id can't be zero");
+        Domain storage domain = signingCohort.domainConditions[domainId];
 
         require(
-            signingCohort.authority == msg.sender || server.activeServerAdmins[msg.sender],
-            "Only the cohort authority or a server admin can set conditions"
+            domain.activeDomainAdmins[msg.sender],
+            "Only the cohort authority or a domain admin can set conditions"
         );
 
         SigningCoordinatorChild child = SigningCoordinatorChild(
@@ -349,20 +346,13 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
             child.cohortMultisigs(cohortId)
         );
 
-        bytes32 hash = getUnsignedTransactionHash(
-            multisig,
-            msg.sender,
-            cohortId,
-            chainId,
-            conditions,
-            serverId
-        );
+        bytes32 hash = getUnsignedTransactionHash(cohortId, chainId, conditions, domainId);
         require(
             multisig.isValidSignature(hash, signature) == multisig.MAGICVALUE(),
             "Invalid Signature"
         );
-        server.conditions[chainId] = conditions;
-        emit SigningCohortConditionsSet(cohortId, msg.sender, chainId, conditions); // TODO log serverId
+        domain.conditions[chainId] = conditions;
+        emit SigningCohortConditionsSet(cohortId, msg.sender, chainId, conditions); // TODO log domainId
     }
 
     function getSigningCohortConditions(
@@ -375,16 +365,16 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     function getSigningCohortConditions(
         uint32 cohortId,
         uint256 chainId,
-        uint256 serverId
+        uint256 domainId
     ) public view returns (bytes[] memory conditions) {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
         bytes memory coreConditions = signingCohort.conditions[chainId];
-        bytes memory serverConditions = signingCohort.serverConditions[serverId].conditions[
+        bytes memory domainConditions = signingCohort.domainConditions[domainId].conditions[
             chainId
         ];
-        if (serverConditions.length > 0) {
+        if (domainConditions.length > 0) {
             conditions = new bytes[](2);
-            conditions[1] = serverConditions;
+            conditions[1] = domainConditions;
         } else {
             conditions = new bytes[](1);
         }
