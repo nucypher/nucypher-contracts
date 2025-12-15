@@ -42,8 +42,10 @@ from deployment.types import MinInt
 )
 @click.option(
     "--handpicked",
-    help="The filepath of a file containing newline separated staking provider addresses that will \
-        be included in the cohort.",
+    help=(
+        "The filepath of a file containing newline separated staking provider addresses "
+        "that will be included in the cohort."
+    ),
     type=click.File("r"),
     required=False,
 )
