@@ -72,7 +72,9 @@ def cli(
         print(f"Using handpicked providers from file: {handpicked.name}")
         providers = sorted(line.lower().strip() for line in handpicked)
         if not providers:
-            raise ValueError(f"No staking providers found in the handpicked file {handpicked.name}")
+            raise click.ClickException(
+                f"No staking providers found in the handpicked file {handpicked.name}"
+            )
     elif domain in TESTNET_PROVIDERS:
         # testnet
         providers = TESTNET_PROVIDERS[domain]
