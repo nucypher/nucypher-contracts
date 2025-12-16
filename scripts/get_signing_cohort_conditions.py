@@ -11,8 +11,7 @@ from deployment.constants import (
 from deployment.params import Transactor
 
 
-@click.command(cls=ConnectedProviderCommand, name="set-cohort-conditions")
-@account_option()
+@click.command(cls=ConnectedProviderCommand, name="get-cohort-conditions")
 @network_option(required=True)
 @click.option(
     "--domain",
@@ -35,53 +34,23 @@ from deployment.params import Transactor
     type=int,
     required=True,
 )
-@click.option(
-    "--auto",
-    help="Automatically sign transactions.",
-    is_flag=True,
-)
-@click.option(
-    "--condition-file",
-    "-cf",
-    help="Path to a JSON file containing the condition to be signed.",
-    type=click.Path(exists=True, dir_okay=False, readable=True),
-    required=False,
-)
 def cli(
         domain,
-        account,
         network,
-        auto,
         cohort_id,
         chain_id,
-        condition_file,
 ):
-    """
-    Example:
-
-    ape run set_signing_cohort_conditions --condition-file condition.txt -cid 2 -c 84532 --account lynx-deployer --domain lynx --network ethereum:sepolia:infura
-    """
-
-    with open(condition_file, 'r') as file:
-        condition = json.dumps(json.loads(file.read().strip().encode("utf-8"))).encode("utf-8")
-
-    if not condition:
-        raise click.ClickException("Condition file is empty or not provided.")
 
     if domain not in TESTNET_PROVIDERS:
         raise click.ClickException(f"Unsupported domain: {domain}. Supported domains are: {', '.join(TESTNET_PROVIDERS)}")
 
     print(f"Setting conditions for cohort {cohort_id} on {domain}:{network} with chain ID {chain_id}")
 
-    transactor = Transactor(account=account, autosign=auto)
     signing_coordinator = registry.get_contract(domain=domain, contract_name="SigningCoordinator")
 
-    print("Setting conditions...")
-    print(f"Condition: {condition}")
+    print("Getting conditions...")
     print(f"Cohort ID: {cohort_id}, Chain ID: {chain_id}")
-    result = transactor.transact(
-        signing_coordinator.setSigningCohortConditions,
-        cohort_id, chain_id, condition,
-    )
+    result = signing_coordinator.getSigningCohortConditions(cohort_id, chain_id)
 
-    print(f"Conditions set successfully: {result.transaction_hash.hex()}")
+    print("Cohort Conditions:")
+    print(json.dumps(json.loads(result), indent=4))
