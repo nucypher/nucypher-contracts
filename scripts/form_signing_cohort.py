@@ -4,9 +4,7 @@ import click
 from ape.cli import ConnectedProviderCommand, account_option, network_option
 
 from deployment import registry
-from deployment.constants import (
-    SUPPORTED_TACO_DOMAINS, TESTNET_PROVIDERS,
-)
+from deployment.constants import SUPPORTED_TACO_DOMAINS, TESTNET_PROVIDERS
 from deployment.params import Transactor
 from deployment.types import MinInt
 
@@ -43,27 +41,50 @@ from deployment.types import MinInt
     required=True,
 )
 @click.option(
+    "--handpicked",
+    help=(
+        "The filepath of a file containing newline separated staking provider addresses "
+        "that will be included in the cohort."
+    ),
+    type=click.File("r"),
+    required=False,
+)
+@click.option(
     "--auto",
     help="Automatically sign transactions.",
     is_flag=True,
 )
 def cli(
-        domain,
-        account,
-        network,
-        duration,
-        threshold,
-        chain_id,
-        auto,
+    domain,
+    account,
+    network,
+    duration,
+    threshold,
+    chain_id,
+    handpicked,
+    auto,
 ):
     """
     Example:
 
-    ape run form_signing_cohort -c 84532 -th 2 -t 2592000 --account lynx-deployer --domain lynx --network ethereum:sepolia:infura
+    ape run form_signing_cohort -c 84532 -th 2 -t 2592000 --account lynx-deployer
+       --domain lynx --network ethereum:sepolia:infura
     """
-    if domain not in TESTNET_PROVIDERS:
-        raise click.ClickException(f"Unsupported domain: {domain}. Supported domains are: {', '.join(TESTNET_PROVIDERS)}")
-    providers = TESTNET_PROVIDERS[domain]
+    if handpicked:
+        print(f"Using handpicked providers from file: {handpicked.name}")
+        providers = sorted(line.lower().strip() for line in handpicked)
+        if not providers:
+            raise click.ClickException(
+                f"No staking providers found in the handpicked file {handpicked.name}"
+            )
+    elif domain in TESTNET_PROVIDERS:
+        # testnet
+        providers = TESTNET_PROVIDERS[domain]
+    else:
+        # mainnet without handpicked file (in the future we can do sampling here)
+        raise click.ClickException(
+            "On mainnet, you must provide a handpicked file containing staking providers."
+        )
 
     print(f"Initiating signing cohort on {domain}:{network} with account {account.address}...")
     transactor = Transactor(account=account, autosign=auto)
@@ -71,6 +92,10 @@ def cli(
 
     result = transactor.transact(
         signing_coordinator.initiateSigningCohort,
-        chain_id, account.address, providers, threshold, duration
+        chain_id,
+        account.address,
+        providers,
+        threshold,
+        duration,
     )
     print(f"Signing cohort initiated with transaction: {result.txn_hash}")

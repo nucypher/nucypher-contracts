@@ -210,7 +210,7 @@ def cli(
         if handpicked:
             cohort = sorted(line.lower().strip() for line in handpicked)
             if not cohort:
-                raise ValueError(
+                raise click.ClickException(
                     f"No staking providers found in the handpicked file {handpicked.name}"
                 )
         else:
