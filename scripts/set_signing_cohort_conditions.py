@@ -5,9 +5,7 @@ import click
 from ape.cli import ConnectedProviderCommand, account_option, network_option
 
 from deployment import registry
-from deployment.constants import (
-    SUPPORTED_TACO_DOMAINS, TESTNET_PROVIDERS,
-)
+from deployment.constants import SUPPORTED_TACO_DOMAINS, TESTNET_PROVIDERS
 from deployment.params import Transactor
 
 
@@ -48,21 +46,22 @@ from deployment.params import Transactor
     required=False,
 )
 def cli(
-        domain,
-        account,
-        network,
-        auto,
-        cohort_id,
-        chain_id,
-        condition_file,
+    domain,
+    account,
+    network,
+    auto,
+    cohort_id,
+    chain_id,
+    condition_file,
 ):
     """
     Example:
 
-    ape run set_signing_cohort_conditions --condition-file condition.txt -cid 2 -c 84532 --account lynx-deployer --domain lynx --network ethereum:sepolia:infura
+    ape run set_signing_cohort_conditions --condition-file condition.json -cid 2 -c 84532
+      --account lynx-deployer --domain lynx --network ethereum:sepolia:infura
     """
 
-    with open(condition_file, 'r') as file:
+    with open(condition_file, "r") as file:
         condition_file_data = file.read().strip()
     if not condition_file_data:
         raise click.ClickException("Condition file is empty or not provided.")
@@ -70,9 +69,13 @@ def cli(
     condition = json.loads(condition_file_data)
 
     if domain not in TESTNET_PROVIDERS:
-        raise click.ClickException(f"Unsupported domain: {domain}. Supported domains are: {', '.join(TESTNET_PROVIDERS)}")
+        raise click.ClickException(
+            f"Unsupported domain: {domain}. Supported domains are: {', '.join(TESTNET_PROVIDERS)}"
+        )
 
-    print(f"Setting conditions for cohort {cohort_id} on {domain}:{network} with chain ID {chain_id}")
+    print(
+        f"Setting conditions for cohort {cohort_id} on {domain}:{network} with chain ID {chain_id}"
+    )
 
     transactor = Transactor(account=account, autosign=auto)
     signing_coordinator = registry.get_contract(domain=domain, contract_name="SigningCoordinator")
@@ -85,7 +88,9 @@ def cli(
     condition_bytes = json.dumps(condition).encode("utf-8")
     result = transactor.transact(
         signing_coordinator.setSigningCohortConditions,
-        cohort_id, chain_id, condition_bytes,
+        cohort_id,
+        chain_id,
+        condition_bytes,
     )
 
     print(f"Conditions set successfully: {result.transaction_hash.hex()}")
