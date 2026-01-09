@@ -85,7 +85,7 @@ def cli(
     print(f"Condition: {json.dumps(condition, indent=2)}")  # pretty print condition
 
     # compact conversion to bytes
-    condition_bytes = json.dumps(condition).encode("utf-8")
+    condition_bytes = json.dumps(condition, separators=(",", ":")).encode("utf-8")
     result = transactor.transact(
         signing_coordinator.setSigningCohortConditions,
         cohort_id,
