@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import json
 
 import click
 from ape.cli import ConnectedProviderCommand, account_option, network_option
@@ -62,9 +63,11 @@ def cli(
     """
 
     with open(condition_file, 'r') as file:
-        condition = file.read().strip().encode("utf-8")
-    if not condition:
+        condition_file_data = file.read().strip()
+    if not condition_file_data:
         raise click.ClickException("Condition file is empty or not provided.")
+
+    condition = json.loads(condition_file_data)
 
     if domain not in TESTNET_PROVIDERS:
         raise click.ClickException(f"Unsupported domain: {domain}. Supported domains are: {', '.join(TESTNET_PROVIDERS)}")
@@ -75,11 +78,14 @@ def cli(
     signing_coordinator = registry.get_contract(domain=domain, contract_name="SigningCoordinator")
 
     print("Setting conditions...")
-    print(f"Condition: {condition}")
     print(f"Cohort ID: {cohort_id}, Chain ID: {chain_id}")
+    print(f"Condition: {json.dumps(condition, indent=2)}")  # pretty print condition
+
+    # compact conversion to bytes
+    condition_bytes = json.dumps(condition).encode("utf-8")
     result = transactor.transact(
         signing_coordinator.setSigningCohortConditions,
-        cohort_id, chain_id, condition,
+        cohort_id, chain_id, condition_bytes,
     )
 
     print(f"Conditions set successfully: {result.transaction_hash.hex()}")
