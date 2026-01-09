@@ -66,7 +66,10 @@ def cli(
     if not condition_file_data:
         raise click.ClickException("Condition file is empty or not provided.")
 
-    condition = json.loads(condition_file_data)
+    try:
+        condition = json.loads(condition_file_data)
+    except json.JSONDecodeError as e:
+        raise click.ClickException(f"Invalid JSON in condition file: {e}")
 
     if domain not in TESTNET_PROVIDERS:
         raise click.ClickException(
