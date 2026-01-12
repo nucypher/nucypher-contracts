@@ -27,38 +27,6 @@ contract TACoApplication is
     using SafeCast for uint256;
 
     /**
-     * @notice Signals that distributor role was set
-     * @param distributor Address of reward distributor
-     */
-    event RewardDistributorSet(address indexed distributor);
-
-    /**
-     * @notice Signals that reward contract role was set
-     * @param rewardContract Address of reward contract
-     */
-    event RewardContractSet(address indexed rewardContract);
-
-    /**
-     * @notice Signals that reward was added
-     * @param reward Amount of reward
-     */
-    event RewardAdded(uint256 reward);
-
-    /**
-     * @notice Signals that the beneficiary related to the staking provider received reward
-     * @param sender Sender of transaction
-     * @param stakingProvider Staking provider address
-     * @param beneficiary Beneficiary address
-     * @param reward Amount of reward
-     */
-    event RewardPaid(
-        address indexed sender,
-        address indexed stakingProvider,
-        address indexed beneficiary,
-        uint256 reward
-    );
-
-    /**
      * @notice Signals that authorization was increased for the staking provider
      * @param stakingProvider Staking provider address
      * @param fromAmount Previous amount of increased authorization
@@ -161,24 +129,10 @@ contract TACoApplication is
     );
 
     /**
-     * @notice Signals that the staking provider was penalized
-     * @param stakingProvider Staking provider address
-     * @param penaltyPercent Percent of reward that was penalized
-     * @param endPenalty End of penalty
-     */
-    event Penalized(address indexed stakingProvider, uint256 penaltyPercent, uint64 endPenalty);
-
-    /**
      * @notice Signals that the staking provider was released
      * @param stakingProvider Staking provider address
      */
     event Released(address indexed stakingProvider);
-
-    /**
-     * @notice Signals that reward was reset after penalty
-     * @param stakingProvider Staking provider address
-     */
-    event RewardReset(address indexed stakingProvider);
 
     struct StakingProviderInfo {
         address operator;
@@ -186,45 +140,36 @@ contract TACoApplication is
         uint64 operatorStartTimestamp;
         uint96 authorized;
         uint96 deauthorizing;
-        uint64 endDeauthorization;
-        uint96 tReward;
-        uint160 rewardPerTokenPaid;
-        uint64 legacyEndCommitment;
-        uint256 stub;
-        uint192 penaltyPercent;
-        uint64 endPenalty;
+        uint64 _endDeauthorization;
+        uint96 _tReward;
+        uint160 _rewardPerTokenPaid;
+        uint64 _legacyEndCommitment;
+        uint256 _stub;
+        uint192 _penaltyPercent;
+        uint64 _endPenalty;
     }
-
-    uint256 public constant REWARD_PER_TOKEN_MULTIPLIER = 10 ** 3;
-    uint256 internal constant FLOATING_POINT_DIVISOR = REWARD_PER_TOKEN_MULTIPLIER * 10 ** 18;
-    uint192 public constant PENALTY_BASE = 10000;
 
     uint96 public immutable minimumAuthorization;
     uint256 public immutable minOperatorSeconds;
-    uint256 public immutable rewardDuration;
-    uint256 public immutable deauthorizationDuration;
-    uint192 public immutable penaltyDefault;
-    uint256 public immutable penaltyDuration;
-    uint192 public immutable penaltyIncrement;
 
     IStaking public immutable tStaking;
     IERC20 public immutable token;
 
     ITACoRootToChild public childApplication;
-    address public adjudicator;
+    address private _adjudicator;
 
     mapping(address => StakingProviderInfo) public stakingProviderInfo;
     address[] public stakingProviders;
     mapping(address => address) internal _stakingProviderFromOperator;
 
-    address public rewardDistributor;
-    uint256 public periodFinish;
-    uint256 public rewardRateDecimals;
-    uint256 public lastUpdateTime;
-    uint160 public rewardPerTokenStored;
-    uint96 public authorizedOverall;
+    address private _rewardDistributor;
+    uint256 private _periodFinish;
+    uint256 private _rewardRateDecimals;
+    uint256 private _lastUpdateTime;
+    uint160 private _rewardPerTokenStored;
+    uint96 private _authorizedOverall;
 
-    address public rewardContract;
+    address private _rewardContract;
 
     mapping(address => bool) public stakingProviderReleased;
 
@@ -234,59 +179,23 @@ contract TACoApplication is
      * @param _tStaking T token staking contract
      * @param _minimumAuthorization Amount of minimum allowable authorization
      * @param _minOperatorSeconds Min amount of seconds while an operator can't be changed
-     * @param _rewardDuration Duration of one reward cycle in seconds
-     * @param _deauthorizationDuration Duration of decreasing authorization in seconds
-     * @param _penaltyDefault Default penalty percentage (as a value out of 10000)
-     * @param _penaltyDuration Duration of penalty
-     * @param _penaltyIncrement Increment of penalty if violation occurs during an existing penalty period
      */
     constructor(
         IERC20 _token,
         IStaking _tStaking,
         uint96 _minimumAuthorization,
-        uint256 _minOperatorSeconds,
-        uint256 _rewardDuration,
-        uint256 _deauthorizationDuration,
-        uint192 _penaltyDefault,
-        uint256 _penaltyDuration,
-        uint192 _penaltyIncrement
+        uint256 _minOperatorSeconds
     ) {
         uint256 totalSupply = _token.totalSupply();
         require(
-            _rewardDuration != 0 &&
-                _tStaking.authorizedStake(address(this), address(this)) == 0 &&
-                totalSupply > 0 &&
-                _penaltyDefault > 0 &&
-                _penaltyDefault <= PENALTY_BASE &&
-                _penaltyDuration > 0 &&
-                _penaltyDefault + _penaltyIncrement <= PENALTY_BASE,
+            _tStaking.authorizedStake(address(this), address(this)) == 0 && totalSupply > 0,
             "Wrong input parameters"
         );
-        // This require is only to check potential overflow for 10% reward
-        require(
-            (totalSupply / 10) * FLOATING_POINT_DIVISOR <= type(uint160).max &&
-                _minimumAuthorization >= 10 ** 18 &&
-                _rewardDuration >= 1 days,
-            "Potential overflow"
-        );
-        rewardDuration = _rewardDuration;
-        deauthorizationDuration = _deauthorizationDuration;
         minimumAuthorization = _minimumAuthorization;
         token = _token;
         tStaking = _tStaking;
         minOperatorSeconds = _minOperatorSeconds;
-        penaltyDefault = _penaltyDefault;
-        penaltyDuration = _penaltyDuration;
-        penaltyIncrement = _penaltyIncrement;
         _disableInitializers();
-    }
-
-    /**
-     * @dev Update reward for the specified staking provider
-     */
-    modifier updateReward(address _stakingProvider) {
-        updateRewardInternal(_stakingProvider);
-        _;
     }
 
     /**
@@ -328,17 +237,6 @@ contract TACoApplication is
     }
 
     /**
-     * @notice Set adjudicator contract. If zero then slashing is disabled
-     */
-    function setAdjudicator(address _adjudicator) external onlyOwner {
-        require(
-            address(_adjudicator) != address(adjudicator),
-            "New address must not be equal to the current one"
-        );
-        adjudicator = _adjudicator;
-    }
-
-    /**
      *  @notice Returns authorization-related parameters of the application.
      *  @dev The minimum authorization is also returned by `minimumAuthorization()`
      *       function, as a requirement of `IApplication` interface.
@@ -367,193 +265,10 @@ contract TACoApplication is
             uint64 authorizationDecreaseChangePeriod
         )
     {
-        return (
-            minimumAuthorization,
-            uint64(deauthorizationDuration),
-            uint64(deauthorizationDuration)
-        );
-    }
-
-    //------------------------Reward------------------------------
-
-    /**
-     * @notice Set reward distributor address
-     */
-    function setRewardDistributor(address _rewardDistributor) external onlyOwner {
-        rewardDistributor = _rewardDistributor;
-        emit RewardDistributorSet(_rewardDistributor);
-    }
-
-    /**
-     * @notice Set reward contract address
-     */
-    function setRewardContract(address _rewardContract) external onlyOwner {
-        rewardContract = _rewardContract;
-        emit RewardContractSet(_rewardContract);
-    }
-
-    /**
-     * @notice Update reward for the specified staking provider
-     * @param _stakingProvider Staking provider address
-     */
-    function updateRewardInternal(address _stakingProvider) internal {
-        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
-        if (
-            _stakingProvider != address(0) &&
-            info.endPenalty != 0 &&
-            info.endPenalty <= block.timestamp
-        ) {
-            resetReward(_stakingProvider, info);
-        }
-
-        rewardPerTokenStored = rewardPerToken();
-        lastUpdateTime = lastTimeRewardApplicable();
-        if (_stakingProvider != address(0)) {
-            info.tReward = availableRewards(_stakingProvider);
-            info.rewardPerTokenPaid = rewardPerTokenStored;
-        }
-    }
-
-    /**
-     * @notice Resets reward after penalty
-     */
-    function resetReward(address _stakingProvider, StakingProviderInfo storage _info) internal {
-        uint96 before = effectiveAuthorized(_info.authorized, _info.penaltyPercent);
-        _info.endPenalty = 0;
-        _info.penaltyPercent = 0;
-        if (_info.operatorConfirmed) {
-            authorizedOverall += _info.authorized - before;
-        }
-        emit RewardReset(_stakingProvider);
-    }
-
-    /**
-     * @notice Returns last time when reward was applicable
-     */
-    function lastTimeRewardApplicable() public view returns (uint256) {
-        return Math.min(block.timestamp, periodFinish);
-    }
-
-    /**
-     * @notice Returns current value of reward per token * multiplier
-     */
-    function rewardPerToken() public view returns (uint160) {
-        if (authorizedOverall == 0) {
-            return rewardPerTokenStored;
-        }
-        uint256 result = rewardPerTokenStored +
-            ((lastTimeRewardApplicable() - lastUpdateTime) * rewardRateDecimals) /
-            authorizedOverall;
-        return result.toUint160();
-    }
-
-    /**
-     * @notice Returns amount of reward in T units for the staking provider
-     * @param _stakingProvider Staking provider address
-     */
-    function availableRewards(address _stakingProvider) public view returns (uint96) {
-        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
-        if (!info.operatorConfirmed) {
-            return info.tReward;
-        }
-        uint96 authorized = effectiveAuthorized(info.authorized, info);
-        uint256 result = (uint256(authorized) * (rewardPerToken() - info.rewardPerTokenPaid)) /
-            FLOATING_POINT_DIVISOR +
-            info.tReward;
-        return result.toUint96();
-    }
-
-    function effectiveAuthorized(
-        uint96 _authorized,
-        uint192 _penaltyPercent
-    ) internal pure returns (uint96) {
-        return uint96((_authorized * (PENALTY_BASE - _penaltyPercent)) / PENALTY_BASE);
-    }
-
-    /// @dev In case that a penalty period already ended, this view method may produce
-    ///      outdated results if the penalty hasn't been reset, either by calling
-    ///      `resetReward` explicitly or any function with the `updateReward` modifier.
-    function effectiveAuthorized(
-        uint96 _authorized,
-        StakingProviderInfo storage _info
-    ) internal view returns (uint96) {
-        if (_info.endPenalty == 0) {
-            return _info.authorized;
-        }
-        return effectiveAuthorized(_authorized, _info.penaltyPercent);
-    }
-
-    /// @dev In case that a penalty period already ended, this view method may produce
-    ///      outdated results if the penalty hasn't been reset, either by calling
-    ///      `resetReward` explicitly or any function with the `updateReward` modifier.
-    function effectiveDifference(
-        uint96 _from,
-        uint96 _to,
-        StakingProviderInfo storage _info
-    ) internal view returns (uint96) {
-        if (_info.endPenalty == 0) {
-            return _from - _to;
-        }
-        uint96 effectiveFrom = effectiveAuthorized(_from, _info.penaltyPercent);
-        uint96 effectiveTo = effectiveAuthorized(_to, _info.penaltyPercent);
-        return effectiveFrom - effectiveTo;
-    }
-
-    /**
-     * @notice Transfer reward for the next period. Can be called only by distributor
-     * @param _reward Amount of reward
-     */
-    function pushReward(uint96 _reward) external updateReward(address(0)) {
-        require(msg.sender == rewardDistributor, "Only distributor can push rewards");
-        require(_reward > 0, "Reward must be specified");
-        require(authorizedOverall > 0, "No active staking providers");
-        if (block.timestamp >= periodFinish) {
-            rewardRateDecimals = (uint256(_reward) * FLOATING_POINT_DIVISOR) / rewardDuration;
-        } else {
-            uint256 remaining = periodFinish - block.timestamp;
-            uint256 leftover = remaining * rewardRateDecimals;
-            rewardRateDecimals =
-                (uint256(_reward) * FLOATING_POINT_DIVISOR + leftover) /
-                rewardDuration;
-        }
-        lastUpdateTime = block.timestamp;
-        periodFinish = block.timestamp + rewardDuration;
-        emit RewardAdded(_reward);
-        token.safeTransferFrom(msg.sender, address(this), _reward);
-    }
-
-    /**
-     * @notice Withdraw available amount of T reward to beneficiary. Can be called only by beneficiary or by reward distribution contract
-     * @param _stakingProvider Staking provider address
-     */
-    function withdrawRewards(address _stakingProvider) external updateReward(_stakingProvider) {
-        address beneficiary = getBeneficiary(_stakingProvider);
-        require(
-            msg.sender == beneficiary || msg.sender == rewardContract,
-            "Caller must be beneficiary or reward contract"
-        );
-
-        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
-        uint96 value = info.tReward;
-        require(value > 0, "No reward to withdraw");
-        info.tReward = 0;
-        emit RewardsWithdrawn(_stakingProvider, value);
-        emit RewardPaid(msg.sender, _stakingProvider, beneficiary, value);
-        token.safeTransfer(beneficiary, value);
+        return (minimumAuthorization, 0, 0);
     }
 
     //------------------------Authorization------------------------------
-    /**
-     * @notice Recalculate `authorizedOverall` if desync happened
-     */
-    function resynchronizeAuthorizedOverall(
-        StakingProviderInfo storage _info,
-        uint96 _properAmount
-    ) internal {
-        if (_info.authorized != _properAmount) {
-            authorizedOverall -= effectiveDifference(_info.authorized, _properAmount, _info);
-        }
-    }
 
     /**
      * @notice Recalculate reward and save increased authorization. Can be called only by staking contract
@@ -565,7 +280,7 @@ contract TACoApplication is
         address _stakingProvider,
         uint96 _fromAmount,
         uint96 _toAmount
-    ) external override onlyStakingContract updateReward(_stakingProvider) {
+    ) external override onlyStakingContract {
         require(
             _stakingProvider != address(0) && _toAmount > 0,
             "Input parameters must be specified"
@@ -578,11 +293,6 @@ contract TACoApplication is
                 _stakingProviderFromOperator[_stakingProvider] == _stakingProvider,
             "A provider can't be an operator for another provider"
         );
-
-        if (info.operatorConfirmed) {
-            resynchronizeAuthorizedOverall(info, _fromAmount);
-            authorizedOverall += effectiveDifference(_toAmount, _fromAmount, info);
-        }
 
         info.authorized = _toAmount;
         emit AuthorizationIncreased(_stakingProvider, _fromAmount, _toAmount);
@@ -601,19 +311,14 @@ contract TACoApplication is
         address _stakingProvider,
         uint96 _fromAmount,
         uint96 _toAmount
-    ) external override onlyStakingContract updateReward(_stakingProvider) {
+    ) external override onlyStakingContract {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
-        if (info.operatorConfirmed) {
-            resynchronizeAuthorizedOverall(info, _fromAmount);
-            authorizedOverall -= effectiveDifference(_fromAmount, _toAmount, info);
-        }
 
         uint96 decrease = info.authorized - _toAmount;
         if (info.deauthorizing > decrease) {
             info.deauthorizing -= decrease;
         } else {
             info.deauthorizing = 0;
-            info.endDeauthorization = 0;
         }
 
         info.authorized = _toAmount;
@@ -639,20 +344,16 @@ contract TACoApplication is
         address _stakingProvider,
         uint96 _fromAmount,
         uint96 _toAmount
-    ) external override onlyStakingContract updateReward(_stakingProvider) {
+    ) external override onlyStakingContract {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         require(_toAmount <= info.authorized, "Amount to decrease greater than authorized");
         require(
             _toAmount == 0 || _toAmount >= minimumAuthorization,
             "Resulting authorization will be less than minimum"
         );
-        if (info.operatorConfirmed) {
-            resynchronizeAuthorizedOverall(info, _fromAmount);
-        }
 
         info.authorized = _fromAmount;
         info.deauthorizing = _fromAmount - _toAmount;
-        info.endDeauthorization = uint64(block.timestamp);
         emit AuthorizationDecreaseRequested(_stakingProvider, _fromAmount, _toAmount);
         _updateAuthorization(_stakingProvider, info);
         if (_toAmount < minimumAuthorization) {
@@ -664,15 +365,9 @@ contract TACoApplication is
      * @notice Approve request of decreasing authorization. Can be called by anyone
      * @param _stakingProvider Address of staking provider
      */
-    function approveAuthorizationDecrease(
-        address _stakingProvider
-    ) external updateReward(_stakingProvider) {
+    function approveAuthorizationDecrease(address _stakingProvider) external {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         require(info.deauthorizing > 0, "There is no deauthorizing in process");
-        require(
-            info.endDeauthorization <= block.timestamp || info.operatorStartTimestamp == 0,
-            "Authorization decrease has not finished yet"
-        );
 
         uint96 toAmount = tStaking.approveAuthorizationDecrease(_stakingProvider);
         require(
@@ -680,14 +375,9 @@ contract TACoApplication is
             "Node has not finished leaving process"
         );
 
-        if (info.operatorConfirmed) {
-            authorizedOverall -= effectiveDifference(info.authorized, toAmount, info);
-        }
-
         emit AuthorizationDecreaseApproved(_stakingProvider, info.authorized, toAmount);
         info.authorized = toAmount;
         info.deauthorizing = 0;
-        info.endDeauthorization = 0;
 
         if (info.authorized == 0) {
             _releaseOperator(_stakingProvider);
@@ -699,16 +389,10 @@ contract TACoApplication is
      * @notice Read authorization from staking contract and store it. Can be called by anyone
      * @param _stakingProvider Address of staking provider
      */
-    function resynchronizeAuthorization(
-        address _stakingProvider
-    ) external updateReward(_stakingProvider) {
+    function resynchronizeAuthorization(address _stakingProvider) external {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         uint96 newAuthorized = tStaking.authorizedStake(_stakingProvider, address(this));
         require(info.authorized > newAuthorized, "Nothing to synchronize");
-
-        if (info.operatorConfirmed) {
-            authorizedOverall -= effectiveDifference(info.authorized, newAuthorized, info);
-        }
         emit AuthorizationReSynchronized(_stakingProvider, info.authorized, newAuthorized);
 
         info.authorized = newAuthorized;
@@ -753,19 +437,16 @@ contract TACoApplication is
      *         is going to be made during this period, the returned amount will
      *         be the staked amount minus the deauthorizing amount.
      */
-    function eligibleStake(
-        address _stakingProvider,
-        uint256 _endDate
-    ) public view returns (uint96) {
+    function eligibleStake(address _stakingProvider, uint256) public view returns (uint96) {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         if (stakingProviderReleased[_stakingProvider]) {
             return 0;
         }
 
         uint96 eligibleAmount = info.authorized;
-        if (0 < info.endDeauthorization && info.endDeauthorization < _endDate) {
-            eligibleAmount -= info.deauthorizing;
-        }
+        // if (0 < info.endDeauthorization && info.endDeauthorization < _endDate) {
+        eligibleAmount -= info.deauthorizing;
+        // }
 
         return eligibleAmount;
     }
@@ -785,25 +466,8 @@ contract TACoApplication is
      * @notice Returns the remaining time in seconds that needs to pass before
      *         the requested authorization decrease can be approved.
      */
-    function remainingAuthorizationDecreaseDelay(
-        address _stakingProvider
-    ) external view override returns (uint64) {
-        uint256 endDeauthorization = stakingProviderInfo[_stakingProvider].endDeauthorization;
-        if (endDeauthorization <= block.timestamp) {
-            return 0;
-        }
-        return uint64(endDeauthorization - block.timestamp);
-    }
-
-    /**
-     * @notice Returns information about reward penalty.
-     */
-    function getPenalty(
-        address _stakingProvider
-    ) external view returns (uint192 penalty, uint64 endPenalty) {
-        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
-        penalty = info.penaltyPercent;
-        endPenalty = info.endPenalty;
+    function remainingAuthorizationDecreaseDelay(address) external view override returns (uint64) {
+        return 0;
     }
 
     /**
@@ -872,7 +536,6 @@ contract TACoApplication is
     /**
      * @notice Returns true if operator has confirmed address
      */
-    // TODO maybe _stakingProvider instead of _operator as input?
     function isOperatorConfirmed(address _operator) public view returns (bool) {
         address stakingProvider = _stakingProviderFromOperator[_operator];
         StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
@@ -904,7 +567,7 @@ contract TACoApplication is
     function bondOperator(
         address _stakingProvider,
         address _operator
-    ) public onlyOwnerOrStakingProvider(_stakingProvider) updateReward(_stakingProvider) {
+    ) public onlyOwnerOrStakingProvider(_stakingProvider) {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         address previousOperator = info.operator;
         require(
@@ -939,10 +602,6 @@ contract TACoApplication is
             stakingProviders.push(_stakingProvider);
         }
 
-        if (info.operatorConfirmed) {
-            authorizedOverall -= effectiveAuthorized(info.authorized, info);
-        }
-
         // Bond new operator (or unbond if _operator == address(0))
         info.operator = _operator;
         info.operatorStartTimestamp = uint64(block.timestamp);
@@ -969,9 +628,7 @@ contract TACoApplication is
 
         StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
         if (!info.operatorConfirmed) {
-            updateRewardInternal(stakingProvider);
             info.operatorConfirmed = true;
-            authorizedOverall += effectiveAuthorized(info.authorized, info);
             emit OperatorConfirmed(stakingProvider, _operator);
         }
     }
@@ -986,7 +643,6 @@ contract TACoApplication is
         _stakingProviderFromOperator[info.operator] = address(0);
         info.operator = address(0);
         info.operatorConfirmed = false;
-        info.endDeauthorization = 0;
         childApplication.updateOperator(_stakingProvider, address(0));
     }
 
@@ -1001,7 +657,7 @@ contract TACoApplication is
             _stakingProvider,
             _info.authorized,
             _info.deauthorizing,
-            _info.endDeauthorization
+            0
         );
     }
 
@@ -1016,54 +672,11 @@ contract TACoApplication is
             _stakingProvider,
             info.authorized,
             info.deauthorizing,
-            info.endDeauthorization,
+            0,
             info.operator
         );
         _updateAuthorization(_stakingProvider, info);
         childApplication.updateOperator(_stakingProvider, info.operator);
-    }
-
-    //-------------------------Slashing-------------------------
-    /**
-     * @notice Slash the provider's stake and reward the investigator
-     * @param _stakingProvider Staking provider address
-     * @param _penalty Penalty
-     * @param _investigator Investigator
-     */
-    function slash(address _stakingProvider, uint96 _penalty, address _investigator) external {
-        require(msg.sender == adjudicator, "Only adjudicator allowed to slash");
-        address[] memory stakingProviderWrapper = new address[](1);
-        stakingProviderWrapper[0] = _stakingProvider;
-        tStaking.seize(_penalty, 100, _investigator, stakingProviderWrapper);
-    }
-
-    /**
-     * @notice Penalize the staking provider's future reward
-     * @param _stakingProvider Staking provider address
-     */
-    function penalize(address _stakingProvider) external updateReward(_stakingProvider) {
-        require(
-            msg.sender == address(childApplication),
-            "Only child application allowed to penalize"
-        );
-
-        if (_stakingProvider == address(0)) {
-            return;
-        }
-
-        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
-        uint96 before = effectiveAuthorized(info.authorized, info.penaltyPercent);
-        info.endPenalty = uint64(block.timestamp + penaltyDuration);
-        info.penaltyPercent = info.penaltyPercent == 0
-            ? penaltyDefault
-            : info.penaltyPercent + penaltyIncrement;
-        if (info.penaltyPercent > PENALTY_BASE) {
-            info.penaltyPercent = PENALTY_BASE;
-        }
-        if (info.operatorConfirmed) {
-            authorizedOverall -= before - effectiveAuthorized(info.authorized, info.penaltyPercent);
-        }
-        emit Penalized(_stakingProvider, info.penaltyPercent, info.endPenalty);
     }
 
     function release(address _stakingProvider) external override(ITACoChildToRoot) {
@@ -1080,17 +693,15 @@ contract TACoApplication is
         emit Released(_stakingProvider);
     }
 
-    /**
-     * @notice Resets future reward back to 100%.
-     *         Either this method or any method with `updateReward` modifier should be called
-     *         to stop penalties. Otherwise, reward will be still subtracted
-     *         even after the end of penalties.
-     * @param _stakingProvider Staking provider address
-     */
-    function resetReward(address _stakingProvider) external {
-        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
-        require(info.endPenalty != 0, "There is no penalty");
-        require(info.endPenalty <= block.timestamp, "Penalty is still ongoing");
-        updateRewardInternal(_stakingProvider);
+    function penalize(address) external override {
+        revert("Deprecated");
+    }
+
+    function withdrawRewards(address) external override {
+        revert("Deprecated");
+    }
+
+    function availableRewards(address) external view override returns (uint96) {
+        return 0;
     }
 }

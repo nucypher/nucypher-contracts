@@ -137,7 +137,6 @@ contract ChildApplicationForTACoApplicationMock {
     struct StakingProviderInfo {
         uint96 authorized;
         uint96 deauthorizing;
-        uint64 endDeauthorization;
     }
 
     TACoApplication public immutable rootApplication;
@@ -163,20 +162,15 @@ contract ChildApplicationForTACoApplicationMock {
         address _stakingProvider,
         uint96 _authorized,
         uint96 _deauthorizing,
-        uint64 _endDeauthorization
+        uint64
     ) external {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         info.authorized = _authorized;
         info.deauthorizing = _deauthorizing;
-        info.endDeauthorization = _endDeauthorization;
     }
 
     function confirmOperatorAddress(address _operator) external {
         rootApplication.confirmOperatorAddress(_operator);
-    }
-
-    function penalize(address _stakingProvider) external {
-        rootApplication.penalize(_stakingProvider);
     }
 
     function release(address _stakingProvider) external {

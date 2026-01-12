@@ -38,8 +38,8 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         bool operatorConfirmed;
         uint248 index; // index in stakingProviders array + 1
         uint96 deauthorizing;
-        uint64 endDeauthorization;
-        uint256 stub;
+        uint64 _endDeauthorization;
+        uint256 _stub;
         bool released;
     }
 
@@ -117,19 +117,16 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
      *         is going to be made during this period, the returned amount will
      *         be the staked amount minus the deauthorizing amount.
      */
-    function eligibleStake(
-        address _stakingProvider,
-        uint256 _endDate
-    ) public view returns (uint96) {
+    function eligibleStake(address _stakingProvider, uint256) public view returns (uint96) {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         if (info.released) {
             return 0;
         }
 
         uint96 eligibleAmount = info.authorized;
-        if (0 < info.endDeauthorization && info.endDeauthorization < _endDate) {
-            eligibleAmount -= info.deauthorizing;
-        }
+        // if (0 < info.endDeauthorization && info.endDeauthorization < _endDate) {
+        eligibleAmount -= info.deauthorizing;
+        // }
 
         return eligibleAmount;
     }
@@ -146,16 +143,16 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         address stakingProvider,
         uint96 authorized
     ) external override onlyRootApplication {
-        _updateAuthorization(stakingProvider, authorized, 0, 0);
+        _updateAuthorization(stakingProvider, authorized, 0);
     }
 
     function updateAuthorization(
         address stakingProvider,
         uint96 authorized,
         uint96 deauthorizing,
-        uint64 endDeauthorization
+        uint64
     ) external override onlyRootApplication {
-        _updateAuthorization(stakingProvider, authorized, deauthorizing, endDeauthorization);
+        _updateAuthorization(stakingProvider, authorized, deauthorizing);
     }
 
     function _updateOperator(address stakingProvider, address operator) internal {
@@ -186,16 +183,13 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
     function _updateAuthorization(
         address stakingProvider,
         uint96 authorized,
-        uint96 deauthorizing,
-        uint64 endDeauthorization
+        uint96 deauthorizing
     ) internal {
         StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
 
         if (
             stakingProvider == address(0) ||
-            (authorized == info.authorized &&
-                deauthorizing == info.deauthorizing &&
-                endDeauthorization == info.endDeauthorization)
+            (authorized == info.authorized && deauthorizing == info.deauthorizing)
         ) {
             return;
         }
@@ -207,8 +201,7 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
 
         info.authorized = authorized;
         info.deauthorizing = deauthorizing;
-        info.endDeauthorization = endDeauthorization;
-        emit AuthorizationUpdated(stakingProvider, authorized, deauthorizing, endDeauthorization);
+        emit AuthorizationUpdated(stakingProvider, authorized, deauthorizing, 0);
     }
 
     function confirmOperatorAddress(address _operator) external override {
@@ -362,9 +355,8 @@ contract TestnetTACoChildApplication is AccessControlUpgradeable, TACoChildAppli
     function forceUpdateAuthorization(
         address stakingProvider,
         uint96 authorized,
-        uint96 deauthorizing,
-        uint64 endDeauthorization
+        uint96 deauthorizing
     ) external onlyRole(UPDATE_ROLE) {
-        _updateAuthorization(stakingProvider, authorized, deauthorizing, endDeauthorization);
+        _updateAuthorization(stakingProvider, authorized, deauthorizing);
     }
 }

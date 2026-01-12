@@ -24,13 +24,6 @@ MIN_AUTHORIZATION = Web3.to_wei(40_000, "ether")
 MIN_OPERATOR_SECONDS = 24 * 60 * 60
 TOTAL_SUPPLY = Web3.to_wei(11_000_000_000, "ether")
 
-REWARD_DURATION = 60 * 60 * 24 * 7  # one week in seconds
-DEAUTHORIZATION_DURATION = 60 * 60 * 24 * 60  # 60 days in seconds
-
-PENALTY_DEFAULT = 1000  # 10% penalty
-PENALTY_INCREMENT = 2500  # 25% penalty increment
-PENALTY_DURATION = 60 * 60 * 24  # 1 day in seconds
-
 
 @pytest.fixture()
 def token(project, accounts):
@@ -73,11 +66,6 @@ def taco_application(project, creator, token, threshold_staking, oz_dependency, 
         threshold_staking.address,
         MIN_AUTHORIZATION,
         MIN_OPERATOR_SECONDS,
-        REWARD_DURATION,
-        DEAUTHORIZATION_DURATION,
-        PENALTY_DEFAULT,
-        PENALTY_DURATION,
-        PENALTY_INCREMENT,
     )
 
     encoded_initializer_function = encode_function_data()

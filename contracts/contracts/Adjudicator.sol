@@ -171,8 +171,8 @@ contract Adjudicator {
 
         // 6. If CFrag was incorrect, slash staking provider
         if (!cFragIsCorrect) {
-            uint96 penalty = calculatePenalty(stakingProvider, stakingProviderValue);
-            application.slash(stakingProvider, penalty, msg.sender);
+            // uint96 penalty = calculatePenalty(stakingProvider, stakingProviderValue);
+            // application.slash(stakingProvider, penalty, msg.sender);
             emit IncorrectCFragVerdict(evaluationHash, operator, stakingProvider);
         }
     }
