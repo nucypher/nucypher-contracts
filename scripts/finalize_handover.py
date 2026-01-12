@@ -95,7 +95,7 @@ def cli(
     click.echo(f"Connected to {network.name} network.")
 
     # Get the contracts from the registry
-    coordinator_contract = registry.get_contract(domain=domain, contract_name="Coordinator")
+    coordinator_contract = registry.get_contract(domain=domain, contract_name="HandoverCoordinator")
 
     # Validate the handover data
     click.echo(

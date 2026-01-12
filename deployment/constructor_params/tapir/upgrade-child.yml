@@ -11,7 +11,6 @@ constants:
   TAPIR_RITUAL_TOKEN: "0xf91afFE7cf1d9c367Cb56eDd70C0941a4E8570d9"
   TACO_CHILD_APPLICATION_PROXY: "0x489287Ed5BdF7a35fEE411FBdCc47331093D0769"
   DKG_TIMEOUT_SECONDS: 3600  # 1 hour
-  HANDOVER_TIMEOUT_SECONDS: 900  # 15 minutes
 
 contracts:
   - MockPolygonChild
@@ -23,4 +22,3 @@ contracts:
       constructor:
         _application: $TACO_CHILD_APPLICATION_PROXY
         _dkgTimeout: $DKG_TIMEOUT_SECONDS
-        _handoverTimeout: $HANDOVER_TIMEOUT_SECONDS
