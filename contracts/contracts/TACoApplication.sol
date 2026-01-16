@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import "../threshold/IApplicationWithOperator.sol";
 import "../threshold/IApplicationWithDecreaseDelay.sol";
@@ -147,6 +148,8 @@ contract TACoApplication is
         uint256 _stub;
         uint192 _penaltyPercent;
         uint64 _endPenalty;
+        address owner;
+        address beneficiary;
     }
 
     uint96 public immutable minimumAuthorization;
@@ -703,5 +706,22 @@ contract TACoApplication is
 
     function availableRewards(address) external view override returns (uint96) {
         return 0;
+    }
+
+    //------------------------Migration------------------------------
+
+    function migrateFromThreshold(
+        address _stakingProvider
+    ) external onlyOwnerOrStakingProvider(_stakingProvider) {
+        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
+        require(info.owner == address(0), "Migration completed");
+        (address owner, address beneficiary, ) = tStaking.rolesOf(_stakingProvider);
+        info.owner = owner;
+        info.beneficiary = beneficiary;
+        uint256 tokensToTransfer = Math.min(minimumAuthorization, info.authorized);
+        // token.transferFrom(address(tStaking), address(this), tokensToTransfer);
+        tStaking.migrateAndRelease(_stakingProvider, tokensToTransfer);
+        info.authorized = tokensToTransfer;
+        emit Migrated(_stakingProvider, tokensToTransfer);
     }
 }
