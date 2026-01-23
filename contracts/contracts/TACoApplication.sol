@@ -135,19 +135,28 @@ contract TACoApplication is
      */
     event Released(address indexed stakingProvider);
 
+    /**
+     * @notice Signals that the staking provider migrated stake to TACo
+     * @param stakingProvider Staking provider address
+     * @param authorized Amount of authorized tokens to synchronize
+     */
+    event Migrated(address indexed stakingProvider, uint96 authorized);
+
     struct StakingProviderInfo {
         address operator;
         bool operatorConfirmed;
         uint64 operatorStartTimestamp;
         uint96 authorized;
         uint96 deauthorizing;
-        uint64 _endDeauthorization;
-        uint96 _tReward;
-        uint160 _rewardPerTokenPaid;
-        uint64 _legacyEndCommitment;
-        uint256 _stub;
-        uint192 _penaltyPercent;
-        uint64 _endPenalty;
+        // uint64 _endDeauthorization;
+        // uint96 _tReward;
+        // uint160 _rewardPerTokenPaid;
+        // uint64 _legacyEndCommitment;
+        // uint256 _stub;
+        // uint192 _penaltyPercent;
+        // uint64 _endPenalty;
+        // TODO check gap size and offset for deauthorizing
+        uint256[10] _gap;
         address owner;
         address beneficiary;
     }
@@ -165,16 +174,18 @@ contract TACoApplication is
     address[] public stakingProviders;
     mapping(address => address) internal _stakingProviderFromOperator;
 
-    address private _rewardDistributor;
-    uint256 private _periodFinish;
-    uint256 private _rewardRateDecimals;
-    uint256 private _lastUpdateTime;
-    uint160 private _rewardPerTokenStored;
-    uint96 private _authorizedOverall;
+    // address private _rewardDistributor;
+    // uint256 private _periodFinish;
+    // uint256 private _rewardRateDecimals;
+    // uint256 private _lastUpdateTime;
+    // uint160 private _rewardPerTokenStored;
+    // uint96 private _authorizedOverall;
 
-    address private _rewardContract;
+    // address private _rewardContract;
+    uint256[6] private _gap;
 
     mapping(address => bool) public stakingProviderReleased;
+    mapping(address => bool) public allowList;
 
     /**
      * @notice Constructor sets address of token contract and parameters for staking
@@ -710,16 +721,22 @@ contract TACoApplication is
 
     //------------------------Migration------------------------------
 
+    function controlAllowList(address[] memory _stakingProviders, bool enable) external onlyOwner {
+        for (uint256 i = 0; i < _stakingProviders.length; i++) {
+            allowList[_stakingProviders[i]] = enable;
+        }
+    }
+
     function migrateFromThreshold(
         address _stakingProvider
     ) external onlyOwnerOrStakingProvider(_stakingProvider) {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         require(info.owner == address(0), "Migration completed");
+        require(allowList[_stakingProvider], "Migration is not allowed");
         (address owner, address beneficiary, ) = tStaking.rolesOf(_stakingProvider);
         info.owner = owner;
         info.beneficiary = beneficiary;
-        uint256 tokensToTransfer = Math.min(minimumAuthorization, info.authorized);
-        // token.transferFrom(address(tStaking), address(this), tokensToTransfer);
+        uint96 tokensToTransfer = Math.min(minimumAuthorization, info.authorized).toUint96();
         tStaking.migrateAndRelease(_stakingProvider, tokensToTransfer);
         info.authorized = tokensToTransfer;
         emit Migrated(_stakingProvider, tokensToTransfer);
