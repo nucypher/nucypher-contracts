@@ -5,7 +5,7 @@ import click
 from ape.cli import ConnectedProviderCommand, account_option, network_option
 
 from deployment import registry
-from deployment.constants import SUPPORTED_TACO_DOMAINS, TESTNET_PROVIDERS
+from deployment.constants import SUPPORTED_TACO_DOMAINS
 from deployment.params import Transactor
 
 
@@ -70,11 +70,6 @@ def cli(
         condition = json.loads(condition_file_data)
     except json.JSONDecodeError as e:
         raise click.ClickException(f"Invalid JSON in condition file: {e}")
-
-    if domain not in TESTNET_PROVIDERS:
-        raise click.ClickException(
-            f"Unsupported domain: {domain}. Supported domains are: {', '.join(TESTNET_PROVIDERS)}"
-        )
 
     print(
         f"Setting conditions for cohort {cohort_id} on {domain}:{network} with chain ID {chain_id}"
