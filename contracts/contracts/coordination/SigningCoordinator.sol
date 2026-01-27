@@ -7,7 +7,9 @@ import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import "@openzeppelin-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "./ISigningCoordinatorChild.sol";
+import "./SigningCoordinatorChild.sol";
 import "./SigningCoordinatorDispatcher.sol";
+import "./ThresholdSigningMultisig.sol";
 import "../TACoApplication.sol";
 
 // SigningCoordinator ----> Dispatcher ----> (Relevant) L1Sender ---------[BRIDGE]---------- L2Receiver ----> SigningCoordinatorChild (1. deploys multisig OR 2. updates multisig)
@@ -32,7 +34,12 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     event SigningCohortDeployed(uint32 indexed cohortId, uint256 chainId);
 
     // Cohort Administration
-    event SigningCohortConditionsSet(uint32 indexed cohortId, uint256 chainId, bytes conditions);
+    event SigningCohortConditionsSet(
+        uint32 indexed cohortId,
+        address indexed admin,
+        uint256 chainId,
+        bytes conditions
+    );
 
     // Protocol Administration
     event TimeoutChanged(uint32 oldTimeout, uint32 newTimeout);
@@ -43,6 +50,12 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         address signerAddress;
         bytes signingRequestStaticKey;
         uint256[20] gap;
+    }
+
+    struct Domain {
+        address[] domainAdmins;
+        mapping(address domainAdmin => bool active) activeDomainAdmins;
+        mapping(uint256 chainId => bytes conditions) conditions;
     }
 
     struct SigningCohort {
@@ -56,7 +69,8 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         uint16 threshold;
         SigningCohortParticipant[] signers;
         uint256[] chains;
-        mapping(uint256 => bytes) conditions; // TODO: chainId -> condition itself or hash(condition)
+        mapping(uint256 chainId => bytes conditions) conditions; // TODO: chainId -> condition itself or hash(condition)
+        mapping(uint256 domainId => Domain) domainConditions;
     }
 
     bytes32 public constant INITIATOR_ROLE = keccak256("INITIATOR_ROLE");
@@ -235,17 +249,33 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         return id;
     }
 
-    function setSigningCohortConditions(
+    function setDomainAdmins(
         uint32 cohortId,
-        uint256 chainId,
-        bytes calldata conditions
+        uint256 domainId,
+        address[] memory domainAdmins
     ) external {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
         require(isCohortActive(signingCohort), "Cohort not active");
         require(
             signingCohort.authority == msg.sender,
-            "Only the cohort authority can set conditions"
+            "Only the cohort authority can set domain admin"
         );
+        require(domainId > 0, "Domain id can't be zero");
+        Domain storage domain = signingCohort.domainConditions[domainId];
+        for (uint256 i = 0; i < domain.domainAdmins.length; i++) {
+            address domainAdmin = domain.domainAdmins[i];
+            domain.activeDomainAdmins[domainAdmin] = false;
+        }
+        domain.domainAdmins = domainAdmins;
+        for (uint256 i = 0; i < domain.domainAdmins.length; i++) {
+            address domainAdmin = domain.domainAdmins[i];
+            domain.activeDomainAdmins[domainAdmin] = true;
+        }
+        // TODO emit event
+    }
+
+    function conditionsCheck(SigningCohort storage signingCohort, uint256 chainId) internal view {
+        require(isCohortActive(signingCohort), "Cohort not active");
         // chainId must already be deployed for the cohort
         bool chainDeployed = false;
         for (uint256 i = 0; i < signingCohort.chains.length; i++) {
@@ -255,17 +285,91 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
             }
         }
         require(chainDeployed, "Not already deployed");
+    }
 
+    function setSigningCohortConditions(
+        uint32 cohortId,
+        uint256 chainId,
+        bytes calldata conditions
+    ) external {
+        SigningCohort storage signingCohort = signingCohorts[cohortId];
+        conditionsCheck(signingCohort, chainId);
+        require(
+            signingCohort.authority == msg.sender,
+            "Only the cohort authority can set conditions"
+        );
         signingCohort.conditions[chainId] = conditions;
-        emit SigningCohortConditionsSet(cohortId, chainId, conditions);
+        emit SigningCohortConditionsSet(cohortId, msg.sender, chainId, conditions);
+    }
+
+    function getUnsignedTransactionHash(
+        uint32 cohortId,
+        uint256 chainId,
+        bytes memory conditions,
+        uint256 domainId
+    ) public view returns (bytes32 dataHash) {
+        bytes memory data = abi.encodePacked(cohortId, domainId, chainId, conditions);
+        dataHash = keccak256(data);
+    }
+
+    function setSigningCohortConditions(
+        uint32 cohortId,
+        uint256 chainId,
+        bytes calldata conditions,
+        uint256 domainId,
+        bytes calldata signature
+    ) external {
+        SigningCohort storage signingCohort = signingCohorts[cohortId];
+        conditionsCheck(signingCohort, chainId);
+        require(domainId > 0, "Domain id can't be zero");
+        Domain storage domain = signingCohort.domainConditions[domainId];
+
+        require(
+            domain.activeDomainAdmins[msg.sender],
+            "Only the cohort authority or a domain admin can set conditions"
+        );
+
+        SigningCoordinatorChild child = SigningCoordinatorChild(
+            getSigningCoordinatorChild(block.chainid)
+        );
+        ThresholdSigningMultisig multisig = ThresholdSigningMultisig(
+            child.cohortMultisigs(cohortId)
+        );
+
+        bytes32 hash = getUnsignedTransactionHash(cohortId, chainId, conditions, domainId);
+        require(
+            multisig.isValidSignature(hash, signature) == multisig.MAGICVALUE(),
+            "Invalid Signature"
+        );
+        domain.conditions[chainId] = conditions;
+        emit SigningCohortConditionsSet(cohortId, msg.sender, chainId, conditions); // TODO log domainId
     }
 
     function getSigningCohortConditions(
         uint32 cohortId,
         uint256 chainId
-    ) external view returns (bytes memory) {
+    ) external view returns (bytes[] memory) {
+        return getSigningCohortConditions(cohortId, chainId, 0);
+    }
+
+    function getSigningCohortConditions(
+        uint32 cohortId,
+        uint256 chainId,
+        uint256 domainId
+    ) public view returns (bytes[] memory conditions) {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
-        return signingCohort.conditions[chainId];
+        bytes memory coreConditions = signingCohort.conditions[chainId];
+        bytes memory domainConditions = signingCohort.domainConditions[domainId].conditions[
+            chainId
+        ];
+        if (domainConditions.length > 0) {
+            conditions = new bytes[](2);
+            conditions[1] = domainConditions;
+        } else {
+            conditions = new bytes[](1);
+        }
+        conditions[0] = coreConditions;
+        return conditions;
     }
 
     function getSigningCohortDataHash(
@@ -385,7 +489,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         }
     }
 
-    function getSigningCoordinatorChild(uint256 chainId) external view returns (address) {
+    function getSigningCoordinatorChild(uint256 chainId) public view returns (address) {
         address child = signingCoordinatorDispatcher.getSigningCoordinatorChild(chainId);
         return child;
     }

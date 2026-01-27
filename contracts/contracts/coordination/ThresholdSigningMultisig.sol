@@ -37,8 +37,8 @@ contract ThresholdSigningMultisig is
     address[] public signers;
     uint16 public threshold;
 
-    bytes4 internal constant MAGICVALUE = 0x1626ba7e;
-    bytes4 internal constant INVALID_SIGNATURE = 0xffffffff;
+    bytes4 public constant MAGICVALUE = 0x1626ba7e;
+    bytes4 public constant INVALID_SIGNATURE = 0xffffffff;
     mapping(bytes32 => bytes32) public validSignatures;
 
     /**
