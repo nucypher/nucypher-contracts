@@ -52,11 +52,6 @@ def application(project, oz_dependency, deployer, nodes):
         threshold_staking.address,
         min_auth,
         60 * 60 * 24,
-        60 * 60 * 24 * 7,
-        60 * 60 * 24 * 60,
-        1000,
-        60 * 60 * 24,
-        2500,
     )
     proxy = oz_dependency.TransparentUpgradeableProxy.deploy(
         taco_application_impl.address,
