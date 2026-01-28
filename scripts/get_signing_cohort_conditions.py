@@ -44,7 +44,7 @@ def cli(
     if domain not in TESTNET_PROVIDERS:
         raise click.ClickException(f"Unsupported domain: {domain}. Supported domains are: {', '.join(TESTNET_PROVIDERS)}")
 
-    print(f"Setting conditions for cohort {cohort_id} on {domain}:{network} with chain ID {chain_id}")
+    print(f"Getting conditions for cohort {cohort_id} on {domain}:{network} with chain ID {chain_id}")
 
     signing_coordinator = registry.get_contract(domain=domain, contract_name="SigningCoordinator")
 
