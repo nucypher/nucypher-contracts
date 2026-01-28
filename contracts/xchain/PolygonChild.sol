@@ -35,7 +35,7 @@ contract PolygonChild is FxBaseChildTunnel, Ownable {
         }
     }
 
-    fallback() external {
+    fallback() external payable {
         require(msg.sender == childApplication, "Only child app can call this method");
         _sendMessageToRoot(msg.data);
     }

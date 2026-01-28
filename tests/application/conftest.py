@@ -59,7 +59,7 @@ def encode_function_data(initializer=None, *args):
 
 
 @pytest.fixture()
-def taco_application(project, creator, token, threshold_staking, oz_dependency, chain):
+def taco_application(project, creator, token, threshold_staking, oz_dependency):
     contract = creator.deploy(
         project.TACoApplication,
         token.address,
