@@ -202,7 +202,7 @@ It is still necessary to bump the version on the `package-lock.json` file, so ju
 
 3. Create a PR with these changes which should be merged before continuing. In the case of an `alpha` dev release, the PR could be skipped.
 
-4. Create a new git tag for the new version. he name of the tag must be the new `<version>` that is being released (e.g. `v0.23.0`, `v0.26.0-alpha.10`).
+4. Create a new git tag for the new version. The name of the tag must be the new `<version>` that is being released (e.g. `v0.23.0`, `v0.26.0-alpha.10`).
 ```bash
 > git tag -a <version> -m "<version>"
 
