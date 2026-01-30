@@ -194,28 +194,40 @@ To update the patch version (e.g. from v1.1.0 to v1.1.1):
 > bump2version patch --no-tag
 ```
 
-Alternatively, modify the `version` field in `package.json` and `setup.cfg`.
-
 It is still necessary to bump the version on the `package-lock.json` file, so just run:
 
 ```bash
 > npm install
 ```
 
-3. Create a PR with these changes. We need this PR to be merged before continue.
+3. Create a PR with these changes which should be merged before continuing. In the case of an `alpha` dev release, the PR could be skipped.
 
-4. When these changes are merged, create a new tag on `main` branch. The name of the tag must be the new `<version>` that is being released (e.g. `v0.23.0`).
-
+4. Create a new git tag for the new version. The name of the tag must be the new `<version>` that is being released (e.g. `v0.23.0`, `v0.26.0-alpha.10`).
 ```bash
 > git tag -a <version> -m "<version>"
 
 > git push origin <version>
 ```
 
-5. Publish the new NPM version; this is performed automatically by Github Actions
-when you [create a new release](https://github.com/nucypher/nucypher-contracts/releases/new),
-associated to the latest version tag. Alternatively, run:
+5. There are two options for publishing the npm package, either as an alpha dev release or a stable release.
 
+**For an alpha dev release**
+
+You will need to manually publish the package to npm with the `--tag devnet` flag
+
+* Using node version v18.x, run the following:
 ```bash
-> npm publish
+> npm install
+
+# test the publish process first
+> npm publish --tag devnet --dry-run
+
+> npm publish --tag devnet
 ```
+(We use node v18 to ensure that the minimum node version is supported)
+
+**For a stable release**:
+
+Stable releases are automatically published via Github Actions once a new GitHub release is created.
+
+* [Create a new release](https://github.com/nucypher/nucypher-contracts/releases/new), and a Github Action will automatically publish the new package to npm with the `latest` tag.
