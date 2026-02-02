@@ -741,4 +741,12 @@ contract TACoApplication is
         info.authorized = tokensToTransfer;
         emit Migrated(_stakingProvider, tokensToTransfer);
     }
+
+    function rolesOf(
+        address _stakingProvider
+    ) external view returns (address owner, address beneficiary) {
+        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
+        owner = info.owner;
+        beneficiary = info.beneficiary;
+    }
 }

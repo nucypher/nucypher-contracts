@@ -128,6 +128,10 @@ contract ThresholdStakingForTACoApplicationMock {
         application.authorizationDecreaseRequested(_stakingProvider, _fromAmount, _toAmount);
         stakingProviderInfo[_stakingProvider].decreaseRequestTo = _toAmount;
     }
+
+    function migrateAndRelease(address _stakingProvider, uint96 _amount) external {
+        stakingProviderInfo[_stakingProvider].authorized = _amount;
+    }
 }
 
 /**
