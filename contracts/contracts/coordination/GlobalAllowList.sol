@@ -11,7 +11,7 @@ import "./Coordinator.sol";
 
 /**
  * @title GlobalAllowList
- * @notice Manages a global allow list of addresses that are authorized to decrypt ciphertexts.
+ * @notice Manages a global allow list of addresses that are authorized to decrypt plaintexts.
  */
 contract GlobalAllowList is IEncryptionAuthorizer, Initializable {
     using MessageHashUtils for bytes32;
@@ -129,7 +129,7 @@ contract GlobalAllowList is IEncryptionAuthorizer, Initializable {
     function authorize(
         uint32 ritualId,
         address[] calldata addresses
-    ) external canSetAuthorizations(ritualId) {
+    ) external virtual canSetAuthorizations(ritualId) {
         setAuthorizations(ritualId, addresses, true);
     }
 
@@ -141,7 +141,7 @@ contract GlobalAllowList is IEncryptionAuthorizer, Initializable {
     function deauthorize(
         uint32 ritualId,
         address[] calldata addresses
-    ) external canSetAuthorizations(ritualId) {
+    ) external virtual canSetAuthorizations(ritualId) {
         setAuthorizations(ritualId, addresses, false);
     }
 
