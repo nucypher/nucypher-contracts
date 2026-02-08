@@ -733,12 +733,32 @@ contract TACoApplication is
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         require(info.owner == address(0), "Migration completed");
         require(allowList[_stakingProvider], "Migration is not allowed");
+        _migrateFromThreshold(_stakingProvider, info);
+    }
+
+    function batchMigrateFromThreshold(address[] memory _stakingProviders) external onlyOwner {
+        require(_stakingProviders.length > 0, "Array is empty");
+        for (uint256 i = 0; i < _stakingProviders.length; i++) {
+            address stakingProvider = _stakingProviders[i];
+            StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
+            if (info.owner != address(0)) {
+                continue;
+            }
+            _migrateFromThreshold(stakingProvider, info);
+        }
+    }
+
+    function _migrateFromThreshold(
+        address _stakingProvider,
+        StakingProviderInfo storage _info
+    ) internal {
+        require(eligibleStake(_stakingProvider, 0) > 0, "Not an active staker");
         (address owner, address beneficiary, ) = tStaking.rolesOf(_stakingProvider);
-        info.owner = owner;
-        info.beneficiary = beneficiary;
-        uint96 tokensToTransfer = Math.min(minimumAuthorization, info.authorized).toUint96();
+        _info.owner = owner;
+        _info.beneficiary = beneficiary;
+        uint96 tokensToTransfer = Math.min(minimumAuthorization, _info.authorized).toUint96();
         tStaking.migrateAndRelease(_stakingProvider, tokensToTransfer);
-        info.authorized = tokensToTransfer;
+        _info.authorized = tokensToTransfer;
         emit Migrated(_stakingProvider, tokensToTransfer);
     }
 
