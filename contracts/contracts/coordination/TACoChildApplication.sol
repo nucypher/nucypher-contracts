@@ -52,7 +52,8 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
     address[] public stakingProviders;
     mapping(address => address) public operatorToStakingProvider;
     address public adjudicator;
-    uint32[] public activeRituals;
+    uint32[] public bockingRituals;
+    address public blockingRitualsAdmin;
 
     /**
      * @dev Checks caller is root application
@@ -90,8 +91,13 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         adjudicator = _adjudicator;
     }
 
-    function setActiveRituals(uint32[] memory _activeRituals) external reinitializer(2) {
-        activeRituals = _activeRituals;
+    function setBlockingRitualsAdmin(address _blockingRitualsAdmin) external reinitializer(3) {
+        blockingRitualsAdmin = _blockingRitualsAdmin;
+    }
+
+    function setBlockingRituals(uint32[] memory _bockingRituals) external {
+        require(msg.sender == blockingRitualsAdmin, "Only admin can change blocking rituals");
+        bockingRituals = _bockingRituals;
     }
 
     function authorizedStake(address _stakingProvider) external view returns (uint96) {
@@ -302,12 +308,12 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
                 msg.sender == coordinator,
             "Can't call release"
         );
-        if (info.released) {
+        if (eligibleStake(_stakingProvider, 0) >= minimumAuthorization) {
             return;
         }
         // check all active rituals
-        for (uint256 i = 0; i < activeRituals.length; i++) {
-            uint32 ritualId = activeRituals[i];
+        for (uint256 i = 0; i < bockingRituals.length; i++) {
+            uint32 ritualId = bockingRituals[i];
             if (
                 Coordinator(coordinator).isRitualActive(ritualId) &&
                 Coordinator(coordinator).isParticipant(ritualId, _stakingProvider)
