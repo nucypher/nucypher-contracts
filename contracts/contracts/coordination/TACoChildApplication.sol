@@ -52,7 +52,7 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
     address[] public stakingProviders;
     mapping(address => address) public operatorToStakingProvider;
     address public adjudicator;
-    uint32[] public bockingRituals;
+    uint32[] public blockingRituals;
     address public blockingRitualsAdmin;
 
     /**
@@ -95,9 +95,9 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         blockingRitualsAdmin = _blockingRitualsAdmin;
     }
 
-    function setBlockingRituals(uint32[] memory _bockingRituals) external {
+    function setBlockingRituals(uint32[] memory _blockingRituals) external {
         require(msg.sender == blockingRitualsAdmin, "Only admin can change blocking rituals");
-        bockingRituals = _bockingRituals;
+        blockingRituals = _blockingRituals;
     }
 
     function authorizedStake(address _stakingProvider) external view returns (uint96) {
@@ -130,9 +130,7 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         }
 
         uint96 eligibleAmount = info.authorized;
-        // if (0 < info.endDeauthorization && info.endDeauthorization < _endDate) {
         eligibleAmount -= info.deauthorizing;
-        // }
 
         return eligibleAmount;
     }
@@ -308,12 +306,12 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
                 msg.sender == coordinator,
             "Can't call release"
         );
-        if (eligibleStake(_stakingProvider, 0) >= minimumAuthorization) {
+        if (info.released || eligibleStake(_stakingProvider, 0) >= minimumAuthorization) {
             return;
         }
         // check all active rituals
-        for (uint256 i = 0; i < bockingRituals.length; i++) {
-            uint32 ritualId = bockingRituals[i];
+        for (uint256 i = 0; i < blockingRituals.length; i++) {
+            uint32 ritualId = blockingRituals[i];
             if (
                 Coordinator(coordinator).isRitualActive(ritualId) &&
                 Coordinator(coordinator).isParticipant(ritualId, _stakingProvider)

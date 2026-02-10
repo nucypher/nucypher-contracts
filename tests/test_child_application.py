@@ -380,6 +380,13 @@ def test_release(accounts, root_application, child_application, coordinator):
     assert root_application.releases(staking_provider_2)
     assert tx.events == [child_application.Released(stakingProvider=staking_provider_2)]
 
+    # Trying again
+    tx = child_application.release(staking_provider_2, sender=staking_provider_2)
+    assert child_application.authorizedStake(staking_provider_2) == 0
+    assert child_application.stakingProviderInfo(staking_provider_2)[RELEASED_SLOT]
+    assert root_application.releases(staking_provider_2)
+    assert tx.events == []
+
     coordinator.setRitualParticipant(2, staking_provider_3, sender=creator)
 
     # Active participant
