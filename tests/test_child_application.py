@@ -339,10 +339,21 @@ def test_release(accounts, root_application, child_application, coordinator):
     value = Web3.to_wei(40_000, "ether")
     root_application.updateAuthorization(staking_provider, value, sender=creator)
     root_application.updateAuthorization(staking_provider_2, value, sender=creator)
+    root_application.updateAuthorization(staking_provider_2, value, value, 0, sender=creator)
     root_application.updateAuthorization(staking_provider_3, value, sender=creator)
+    root_application.updateAuthorization(staking_provider_3, value, value, 0, sender=creator)
 
     with ape.reverts("Can't call release"):
         child_application.release(staking_provider, sender=creator)
+
+    # No exit request
+    tx = child_application.release(staking_provider, sender=staking_provider)
+    assert not child_application.stakingProviderInfo(staking_provider)[RELEASED_SLOT]
+    assert child_application.authorizedStake(staking_provider) == value
+    assert child_application.eligibleStake(staking_provider, 0) == value
+    assert not root_application.releases(staking_provider)
+
+    root_application.updateAuthorization(staking_provider, value, value, 0, sender=creator)
 
     # No active rituals set
     tx = child_application.release(staking_provider, sender=staking_provider)
@@ -359,7 +370,8 @@ def test_release(accounts, root_application, child_application, coordinator):
     assert not child_application.stakingProviderInfo(staking_provider)[RELEASED_SLOT]
     assert child_application.authorizedStake(staking_provider) == value
 
-    child_application.setActiveRituals([1, 2], sender=creator)
+    child_application.setBlockingRitualsAdmin(creator, sender=creator)
+    child_application.setBlockingRituals([1, 2], sender=creator)
 
     # Not a participant in active rituals
     tx = coordinator.release(staking_provider_2, sender=staking_provider_2)
@@ -367,6 +379,13 @@ def test_release(accounts, root_application, child_application, coordinator):
     assert child_application.stakingProviderInfo(staking_provider_2)[RELEASED_SLOT]
     assert root_application.releases(staking_provider_2)
     assert tx.events == [child_application.Released(stakingProvider=staking_provider_2)]
+
+    # Trying again
+    tx = child_application.release(staking_provider_2, sender=staking_provider_2)
+    assert child_application.authorizedStake(staking_provider_2) == 0
+    assert child_application.stakingProviderInfo(staking_provider_2)[RELEASED_SLOT]
+    assert root_application.releases(staking_provider_2)
+    assert tx.events == []
 
     coordinator.setRitualParticipant(2, staking_provider_3, sender=creator)
 
