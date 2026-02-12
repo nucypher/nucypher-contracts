@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import "../threshold/IApplicationWithOperator.sol";
 import "../threshold/IApplicationWithDecreaseDelay.sol";
@@ -134,19 +135,30 @@ contract TACoApplication is
      */
     event Released(address indexed stakingProvider);
 
+    /**
+     * @notice Signals that the staking provider migrated stake to TACo
+     * @param stakingProvider Staking provider address
+     * @param authorized Amount of authorized tokens to synchronize
+     */
+    event Migrated(address indexed stakingProvider, uint96 authorized);
+
     struct StakingProviderInfo {
         address operator;
         bool operatorConfirmed;
         uint64 operatorStartTimestamp;
         uint96 authorized;
         uint96 deauthorizing;
-        uint64 _endDeauthorization;
-        uint96 _tReward;
-        uint160 _rewardPerTokenPaid;
-        uint64 _legacyEndCommitment;
-        uint256 _stub;
-        uint192 _penaltyPercent;
-        uint64 _endPenalty;
+        // uint64 _endDeauthorization;
+        // uint96 _tReward;
+        // uint160 _rewardPerTokenPaid;
+        // uint64 _legacyEndCommitment;
+        // uint256 _stub;
+        // uint192 _penaltyPercent;
+        // uint64 _endPenalty;
+        // TODO check gap size and offset for deauthorizing
+        uint256[10] _gap;
+        address owner;
+        address beneficiary;
     }
 
     uint96 public immutable minimumAuthorization;
@@ -162,16 +174,18 @@ contract TACoApplication is
     address[] public stakingProviders;
     mapping(address => address) internal _stakingProviderFromOperator;
 
-    address private _rewardDistributor;
-    uint256 private _periodFinish;
-    uint256 private _rewardRateDecimals;
-    uint256 private _lastUpdateTime;
-    uint160 private _rewardPerTokenStored;
-    uint96 private _authorizedOverall;
+    // address private _rewardDistributor;
+    // uint256 private _periodFinish;
+    // uint256 private _rewardRateDecimals;
+    // uint256 private _lastUpdateTime;
+    // uint160 private _rewardPerTokenStored;
+    // uint96 private _authorizedOverall;
 
-    address private _rewardContract;
+    // address private _rewardContract;
+    uint256[6] private _gap;
 
     mapping(address => bool) public stakingProviderReleased;
+    mapping(address => bool) public allowList;
 
     /**
      * @notice Constructor sets address of token contract and parameters for staking
@@ -703,5 +717,56 @@ contract TACoApplication is
 
     function availableRewards(address) external view override returns (uint96) {
         return 0;
+    }
+
+    //------------------------Migration------------------------------
+
+    function controlAllowList(address[] memory _stakingProviders, bool enable) external onlyOwner {
+        for (uint256 i = 0; i < _stakingProviders.length; i++) {
+            allowList[_stakingProviders[i]] = enable;
+        }
+    }
+
+    function migrateFromThreshold(
+        address _stakingProvider
+    ) external onlyOwnerOrStakingProvider(_stakingProvider) {
+        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
+        require(info.owner == address(0), "Migration completed");
+        require(allowList[_stakingProvider], "Migration is not allowed");
+        _migrateFromThreshold(_stakingProvider, info);
+    }
+
+    function batchMigrateFromThreshold(address[] memory _stakingProviders) external onlyOwner {
+        require(_stakingProviders.length > 0, "Array is empty");
+        for (uint256 i = 0; i < _stakingProviders.length; i++) {
+            address stakingProvider = _stakingProviders[i];
+            StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
+            if (info.owner != address(0)) {
+                continue;
+            }
+            _migrateFromThreshold(stakingProvider, info);
+        }
+    }
+
+    function _migrateFromThreshold(
+        address _stakingProvider,
+        StakingProviderInfo storage _info
+    ) internal {
+        require(eligibleStake(_stakingProvider, 0) > 0, "Not an active staker");
+        (address owner, address beneficiary, ) = tStaking.rolesOf(_stakingProvider);
+        _info.owner = owner;
+        _info.beneficiary = beneficiary;
+        uint96 tokensToTransfer = Math.min(minimumAuthorization, _info.authorized).toUint96();
+        tStaking.migrateAndRelease(_stakingProvider, tokensToTransfer);
+        _info.authorized = tokensToTransfer;
+        emit Migrated(_stakingProvider, tokensToTransfer);
+    }
+
+    function rolesOf(
+        address _stakingProvider
+    ) external view returns (address owner, address beneficiary) {
+        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
+        owner = info.owner;
+        beneficiary = info.beneficiary;
     }
 }
