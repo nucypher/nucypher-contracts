@@ -14,20 +14,12 @@ constants:
 
   # TACo specific constants:
   IN_SECONDS_1_DAY: 86400
-  IN_SECONDS_182_DAYS: 15724800
-  IN_SECONDS_AVERAGE_MONTH_DURATION: 2628000  # 365*24*60*60/12
-  FORTY_THOUSAND_TOKENS_IN_WEI_UNITS: 40000000000000000000000
+  _150_000_TOKENS_IN_WEI_UNITS: 150000000000000000000000
 
 contracts:
   - TACoApplication:
       constructor:
         _token: $T_TOKEN_ETH_MAINNET
         _tStaking: $T_STAKING_CONTRACT
-        _minimumAuthorization: $FORTY_THOUSAND_TOKENS_IN_WEI_UNITS
+        _minimumAuthorization: $_150_000_TOKENS_IN_WEI_UNITS
         _minOperatorSeconds: $IN_SECONDS_1_DAY
-        _rewardDuration: $IN_SECONDS_AVERAGE_MONTH_DURATION
-        _deauthorizationDuration: $IN_SECONDS_182_DAYS
-        _penaltyDefault: 1
-        _penaltyDuration: 1
-        _penaltyIncrement: 1
-
