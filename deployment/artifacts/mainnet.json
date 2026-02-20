@@ -8279,25 +8279,6 @@
                 },
                 {
                     "type": "function",
-                    "name": "activeRituals",
-                    "stateMutability": "view",
-                    "inputs": [
-                        {
-                            "name": "",
-                            "type": "uint256",
-                            "internalType": "uint256"
-                        }
-                    ],
-                    "outputs": [
-                        {
-                            "name": "",
-                            "type": "uint32",
-                            "internalType": "uint32"
-                        }
-                    ]
-                },
-                {
-                    "type": "function",
                     "name": "adjudicator",
                     "stateMutability": "view",
                     "inputs": [],
@@ -8325,6 +8306,38 @@
                             "name": "",
                             "type": "uint96",
                             "internalType": "uint96"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "blockingRituals",
+                    "stateMutability": "view",
+                    "inputs": [
+                        {
+                            "name": "",
+                            "type": "uint256",
+                            "internalType": "uint256"
+                        }
+                    ],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "uint32",
+                            "internalType": "uint32"
+                        }
+                    ]
+                },
+                {
+                    "type": "function",
+                    "name": "blockingRitualsAdmin",
+                    "stateMutability": "view",
+                    "inputs": [],
+                    "outputs": [
+                        {
+                            "name": "",
+                            "type": "address",
+                            "internalType": "address"
                         }
                     ]
                 },
@@ -8365,7 +8378,7 @@
                             "internalType": "address"
                         },
                         {
-                            "name": "_endDate",
+                            "name": "",
                             "type": "uint256",
                             "internalType": "uint256"
                         }
@@ -8577,13 +8590,26 @@
                 },
                 {
                     "type": "function",
-                    "name": "setActiveRituals",
+                    "name": "setBlockingRituals",
                     "stateMutability": "nonpayable",
                     "inputs": [
                         {
-                            "name": "_activeRituals",
+                            "name": "_blockingRituals",
                             "type": "uint32[]",
                             "internalType": "uint32[]"
+                        }
+                    ],
+                    "outputs": []
+                },
+                {
+                    "type": "function",
+                    "name": "setBlockingRitualsAdmin",
+                    "stateMutability": "nonpayable",
+                    "inputs": [
+                        {
+                            "name": "_blockingRitualsAdmin",
+                            "type": "address",
+                            "internalType": "address"
                         }
                     ],
                     "outputs": []
@@ -8626,12 +8652,12 @@
                             "internalType": "uint96"
                         },
                         {
-                            "name": "endDeauthorization",
+                            "name": "_endDeauthorization",
                             "type": "uint64",
                             "internalType": "uint64"
                         },
                         {
-                            "name": "stub",
+                            "name": "_stub",
                             "type": "uint256",
                             "internalType": "uint256"
                         },
@@ -8700,7 +8726,7 @@
                             "internalType": "uint96"
                         },
                         {
-                            "name": "endDeauthorization",
+                            "name": "",
                             "type": "uint64",
                             "internalType": "uint64"
                         }
@@ -8726,8 +8752,8 @@
                     "outputs": []
                 }
             ],
-            "tx_hash": "0x31474ff61017606ecb0ae534778b7eed76b357cc631c7c7e99ce2237ab9f3b50",
-            "block_number": 75720593,
+            "tx_hash": "0x3e2a52f5c1f8f7230cb347c6778767977c1f6b70526cc79565ea7c9d44463f9e",
+            "block_number": 82856754,
             "deployer": "0x1591165F1BF8B73de7053A6BE6f239BC15076879"
         }
     },
