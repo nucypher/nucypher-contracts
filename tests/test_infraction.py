@@ -4,6 +4,8 @@ from enum import IntEnum
 import ape
 import pytest
 
+from tests.conftest import generate_transcript
+
 TIMEOUT = 1000
 MAX_DKG_SIZE = 31
 FEE_RATE = 42
@@ -83,10 +85,12 @@ def coordinator(project, deployer, application, oz_dependency):
     admin = deployer
     contract = project.Coordinator.deploy(
         application.address,
+        TIMEOUT,
+        0,
         sender=deployer,
     )
 
-    encoded_initializer_function = contract.initialize.encode_input(TIMEOUT, MAX_DKG_SIZE, admin)
+    encoded_initializer_function = contract.initialize.encode_input(MAX_DKG_SIZE, admin)
     proxy = oz_dependency.TransparentUpgradeableProxy.deploy(
         contract.address,
         deployer,
@@ -108,7 +112,7 @@ def fee_model(project, deployer, coordinator, erc20, treasury):
     contract = project.FlatRateFeeModel.deploy(
         coordinator.address, erc20.address, FEE_RATE, sender=deployer
     )
-    coordinator.grantRole(coordinator.TREASURY_ROLE(), treasury, sender=deployer)
+    coordinator.grantRole(coordinator.FEE_MODEL_MANAGER_ROLE(), treasury, sender=deployer)
     coordinator.approveFeeModel(contract.address, sender=treasury)
     return contract
 
@@ -130,9 +134,13 @@ def test_no_infractions(
     coordinator.initiateRitual(
         fee_model, nodes, initiator, DURATION, global_allow_list.address, sender=initiator
     )
-    transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
+    
+    size = len(nodes)
+    threshold = coordinator.getThresholdForRitualSize(size)
+    transcript = generate_transcript(size, threshold)
+    
     for node in nodes:
-        coordinator.postTranscript(0, transcript, sender=node)
+        coordinator.publishTranscript(0, transcript, sender=node)
 
     with ape.reverts("Ritual must have failed"):
         infraction_collector.reportMissingTranscript(0, nodes, sender=initiator)
@@ -149,10 +157,12 @@ def test_partial_infractions(
     coordinator.initiateRitual(
         fee_model, nodes, initiator, DURATION, global_allow_list.address, sender=initiator
     )
-    transcript = os.urandom(transcript_size(len(nodes), len(nodes)))
     # post transcript for half of nodes
+    size = len(nodes)
+    threshold = coordinator.getThresholdForRitualSize(size)
+    transcript = generate_transcript(size, threshold)
     for node in nodes[: len(nodes) // 2]:
-        coordinator.postTranscript(RITUAL_ID, transcript, sender=node)
+        coordinator.publishTranscript(RITUAL_ID, transcript, sender=node)
     chain.pending_timestamp += TIMEOUT * 2
     infraction_collector.reportMissingTranscript(
         RITUAL_ID, nodes[len(nodes) // 2 :], sender=initiator
