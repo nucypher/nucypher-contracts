@@ -12,6 +12,8 @@ FEE_RATE = 42
 ERC20_SUPPLY = 10**24
 DURATION = 48 * 60 * 60
 ONE_DAY = 24 * 60 * 60
+# Period duration for PenaltyBoard: long enough that ritual timeout stays in period 0
+PENALTY_BOARD_PERIOD_DURATION = 7 * ONE_DAY
 
 RITUAL_ID = 0
 
@@ -63,6 +65,13 @@ def treasury(accounts):
     treasury_index = MAX_DKG_SIZE + 3
     assert len(accounts) >= treasury_index
     return accounts[treasury_index]
+
+
+@pytest.fixture(scope="module")
+def informer(accounts):
+    informer_index = MAX_DKG_SIZE + 4
+    assert len(accounts) >= informer_index
+    return accounts[informer_index]
 
 
 @pytest.fixture()
@@ -120,6 +129,21 @@ def fee_model(project, deployer, coordinator, erc20, treasury):
 @pytest.fixture
 def infraction_collector(project, deployer, coordinator):
     contract = project.InfractionCollector.deploy(coordinator.address, sender=deployer)
+    return contract
+
+
+@pytest.fixture
+def penalty_board(project, deployer, informer, chain):
+    """PenaltyBoard with genesis at current chain time and INFORMER_ROLE granted to informer.
+    Period duration is one week so ritual timeout still lands in period 0."""
+    genesis_time = chain.pending_timestamp
+    contract = project.PenaltyBoard.deploy(
+        genesis_time,
+        PENALTY_BOARD_PERIOD_DURATION,
+        deployer.address,
+        sender=deployer,
+    )
+    contract.grantRole(contract.INFORMER_ROLE(), informer.address, sender=deployer)
     return contract
 
 
@@ -213,3 +237,40 @@ def test_cant_report_infractions_twice(
 
     with ape.reverts("Infraction already reported"):
         infraction_collector.reportMissingTranscript(RITUAL_ID, nodes, sender=initiator)
+
+
+def test_infraction_collector_and_penalty_board_together(
+    erc20,
+    nodes,
+    initiator,
+    global_allow_list,
+    infraction_collector,
+    coordinator,
+    chain,
+    fee_model,
+    penalty_board,
+    informer,
+):
+    """Use InfractionCollector (ritual-level infractions) and PenaltyBoard (period-level penalties) together.
+    No on-chain link: informer sets penalized providers on PenaltyBoard from the same addresses that were
+    reported to InfractionCollector."""
+    cost = fee_model.getRitualCost(len(nodes), DURATION)
+    for node in nodes:
+        public_key = gen_public_key()
+        coordinator.setProviderPublicKey(public_key, sender=node)
+    erc20.approve(fee_model.address, cost, sender=initiator)
+    coordinator.initiateRitual(
+        fee_model, nodes, initiator, DURATION, global_allow_list.address, sender=initiator
+    )
+    # No transcripts published; ritual times out
+    chain.pending_timestamp += TIMEOUT * 2
+    failing_providers = [n.address for n in nodes]
+    infraction_collector.reportMissingTranscript(RITUAL_ID, nodes, sender=initiator)
+
+    # Same period still (period duration is 1 week; we advanced ~2000s). Informer records
+    # penalized providers for this period on PenaltyBoard.
+    current_period = penalty_board.getCurrentPeriod()
+    penalty_board.setPenalizedProvidersForPeriod(
+        failing_providers, current_period, sender=informer
+    )
+    assert penalty_board.getPenalizedProvidersForPeriod(current_period) == failing_providers
