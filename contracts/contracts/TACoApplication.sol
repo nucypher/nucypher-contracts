@@ -7,9 +7,6 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
-import "../threshold/IApplicationWithOperator.sol";
-import "../threshold/IApplicationWithDecreaseDelay.sol";
-import "@threshold/contracts/staking/IStaking.sol";
 import "./coordination/ITACoRootToChild.sol";
 import "./coordination/ITACoChildToRoot.sol";
 
@@ -17,74 +14,21 @@ import "./coordination/ITACoChildToRoot.sol";
  * @title TACo Application
  * @notice Contract distributes rewards for participating in app and slashes for violating rules
  */
-contract TACoApplication is
-    IApplicationWithDecreaseDelay,
-    IApplicationWithOperator,
-    ITACoChildToRoot,
-    OwnableUpgradeable
-{
+contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
 
     /**
-     * @notice Signals that authorization was increased for the staking provider
+     * @notice Signals that unstake was requested for the staking provider
      * @param stakingProvider Staking provider address
-     * @param fromAmount Previous amount of increased authorization
-     * @param toAmount New amount of increased authorization
      */
-    event AuthorizationIncreased(
-        address indexed stakingProvider,
-        uint96 fromAmount,
-        uint96 toAmount
-    );
+    event UnstakeRequested(address indexed stakingProvider);
 
     /**
-     * @notice Signals that authorization was decreased involuntary
+     * @notice Signals that unstake was approved for the staking provider
      * @param stakingProvider Staking provider address
-     * @param fromAmount Previous amount of authorized tokens
-     * @param toAmount Amount of authorized tokens to decrease
      */
-    event AuthorizationInvoluntaryDecreased(
-        address indexed stakingProvider,
-        uint96 fromAmount,
-        uint96 toAmount
-    );
-
-    /**
-     * @notice Signals that authorization decrease was requested for the staking provider
-     * @param stakingProvider Staking provider address
-     * @param fromAmount Current amount of authorized tokens
-     * @param toAmount Amount of authorization to decrease
-     */
-    event AuthorizationDecreaseRequested(
-        address indexed stakingProvider,
-        uint96 fromAmount,
-        uint96 toAmount
-    );
-
-    /**
-     * @notice Signals that authorization decrease was approved for the staking provider
-     * @param stakingProvider Staking provider address
-     * @param fromAmount Previous amount of authorized tokens
-     * @param toAmount Decreased amount of authorized tokens
-     */
-    event AuthorizationDecreaseApproved(
-        address indexed stakingProvider,
-        uint96 fromAmount,
-        uint96 toAmount
-    );
-
-    /**
-     * @notice Signals that authorization was resynchronized with Threshold staking contract
-     * @param stakingProvider Staking provider address
-     * @param fromAmount Previous amount of authorized tokens
-     * @param toAmount Resynchronized amount of authorized tokens
-     */
-    event AuthorizationReSynchronized(
-        address indexed stakingProvider,
-        uint96 fromAmount,
-        uint96 toAmount
-    );
+    event UnstakeApproved(address indexed stakingProvider);
 
     /**
      * @notice Signals that the staking provider was slashed
@@ -129,18 +73,25 @@ contract TACoApplication is
     );
 
     /**
-     * @notice Signals that the staking provider was released
+     * @notice Signals that new stake was initialized
      * @param stakingProvider Staking provider address
+     * @param owner Owner address
+     * @param beneficiary Beneficiary address
+     * @param amount Amount of authorized tokens
      */
-    event Released(address indexed stakingProvider);
+    event Staked(
+        address indexed stakingProvider,
+        address indexed owner,
+        address indexed beneficiary,
+        uint96 amount
+    );
 
     /**
-     * @notice Signals that the staking provider migrated stake to TACo
+     * @notice Signals that the staking provider was released
      * @param stakingProvider Staking provider address
-     * @param authorized Amount of authorized tokens to synchronize
      * @param stakeless Shows if authorization is backed up by tokens
      */
-    event Migrated(address indexed stakingProvider, uint96 authorized, bool stakeless);
+    event Released(address indexed stakingProvider);
 
     /**
      * @notice Signals that the staking provider was added without stake
@@ -164,14 +115,13 @@ contract TACoApplication is
         // TODO check gap size and offset for deauthorizing
         uint256[10] _gap;
         address owner;
-        address beneficiary;
+        address payable beneficiary;
         bool stakeless;
     }
 
     uint96 public immutable minimumAuthorization;
     uint256 public immutable minOperatorSeconds;
 
-    IStaking public immutable tStaking;
     IERC20 public immutable token;
 
     ITACoRootToChild public childApplication;
@@ -197,37 +147,16 @@ contract TACoApplication is
     /**
      * @notice Constructor sets address of token contract and parameters for staking
      * @param _token T token contract
-     * @param _tStaking T token staking contract
      * @param _minimumAuthorization Amount of minimum allowable authorization
      * @param _minOperatorSeconds Min amount of seconds while an operator can't be changed
      */
-    constructor(
-        IERC20 _token,
-        IStaking _tStaking,
-        uint96 _minimumAuthorization,
-        uint256 _minOperatorSeconds
-    ) {
+    constructor(IERC20 _token, uint96 _minimumAuthorization, uint256 _minOperatorSeconds) {
         uint256 totalSupply = _token.totalSupply();
-        require(
-            _tStaking.authorizedStake(address(this), address(this)) == 0 && totalSupply > 0,
-            "Wrong input parameters"
-        );
+        require(totalSupply > 0, "Wrong input parameters");
         minimumAuthorization = _minimumAuthorization;
         token = _token;
-        tStaking = _tStaking;
         minOperatorSeconds = _minOperatorSeconds;
         _disableInitializers();
-    }
-
-    /**
-     * @dev Checks caller is T staking contract or contract Owner
-     */
-    modifier onlyStakingContract() {
-        require(
-            msg.sender == address(tStaking) || msg.sender == owner(),
-            "Caller must be the T staking contract or contract owner"
-        );
-        _;
     }
 
     /**
@@ -236,7 +165,7 @@ contract TACoApplication is
     modifier onlyOwnerOrStakingProvider(address _stakingProvider) {
         require(isAuthorized(_stakingProvider), "Not owner or provider");
         if (_stakingProvider != msg.sender) {
-            (address owner, , ) = tStaking.rolesOf(_stakingProvider);
+            address owner = stakingProviderInfo[_stakingProvider].owner;
             require(owner == msg.sender, "Not owner or provider");
         }
         _;
@@ -257,153 +186,57 @@ contract TACoApplication is
         childApplication = _childApplication;
     }
 
-    /**
-     *  @notice Returns authorization-related parameters of the application.
-     *  @dev The minimum authorization is also returned by `minimumAuthorization()`
-     *       function, as a requirement of `IApplication` interface.
-     *  @return _minimumAuthorization The minimum authorization amount required
-     *          so that operator can participate in the application.
-     *  @return authorizationDecreaseDelay Delay in seconds that needs to pass
-     *          between the time authorization decrease is requested and the
-     *          time that request gets approved. Protects against free-riders
-     *          earning rewards and not being active in the network.
-     *  @return authorizationDecreaseChangePeriod Authorization decrease change
-     *         period in seconds. It is the time, before authorization decrease
-     *         delay end, during which the pending authorization decrease
-     *         request can be overwritten.
-     *         If set to 0, pending authorization decrease request can not be
-     *         overwritten until the entire `authorizationDecreaseDelay` ends.
-     *         If set to value equal `authorizationDecreaseDelay`, request can
-     *         always be overwritten.
-     */
-    function authorizationParameters()
-        external
-        view
-        override
-        returns (
-            uint96 _minimumAuthorization,
-            uint64 authorizationDecreaseDelay,
-            uint64 authorizationDecreaseChangePeriod
-        )
-    {
-        return (minimumAuthorization, 0, 0);
-    }
-
     //------------------------Authorization------------------------------
 
-    /**
-     * @notice Recalculate reward and save increased authorization. Can be called only by staking contract
-     * @param _stakingProvider Address of staking provider
-     * @param _fromAmount Amount of previously authorized tokens to TACo application by staking provider
-     * @param _toAmount Amount of authorized tokens to TACo application by staking provider
-     */
-    function authorizationIncreased(
+    function initializeStake(
         address _stakingProvider,
-        uint96 _fromAmount,
-        uint96 _toAmount
-    ) external override onlyStakingContract {
-        require(
-            _stakingProvider != address(0) && _toAmount > 0,
-            "Input parameters must be specified"
-        );
-        require(_toAmount >= minimumAuthorization, "Authorization must be greater than minimum");
-
+        address _owner,
+        address payable _beneficiary
+    ) external onlyOwner {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
-        require(
-            _stakingProviderFromOperator[_stakingProvider] == address(0) ||
-                _stakingProviderFromOperator[_stakingProvider] == _stakingProvider,
-            "A provider can't be an operator for another provider"
-        );
+        require(info.authorized == 0 && info.owner == address(0), "Stake already initialized");
 
-        info.authorized = _toAmount;
-        emit AuthorizationIncreased(_stakingProvider, _fromAmount, _toAmount);
+        info.owner = _owner;
+        info.beneficiary = _beneficiary;
+        info.authorized = minimumAuthorization;
+        emit Staked(_stakingProvider, _owner, _beneficiary, info.authorized);
+        token.safeTransferFrom(_owner, address(this), info.authorized);
         _updateAuthorization(_stakingProvider, info);
+    }
 
+    /**
+     * @notice Register request of unstaking
+     * @param _stakingProvider Address of staking provider
+     */
+    function requestUnstake(
+        address _stakingProvider
+    ) external onlyOwnerOrStakingProvider(_stakingProvider) {
+        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
+
+        info.deauthorizing = info.authorized;
+        info.authorized = 0;
         stakingProviderReleased[_stakingProvider] = false;
-    }
-
-    /**
-     * @notice Immediately decrease authorization. Can be called only by staking contract
-     * @param _stakingProvider Address of staking provider
-     * @param _fromAmount Previous amount of authorized tokens
-     * @param _toAmount Amount of authorized tokens to decrease
-     */
-    function involuntaryAuthorizationDecrease(
-        address _stakingProvider,
-        uint96 _fromAmount,
-        uint96 _toAmount
-    ) external override onlyStakingContract {
-        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
-
-        uint96 decrease = info.authorized - _toAmount;
-        if (info.deauthorizing > decrease) {
-            info.deauthorizing -= decrease;
-        } else {
-            info.deauthorizing = 0;
-        }
-
-        info.authorized = _toAmount;
-
-        // if (info.authorized < info.deauthorizing) {
-        //     info.deauthorizing = info.authorized;
-        // }
-        emit AuthorizationInvoluntaryDecreased(_stakingProvider, _fromAmount, _toAmount);
-
-        if (info.authorized == 0) {
-            _releaseOperator(_stakingProvider);
-        }
+        emit UnstakeRequested(_stakingProvider);
         _updateAuthorization(_stakingProvider, info);
+        childApplication.release(_stakingProvider);
     }
 
     /**
-     * @notice Register request of decreasing authorization. Can be called only by staking contract
-     * @param _stakingProvider Address of staking provider
-     * @param _fromAmount Current amount of authorized tokens
-     * @param _toAmount Amount of authorized tokens to decrease
-     */
-    function authorizationDecreaseRequested(
-        address _stakingProvider,
-        uint96 _fromAmount,
-        uint96 _toAmount
-    ) external override onlyStakingContract {
-        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
-        require(_toAmount <= info.authorized, "Amount to decrease greater than authorized");
-        require(
-            _toAmount == 0 || _toAmount >= minimumAuthorization,
-            "Resulting authorization will be less than minimum"
-        );
-
-        info.authorized = _fromAmount;
-        info.deauthorizing = _fromAmount - _toAmount;
-        emit AuthorizationDecreaseRequested(_stakingProvider, _fromAmount, _toAmount);
-        _updateAuthorization(_stakingProvider, info);
-        if (_toAmount < minimumAuthorization) {
-            childApplication.release(_stakingProvider);
-        }
-    }
-
-    /**
-     * @notice Approve request of decreasing authorization. Can be called by anyone
+     * @notice Approve request of unstaking
      * @param _stakingProvider Address of staking provider
      */
-    function approveAuthorizationDecrease(address _stakingProvider) external {
+    function approveUnstake(address _stakingProvider) internal {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
-        require(info.deauthorizing > 0, "There is no deauthorizing in process");
+        require(info.deauthorizing > 0, "There is no unstaking in process");
 
-        uint96 toAmount = tStaking.approveAuthorizationDecrease(_stakingProvider);
-        require(
-            stakingProviderReleased[_stakingProvider] || toAmount >= minimumAuthorization,
-            "Node has not finished leaving process"
-        );
-
-        emit AuthorizationDecreaseApproved(_stakingProvider, info.authorized, toAmount);
-        info.authorized = toAmount;
+        emit UnstakeApproved(_stakingProvider);
+        uint96 authorized = info.authorized;
+        info.authorized = 0;
         info.deauthorizing = 0;
 
-        if (info.authorized == 0) {
-            _releaseOperator(_stakingProvider);
-        }
+        _releaseOperator(_stakingProvider);
         _updateAuthorization(_stakingProvider, info);
+        token.safeTransfer(info.owner, authorized);
     }
 
     //-------------------------Main-------------------------
@@ -437,7 +270,7 @@ contract TACoApplication is
      *         is going to be made during this period, the returned amount will
      *         be the staked amount minus the deauthorizing amount.
      */
-    function eligibleStake(address _stakingProvider, uint256) public view returns (uint96) {
+    function eligibleStake(address _stakingProvider) public view returns (uint96) {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         if (stakingProviderReleased[_stakingProvider]) {
             return 0;
@@ -451,25 +284,6 @@ contract TACoApplication is
         }
 
         return eligibleAmount;
-    }
-
-    /**
-     * @notice Returns the amount of stake that is pending authorization
-     *         decrease for the given staking provider. If no authorization
-     *         decrease has been requested, returns zero.
-     */
-    function pendingAuthorizationDecrease(
-        address _stakingProvider
-    ) external view override returns (uint96) {
-        return stakingProviderInfo[_stakingProvider].deauthorizing;
-    }
-
-    /**
-     * @notice Returns the remaining time in seconds that needs to pass before
-     *         the requested authorization decrease can be approved.
-     */
-    function remainingAuthorizationDecreaseDelay(address) external view override returns (uint64) {
-        return 0;
     }
 
     /**
@@ -495,15 +309,12 @@ contract TACoApplication is
         }
         activeStakingProviders = new bytes32[](endIndex - _startIndex);
         allAuthorizedTokens = 0;
-        uint256 endDate = _cohortDuration == 0
-            ? type(uint256).max
-            : block.timestamp + _cohortDuration;
 
         uint256 resultIndex = 0;
         for (uint256 i = _startIndex; i < endIndex; i++) {
             address stakingProvider = stakingProviders[i];
             StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
-            uint256 eligibleAmount = eligibleStake(stakingProvider, endDate);
+            uint256 eligibleAmount = eligibleStake(stakingProvider);
             if (eligibleAmount < minimumAuthorization || !info.operatorConfirmed) {
                 continue;
             }
@@ -525,7 +336,7 @@ contract TACoApplication is
     function getBeneficiary(
         address _stakingProvider
     ) public view returns (address payable beneficiary) {
-        (, beneficiary, ) = tStaking.rolesOf(_stakingProvider);
+        beneficiary = stakingProviderInfo[_stakingProvider].beneficiary;
     }
 
     /**
@@ -557,7 +368,7 @@ contract TACoApplication is
      *          Reverts if the operator is already set for the staking provider
      *          or if the operator address is already in use.
      */
-    function registerOperator(address _operator) external override {
+    function registerOperator(address _operator) external {
         bondOperator(msg.sender, _operator);
     }
 
@@ -693,48 +504,11 @@ contract TACoApplication is
 
         stakingProviderReleased[_stakingProvider] = true;
         emit Released(_stakingProvider);
+        approveUnstake(_stakingProvider);
     }
 
     function penalize(address) external override {
         revert("Deprecated");
-    }
-
-    function withdrawRewards(address) external override {
-        revert("Deprecated");
-    }
-
-    function availableRewards(address) external view override returns (uint96) {
-        return 0;
-    }
-
-    //------------------------Migration------------------------------
-
-    function batchMigrateFromThreshold(address[] memory _stakingProviders) external onlyOwner {
-        require(_stakingProviders.length > 0, "Array is empty");
-        for (uint256 i = 0; i < _stakingProviders.length; i++) {
-            address stakingProvider = _stakingProviders[i];
-            StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
-            if (info.owner != address(0)) {
-                continue;
-            }
-            _migrateFromThreshold(stakingProvider, info);
-        }
-    }
-
-    function _migrateFromThreshold(
-        address _stakingProvider,
-        StakingProviderInfo storage _info
-    ) internal {
-        require(eligibleStake(_stakingProvider, 0) > 0, "Not an active staker");
-        (address owner, address beneficiary, ) = tStaking.rolesOf(_stakingProvider);
-        _info.owner = owner;
-        _info.beneficiary = beneficiary;
-        uint96 tokensToTransfer = Math.min(minimumAuthorization, _info.authorized).toUint96();
-        bool stakeless = tStaking.migrateAndRelease(_stakingProvider, tokensToTransfer);
-        _info.authorized = tokensToTransfer;
-        _info.stakeless = stakeless;
-        emit Migrated(_stakingProvider, tokensToTransfer, stakeless);
-        _updateAuthorization(_stakingProvider, _info);
     }
 
     function rolesOf(
@@ -743,38 +517,6 @@ contract TACoApplication is
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         owner = info.owner;
         beneficiary = info.beneficiary;
-    }
-
-    function releaseStakers(address[] memory _stakingProviders) external onlyOwner {
-        require(_stakingProviders.length > 0, "Array is empty");
-        for (uint256 i = 0; i < _stakingProviders.length; i++) {
-            address stakingProvider = _stakingProviders[i];
-            StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
-            if (info.owner != address(0)) {
-                continue;
-            }
-            tStaking.migrateAndRelease(stakingProvider, 0);
-            uint96 authorized = info.authorized;
-            info.authorized = 0;
-            info.deauthorizing = 0;
-            if (authorized > 0) {
-                stakingProviderReleased[stakingProvider] = true;
-                emit Released(stakingProvider);
-                _releaseOperator(stakingProvider);
-                _updateAuthorization(stakingProvider, info);
-            }
-        }
-    }
-
-    function resetDeauthorization(address[] memory _stakingProviders) external onlyOwner {
-        require(_stakingProviders.length > 0, "Array is empty");
-        for (uint256 i = 0; i < _stakingProviders.length; i++) {
-            address stakingProvider = _stakingProviders[i];
-            StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
-            require(info.owner != address(0), "Staker doesn't exist");
-            info.deauthorizing = 0;
-            _updateAuthorization(stakingProvider, info);
-        }
     }
 
     function addStakelessProvider(address _stakingProvider, address _owner) external onlyOwner {

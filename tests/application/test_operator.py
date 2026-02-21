@@ -24,7 +24,7 @@ MIN_AUTHORIZATION = Web3.to_wei(40_000, "ether")
 MIN_OPERATOR_SECONDS = 24 * 60 * 60
 
 
-def test_bond_operator(accounts, threshold_staking, taco_application, child_application, chain):
+def test_bond_operator(accounts, taco_application, child_application, chain):
     (
         creator,
         staking_provider_1,
@@ -345,7 +345,7 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     assert taco_application.operatorToStakingProvider(operator2) == ZERO_ADDRESS
 
 
-def test_confirm_address(accounts, threshold_staking, taco_application, child_application, chain):
+def test_confirm_address(accounts, taco_application, child_application, chain):
     creator, staking_provider, operator, *everyone_else = accounts[0:]
     min_authorization = MIN_AUTHORIZATION
     min_operator_seconds = MIN_OPERATOR_SECONDS
@@ -380,7 +380,7 @@ def test_confirm_address(accounts, threshold_staking, taco_application, child_ap
     assert taco_application.availableRewards(staking_provider) == earned
 
 
-def test_release(accounts, threshold_staking, taco_application, child_application, chain):
+def test_release(accounts, taco_application, child_application, chain):
     creator, staking_provider, *everyone_else = accounts[0:]
 
     with ape.reverts("Only child application allowed to release"):
