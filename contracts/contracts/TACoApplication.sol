@@ -138,8 +138,9 @@ contract TACoApplication is
      * @notice Signals that the staking provider migrated stake to TACo
      * @param stakingProvider Staking provider address
      * @param authorized Amount of authorized tokens to synchronize
+     * @param stakeless Shows if authorization is backed up by tokens
      */
-    event Migrated(address indexed stakingProvider, uint96 authorized);
+    event Migrated(address indexed stakingProvider, uint96 authorized, bool stakeless);
 
     struct StakingProviderInfo {
         address operator;
@@ -158,6 +159,7 @@ contract TACoApplication is
         uint256[10] _gap;
         address owner;
         address beneficiary;
+        bool stakeless;
     }
 
     uint96 public immutable minimumAuthorization;
@@ -741,9 +743,10 @@ contract TACoApplication is
         _info.owner = owner;
         _info.beneficiary = beneficiary;
         uint96 tokensToTransfer = Math.min(minimumAuthorization, _info.authorized).toUint96();
-        tStaking.migrateAndRelease(_stakingProvider, tokensToTransfer);
+        bool stakeless = tStaking.migrateAndRelease(_stakingProvider, tokensToTransfer);
         _info.authorized = tokensToTransfer;
-        emit Migrated(_stakingProvider, tokensToTransfer);
+        _info.stakeless = stakeless;
+        emit Migrated(_stakingProvider, tokensToTransfer, stakeless);
     }
 
     function rolesOf(

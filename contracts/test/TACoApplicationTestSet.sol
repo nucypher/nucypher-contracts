@@ -15,6 +15,7 @@ contract ThresholdStakingForTACoApplicationMock {
         address authorizer;
         uint96 authorized;
         uint96 decreaseRequestTo;
+        bool stakeless;
     }
 
     IApplication public application;
@@ -129,8 +130,13 @@ contract ThresholdStakingForTACoApplicationMock {
         stakingProviderInfo[_stakingProvider].decreaseRequestTo = _toAmount;
     }
 
-    function migrateAndRelease(address _stakingProvider, uint96 _amount) external {
+    function setStakeless(address _stakingProvider, bool _stakeless) external {
+        stakingProviderInfo[_stakingProvider].stakeless = _stakeless;
+    }
+
+    function migrateAndRelease(address _stakingProvider, uint96 _amount) external returns (bool) {
         stakingProviderInfo[_stakingProvider].authorized = _amount;
+        return stakingProviderInfo[_stakingProvider].stakeless;
     }
 }
 

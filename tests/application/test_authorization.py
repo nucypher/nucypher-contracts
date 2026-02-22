@@ -952,6 +952,7 @@ def test_batch_migrate(accounts, threshold_staking, taco_application, child_appl
         taco_application.Migrated(
             stakingProvider=staking_provider,
             authorized=minimum_authorization,
+            stakeless=False,
         )
     ]
 
@@ -971,6 +972,7 @@ def test_batch_migrate(accounts, threshold_staking, taco_application, child_appl
         )
 
     threshold_staking.authorizationIncreased(staking_provider_2, 0, value, sender=creator)
+    threshold_staking.setStakeless(staking_provider_3, True, sender=staking_provider_3)
     tx = taco_application.batchMigrateFromThreshold(
         [staking_provider, staking_provider_2, staking_provider_3], sender=creator
     )
@@ -997,9 +999,11 @@ def test_batch_migrate(accounts, threshold_staking, taco_application, child_appl
         taco_application.Migrated(
             stakingProvider=staking_provider_2,
             authorized=minimum_authorization,
+            stakeless=False,
         ),
         taco_application.Migrated(
             stakingProvider=staking_provider_3,
             authorized=minimum_authorization // 2,
+            stakeless=True,
         ),
     ]
