@@ -747,6 +747,7 @@ contract TACoApplication is
         _info.authorized = tokensToTransfer;
         _info.stakeless = stakeless;
         emit Migrated(_stakingProvider, tokensToTransfer, stakeless);
+        _updateAuthorization(_stakingProvider, _info);
     }
 
     function rolesOf(
@@ -755,5 +756,26 @@ contract TACoApplication is
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         owner = info.owner;
         beneficiary = info.beneficiary;
+    }
+
+    function releaseStakers(address[] memory _stakingProviders) external onlyOwner {
+        require(_stakingProviders.length > 0, "Array is empty");
+        for (uint256 i = 0; i < _stakingProviders.length; i++) {
+            address stakingProvider = _stakingProviders[i];
+            StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
+            if (info.owner != address(0)) {
+                continue;
+            }
+            tStaking.migrateAndRelease(stakingProvider, 0);
+            uint96 authorized = info.authorized;
+            info.authorized = 0;
+            info.deauthorizing = 0;
+            if (authorized > 0) {
+                stakingProviderReleased[stakingProvider] = true;
+                emit Released(stakingProvider);
+                _releaseOperator(stakingProvider);
+                _updateAuthorization(stakingProvider, info);
+            }
+        }
     }
 }

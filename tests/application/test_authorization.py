@@ -947,6 +947,7 @@ def test_batch_migrate(accounts, threshold_staking, taco_application, child_appl
         threshold_staking.authorizedStake(staking_provider, taco_application.address)
         == minimum_authorization
     )
+    assert child_application.stakingProviderInfo(staking_provider) == (minimum_authorization, 0)
 
     assert tx.events == [
         taco_application.Migrated(
@@ -994,6 +995,11 @@ def test_batch_migrate(accounts, threshold_staking, taco_application, child_appl
         threshold_staking.authorizedStake(staking_provider_3, taco_application.address)
         == minimum_authorization // 2
     )
+    assert child_application.stakingProviderInfo(staking_provider_2) == (minimum_authorization, 0)
+    assert child_application.stakingProviderInfo(staking_provider_3) == (
+        minimum_authorization // 2,
+        0,
+    )
 
     assert tx.events == [
         taco_application.Migrated(
@@ -1005,5 +1011,76 @@ def test_batch_migrate(accounts, threshold_staking, taco_application, child_appl
             stakingProvider=staking_provider_3,
             authorized=minimum_authorization // 2,
             stakeless=True,
+        ),
+    ]
+
+
+def test_batch_release(accounts, threshold_staking, taco_application, child_application):
+    """
+    Tests for method: releaseStakers
+    """
+
+    (
+        creator,
+        staking_provider,
+        staking_provider_2,
+        staking_provider_3,
+        owner,
+        beneficiary,
+        authorizer,
+    ) = accounts[:7]
+    minimum_authorization = MIN_AUTHORIZATION
+    value = 3 * minimum_authorization
+
+    # Not owner
+    with ape.reverts():
+        taco_application.releaseStakers([staking_provider], sender=staking_provider)
+
+    # Nothing to migrate
+    with ape.reverts("Array is empty"):
+        taco_application.releaseStakers([], sender=creator)
+
+    threshold_staking.setRoles(staking_provider, owner, beneficiary, authorizer, sender=creator)
+    threshold_staking.authorizationIncreased(staking_provider, 0, value, sender=creator)
+
+    tx = taco_application.releaseStakers([staking_provider], sender=creator)
+    assert taco_application.authorizedStake(staking_provider) == 0
+    assert threshold_staking.authorizedStake(staking_provider, taco_application.address) == 0
+    assert child_application.stakingProviderInfo(staking_provider) == (0, 0)
+    assert taco_application.stakingProviderReleased(staking_provider)
+
+    assert tx.events == [
+        taco_application.Released(
+            stakingProvider=staking_provider,
+        )
+    ]
+
+    threshold_staking.setRoles(staking_provider_2, sender=creator)
+    threshold_staking.authorizationIncreased(staking_provider_2, 0, value, sender=creator)
+    threshold_staking.setRoles(staking_provider_3, sender=creator)
+    threshold_staking.authorizationIncreased(staking_provider_3, 0, value, sender=creator)
+    threshold_staking.involuntaryAuthorizationDecrease(staking_provider_3, value, 0, sender=creator)
+    taco_application.bondOperator(staking_provider_2, staking_provider_2, sender=staking_provider_2)
+    child_application.confirmOperatorAddress(staking_provider_2, sender=staking_provider_2)
+
+    tx = taco_application.releaseStakers(
+        [staking_provider, staking_provider_2, staking_provider_3], sender=creator
+    )
+    assert taco_application.authorizedStake(staking_provider) == 0
+    assert taco_application.authorizedStake(staking_provider_2) == 0
+    assert taco_application.authorizedStake(staking_provider_3) == 0
+    assert threshold_staking.authorizedStake(staking_provider, taco_application.address) == 0
+    assert threshold_staking.authorizedStake(staking_provider_2, taco_application.address) == 0
+    assert threshold_staking.authorizedStake(staking_provider_3, taco_application.address) == 0
+    assert child_application.stakingProviderInfo(staking_provider) == (0, 0)
+    assert child_application.stakingProviderInfo(staking_provider_2) == (0, 0)
+    assert child_application.stakingProviderInfo(staking_provider_3) == (0, 0)
+    assert taco_application.stakingProviderToOperator(staking_provider_2) == ZERO_ADDRESS
+    assert taco_application.operatorToStakingProvider(staking_provider_2) == ZERO_ADDRESS
+    assert not taco_application.isOperatorConfirmed(staking_provider_2)
+
+    assert tx.events == [
+        taco_application.Released(
+            stakingProvider=staking_provider_2,
         ),
     ]
