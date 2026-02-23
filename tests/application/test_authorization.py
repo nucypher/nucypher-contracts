@@ -1037,7 +1037,7 @@ def test_migrate(accounts, threshold_staking, taco_application, child_applicatio
 
 def test_batch_migrate(accounts, threshold_staking, taco_application, child_application, chain):
     """
-    Tests for method: migrateFromThreshold
+    Tests for method: batchMigrateFromThreshold
     """
 
     (
