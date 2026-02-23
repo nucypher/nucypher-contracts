@@ -730,7 +730,7 @@ contract TACoApplication is
         address _stakingProvider
     ) external onlyOwnerOrStakingProvider(_stakingProvider) {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
-        require(info.owner == address(0), "Migration completed");
+        require(info.owner == address(0), "Migration already completed");
         require(allowList[_stakingProvider], "Migration is not allowed");
         _migrateFromThreshold(_stakingProvider, info);
     }
