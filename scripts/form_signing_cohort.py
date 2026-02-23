@@ -6,7 +6,7 @@ from ape.cli import ConnectedProviderCommand, account_option, network_option
 from deployment import registry
 from deployment.constants import SUPPORTED_TACO_DOMAINS, TESTNET_PROVIDERS
 from deployment.params import Transactor
-from deployment.types import MinInt
+from deployment.types import ChecksumAddress, MinInt
 
 
 @click.command(cls=ConnectedProviderCommand, name="form-signing-cohort")
@@ -41,6 +41,16 @@ from deployment.types import MinInt
     required=True,
 )
 @click.option(
+    "--authority",
+    "-a",
+    help=(
+        "The address of the authority with administrative permissions over the cohort. "
+        "If not specified, the transacting account will be used as the authority."
+    ),
+    type=ChecksumAddress(),
+    required=False,
+)
+@click.option(
     "--handpicked",
     help=(
         "The filepath of a file containing newline separated staking provider addresses "
@@ -60,6 +70,7 @@ def cli(
     network,
     duration,
     threshold,
+    authority,
     chain_id,
     handpicked,
     auto,
@@ -86,6 +97,8 @@ def cli(
             "On mainnet, you must provide a handpicked file containing staking providers."
         )
 
+    authority = authority or account.address
+
     print(f"Initiating signing cohort on {domain}:{network} with account {account.address}...")
     transactor = Transactor(account=account, autosign=auto)
     signing_coordinator = registry.get_contract(domain=domain, contract_name="SigningCoordinator")
@@ -93,7 +106,7 @@ def cli(
     result = transactor.transact(
         signing_coordinator.initiateSigningCohort,
         chain_id,
-        account.address,
+        authority,
         providers,
         threshold,
         duration,
