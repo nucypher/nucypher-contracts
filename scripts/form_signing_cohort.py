@@ -97,6 +97,12 @@ def cli(
             "On mainnet, you must provide a handpicked file containing staking providers."
         )
 
+    if threshold > len(providers):
+        raise click.ClickException(
+            f"Threshold {threshold} cannot be greater than "
+            f"the number of providers {len(providers)}."
+        )
+
     authority = authority or account.address
 
     print(f"Initiating signing cohort on {domain}:{network} with account {account.address}...")
