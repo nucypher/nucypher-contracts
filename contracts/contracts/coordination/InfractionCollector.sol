@@ -34,10 +34,7 @@ contract InfractionCollector is OwnableUpgradeable {
         __Ownable_init(msg.sender);
     }
 
-    function reportMissingTranscript(
-        uint32 ritualId,
-        address[] calldata stakingProviders
-    ) external {
+    function reportMissingTranscript(uint32 ritualId, address[] calldata stakingProviders) public {
         // Ritual must have failed
         require(
             coordinator.getRitualState(ritualId) == Coordinator.RitualState.DKG_TIMEOUT,

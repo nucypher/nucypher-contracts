@@ -33,8 +33,8 @@ def test_constructor_invalid_period_duration(project, deployer, chain):
 
 
 def test_immutables(periods, genesis):
-    assert periods.GENESIS_TIME() == genesis
-    assert periods.PERIOD_DURATION() == PERIOD_DURATION
+    assert periods.genesisTime() == genesis
+    assert periods.periodDuration() == PERIOD_DURATION
 
 
 def test_get_period_for_timestamp_before_genesis(periods, genesis):
@@ -47,7 +47,7 @@ def test_get_period_for_timestamp_at_genesis(periods, genesis):
 
 
 def test_get_period_for_timestamp_after_periods(periods, genesis):
-    duration = periods.PERIOD_DURATION()
+    duration = periods.periodDuration()
     assert periods.getPeriodForTimestamp(genesis + duration - 1) == 0
     assert periods.getPeriodForTimestamp(genesis + duration) == 1
     assert periods.getPeriodForTimestamp(genesis + 2 * duration) == 2
@@ -56,7 +56,7 @@ def test_get_period_for_timestamp_after_periods(periods, genesis):
 
 def test_get_current_period(periods, chain, genesis):
     """getCurrentPeriod uses block.timestamp; we set chain time to align with genesis then advance."""
-    duration = periods.PERIOD_DURATION()
+    duration = periods.periodDuration()
 
     # TODO: eth-tester limitations prevent us from traveling back in time.
     # A proper test would imply a mock Periods contract that allows us to set the timestamp directly, rather than relying on chain time manipulation.
