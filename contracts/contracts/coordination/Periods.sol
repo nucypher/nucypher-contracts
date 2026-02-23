@@ -3,23 +3,21 @@
 pragma solidity ^0.8.0;
 
 contract Periods {
-    
-    uint256 public immutable GENESIS_TIME;
-    uint256 public immutable PERIOD_DURATION;
+    uint256 public immutable genesisTime;
+    uint256 public immutable periodDuration;
 
     constructor(uint256 _genesisTime, uint256 _periodDuration) {
         require(_periodDuration > 0, "Invalid period duration");
-        GENESIS_TIME = _genesisTime;
-        PERIOD_DURATION = _periodDuration;
+        genesisTime = _genesisTime;
+        periodDuration = _periodDuration;
     }
 
     function getPeriodForTimestamp(uint256 timestamp) public view returns (uint256) {
-        require(timestamp >= GENESIS_TIME, "Timestamp is before genesis");
-        return (timestamp - GENESIS_TIME) / PERIOD_DURATION;
+        require(timestamp >= genesisTime, "Timestamp is before genesis");
+        return (timestamp - genesisTime) / periodDuration;
     }
 
     function getCurrentPeriod() public view returns (uint256) {
         return getPeriodForTimestamp(block.timestamp);
     }
-
 }
