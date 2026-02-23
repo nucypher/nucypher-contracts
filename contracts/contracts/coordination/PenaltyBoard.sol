@@ -43,10 +43,7 @@ contract PenaltyBoard is Periods, AccessControl {
         uint256 period
     ) external onlyRole(INFORMER_ROLE) {
         uint256 current = getCurrentPeriod();
-        require(
-            period == current || (current > 0 && period == current - 1),
-            "Invalid period"
-        );
+        require(period == current || (current > 0 && period == current - 1), "Invalid period");
 
         delete _penalizedProvidersByPeriod[period];
         for (uint256 i = 0; i < provs.length; i++) {
