@@ -218,11 +218,11 @@ def format_discord_message(
     # Build Discord message
     message = "Dear TACo @Node Operator\n\n"
     message += f"We ran the {heartbeat_round}{get_ordinal_suffix(heartbeat_round)} DKG Heartbeat"
-    message += f" Round for {month_name} period to monitor node uptime and availability.\n\n"
+    message += f" Round for {month_name} to monitor node uptime and availability.\n\n"
 
     if unreachable_offenders:
         message += "The following nodes did not complete the DKG heartbeat because they are not"
-        message += " responding:\n\n"
+        message += " responding:\n"
         message += "```\n"
         message += "Staking provider address                   | Operator address\n"
         message += "----------------------------------------------------------------------------\n"
@@ -232,7 +232,7 @@ def format_discord_message(
 
     if outdated_offenders:
         message += "The following nodes did not complete the DKG heartbeat because they are running"
-        message += " an outdated client version:\n\n"
+        message += " an outdated client version:\n"
         message += "```\n"
         message += "Staking provider address                   | Operator address\n"
         message += "----------------------------------------------------------------------------\n"
@@ -242,7 +242,7 @@ def format_discord_message(
 
     if unknown_reasons_offenders:
         message += "The following nodes did not complete the DKG heartbeat due to unknown reasons"
-        message += " (server errors):\n\n"
+        message += " (server errors):\n"
         message += "```\n"
         message += "Staking provider address                   | Operator address\n"
         message += "----------------------------------------------------------------------------\n"
@@ -251,7 +251,7 @@ def format_discord_message(
         message += "```\n\n"
 
     message += "If you're operating one of the nodes running an outdated client version, please"
-    message += f" upgrade your node to v{latest_version} (latest)."
+    message += f" upgrade your node to v{latest_version} (latest). "
     message += "Otherwise if your node was unresponsive or experiencing server errors, please open"
     message += " a support ticket in 🙋┃support-ticket so we can help you to investigate the"
     message += " failure reason.\n\n"
