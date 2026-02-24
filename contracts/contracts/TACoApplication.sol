@@ -720,21 +720,6 @@ contract TACoApplication is
 
     //------------------------Migration------------------------------
 
-    function controlAllowList(address[] memory _stakingProviders, bool enable) external onlyOwner {
-        for (uint256 i = 0; i < _stakingProviders.length; i++) {
-            allowList[_stakingProviders[i]] = enable;
-        }
-    }
-
-    function migrateFromThreshold(
-        address _stakingProvider
-    ) external onlyOwnerOrStakingProvider(_stakingProvider) {
-        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
-        require(info.owner == address(0), "Migration already completed");
-        require(allowList[_stakingProvider], "Migration is not allowed");
-        _migrateFromThreshold(_stakingProvider, info);
-    }
-
     function batchMigrateFromThreshold(address[] memory _stakingProviders) external onlyOwner {
         require(_stakingProviders.length > 0, "Array is empty");
         for (uint256 i = 0; i < _stakingProviders.length; i++) {
