@@ -104,17 +104,29 @@ def test_penalized_periods_monotonic_append(
     ]
 
 
-def test_withdraw_reverts_until_implemented(
-    penalty_board_comp, registered_staker, beneficiary, staking_provider
+def test_withdraw_reverts_nothing_to_withdraw_for_stakeless(
+    penalty_board_comp, mock_taco, deployer, beneficiary, accounts
 ):
-    """Withdraw reverts with 'Not implemented' until C3 (stub)."""
-    with ape.reverts("Not implemented"):
-        penalty_board_comp.withdraw(staking_provider.address, sender=beneficiary)
+    """Withdraw reverts with 'Nothing to withdraw' for stakeless staker (no accrual)."""
+    stakeless_provider = accounts[6]
+    mock_taco.setRoles(
+        stakeless_provider.address,
+        deployer.address,
+        beneficiary.address,
+        True,  # stakeless
+        sender=deployer,
+    )
+    with ape.reverts("Nothing to withdraw"):
+        penalty_board_comp.withdraw(stakeless_provider.address, sender=beneficiary)
 
 
-def test_get_accrued_balance_zero_without_accrual(penalty_board_comp, staking_provider):
-    """getAccruedBalance returns 0 before accrual is implemented (stub)."""
-    assert penalty_board_comp.getAccruedBalance(staking_provider.address) == 0
+def test_get_accrued_balance_reflects_periods_without_prior_withdraw(
+    penalty_board_comp, staking_provider, registered_staker
+):
+    """getAccruedBalance returns accrued amount for periods 0..current when staker has not yet withdrawn."""
+    # At deploy we are in period 0; one period accrues (fixed per period).
+    balance = penalty_board_comp.getAccruedBalance(staking_provider.address)
+    assert balance == FIXED_COMPENSATION
 
 
 def test_accrual_with_no_penalties_gives_positive_balance(
