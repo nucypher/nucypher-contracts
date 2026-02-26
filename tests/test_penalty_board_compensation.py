@@ -81,13 +81,11 @@ def registered_staker(mock_taco, staking_provider, deployer, beneficiary):
 def test_penalized_periods_by_staker_updated(
     penalty_board_comp, informer, staking_provider
 ):
-    """setPenalizedProvidersForPeriod(provs, period) causes getPenalizedPeriodsForStaker(prov) to include period."""
+    """setPenalizedProvidersForPeriod(provs, period) causes penalizedPeriodsByStaker[prov] to include period."""
     current = penalty_board_comp.getCurrentPeriod()
     provs = [staking_provider.address]
     penalty_board_comp.setPenalizedProvidersForPeriod(provs, current, sender=informer)
-    periods = penalty_board_comp.getPenalizedPeriodsForStaker(staking_provider.address)
-    assert len(periods) == 1
-    assert periods[0] == current
+    assert penalty_board_comp.getPenalizedPeriodsByStaker(staking_provider.address) == [current]
 
 
 def test_penalized_periods_monotonic_append(
@@ -100,10 +98,10 @@ def test_penalized_periods_monotonic_append(
     chain.pending_timestamp += PERIOD_DURATION
     assert penalty_board_comp.getCurrentPeriod() == current + 1
     penalty_board_comp.setPenalizedProvidersForPeriod(provs, current + 1, sender=informer)
-    periods = penalty_board_comp.getPenalizedPeriodsForStaker(staking_provider.address)
-    assert len(periods) == 2
-    assert periods[0] == current
-    assert periods[1] == current + 1
+    assert penalty_board_comp.getPenalizedPeriodsByStaker(staking_provider.address) == [
+        current,
+        current + 1,
+    ]
 
 
 def test_withdraw_reverts_until_implemented(
