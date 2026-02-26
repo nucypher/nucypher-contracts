@@ -75,7 +75,7 @@ def main():
             t_stakers = []
             dune_data = json.load(f)
             for row in dune_data["result"]["rows"]:
-                t_staker = row["stakingProvider"]
+                t_staker = row["stakingProvider"].lower()
                 t_stakers.append(t_staker)
 
         print(f"Number of stakers in T staking: {len(t_stakers)}")
@@ -147,6 +147,14 @@ def main():
                 # Normal staker --> Migrate
                 print(f"Staker {s}: Authorized == staked: {t_tokens(auth_amount)}")
                 migrated.append(s)
+
+    # Make sure lists are consistent
+    assert len(set(migrated)) == len(migrated), "There are duplicated addresses in the migrated list!"
+    assert len(set(released)) == len(released), "There are duplicated addresses in the released list!"
+    assert len(set(beta_included)) == len(beta_included), "There are duplicated addresses in the beta included list!"
+    assert len(set(beta_excluded)) == len(beta_excluded), "There are duplicated addresses in the beta excluded list!"
+    assert set(beta_included).isdisjoint(set(beta_excluded)), "There are addresses in both beta included and beta excluded lists!"
+    assert set(migrated).isdisjoint(set(released)), "There are addresses in both migrated and released lists!"
     
     # Final Summary
     print(f"Total authorized stake (includes wrong data from Beta stakers): {t_tokens(total_authorized_stake)}")
