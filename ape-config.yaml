@@ -24,7 +24,7 @@ dependencies:
     version: 1.0.5
   - name: threshold
     github: threshold-network/solidity-contracts
-    version: 1.2.1
+    ref: touchups
 
 solidity:
   version: 0.8.23
