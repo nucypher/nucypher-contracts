@@ -21,14 +21,22 @@ def other_account(accounts):
     return accounts[2]
 
 
+def _zero():
+    return "0x0000000000000000000000000000000000000000"
+
+
 @pytest.fixture
 def penalty_board(project, deployer, informer, chain):
-    """PenaltyBoard with genesis at current chain time and INFORMER_ROLE granted to informer."""
+    """PenaltyBoard with genesis at current chain time and INFORMER_ROLE granted to informer (no compensation)."""
     genesis_time = chain.pending_timestamp
     contract = project.PenaltyBoard.deploy(
         genesis_time,
         PERIOD_DURATION,
         deployer.address,
+        _zero(),
+        _zero(),
+        0,
+        _zero(),
         sender=deployer,
     )
     contract.grantRole(contract.INFORMER_ROLE(), informer.address, sender=deployer)
@@ -37,11 +45,16 @@ def penalty_board(project, deployer, informer, chain):
 
 def test_constructor_admin_required(project, deployer, chain):
     genesis_time = chain.pending_timestamp
+    zero = "0x0000000000000000000000000000000000000000"
     with ape.reverts("Admin required"):
         project.PenaltyBoard.deploy(
             genesis_time,
             PERIOD_DURATION,
-            "0x0000000000000000000000000000000000000000",
+            zero,
+            zero,
+            zero,
+            0,
+            zero,
             sender=deployer,
         )
 
