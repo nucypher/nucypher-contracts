@@ -135,9 +135,10 @@ def main():
                     beta_included.append(s)
                     migrated.append(s)
                 else:
-                    # Non-seednode beta staker --> Exclude
+                    # Non-seednode beta staker --> Release
                     print(f"Staker {s}: Authorized >> staked: {t_tokens(auth_amount)} > {t_tokens(staked_amount)} [BETA EXCLUDED]")
                     beta_excluded.append(s)
+                    released.append(s)
             elif auth_amount < staked_amount:
                 # Normal staker --> Migrate
                 print(f"Staker {s}: Authorized << staked: {t_tokens(auth_amount)} < {t_tokens(staked_amount)}")
@@ -154,12 +155,12 @@ def main():
     print(f"Number of migrated stakers: {len(migrated)}")
     print(f"\tNumber of normal stakers migrated: {len(migrated) - len(beta_included)}")
     print(f"\tNumber of beta stakers migrated: {len(beta_included)}")
-    print(f"Number of beta stakers excluded: {len(beta_excluded)}")
     print(f"Number of released stakers: {len(released)}")
+    print(f"\tNumber of beta stakers excluded: {len(beta_excluded)}")
 
     # List of addresses
-    print(f"Migrated stakers: {migrated}\n")
     print(f"Beta stakers included: {beta_included}\n")
     print(f"Beta stakers excluded: {beta_excluded}\n")
+    print(f"Migrated stakers: {migrated}\n")
     print(f"Released stakers: {released}")
  
