@@ -17,9 +17,9 @@ interface ITACoApplicationForPenaltyBoard {
     /**
      * @notice Returns owner and beneficiary for a staking provider.
      *         Withdraw(stakingProvider) may be called by stakingProvider, owner, or beneficiary.
-     *         If TACoApplication does not expose this, PenaltyBoard may depend on IStaking.rolesOf instead.
+     *         Matches TACoApplication.rolesOf.
      */
-    function getRoles(address stakingProvider) external view returns (address owner, address beneficiary);
+    function rolesOf(address stakingProvider) external view returns (address owner, address beneficiary);
 
     /**
      * @notice Returns true if the staking provider is stakeless (compensation = 0).

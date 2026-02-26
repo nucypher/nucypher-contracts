@@ -127,7 +127,7 @@ contract PenaltyBoard is Periods, AccessControl {
             "Compensation disabled"
         );
 
-        (address owner, address beneficiaryAddress) = tacoApplication.getRoles(stakingProvider);
+        (address owner, address beneficiaryAddress) = tacoApplication.rolesOf(stakingProvider);
         require(
             msg.sender == stakingProvider ||
                 msg.sender == owner ||
