@@ -1,7 +1,9 @@
 """Tests for PenaltyBoard in isolation (period-oriented penalized providers)."""
 
-import ape
 import pytest
+
+import ape
+from ape.utils import ZERO_ADDRESS
 
 PERIOD_DURATION = 3600  # 1 hour
 
@@ -21,10 +23,6 @@ def other_account(accounts):
     return accounts[2]
 
 
-def _zero():
-    return "0x0000000000000000000000000000000000000000"
-
-
 @pytest.fixture
 def penalty_board(project, deployer, informer, chain):
     """PenaltyBoard with genesis at current chain time and INFORMER_ROLE granted to informer (no compensation)."""
@@ -33,10 +31,10 @@ def penalty_board(project, deployer, informer, chain):
         genesis_time,
         PERIOD_DURATION,
         deployer.address,
-        _zero(),
-        _zero(),
+        ZERO_ADDRESS,
+        ZERO_ADDRESS,
         0,
-        _zero(),
+        ZERO_ADDRESS,
         sender=deployer,
     )
     contract.grantRole(contract.INFORMER_ROLE(), informer.address, sender=deployer)
@@ -45,16 +43,15 @@ def penalty_board(project, deployer, informer, chain):
 
 def test_constructor_admin_required(project, deployer, chain):
     genesis_time = chain.pending_timestamp
-    zero = "0x0000000000000000000000000000000000000000"
     with ape.reverts("Admin required"):
         project.PenaltyBoard.deploy(
             genesis_time,
             PERIOD_DURATION,
-            zero,
-            zero,
-            zero,
+            ZERO_ADDRESS,
+            ZERO_ADDRESS,
+            ZERO_ADDRESS,
             0,
-            zero,
+            ZERO_ADDRESS,
             sender=deployer,
         )
 
