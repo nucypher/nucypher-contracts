@@ -1,7 +1,9 @@
 """Tests for PenaltyBoard in isolation (period-oriented penalized providers)."""
 
-import ape
 import pytest
+
+import ape
+from ape.utils import ZERO_ADDRESS
 
 PERIOD_DURATION = 3600  # 1 hour
 
@@ -23,12 +25,16 @@ def other_account(accounts):
 
 @pytest.fixture
 def penalty_board(project, deployer, informer, chain):
-    """PenaltyBoard with genesis at current chain time and INFORMER_ROLE granted to informer."""
+    """PenaltyBoard with genesis at current chain time and INFORMER_ROLE granted to informer (no compensation)."""
     genesis_time = chain.pending_timestamp
     contract = project.PenaltyBoard.deploy(
         genesis_time,
         PERIOD_DURATION,
         deployer.address,
+        ZERO_ADDRESS,
+        ZERO_ADDRESS,
+        0,
+        ZERO_ADDRESS,
         sender=deployer,
     )
     contract.grantRole(contract.INFORMER_ROLE(), informer.address, sender=deployer)
@@ -41,7 +47,11 @@ def test_constructor_admin_required(project, deployer, chain):
         project.PenaltyBoard.deploy(
             genesis_time,
             PERIOD_DURATION,
-            "0x0000000000000000000000000000000000000000",
+            ZERO_ADDRESS,
+            ZERO_ADDRESS,
+            ZERO_ADDRESS,
+            0,
+            ZERO_ADDRESS,
             sender=deployer,
         )
 
@@ -57,7 +67,7 @@ def test_only_informer_can_set_penalized_providers(
         penalty_board.setPenalizedProvidersForPeriod(provs, current, sender=deployer)
 
     penalty_board.setPenalizedProvidersForPeriod(provs, current, sender=informer)
-    assert penalty_board.getPenalizedProvidersForPeriod(current) == provs
+    assert penalty_board.getPenalizedPeriodsByStaker(other_account.address) == [current]
 
 
 def test_period_must_be_current_or_previous(
@@ -72,7 +82,7 @@ def test_period_must_be_current_or_previous(
         penalty_board.setPenalizedProvidersForPeriod(provs, current + 1, sender=informer)
 
     penalty_board.setPenalizedProvidersForPeriod(provs, current, sender=informer)
-    assert penalty_board.getPenalizedProvidersForPeriod(current) == provs
+    assert penalty_board.getPenalizedPeriodsByStaker(other_account.address) == [current]
 
     # Advance into period 1; then both 0 and 1 are valid.
     chain.pending_timestamp += PERIOD_DURATION
@@ -80,38 +90,42 @@ def test_period_must_be_current_or_previous(
 
     penalty_board.setPenalizedProvidersForPeriod(provs, 0, sender=informer)
     penalty_board.setPenalizedProvidersForPeriod(provs, 1, sender=informer)
-    assert penalty_board.getPenalizedProvidersForPeriod(0) == provs
-    assert penalty_board.getPenalizedProvidersForPeriod(1) == provs
+    periods = penalty_board.getPenalizedPeriodsByStaker(other_account.address)
+    assert periods == [current, 0, 1]
 
     # Period 2 is invalid (not current or previous).
     with ape.reverts("Invalid period"):
         penalty_board.setPenalizedProvidersForPeriod(provs, 2, sender=informer)
 
 
-def test_getter_returns_set_list(
+def test_staker_penalty_list_updated_for_all_providers(
     penalty_board, informer, other_account, accounts
 ):
-    """getPenalizedProvidersForPeriod returns the list set for that period."""
+    """penalizedPeriodsByStaker records the period for each provider in provs."""
     current = penalty_board.getCurrentPeriod()
     provs = [accounts[3].address, accounts[4].address, other_account.address]
 
     penalty_board.setPenalizedProvidersForPeriod(provs, current, sender=informer)
-    assert penalty_board.getPenalizedProvidersForPeriod(current) == provs
+    for addr in provs:
+        assert penalty_board.getPenalizedPeriodsByStaker(addr) == [current]
 
 
-def test_setting_again_replaces_list(
+def test_setting_again_appends_for_new_providers(
     penalty_board, informer, other_account, accounts
 ):
-    """Calling setPenalizedProvidersForPeriod again for the same period replaces the list."""
+    """Calling setPenalizedProvidersForPeriod again for the same period appends penalties for new providers."""
     current = penalty_board.getCurrentPeriod()
 
     first = [accounts[5].address, accounts[6].address]
     penalty_board.setPenalizedProvidersForPeriod(first, current, sender=informer)
-    assert penalty_board.getPenalizedProvidersForPeriod(current) == first
+    for addr in first:
+        assert penalty_board.getPenalizedPeriodsByStaker(addr) == [current]
 
     second = [other_account.address]
     penalty_board.setPenalizedProvidersForPeriod(second, current, sender=informer)
-    assert penalty_board.getPenalizedProvidersForPeriod(current) == second
+    for addr in first:
+        assert penalty_board.getPenalizedPeriodsByStaker(addr) == [current]
+    assert penalty_board.getPenalizedPeriodsByStaker(other_account.address) == [current]
 
 
 def test_period_zero_only_when_current_is_zero(
@@ -124,7 +138,7 @@ def test_period_zero_only_when_current_is_zero(
 
     provs = [other_account.address]
     penalty_board.setPenalizedProvidersForPeriod(provs, 0, sender=informer)
-    assert penalty_board.getPenalizedProvidersForPeriod(0) == provs
+    assert penalty_board.getPenalizedPeriodsByStaker(other_account.address) == [0]
 
     with ape.reverts("Invalid period"):
         penalty_board.setPenalizedProvidersForPeriod(provs, 1, sender=informer)
