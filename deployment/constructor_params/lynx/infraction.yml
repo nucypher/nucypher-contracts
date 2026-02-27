@@ -1,0 +1,17 @@
+deployment:
+  name: infraction
+  chain_id: 80002
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: infraction.json
+
+constants:
+  # See deployment/artifacts/lynx.json
+  COORDINATOR_PROXY: "0xE9e94499bB0f67b9DBD75506ec1735486DE57770"
+
+contracts:
+  - InfractionCollector:
+      proxy:
+      constructor:
+        _coordinator: $COORDINATOR_PROXY
