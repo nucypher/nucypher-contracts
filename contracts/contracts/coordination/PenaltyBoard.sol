@@ -71,9 +71,7 @@ contract PenaltyBoard is Periods, AccessControl {
     /**
      * @notice Returns the full list of period indices a staker was penalized in.
      */
-    function getPenalizedPeriodsByStaker(
-        address staker
-    ) external view returns (uint256[] memory) {
+    function getPenalizedPeriodsByStaker(address staker) external view returns (uint256[] memory) {
         return penalizedPeriodsByStaker[staker];
     }
 
@@ -177,7 +175,9 @@ contract PenaltyBoard is Periods, AccessControl {
             return 0;
         }
 
-        uint256 fromPenalties = startPeriod > PENALTY_WINDOW_PERIODS ? startPeriod - PENALTY_WINDOW_PERIODS : 0;
+        uint256 fromPenalties = startPeriod > PENALTY_WINDOW_PERIODS
+            ? startPeriod - PENALTY_WINDOW_PERIODS
+            : 0;
 
         uint256[] memory penaltiesInRange = _getPenalizedPeriodsInRange(
             stakingProvider,

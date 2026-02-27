@@ -34,7 +34,9 @@ contract MockTACoForPenaltyBoard is ITACoApplicationForPenaltyBoard {
         return _roles[stakingProvider].beneficiary;
     }
 
-    function rolesOf(address stakingProvider) external view returns (address owner, address beneficiary) {
+    function rolesOf(
+        address stakingProvider
+    ) external view returns (address owner, address beneficiary) {
         StakerRoles storage r = _roles[stakingProvider];
         return (r.owner, r.beneficiary);
     }
