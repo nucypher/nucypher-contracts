@@ -45,4 +45,4 @@ def cli(
     result = signing_coordinator.getSigningCohortConditions(cohort_id, chain_id)
 
     print("Cohort Conditions:")
-    print(json.dumps(result, indent=2, default=str))
+    print(json.dumps(json.loads(result.decode()), indent=2))
