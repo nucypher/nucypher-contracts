@@ -19,6 +19,9 @@ MIN_STAKE = 150_000 * 10**18
 def t_tokens(x):
     return int(x / 10**18)
 
+def double_quotes(s):
+    return str(s).replace("'", '"')
+
 
 def main():
     # get provider from initially connected network
@@ -167,8 +170,8 @@ def main():
     print(f"\tNumber of beta stakers excluded: {len(beta_excluded)}")
 
     # List of addresses
-    print(f"Beta stakers included: {beta_included}\n")
-    print(f"Beta stakers excluded: {beta_excluded}\n")
-    print(f"Migrated stakers: {migrated}\n")
-    print(f"Released stakers: {released}")
+    print(f"Beta stakers included: {double_quotes(beta_included)}\n")
+    print(f"Beta stakers excluded: {double_quotes(beta_excluded)}\n")
+    print(f"Migrated stakers: {double_quotes(migrated)}\n")
+    print(f"Released stakers: {double_quotes(released)}")
  
