@@ -122,33 +122,34 @@ def main():
         # Analysis of stakers in TACo app compared to T staking
         for s in taco_app_data:
             staked_amount = t_stakes_data[s]
-            auth_amount = taco_app_data[s]
+            auth_amount_in_taco_app = taco_app_data[s]
+            auth_amount_in_t_staking = t.authorizedStake(s, TACO_APP_ADDRESS)
 
-            total_authorized_stake += auth_amount
+            total_authorized_stake += auth_amount_in_taco_app
 
-            if auth_amount < MIN_STAKE:
+            if auth_amount_in_taco_app < MIN_STAKE:
                 # Release staker (low authorized stake)
-                print(f"Staker {s}: Authorized stake is very low: {t_tokens(auth_amount)} [RELEASED]")
+                print(f"Staker {s}: Authorized stake is very low: {t_tokens(auth_amount_in_taco_app)} [RELEASED]")
                 released.append(s)
-            elif auth_amount > staked_amount:
+            elif auth_amount_in_t_staking == 0:
                 # Beta stakers
                 if s in SEEDNODES:
                     # Seednode --> Migrate
-                    print(f"Staker {s}: Authorized >> staked: {t_tokens(auth_amount)} > {t_tokens(staked_amount)} [BETA INCLUDED]")
+                    print(f"Staker {s}: Authorized >> staked: {t_tokens(auth_amount_in_t_staking)} > {t_tokens(staked_amount)} [BETA INCLUDED]")
                     beta_included.append(s)
                     migrated.append(s)
                 else:
                     # Non-seednode beta staker --> Release
-                    print(f"Staker {s}: Authorized >> staked: {t_tokens(auth_amount)} > {t_tokens(staked_amount)} [BETA EXCLUDED]")
+                    print(f"Staker {s}: Authorized >> staked: {t_tokens(auth_amount_in_t_staking)} > {t_tokens(staked_amount)} [BETA EXCLUDED]")
                     beta_excluded.append(s)
                     released.append(s)
-            elif auth_amount < staked_amount:
+            elif auth_amount_in_t_staking < staked_amount:
                 # Normal staker --> Migrate
-                print(f"Staker {s}: Authorized << staked: {t_tokens(auth_amount)} < {t_tokens(staked_amount)}")
+                print(f"Staker {s}: Authorized << staked: {t_tokens(auth_amount_in_t_staking)} < {t_tokens(staked_amount)}")
                 migrated.append(s)
             else:
                 # Normal staker --> Migrate
-                print(f"Staker {s}: Authorized == staked: {t_tokens(auth_amount)}")
+                print(f"Staker {s}: Authorized == staked: {t_tokens(auth_amount_in_t_staking)}")
                 migrated.append(s)
 
     # Make sure lists are consistent
