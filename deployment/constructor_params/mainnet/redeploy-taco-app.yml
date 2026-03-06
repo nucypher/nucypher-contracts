@@ -14,12 +14,12 @@ constants:
 
   # TACo specific constants:
   IN_SECONDS_1_DAY: 86400
-  _150_000_TOKENS_IN_WEI_UNITS: 150000000000000000000000
+  WEI_FOR_150_000_TOKENS: 150000000000000000000000
 
 contracts:
   - TACoApplication:
       constructor:
         _token: $T_TOKEN_ETH_MAINNET
         _tStaking: $T_STAKING_CONTRACT
-        _minimumAuthorization: $_150_000_TOKENS_IN_WEI_UNITS
+        _minimumAuthorization: $WEI_FOR_150_000_TOKENS
         _minOperatorSeconds: $IN_SECONDS_1_DAY
