@@ -27,6 +27,8 @@ contract PenaltyBoard is Periods, AccessControl {
     IERC20 public immutable compensationToken;
     address public immutable fundHolder;
     uint256 public immutable fixedCompensationPerPeriod;
+    uint256 public immutable fixedCompensationPerPeriod2Penalties;
+    uint256 public immutable fixedCompensationPerPeriod3Penalties;
 
     /**
      * @notice Staker-centric penalty storage: list of period indices this staker was penalized in
@@ -58,6 +60,8 @@ contract PenaltyBoard is Periods, AccessControl {
         address _tacoApplication,
         address _token,
         uint256 _fixedCompensationPerPeriod,
+        uint256 _fixedCompensationPerPeriod2Penalties,
+        uint256 _fixedCompensationPerPeriod3Penalties,
         address _fundHolder
     ) Periods(genesisTime, periodDuration) {
         require(admin != address(0), "Admin required");
@@ -66,6 +70,8 @@ contract PenaltyBoard is Periods, AccessControl {
         compensationToken = IERC20(_token);
         fundHolder = _fundHolder;
         fixedCompensationPerPeriod = _fixedCompensationPerPeriod;
+        fixedCompensationPerPeriod2Penalties = _fixedCompensationPerPeriod2Penalties;
+        fixedCompensationPerPeriod3Penalties = _fixedCompensationPerPeriod3Penalties;
     }
 
     /**
@@ -185,33 +191,38 @@ contract PenaltyBoard is Periods, AccessControl {
             currentPeriod
         );
 
-        // No penalties affecting this window: full periods accrue.
-        if (penaltiesInRange.length == 0) {
+        // No penalties or only one penalty affecting this window: full periods accrue.
+        if (penaltiesInRange.length <= 1) {
             uint256 numPeriods = currentPeriod - startPeriod + 1;
             return numPeriods * fixedCompensationPerPeriod;
         }
 
-        // penaltiesFactor: nPenalties == 0 => 1, nPenalties > 0 => 0.
-        // Implemented by checking if there exists any penalty k with P-PENALTY_WINDOW_PERIODS <= k <= P.
+        // TODO: Consider potential optimization for length > 1:
+        //   - Check if all periods with penalties are spaced out by at least PENALTY_WINDOW_PERIODS. If so, we can skip the loop and return the full compensation
+
+        // Naive approach where we check ALL periods in the range.
+        // - For each period, we check how many penalties are in the window that ends at the current period.
+        // - This check involves iterating over the penaltiesInRange array, which is sorted.
         uint256 accrued = 0;
         for (uint256 p = startPeriod; p <= currentPeriod; p++) {
-            bool penalized = false;
+            uint256 windowWidth = p + 1 >= PENALTY_WINDOW_PERIODS ? PENALTY_WINDOW_PERIODS : p;
+            uint256 penaltyHorizon = p - windowWidth;
+
+            uint256 numPenaltiesInWindow = 0;
             for (uint256 i = 0; i < penaltiesInRange.length; i++) {
-                uint256 k = penaltiesInRange[i];
-                if (k > p) {
-                    continue;
+                if (penaltiesInRange[i] >= penaltyHorizon && penaltiesInRange[i] <= p) {
+                    numPenaltiesInWindow++;
+                } else {
+                    break;
                 }
-
-                if (k + PENALTY_WINDOW_PERIODS < p) {
-                    continue;
-                }
-
-                penalized = true;
-                break;
             }
 
-            if (!penalized) {
+            if (numPenaltiesInWindow <= 1) {
                 accrued += fixedCompensationPerPeriod;
+            } else if (numPenaltiesInWindow == 2) {
+                accrued += fixedCompensationPerPeriod2Penalties;
+            } else if (numPenaltiesInWindow == 3) {
+                accrued += fixedCompensationPerPeriod3Penalties;
             }
         }
 
