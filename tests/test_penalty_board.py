@@ -1,8 +1,7 @@
 """Tests for PenaltyBoard in isolation (period-oriented penalized providers)."""
 
-import pytest
-
 import ape
+import pytest
 from ape.utils import ZERO_ADDRESS
 
 PERIOD_DURATION = 3600  # 1 hour
@@ -34,6 +33,8 @@ def penalty_board(project, deployer, informer, chain):
         ZERO_ADDRESS,
         ZERO_ADDRESS,
         0,
+        0,
+        0,
         ZERO_ADDRESS,
         sender=deployer,
     )
@@ -50,6 +51,8 @@ def test_constructor_admin_required(project, deployer, chain):
             ZERO_ADDRESS,
             ZERO_ADDRESS,
             ZERO_ADDRESS,
+            0,
+            0,
             0,
             ZERO_ADDRESS,
             sender=deployer,
@@ -70,9 +73,7 @@ def test_only_informer_can_set_penalized_providers(
     assert penalty_board.getPenalizedPeriodsByStaker(other_account.address) == [current]
 
 
-def test_period_must_be_current_or_previous(
-    penalty_board, chain, informer, other_account
-):
+def test_period_must_be_current_or_previous(penalty_board, chain, informer, other_account):
     """setPenalizedProvidersForPeriod accepts only current or previous period."""
     provs = [other_account.address]
 
@@ -110,9 +111,7 @@ def test_staker_penalty_list_updated_for_all_providers(
         assert penalty_board.getPenalizedPeriodsByStaker(addr) == [current]
 
 
-def test_setting_again_appends_for_new_providers(
-    penalty_board, informer, other_account, accounts
-):
+def test_setting_again_appends_for_new_providers(penalty_board, informer, other_account, accounts):
     """Calling setPenalizedProvidersForPeriod again for the same period appends penalties for new providers."""
     current = penalty_board.getCurrentPeriod()
 
@@ -128,9 +127,7 @@ def test_setting_again_appends_for_new_providers(
     assert penalty_board.getPenalizedPeriodsByStaker(other_account.address) == [current]
 
 
-def test_period_zero_only_when_current_is_zero(
-    penalty_board, informer, other_account
-):
+def test_period_zero_only_when_current_is_zero(penalty_board, informer, other_account):
     """When current period is 0, only period 0 is allowed (no underflow on previous)."""
     current = penalty_board.getCurrentPeriod()
     if current != 0:

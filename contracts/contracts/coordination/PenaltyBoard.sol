@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./Periods.sol";
 import "./ITACoApplicationForPenaltyBoard.sol";
 
@@ -18,6 +19,8 @@ import "./ITACoApplicationForPenaltyBoard.sol";
  *      (number of penalties in range). _getPenalizedPeriodsInRange can be optimized with binary search (monotonic array).
  */
 contract PenaltyBoard is Periods, AccessControl {
+    using SafeERC20 for IERC20;
+
     bytes32 public constant INFORMER_ROLE = keccak256("INFORMER_ROLE");
 
     event PenalizedProvidersSet(uint256 indexed period, address[] providers);
@@ -153,10 +156,9 @@ contract PenaltyBoard is Periods, AccessControl {
         _accruedBalance[stakingProvider] = 0;
         _lastAccruedPeriodPlusOne[stakingProvider] = current + 1;
 
-        address payable beneficiary = payable(beneficiaryAddress);
+        address beneficiary = beneficiaryAddress;
 
-        bool ok = compensationToken.transferFrom(fundHolder, beneficiary, amount);
-        require(ok, "Transfer failed");
+        compensationToken.safeTransferFrom(fundHolder, beneficiary, amount);
     }
 
     function _computeAccruedSinceLast(
@@ -205,12 +207,14 @@ contract PenaltyBoard is Periods, AccessControl {
         // - This check involves iterating over the penaltiesInRange array, which is sorted.
         uint256 accrued = 0;
         for (uint256 p = startPeriod; p <= currentPeriod; p++) {
-            uint256 windowWidth = p + 1 >= PENALTY_WINDOW_PERIODS ? PENALTY_WINDOW_PERIODS : p;
+            uint256 windowWidth = p >= PENALTY_WINDOW_PERIODS ? PENALTY_WINDOW_PERIODS : p;
             uint256 penaltyHorizon = p - windowWidth;
 
             uint256 numPenaltiesInWindow = 0;
             for (uint256 i = 0; i < penaltiesInRange.length; i++) {
-                if (penaltiesInRange[i] >= penaltyHorizon && penaltiesInRange[i] <= p) {
+                if (penaltiesInRange[i] < penaltyHorizon) {
+                    continue;
+                } else if (penaltiesInRange[i] >= penaltyHorizon && penaltiesInRange[i] <= p) {
                     numPenaltiesInWindow++;
                 } else {
                     break;

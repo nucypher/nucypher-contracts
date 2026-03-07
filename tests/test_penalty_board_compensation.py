@@ -5,6 +5,8 @@ import pytest
 
 PERIOD_DURATION = 3600
 FIXED_COMPENSATION = 1000
+REDUCED_FIXED_COMPENSATION_1 = 600
+REDUCED_FIXED_COMPENSATION_2 = 100
 TOKEN_SUPPLY = 1_000_000 * 10**18
 
 
@@ -59,6 +61,8 @@ def penalty_board_comp(project, deployer, informer, chain, mock_taco_app, token,
         mock_taco_app.address,
         token.address,
         FIXED_COMPENSATION,
+        REDUCED_FIXED_COMPENSATION_1,
+        REDUCED_FIXED_COMPENSATION_2,
         fund_holder.address,
         sender=deployer,
     )
@@ -78,9 +82,7 @@ def registered_staker(mock_taco_app, staking_provider, deployer, beneficiary):
     )
 
 
-def test_penalized_periods_by_staker_updated(
-    penalty_board_comp, informer, staking_provider
-):
+def test_penalized_periods_by_staker_updated(penalty_board_comp, informer, staking_provider):
     """setPenalizedProvidersForPeriod(provs, period) causes penalizedPeriodsByStaker[prov] to include period."""
     current = penalty_board_comp.getCurrentPeriod()
     provs = [staking_provider.address]
@@ -88,9 +90,7 @@ def test_penalized_periods_by_staker_updated(
     assert penalty_board_comp.getPenalizedPeriodsByStaker(staking_provider.address) == [current]
 
 
-def test_penalized_periods_monotonic_append(
-    penalty_board_comp, informer, staking_provider, chain
-):
+def test_penalized_periods_monotonic_append(penalty_board_comp, informer, staking_provider, chain):
     """Calling setPenalizedProvidersForPeriod for different periods appends to each staker's list (monotonic)."""
     current = penalty_board_comp.getCurrentPeriod()
     provs = [staking_provider.address]
@@ -136,7 +136,9 @@ def test_accrual_with_no_penalties_gives_positive_balance(
     # Advance 2 periods so there is something to accrue
     chain.pending_timestamp += 2 * PERIOD_DURATION
     balance = penalty_board_comp.getAccruedBalance(staking_provider.address)
-    assert balance > 0, "Accrual not implemented: getAccruedBalance should be > 0 after 2 periods with no penalties"
+    assert (
+        balance > 0
+    ), "Accrual not implemented: getAccruedBalance should be > 0 after 2 periods with no penalties"
 
 
 def test_only_owner_provider_beneficiary_can_withdraw(
@@ -276,11 +278,29 @@ def test_penalty_in_range_reduces_compensation(
     penalty_board_comp.setPenalizedProvidersForPeriod(
         [staking_provider.address], 1, sender=informer
     )
-    chain.pending_timestamp += 4 * PERIOD_DURATION
+    chain.pending_timestamp += PERIOD_DURATION
+    penalty_board_comp.setPenalizedProvidersForPeriod(
+        [staking_provider.address], 2, sender=informer
+    )
+    chain.pending_timestamp += PERIOD_DURATION
+    penalty_board_comp.setPenalizedProvidersForPeriod(
+        [staking_provider.address], 3, sender=informer
+    )
+    chain.pending_timestamp += PERIOD_DURATION
+    penalty_board_comp.setPenalizedProvidersForPeriod(
+        [staking_provider.address], 4, sender=informer
+    )
+    chain.pending_timestamp += PERIOD_DURATION
+    # chain.pending_timestamp += 4 * PERIOD_DURATION
     # Now current period is 5. Accrual: periods 0..5. Penalty at 1 affects 1,2,3,4. So only 0 and 5 get full.
-    expected = 2 * FIXED_COMPENSATION
-    token.transfer(fund_holder.address, expected + 1000, sender=deployer)
+    # 0 1 2 3 4 3 -> F F R1 R2 0 R2
+    expected = (
+        2 * FIXED_COMPENSATION + REDUCED_FIXED_COMPENSATION_1 + 2 * REDUCED_FIXED_COMPENSATION_2
+    )
+    token.transfer(fund_holder.address, 10 * expected, sender=deployer)
     token.approve(penalty_board_comp.address, 2**256 - 1, sender=fund_holder)
+
+    assert penalty_board_comp.getAccruedBalance(staking_provider.address) == expected
 
     before = token.balanceOf(beneficiary.address)
     penalty_board_comp.withdraw(staking_provider.address, sender=beneficiary)
