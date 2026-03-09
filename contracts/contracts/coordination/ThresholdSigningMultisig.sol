@@ -71,14 +71,17 @@ contract ThresholdSigningMultisig is
         address lastSigner = address(0);
         for (uint16 i = 0; i < threshold; i++) {
             (uint8 v, bytes32 r, bytes32 s) = signatureSplit(signature, i);
-            address recovered = ecrecover(hash, v, r, s);
-            if (!isSigner[recovered]) {
+            (address recovered, ECDSA.RecoverError err, ) = ECDSA.tryRecover(hash, v, r, s);
+            // ensure:
+            // 1. no error
+            // 2. is a signer
+            // 3. signatures are for different signers
+            if (
+                err != ECDSA.RecoverError.NoError || !isSigner[recovered] || recovered <= lastSigner
+            ) {
                 return INVALID_SIGNATURE;
             }
-            // ensure signatures are for different signers
-            if (recovered <= lastSigner) {
-                return INVALID_SIGNATURE;
-            }
+
             lastSigner = recovered;
         }
 
