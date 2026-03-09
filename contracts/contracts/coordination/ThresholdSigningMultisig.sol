@@ -21,7 +21,7 @@ contract ThresholdSigningMultisig is
     event SignerReplaced(address indexed signer, address newSigner);
     event ThresholdUpdated(uint16 threshold);
 
-    uint256 public constant MAX_SIGNER_COUNT = 40;
+    uint256 public constant MAX_SIGNER_COUNT = 20;
 
     mapping(address => bool) public isSigner;
     address[] public signers;
