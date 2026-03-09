@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import "./IThresholdSigningMultisig.sol";
@@ -17,29 +16,19 @@ contract ThresholdSigningMultisig is
 {
     using ECDSA for bytes32;
 
-    // events
-    event Executed(
-        address indexed sender,
-        uint256 indexed nonce,
-        address indexed destination,
-        uint256 value
-    );
     event SignerAdded(address indexed signer);
     event SignerRemoved(address indexed signer);
     event SignerReplaced(address indexed signer, address newSigner);
-    event SignedMessageCached(bytes32 indexed hash);
     event ThresholdUpdated(uint16 threshold);
 
     uint256 public constant MAX_SIGNER_COUNT = 40;
 
-    uint256 public nonce;
     mapping(address => bool) public isSigner;
     address[] public signers;
     uint16 public threshold;
 
     bytes4 internal constant MAGICVALUE = 0x1626ba7e;
     bytes4 internal constant INVALID_SIGNATURE = 0xffffffff;
-    mapping(bytes32 => bytes32) public validSignatures;
 
     /**
      * @param _signers List of signers.
@@ -63,57 +52,8 @@ contract ThresholdSigningMultisig is
             require(!isSigner[signer] && signer != address(0), "Already a signer");
             isSigner[signer] = true;
         }
-        nonce = 1;
         signers = _signers;
         threshold = _threshold;
-    }
-
-    /**
-     * @notice Get unsigned hash for transaction parameters
-     * @dev Follows ERC191 signature scheme: https://github.com/ethereum/EIPs/issues/191
-     * @param sender Trustee who will execute the transaction
-     * @param destination Destination address
-     * @param value Amount of ETH to transfer
-     * @param data Call data
-     * @param nonce Nonce
-     **/
-    function getUnsignedTransactionHash(
-        address sender,
-        address destination,
-        uint256 value,
-        bytes memory data,
-        uint256 nonce
-    ) public view returns (bytes32) {
-        bytes memory encodedData = abi.encodePacked(
-            address(this),
-            sender,
-            destination,
-            value,
-            data,
-            nonce
-        );
-        return MessageHashUtils.toEthSignedMessageHash(encodedData);
-    }
-
-    /**
-     * @dev Note that address recovered from signatures must be strictly increasing
-     * @param destination Destination address
-     * @param value Amount of ETH to transfer
-     * @param data Call data
-     * @param signature The aggregated signatures for signers
-     **/
-    function execute(
-        address destination,
-        uint256 value,
-        bytes memory data,
-        bytes memory signature
-    ) external {
-        bytes32 _hash = getUnsignedTransactionHash(msg.sender, destination, value, data, nonce);
-        require(isValidSignature(_hash, signature) == MAGICVALUE, "Invalid Signature");
-        emit Executed(msg.sender, nonce, destination, value);
-        nonce++;
-        (bool success, ) = destination.call{value: value}(data);
-        require(success, "Transaction failed");
     }
 
     /**
@@ -126,12 +66,7 @@ contract ThresholdSigningMultisig is
         bytes memory signature
     ) public view override returns (bytes4) {
         // split up signature bytes into array
-        require(signature.length >= (threshold * 65), "Invalid threshold of signatures");
-        if (validSignatures[hash] == keccak256(signature)) {
-            // TODO is this sufficient?
-            // - in this case the message hash was previously signed and cached
-            return MAGICVALUE;
-        }
+        require(signature.length >= (threshold * 65), "Invalid signature length for threshold");
 
         address lastSigner = address(0);
         for (uint16 i = 0; i < threshold; i++) {
@@ -283,18 +218,5 @@ contract ThresholdSigningMultisig is
             emit SignerRemoved(oldSigner);
         }
         delete signers;
-    }
-
-    //
-    // Cached signatures (in case of cohort rotation/handover)
-    //
-
-    function saveSignature(bytes32 hash, bytes memory signature) public {
-        // Save signature
-        require(isValidSignature(hash, signature) == MAGICVALUE, "Invalid Signature");
-
-        // TODO: is this sufficient?
-        validSignatures[hash] = keccak256(signature);
-        emit SignedMessageCached(hash);
     }
 }
