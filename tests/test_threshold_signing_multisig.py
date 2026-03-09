@@ -34,6 +34,7 @@ def deployer(accounts):
 @pytest.fixture()
 def threshold_signing_multisig(project, deployer, initial_signers):
     multisig = project.ThresholdSigningMultisig.deploy(sender=deployer)
+
     multisig.initialize(
         [signer.address for signer in initial_signers],
         INITIAL_THRESHOLD,
@@ -181,7 +182,7 @@ def test_signing_multisig_is_valid_signature(
     is_valid = multisig.isValidSignature(data_hash, signatures)
     assert is_valid == ERC1271_MAGIC_VALUE_BYTES
 
-    with ape.reverts("Invalid threshold of signatures"):
+    with ape.reverts("Invalid signature length for threshold"):
         insufficient_threshold_signatures = signatures[:-65]
         _ = multisig.isValidSignature(data_hash, insufficient_threshold_signatures)
 
@@ -222,7 +223,7 @@ def test_signing_multisig_update_parameters_bulk_replacement(
     for signer in initial_signers[:INITIAL_THRESHOLD]:
         signature = signer.sign_message(signable_message).encode_rsv()
         old_signatures += signature
-    with ape.reverts("Invalid threshold of signatures"):
+    with ape.reverts("Invalid signature length for threshold"):
         _ = threshold_signing_multisig.isValidSignature(data_hash, old_signatures)
 
     # try again with updated threshold - should still fail
@@ -279,7 +280,7 @@ def test_signing_multisig_update_parameters_bulk_change_no_replacement(
     for signer in initial_signers[:INITIAL_THRESHOLD]:
         signature = signer.sign_message(signable_message).encode_rsv()
         original_signatures += signature
-    with ape.reverts("Invalid threshold of signatures"):
+    with ape.reverts("Invalid signature length for threshold"):
         _ = threshold_signing_multisig.isValidSignature(data_hash, original_signatures)
 
     # try again with updated threshold - should pass
