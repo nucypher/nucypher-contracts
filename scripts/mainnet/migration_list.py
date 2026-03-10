@@ -43,7 +43,7 @@ def main():
         for staker in taco_child_app_stakers:
             info = taco_child.stakingProviderInfo(staker)
             authorized = info[1]
-            confirmed = info[1]
+            confirmed = info[2]
             released = info[7]
             deauthorizing = info[4]
             taco_child_data[staker] = 0 if (released or not confirmed) else (authorized - deauthorizing)
