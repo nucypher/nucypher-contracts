@@ -778,4 +778,30 @@ contract TACoApplication is
             }
         }
     }
+
+    function addStakelessProvider(
+        address _stakingProvider,
+        address _owner,
+        address _beneficiary
+    ) external onlyOwner {
+        require(
+            _stakingProvider != address(0) && _owner != address(0) && _beneficiary != address(0),
+            "Parameters must be specified"
+        );
+        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
+        require(info.owner == address(0), "Staker already exists");
+        require(
+            _stakingProviderFromOperator[_stakingProvider] == address(0) ||
+                _stakingProviderFromOperator[_stakingProvider] == _stakingProvider,
+            "A provider can't be an operator for another provider"
+        );
+
+        info.authorized = minimumAuthorization;
+        stakingProviderReleased[_stakingProvider] = false;
+        info.owner = _owner;
+        info.beneficiary = _beneficiary;
+        info.stakeless = true;
+        emit AuthorizationIncreased(_stakingProvider, 0, minimumAuthorization);
+        _updateAuthorization(_stakingProvider, info);
+    }
 }
