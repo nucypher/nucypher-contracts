@@ -116,8 +116,10 @@ contract PenaltyBoard is Periods, AccessControl {
             return 0;
         }
 
-        uint256 current = getCurrentPeriod();
-        uint256 delta = _computeAccruedSinceLast(stakingProvider, current);
+        int256 current = getCurrentPaymentPeriod();
+        uint256 delta = current >= 0
+            ? _computeAccruedSinceLast(stakingProvider, uint256(current))
+            : 0;
         return _accruedBalance[stakingProvider] + delta;
     }
 
@@ -142,19 +144,21 @@ contract PenaltyBoard is Periods, AccessControl {
             "Unauthorized"
         );
 
-        uint256 current = getCurrentPeriod();
-
         // No accrual for stakeless providers.
         if (tacoApplication.isStakeless(stakingProvider)) {
             revert("Nothing to withdraw");
         }
 
-        uint256 delta = _computeAccruedSinceLast(stakingProvider, current);
+        int256 current = getCurrentPaymentPeriod();
+
+        uint256 delta = current >= 0
+            ? _computeAccruedSinceLast(stakingProvider, uint256(current))
+            : 0;
         uint256 amount = _accruedBalance[stakingProvider] + delta;
         require(amount > 0, "Nothing to withdraw");
 
         _accruedBalance[stakingProvider] = 0;
-        _lastAccruedPeriodPlusOne[stakingProvider] = current + 1;
+        _lastAccruedPeriodPlusOne[stakingProvider] = uint256(current) + 1;
 
         address beneficiary = beneficiaryAddress;
 

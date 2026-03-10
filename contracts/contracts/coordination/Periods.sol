@@ -20,4 +20,8 @@ contract Periods {
     function getCurrentPeriod() public view returns (uint256) {
         return getPeriodForTimestamp(block.timestamp);
     }
+
+    function getCurrentPaymentPeriod() public view returns (int256) {
+        return int256(getCurrentPeriod()) - 2;
+    }
 }
