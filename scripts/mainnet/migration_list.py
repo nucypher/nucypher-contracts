@@ -42,7 +42,11 @@ def main():
         taco_child_data = {}
         for staker in taco_child_app_stakers:
             info = taco_child.stakingProviderInfo(staker)
-            taco_child_data[staker] = info[1]
+            authorized = info[1]
+            confirmed = info[1]
+            released = info[7]
+            deauthorizing = info[4]
+            taco_child_data[staker] = 0 if (released or not confirmed) else (authorized - deauthorizing)
         
     # Retrieve TACoApplication data from Ethereum
     with networks.ethereum.mainnet.use_provider(provider_name):
@@ -62,7 +66,11 @@ def main():
         taco_app_data = {}
         for staker in taco_app_stakers:
             info = taco_app.stakingProviderInfo(staker)
-            taco_app_data[staker] = info[3]
+            released = taco_app.stakingProviderReleased(staker)
+            authorized = info[3]
+            confirmed = info[1]
+            deauthorizing = info[4]
+            taco_app_data[staker] = 0 if (released or not confirmed) else (authorized - deauthorizing)
 
     # Compare stakers between child and app
     for staker, token in taco_child_data.items():
