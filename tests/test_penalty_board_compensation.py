@@ -4,9 +4,9 @@ import ape
 import pytest
 
 PERIOD_DURATION = 3600
-FIXED_COMPENSATION = 1000
-REDUCED_FIXED_COMPENSATION_1 = 600
-REDUCED_FIXED_COMPENSATION_2 = 100
+FULL_COMPENSATION = 1000
+REDUCED_COMPENSATION_1 = 600
+REDUCED_COMPENSATION_2 = 100
 TOKEN_SUPPLY = 1_000_000 * 10**18
 
 
@@ -60,13 +60,15 @@ def penalty_board_comp(project, deployer, informer, chain, mock_taco_app, token,
         deployer.address,
         mock_taco_app.address,
         token.address,
-        FIXED_COMPENSATION,
-        REDUCED_FIXED_COMPENSATION_1,
-        REDUCED_FIXED_COMPENSATION_2,
+        FULL_COMPENSATION,
+        REDUCED_COMPENSATION_1,
+        REDUCED_COMPENSATION_2,
         fund_holder.address,
         sender=deployer,
     )
     contract.grantRole(contract.INFORMER_ROLE(), informer.address, sender=deployer)
+    token.transfer(fund_holder.address, 100 * FULL_COMPENSATION, sender=deployer)
+    token.approve(contract.address, 2**256 - 1, sender=fund_holder)
     return contract
 
 
@@ -105,7 +107,7 @@ def test_penalized_periods_monotonic_append(penalty_board_comp, informer, stakin
 
 
 def test_withdraw_reverts_nothing_to_withdraw_for_stakeless(
-    penalty_board_comp, mock_taco_app, deployer, beneficiary, accounts
+    penalty_board_comp, mock_taco_app, deployer, beneficiary, accounts, chain
 ):
     """Withdraw reverts with 'Nothing to withdraw' for stakeless staker (no accrual)."""
     stakeless_provider = accounts[6]
@@ -116,17 +118,19 @@ def test_withdraw_reverts_nothing_to_withdraw_for_stakeless(
         True,  # stakeless
         sender=deployer,
     )
+    chain.pending_timestamp += 2 * PERIOD_DURATION
     with ape.reverts("Nothing to withdraw"):
         penalty_board_comp.withdraw(stakeless_provider.address, sender=beneficiary)
 
 
 def test_get_accrued_balance_reflects_periods_without_prior_withdraw(
-    penalty_board_comp, staking_provider, registered_staker
+    penalty_board_comp, staking_provider, registered_staker, chain
 ):
     """getAccruedBalance returns accrued amount for periods 0..current when staker has not yet withdrawn."""
     # At deploy we are in period 0; one period accrues (fixed per period).
+    chain.pending_timestamp += 2 * PERIOD_DURATION
     balance = penalty_board_comp.getAccruedBalance(staking_provider.address)
-    assert balance == FIXED_COMPENSATION
+    assert balance == FULL_COMPENSATION
 
 
 def test_accrual_with_no_penalties_gives_positive_balance(
@@ -160,15 +164,8 @@ def test_withdraw_sends_tokens_to_beneficiary(
     deployer,
 ):
     """Withdraw sends tokens to beneficiary, not to msg.sender (fails until C3 implements transfer)."""
-    # Fund the fundHolder and approve PenaltyBoard (token was minted to deployer)
-    token.transfer(fund_holder.address, FIXED_COMPENSATION * 10, sender=deployer)
-    token.approve(
-        penalty_board_comp.address,
-        2**256 - 1,
-        sender=fund_holder,
-    )
     # Advance so there is accrual (when implemented)
-    chain.pending_timestamp += PERIOD_DURATION
+    chain.pending_timestamp += 3 * PERIOD_DURATION
     before = token.balanceOf(beneficiary.address)
     # Beneficiary calls withdraw for staking_provider
     penalty_board_comp.withdraw(staking_provider.address, sender=beneficiary)
@@ -208,11 +205,9 @@ def test_first_withdrawal_accrues_from_period_zero(
 ):
     """First withdrawal (sentinel: never accrued) accrues from period 0 to current; full amount to beneficiary."""
     num_periods = 4
-    chain.pending_timestamp += num_periods * PERIOD_DURATION
+    chain.pending_timestamp += (num_periods + 2) * PERIOD_DURATION
     # Periods 0..4 → 5 periods
-    expected = (num_periods + 1) * FIXED_COMPENSATION
-    token.transfer(fund_holder.address, expected * 2, sender=deployer)
-    token.approve(penalty_board_comp.address, 2**256 - 1, sender=fund_holder)
+    expected = (num_periods + 1) * FULL_COMPENSATION
 
     before = token.balanceOf(beneficiary.address)
     penalty_board_comp.withdraw(staking_provider.address, sender=beneficiary)
@@ -222,16 +217,13 @@ def test_first_withdrawal_accrues_from_period_zero(
 
 def test_withdraw_reverts_when_nothing_left_after_prior_withdraw(
     penalty_board_comp,
-    token,
-    fund_holder,
     beneficiary,
     staking_provider,
     registered_staker,
-    deployer,
+    chain,
 ):
     """After a full withdraw, second withdraw without time advance reverts with Nothing to withdraw."""
-    token.transfer(fund_holder.address, FIXED_COMPENSATION * 2, sender=deployer)
-    token.approve(penalty_board_comp.address, 2**256 - 1, sender=fund_holder)
+    chain.pending_timestamp += 2 * PERIOD_DURATION
     penalty_board_comp.withdraw(staking_provider.address, sender=beneficiary)
     with ape.reverts("Nothing to withdraw"):
         penalty_board_comp.withdraw(staking_provider.address, sender=beneficiary)
@@ -249,18 +241,41 @@ def test_many_periods_full_accrual(
 ):
     """Many periods with no penalties: full accrual (numPeriods * fixed per period)."""
     n = 10
-    chain.pending_timestamp += n * PERIOD_DURATION
+    chain.pending_timestamp += (n + 2) * PERIOD_DURATION
     # Periods 0..n → n+1 periods
-    expected = (n + 1) * FIXED_COMPENSATION
-    token.transfer(fund_holder.address, expected + 1000, sender=deployer)
-    token.approve(penalty_board_comp.address, 2**256 - 1, sender=fund_holder)
-
+    expected = (n + 1) * FULL_COMPENSATION
     before = token.balanceOf(beneficiary.address)
     penalty_board_comp.withdraw(staking_provider.address, sender=beneficiary)
     after = token.balanceOf(beneficiary.address)
     assert after - before == expected
 
 
+@pytest.mark.parametrize(
+    "periods",
+    [
+        # T F F F F T -> 0 1 2 3 4 3 -> F F R1 R2 0 R2
+        {
+            "penalized_providers": [1, 2, 3, 4],
+            "expected": [2, 1, 2],
+            "num_periods": 5,
+            "intermediate_withdraws": [],
+        },
+        # F T T T F T -> 1 1 1 1 1 1 -> F F F F F F
+        {
+            "penalized_providers": [0, 4],
+            "expected": [6, 0, 0],
+            "num_periods": 5,
+            "intermediate_withdraws": [2, 3, 4],
+        },
+        # T T T F F F T -> 0 0 0 1 2 3 3 -> F F F F R1 R2 R2
+        {
+            "penalized_providers": [3, 4, 5],
+            "expected": [4, 1, 2],
+            "num_periods": 6,
+            "intermediate_withdraws": [2, 3, 4, 5],
+        },
+    ],
+)
 def test_penalty_in_range_reduces_compensation(
     penalty_board_comp,
     token,
@@ -271,38 +286,48 @@ def test_penalty_in_range_reduces_compensation(
     chain,
     deployer,
     informer,
+    periods,
 ):
     """A penalty in period k affects k..k+PENALTY_WINDOW_PERIODS; only unaffected periods get full compensation."""
-    # Advance to period 1, set penalty for period 1 (current), then advance to period 5.
-    chain.pending_timestamp += PERIOD_DURATION
-    penalty_board_comp.setPenalizedProvidersForPeriod(
-        [staking_provider.address], 1, sender=informer
-    )
-    chain.pending_timestamp += PERIOD_DURATION
-    penalty_board_comp.setPenalizedProvidersForPeriod(
-        [staking_provider.address], 2, sender=informer
-    )
-    chain.pending_timestamp += PERIOD_DURATION
-    penalty_board_comp.setPenalizedProvidersForPeriod(
-        [staking_provider.address], 3, sender=informer
-    )
-    chain.pending_timestamp += PERIOD_DURATION
-    penalty_board_comp.setPenalizedProvidersForPeriod(
-        [staking_provider.address], 4, sender=informer
-    )
-    chain.pending_timestamp += PERIOD_DURATION
-    # chain.pending_timestamp += 4 * PERIOD_DURATION
-    # Now current period is 5. Accrual: periods 0..5. Penalty at 1 affects 1,2,3,4. So only 0 and 5 get full.
-    # 0 1 2 3 4 3 -> F F R1 R2 0 R2
-    expected = (
-        2 * FIXED_COMPENSATION + REDUCED_FIXED_COMPENSATION_1 + 2 * REDUCED_FIXED_COMPENSATION_2
-    )
-    token.transfer(fund_holder.address, 10 * expected, sender=deployer)
-    token.approve(penalty_board_comp.address, 2**256 - 1, sender=fund_holder)
-
-    assert penalty_board_comp.getAccruedBalance(staking_provider.address) == expected
+    penalized_providers = periods["penalized_providers"]
+    expected = periods["expected"]
+    num_periods = periods["num_periods"]
+    intermediate_withdraws = periods["intermediate_withdraws"]
 
     before = token.balanceOf(beneficiary.address)
+
+    penalty_index = 0
+    withdraw_index = 0
+    accrued_balance = 0
+    for current_period in range(num_periods):
+        if (
+            withdraw_index < len(intermediate_withdraws)
+            and intermediate_withdraws[withdraw_index] == current_period
+        ):
+            accrued_balance += penalty_board_comp.getAccruedBalance(staking_provider.address)
+            penalty_board_comp.withdraw(staking_provider.address, sender=beneficiary)
+            withdraw_index += 1
+        if (
+            penalty_index < len(penalized_providers)
+            and penalized_providers[penalty_index] == current_period
+        ):
+            penalty_board_comp.setPenalizedProvidersForPeriod(
+                [staking_provider.address], current_period, sender=informer
+            )
+            penalty_index += 1
+
+        chain.pending_timestamp += PERIOD_DURATION
+
+    chain.pending_timestamp += 2 * PERIOD_DURATION
+
+    expected_compensation = (
+        expected[0] * FULL_COMPENSATION
+        + expected[1] * REDUCED_COMPENSATION_1
+        + expected[2] * REDUCED_COMPENSATION_2
+    )
+
+    accrued_balance += penalty_board_comp.getAccruedBalance(staking_provider.address)
+    assert accrued_balance == expected_compensation
     penalty_board_comp.withdraw(staking_provider.address, sender=beneficiary)
     after = token.balanceOf(beneficiary.address)
-    assert after - before == expected
+    assert after - before == expected_compensation
