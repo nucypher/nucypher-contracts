@@ -135,12 +135,19 @@ def infraction_collector(project, deployer, coordinator):
 @pytest.fixture
 def penalty_board(project, deployer, informer, chain):
     """PenaltyBoard with genesis at current chain time and INFORMER_ROLE granted to informer.
-    Period duration is one week so ritual timeout still lands in period 0."""
+    Period duration is one week so ritual timeout still lands in period 0. No compensation."""
     genesis_time = chain.pending_timestamp
+    zero = "0x0000000000000000000000000000000000000000"
     contract = project.PenaltyBoard.deploy(
         genesis_time,
         PENALTY_BOARD_PERIOD_DURATION,
         deployer.address,
+        zero,
+        zero,
+        0,
+        0,
+        0,
+        zero,
         sender=deployer,
     )
     contract.grantRole(contract.INFORMER_ROLE(), informer.address, sender=deployer)
@@ -158,11 +165,11 @@ def test_no_infractions(
     coordinator.initiateRitual(
         fee_model, nodes, initiator, DURATION, global_allow_list.address, sender=initiator
     )
-    
+
     size = len(nodes)
     threshold = coordinator.getThresholdForRitualSize(size)
     transcript = generate_transcript(size, threshold)
-    
+
     for node in nodes:
         coordinator.publishTranscript(0, transcript, sender=node)
 
@@ -270,7 +277,7 @@ def test_infraction_collector_and_penalty_board_together(
     # Same period still (period duration is 1 week; we advanced ~2000s). Informer records
     # penalized providers for this period on PenaltyBoard.
     current_period = penalty_board.getCurrentPeriod()
-    penalty_board.setPenalizedProvidersForPeriod(
-        failing_providers, current_period, sender=informer
-    )
-    assert penalty_board.getPenalizedProvidersForPeriod(current_period) == failing_providers
+    penalty_board.setPenalizedProvidersForPeriod(failing_providers, current_period, sender=informer)
+    for provider in failing_providers:
+        periods = penalty_board.getPenalizedPeriodsByStaker(provider)
+        assert periods == [current_period]
