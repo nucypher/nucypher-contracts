@@ -31,34 +31,40 @@ def main():
     with networks.polygon.mainnet.use_provider(provider_name):
         taco_child = project.TACoChildApplication.at(TACO_CHILD_ADDRESS)
         
-        tokens_child, stakers_tokens_child = taco_child.getActiveStakingProviders(0, 200)
-        print(f"Number of stakers in TACoChildApplication: {len(stakers_tokens_child)}")
+        taco_child_app_stakers_len = taco_child.getStakingProvidersLength()
+        taco_child_app_stakers = set([taco_child.stakingProviders(i).lower() for i in range(taco_child_app_stakers_len)])
+
+        print(f"Number of stakers in TACoChildApplication: {len(taco_child_app_stakers)}")
+
+        if taco_child_app_stakers_len != len(taco_child_app_stakers):
+            raise Exception("Number of stakers mismatch in TACoChildApplication")
         
         taco_child_data = {}
-        for staker_token in stakers_tokens_child:
-            staker, token = staker_token[:20], staker_token[20:]
-            staker = staker.hex()
-            token = int.from_bytes(token, byteorder="big")
-            taco_child_data[staker] = token
-
+        for staker in taco_child_app_stakers:
+            info = taco_child.stakingProviderInfo(staker)
+            taco_child_data[staker] = info[1]
+        
     # Retrieve TACoApplication data from Ethereum
     with networks.ethereum.mainnet.use_provider(provider_name):
         taco_app = project.TACoApplication.at(TACO_APP_ADDRESS)
-        
-        tokens_app, stakers_tokens_app = taco_app.getActiveStakingProviders(0, 200, 0)
-        print(f"Number of stakers in TACoApplication: {len(stakers_tokens_app)}")
 
-        if len(stakers_tokens_child) != len(stakers_tokens_app):
+        taco_app_stakers_len = taco_app.getStakingProvidersLength()
+        taco_app_stakers = set([taco_app.stakingProviders(i).lower() for i in range(taco_app_stakers_len)])
+
+        if taco_app_stakers_len != len(taco_app_stakers):
+            raise Exception("Number of stakers mismatch in TACoApplication")
+
+        print(f"Number of stakers in TACoApplication: {len(taco_app_stakers)}")
+
+        if len(taco_child_app_stakers) != len(taco_app_stakers):
             raise Exception("Number of stakers mismatch between child and app!")
         
         taco_app_data = {}
-        for staker_token in stakers_tokens_app:
-            staker, token = staker_token[:20], staker_token[20:]
-            staker = staker.hex()
-            token = int.from_bytes(token, byteorder="big")
-            taco_app_data[staker] = token
-    
-    # Compare stakers and tokens between child and app
+        for staker in taco_app_stakers:
+            info = taco_app.stakingProviderInfo(staker)
+            taco_app_data[staker] = info[3]
+
+    # Compare stakers between child and app
     for staker, token in taco_child_data.items():
         if staker in taco_app_data:
             if taco_app_data[staker] != token:
