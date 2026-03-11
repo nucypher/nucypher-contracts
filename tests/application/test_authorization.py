@@ -17,6 +17,7 @@ along with nucypher.  If not, see <https://www.gnu.org/licenses/>.
 
 import ape
 from ape.utils import ZERO_ADDRESS
+from eth_utils import to_checksum_address, to_int
 from web3 import Web3
 
 OPERATOR_CONFIRMED_SLOT = 1
@@ -1138,3 +1139,59 @@ def test_add_stakeless_provider(accounts, taco_application, child_application, c
 
     with ape.reverts("A provider can't be an operator for another provider"):
         taco_application.addStakelessProvider(owner, owner, owner, sender=creator)
+
+
+def test_migration_with_deauth(accounts, taco_application, child_application, threshold_staking):
+    (
+        creator,
+        staking_provider,
+        staking_provider_2,
+        staking_provider_3,
+        owner,
+        beneficiary,
+        authorizer,
+    ) = accounts[:7]
+    minimum_authorization = MIN_AUTHORIZATION
+    value = 4 * minimum_authorization
+
+    threshold_staking.setRoles(staking_provider, owner, beneficiary, authorizer, sender=creator)
+    threshold_staking.authorizationIncreased(staking_provider, 0, value, sender=creator)
+    taco_application.bondOperator(staking_provider, staking_provider, sender=staking_provider)
+    child_application.confirmOperatorAddress(staking_provider, sender=staking_provider)
+    threshold_staking.authorizationDecreaseRequested(
+        staking_provider, value, 2 * minimum_authorization, sender=creator
+    )
+
+    tx = taco_application.batchMigrateFromThreshold([staking_provider], sender=creator)
+    assert taco_application.rolesOf(staking_provider) == (owner, beneficiary)
+    assert taco_application.authorizedStake(staking_provider) == minimum_authorization
+    assert (
+        threshold_staking.authorizedStake(staking_provider, taco_application.address)
+        == minimum_authorization
+    )
+    assert child_application.stakingProviderInfo(staking_provider) == (
+        minimum_authorization,
+        2 * minimum_authorization,
+    )
+
+    assert tx.events == [
+        taco_application.Migrated(
+            stakingProvider=staking_provider,
+            authorized=minimum_authorization,
+            stakeless=False,
+        )
+    ]
+
+    assert taco_application.eligibleStake(staking_provider, 0) == 0
+    all_locked, staking_providers = taco_application.getActiveStakingProviders(0, 100, 1)
+    assert all_locked == 0
+    assert staking_providers == []
+
+    taco_application.resetDeauthorization([staking_provider], sender=creator)
+
+    assert taco_application.eligibleStake(staking_provider, 0) == minimum_authorization
+    all_locked, staking_providers = taco_application.getActiveStakingProviders(0, 100, 1)
+    assert all_locked == minimum_authorization
+    assert len(staking_providers) == 1
+    assert to_checksum_address(staking_providers[0][0:20]) == staking_provider
+    assert to_int(staking_providers[0][20:32]) == minimum_authorization

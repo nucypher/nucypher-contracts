@@ -459,9 +459,11 @@ contract TACoApplication is
         }
 
         uint96 eligibleAmount = info.authorized;
-        // if (0 < info.endDeauthorization && info.endDeauthorization < _endDate) {
-        eligibleAmount -= info.deauthorizing;
-        // }
+        if (eligibleAmount > info.deauthorizing) {
+            eligibleAmount -= info.deauthorizing;
+        } else {
+            eligibleAmount = 0;
+        }
 
         return eligibleAmount;
     }
@@ -776,6 +778,17 @@ contract TACoApplication is
                 _releaseOperator(stakingProvider);
                 _updateAuthorization(stakingProvider, info);
             }
+        }
+    }
+
+    function resetDeauthorization(address[] memory _stakingProviders) external onlyOwner {
+        require(_stakingProviders.length > 0, "Array is empty");
+        for (uint256 i = 0; i < _stakingProviders.length; i++) {
+            address stakingProvider = _stakingProviders[i];
+            StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
+            require(info.owner != address(0), "Staker doesn't exist");
+            info.deauthorizing = 0;
+            _updateAuthorization(stakingProvider, info);
         }
     }
 
