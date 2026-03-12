@@ -142,6 +142,12 @@ contract TACoApplication is
      */
     event Migrated(address indexed stakingProvider, uint96 authorized, bool stakeless);
 
+    /**
+     * @notice Signals that the staking provider was added without stake
+     * @param stakingProvider Staking provider address
+     */
+    event StakelessProviderAdded(address indexed stakingProvider);
+
     struct StakingProviderInfo {
         address operator;
         bool operatorConfirmed;
@@ -400,27 +406,6 @@ contract TACoApplication is
         _updateAuthorization(_stakingProvider, info);
     }
 
-    /**
-     * @notice Read authorization from staking contract and store it. Can be called by anyone
-     * @param _stakingProvider Address of staking provider
-     */
-    function resynchronizeAuthorization(address _stakingProvider) external {
-        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
-        uint96 newAuthorized = tStaking.authorizedStake(_stakingProvider, address(this));
-        require(info.authorized > newAuthorized, "Nothing to synchronize");
-        emit AuthorizationReSynchronized(_stakingProvider, info.authorized, newAuthorized);
-
-        info.authorized = newAuthorized;
-        if (info.authorized < info.deauthorizing) {
-            info.deauthorizing = info.authorized;
-        }
-
-        if (info.authorized == 0) {
-            _releaseOperator(_stakingProvider);
-        }
-        _updateAuthorization(_stakingProvider, info);
-    }
-
     //-------------------------Main-------------------------
     /**
      * @notice Returns staking provider for specified operator
@@ -459,9 +444,11 @@ contract TACoApplication is
         }
 
         uint96 eligibleAmount = info.authorized;
-        // if (0 < info.endDeauthorization && info.endDeauthorization < _endDate) {
-        eligibleAmount -= info.deauthorizing;
-        // }
+        if (eligibleAmount > info.deauthorizing) {
+            eligibleAmount -= info.deauthorizing;
+        } else {
+            eligibleAmount = 0;
+        }
 
         return eligibleAmount;
     }
@@ -777,5 +764,37 @@ contract TACoApplication is
                 _updateAuthorization(stakingProvider, info);
             }
         }
+    }
+
+    function resetDeauthorization(address[] memory _stakingProviders) external onlyOwner {
+        require(_stakingProviders.length > 0, "Array is empty");
+        for (uint256 i = 0; i < _stakingProviders.length; i++) {
+            address stakingProvider = _stakingProviders[i];
+            StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
+            require(info.owner != address(0), "Staker doesn't exist");
+            info.deauthorizing = 0;
+            _updateAuthorization(stakingProvider, info);
+        }
+    }
+
+    function addStakelessProvider(address _stakingProvider, address _owner) external onlyOwner {
+        require(
+            _stakingProvider != address(0) && _owner != address(0),
+            "Parameters must be specified"
+        );
+        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
+        require(info.owner == address(0), "Staker already exists");
+        require(
+            _stakingProviderFromOperator[_stakingProvider] == address(0) ||
+                _stakingProviderFromOperator[_stakingProvider] == _stakingProvider,
+            "A provider can't be an operator for another provider"
+        );
+
+        info.authorized = minimumAuthorization;
+        stakingProviderReleased[_stakingProvider] = false;
+        info.owner = _owner;
+        info.stakeless = true;
+        emit StakelessProviderAdded(_stakingProvider);
+        _updateAuthorization(_stakingProvider, info);
     }
 }
