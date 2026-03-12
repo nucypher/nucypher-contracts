@@ -406,27 +406,6 @@ contract TACoApplication is
         _updateAuthorization(_stakingProvider, info);
     }
 
-    /**
-     * @notice Read authorization from staking contract and store it. Can be called by anyone
-     * @param _stakingProvider Address of staking provider
-     */
-    function resynchronizeAuthorization(address _stakingProvider) external {
-        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
-        uint96 newAuthorized = tStaking.authorizedStake(_stakingProvider, address(this));
-        require(info.authorized > newAuthorized, "Nothing to synchronize");
-        emit AuthorizationReSynchronized(_stakingProvider, info.authorized, newAuthorized);
-
-        info.authorized = newAuthorized;
-        if (info.authorized < info.deauthorizing) {
-            info.deauthorizing = info.authorized;
-        }
-
-        if (info.authorized == 0) {
-            _releaseOperator(_stakingProvider);
-        }
-        _updateAuthorization(_stakingProvider, info);
-    }
-
     //-------------------------Main-------------------------
     /**
      * @notice Returns staking provider for specified operator

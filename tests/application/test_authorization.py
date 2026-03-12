@@ -651,128 +651,128 @@ def test_finish_authorization_decrease(
     assert taco_application.stakingProviderToOperator(staking_provider) == ZERO_ADDRESS
 
 
-def test_resync(accounts, threshold_staking, taco_application, child_application, chain):
-    """
-    Tests for authorization method: resynchronizeAuthorization
-    """
+# def test_resync(accounts, threshold_staking, taco_application, child_application, chain):
+#     """
+#     Tests for authorization method: resynchronizeAuthorization
+#     """
 
-    creator, staking_provider = accounts[0:2]
-    minimum_authorization = MIN_AUTHORIZATION
-    value = 3 * minimum_authorization
+#     creator, staking_provider = accounts[0:2]
+#     minimum_authorization = MIN_AUTHORIZATION
+#     value = 3 * minimum_authorization
 
-    # Nothing sync for not staking provider
-    with ape.reverts():
-        taco_application.resynchronizeAuthorization(staking_provider, sender=creator)
+#     # Nothing sync for not staking provider
+#     with ape.reverts():
+#         taco_application.resynchronizeAuthorization(staking_provider, sender=creator)
 
-    # Prepare staking providers
-    threshold_staking.authorizationIncreased(staking_provider, 0, value, sender=creator)
+#     # Prepare staking providers
+#     threshold_staking.authorizationIncreased(staking_provider, 0, value, sender=creator)
 
-    # Nothing to resync
-    with ape.reverts():
-        taco_application.resynchronizeAuthorization(staking_provider, sender=creator)
+#     # Nothing to resync
+#     with ape.reverts():
+#         taco_application.resynchronizeAuthorization(staking_provider, sender=creator)
 
-    # Change authorized amount and resync
-    new_value = 2 * minimum_authorization
-    threshold_staking.setAuthorized(staking_provider, new_value, sender=creator)
-    tx = taco_application.resynchronizeAuthorization(staking_provider, sender=creator)
-    assert taco_application.stakingProviderInfo(staking_provider)[AUTHORIZATION_SLOT] == new_value
-    assert taco_application.authorizedStake(staking_provider) == new_value
-    assert child_application.stakingProviderInfo(staking_provider) == (new_value, 0)
-    assert taco_application.isAuthorized(staking_provider)
+#     # Change authorized amount and resync
+#     new_value = 2 * minimum_authorization
+#     threshold_staking.setAuthorized(staking_provider, new_value, sender=creator)
+#     tx = taco_application.resynchronizeAuthorization(staking_provider, sender=creator)
+#     assert taco_application.stakingProviderInfo(staking_provider)[AUTHORIZATION_SLOT] == new_value
+#     assert taco_application.authorizedStake(staking_provider) == new_value
+#     assert child_application.stakingProviderInfo(staking_provider) == (new_value, 0)
+#     assert taco_application.isAuthorized(staking_provider)
 
-    events = [event for event in tx.events if event.event_name == "AuthorizationReSynchronized"]
-    assert events == [
-        taco_application.AuthorizationReSynchronized(
-            stakingProvider=staking_provider, fromAmount=value, toAmount=new_value
-        )
-    ]
+#     events = [event for event in tx.events if event.event_name == "AuthorizationReSynchronized"]
+#     assert events == [
+#         taco_application.AuthorizationReSynchronized(
+#             stakingProvider=staking_provider, fromAmount=value, toAmount=new_value
+#         )
+#     ]
 
-    # Resync again for staker with penalty
-    new_value = 3 * minimum_authorization // 2
-    threshold_staking.setAuthorized(staking_provider, new_value, sender=creator)
-    taco_application.resynchronizeAuthorization(staking_provider, sender=creator)
-    assert taco_application.authorizedStake(staking_provider) == new_value
+#     # Resync again for staker with penalty
+#     new_value = 3 * minimum_authorization // 2
+#     threshold_staking.setAuthorized(staking_provider, new_value, sender=creator)
+#     taco_application.resynchronizeAuthorization(staking_provider, sender=creator)
+#     assert taco_application.authorizedStake(staking_provider) == new_value
 
-    # Confirm operator and change authorized amount again
-    value = new_value
-    taco_application.bondOperator(staking_provider, staking_provider, sender=staking_provider)
-    child_application.confirmOperatorAddress(staking_provider, sender=staking_provider)
+#     # Confirm operator and change authorized amount again
+#     value = new_value
+#     taco_application.bondOperator(staking_provider, staking_provider, sender=staking_provider)
+#     child_application.confirmOperatorAddress(staking_provider, sender=staking_provider)
 
-    new_value = minimum_authorization
-    threshold_staking.setAuthorized(staking_provider, new_value, sender=creator)
-    tx = taco_application.resynchronizeAuthorization(staking_provider, sender=creator)
-    assert taco_application.stakingProviderInfo(staking_provider)[AUTHORIZATION_SLOT] == new_value
-    assert taco_application.pendingAuthorizationDecrease(staking_provider) == 0
-    assert taco_application.stakingProviderToOperator(staking_provider) == staking_provider
-    assert taco_application.operatorToStakingProvider(staking_provider) == staking_provider
-    assert taco_application.authorizedStake(staking_provider) == new_value
-    assert child_application.stakingProviderInfo(staking_provider) == (new_value, 0)
-    assert taco_application.isAuthorized(staking_provider)
-    assert taco_application.isOperatorConfirmed(staking_provider)
-    assert child_application.stakingProviderToOperator(staking_provider) == staking_provider
+#     new_value = minimum_authorization
+#     threshold_staking.setAuthorized(staking_provider, new_value, sender=creator)
+#     tx = taco_application.resynchronizeAuthorization(staking_provider, sender=creator)
+#     assert taco_application.stakingProviderInfo(staking_provider)[AUTHORIZATION_SLOT] == new_value
+#     assert taco_application.pendingAuthorizationDecrease(staking_provider) == 0
+#     assert taco_application.stakingProviderToOperator(staking_provider) == staking_provider
+#     assert taco_application.operatorToStakingProvider(staking_provider) == staking_provider
+#     assert taco_application.authorizedStake(staking_provider) == new_value
+#     assert child_application.stakingProviderInfo(staking_provider) == (new_value, 0)
+#     assert taco_application.isAuthorized(staking_provider)
+#     assert taco_application.isOperatorConfirmed(staking_provider)
+#     assert child_application.stakingProviderToOperator(staking_provider) == staking_provider
 
-    events = [event for event in tx.events if event.event_name == "AuthorizationReSynchronized"]
-    assert events == [
-        taco_application.AuthorizationReSynchronized(
-            stakingProvider=staking_provider, fromAmount=value, toAmount=new_value
-        )
-    ]
+#     events = [event for event in tx.events if event.event_name == "AuthorizationReSynchronized"]
+#     assert events == [
+#         taco_application.AuthorizationReSynchronized(
+#             stakingProvider=staking_provider, fromAmount=value, toAmount=new_value
+#         )
+#     ]
 
-    # Resync again for staker with penalty
-    new_value = 3 * minimum_authorization // 4
-    threshold_staking.setAuthorized(staking_provider, new_value, sender=creator)
-    taco_application.resynchronizeAuthorization(staking_provider, sender=creator)
-    assert taco_application.authorizedStake(staking_provider) == new_value
+#     # Resync again for staker with penalty
+#     new_value = 3 * minimum_authorization // 4
+#     threshold_staking.setAuthorized(staking_provider, new_value, sender=creator)
+#     taco_application.resynchronizeAuthorization(staking_provider, sender=creator)
+#     assert taco_application.authorizedStake(staking_provider) == new_value
 
-    # Request decrease and change authorized amount again
-    value = new_value
-    threshold_staking.authorizationDecreaseRequested(staking_provider, value, 0, sender=creator)
-    new_value = minimum_authorization // 2
+#     # Request decrease and change authorized amount again
+#     value = new_value
+#     threshold_staking.authorizationDecreaseRequested(staking_provider, value, 0, sender=creator)
+#     new_value = minimum_authorization // 2
 
-    threshold_staking.setAuthorized(staking_provider, new_value, sender=creator)
-    tx = taco_application.resynchronizeAuthorization(staking_provider, sender=creator)
+#     threshold_staking.setAuthorized(staking_provider, new_value, sender=creator)
+#     tx = taco_application.resynchronizeAuthorization(staking_provider, sender=creator)
 
-    assert taco_application.stakingProviderInfo(staking_provider)[AUTHORIZATION_SLOT] == new_value
-    assert taco_application.pendingAuthorizationDecrease(staking_provider) == new_value
-    assert taco_application.stakingProviderToOperator(staking_provider) == staking_provider
-    assert taco_application.operatorToStakingProvider(staking_provider) == staking_provider
-    assert taco_application.authorizedStake(staking_provider) == 0
-    assert child_application.stakingProviderInfo(staking_provider) == (
-        new_value,
-        new_value,
-    )
-    assert taco_application.isAuthorized(staking_provider)
-    assert taco_application.isOperatorConfirmed(staking_provider)
-    assert child_application.stakingProviderToOperator(staking_provider) == staking_provider
+#     assert taco_application.stakingProviderInfo(staking_provider)[AUTHORIZATION_SLOT] == new_value
+#     assert taco_application.pendingAuthorizationDecrease(staking_provider) == new_value
+#     assert taco_application.stakingProviderToOperator(staking_provider) == staking_provider
+#     assert taco_application.operatorToStakingProvider(staking_provider) == staking_provider
+#     assert taco_application.authorizedStake(staking_provider) == 0
+#     assert child_application.stakingProviderInfo(staking_provider) == (
+#         new_value,
+#         new_value,
+#     )
+#     assert taco_application.isAuthorized(staking_provider)
+#     assert taco_application.isOperatorConfirmed(staking_provider)
+#     assert child_application.stakingProviderToOperator(staking_provider) == staking_provider
 
-    events = [event for event in tx.events if event.event_name == "AuthorizationReSynchronized"]
-    assert events == [
-        taco_application.AuthorizationReSynchronized(
-            stakingProvider=staking_provider, fromAmount=value, toAmount=new_value
-        )
-    ]
+#     events = [event for event in tx.events if event.event_name == "AuthorizationReSynchronized"]
+#     assert events == [
+#         taco_application.AuthorizationReSynchronized(
+#             stakingProvider=staking_provider, fromAmount=value, toAmount=new_value
+#         )
+#     ]
 
-    # Set authorized amount to zero and resync again
-    value = new_value
-    threshold_staking.setAuthorized(staking_provider, 0, sender=creator)
-    tx = taco_application.resynchronizeAuthorization(staking_provider, sender=creator)
-    assert taco_application.stakingProviderInfo(staking_provider)[AUTHORIZATION_SLOT] == 0
-    assert taco_application.pendingAuthorizationDecrease(staking_provider) == 0
-    assert taco_application.stakingProviderToOperator(staking_provider) == ZERO_ADDRESS
-    assert taco_application.operatorToStakingProvider(staking_provider) == ZERO_ADDRESS
-    assert taco_application.authorizedStake(staking_provider) == 0
-    assert child_application.stakingProviderInfo(staking_provider) == (0, 0)
-    assert not taco_application.isAuthorized(staking_provider)
-    assert not taco_application.isOperatorConfirmed(staking_provider)
-    assert not taco_application.stakingProviderInfo(staking_provider)[OPERATOR_CONFIRMED_SLOT]
-    assert child_application.stakingProviderToOperator(staking_provider) == ZERO_ADDRESS
+#     # Set authorized amount to zero and resync again
+#     value = new_value
+#     threshold_staking.setAuthorized(staking_provider, 0, sender=creator)
+#     tx = taco_application.resynchronizeAuthorization(staking_provider, sender=creator)
+#     assert taco_application.stakingProviderInfo(staking_provider)[AUTHORIZATION_SLOT] == 0
+#     assert taco_application.pendingAuthorizationDecrease(staking_provider) == 0
+#     assert taco_application.stakingProviderToOperator(staking_provider) == ZERO_ADDRESS
+#     assert taco_application.operatorToStakingProvider(staking_provider) == ZERO_ADDRESS
+#     assert taco_application.authorizedStake(staking_provider) == 0
+#     assert child_application.stakingProviderInfo(staking_provider) == (0, 0)
+#     assert not taco_application.isAuthorized(staking_provider)
+#     assert not taco_application.isOperatorConfirmed(staking_provider)
+#     assert not taco_application.stakingProviderInfo(staking_provider)[OPERATOR_CONFIRMED_SLOT]
+#     assert child_application.stakingProviderToOperator(staking_provider) == ZERO_ADDRESS
 
-    events = [event for event in tx.events if event.event_name == "AuthorizationReSynchronized"]
-    assert events == [
-        taco_application.AuthorizationReSynchronized(
-            stakingProvider=staking_provider, fromAmount=value, toAmount=0
-        )
-    ]
+#     events = [event for event in tx.events if event.event_name == "AuthorizationReSynchronized"]
+#     assert events == [
+#         taco_application.AuthorizationReSynchronized(
+#             stakingProvider=staking_provider, fromAmount=value, toAmount=0
+#         )
+#     ]
 
 
 def test_child_sync(accounts, threshold_staking, taco_application, child_application, chain):
