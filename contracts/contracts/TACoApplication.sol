@@ -142,6 +142,12 @@ contract TACoApplication is
      */
     event Migrated(address indexed stakingProvider, uint96 authorized, bool stakeless);
 
+    /**
+     * @notice Signals that the staking provider was added without stake
+     * @param stakingProvider Staking provider address
+     */
+    event StakelessProvderAdded(address indexed stakingProvider);
+
     struct StakingProviderInfo {
         address operator;
         bool operatorConfirmed;
@@ -792,13 +798,9 @@ contract TACoApplication is
         }
     }
 
-    function addStakelessProvider(
-        address _stakingProvider,
-        address _owner,
-        address _beneficiary
-    ) external onlyOwner {
+    function addStakelessProvider(address _stakingProvider, address _owner) external onlyOwner {
         require(
-            _stakingProvider != address(0) && _owner != address(0) && _beneficiary != address(0),
+            _stakingProvider != address(0) && _owner != address(0),
             "Parameters must be specified"
         );
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
@@ -812,9 +814,8 @@ contract TACoApplication is
         info.authorized = minimumAuthorization;
         stakingProviderReleased[_stakingProvider] = false;
         info.owner = _owner;
-        info.beneficiary = _beneficiary;
         info.stakeless = true;
-        emit AuthorizationIncreased(_stakingProvider, 0, minimumAuthorization);
+        emit StakelessProvderAdded(_stakingProvider);
         _updateAuthorization(_stakingProvider, info);
     }
 }

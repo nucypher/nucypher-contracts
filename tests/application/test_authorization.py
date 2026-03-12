@@ -1092,53 +1092,39 @@ def test_add_stakeless_provider(accounts, taco_application, child_application, c
     Tests for authorization method: addStakelessProvider
     """
 
-    creator, staking_provider, owner, beneficiary = accounts[0:4]
+    creator, staking_provider, owner = accounts[0:3]
     minimum_authorization = MIN_AUTHORIZATION
     value = minimum_authorization
 
     # Only owner can call `addStakelessProvider` directly
     with ape.reverts():
         taco_application.addStakelessProvider(
-            staking_provider, staking_provider, staking_provider, sender=staking_provider
+            staking_provider, staking_provider, sender=staking_provider
         )
 
     with ape.reverts("Parameters must be specified"):
-        taco_application.addStakelessProvider(
-            ZERO_ADDRESS, staking_provider, staking_provider, sender=creator
-        )
+        taco_application.addStakelessProvider(ZERO_ADDRESS, staking_provider, sender=creator)
     with ape.reverts("Parameters must be specified"):
-        taco_application.addStakelessProvider(
-            staking_provider, ZERO_ADDRESS, staking_provider, sender=creator
-        )
-    with ape.reverts("Parameters must be specified"):
-        taco_application.addStakelessProvider(
-            staking_provider, staking_provider, ZERO_ADDRESS, sender=creator
-        )
+        taco_application.addStakelessProvider(staking_provider, ZERO_ADDRESS, sender=creator)
 
-    tx = taco_application.addStakelessProvider(staking_provider, owner, beneficiary, sender=creator)
+    tx = taco_application.addStakelessProvider(staking_provider, owner, sender=creator)
     assert taco_application.stakingProviderInfo(staking_provider)[AUTHORIZATION_SLOT] == value
     assert taco_application.authorizedStake(staking_provider) == value
     assert child_application.stakingProviderInfo(staking_provider) == (value, 0)
     assert taco_application.isAuthorized(staking_provider)
 
     # Check that all events are emitted
-    events = [event for event in tx.events if event.event_name == "AuthorizationIncreased"]
-    assert events == [
-        taco_application.AuthorizationIncreased(
-            stakingProvider=staking_provider, fromAmount=0, toAmount=value
-        )
-    ]
+    events = [event for event in tx.events if event.event_name == "StakelessProvderAdded"]
+    assert events == [taco_application.StakelessProvderAdded(stakingProvider=staking_provider)]
 
     with ape.reverts("Staker already exists"):
-        taco_application.addStakelessProvider(
-            staking_provider, staking_provider, staking_provider, sender=creator
-        )
+        taco_application.addStakelessProvider(staking_provider, staking_provider, sender=creator)
 
     taco_application.bondOperator(staking_provider, owner, sender=staking_provider)
     child_application.confirmOperatorAddress(staking_provider, sender=owner)
 
     with ape.reverts("A provider can't be an operator for another provider"):
-        taco_application.addStakelessProvider(owner, owner, owner, sender=creator)
+        taco_application.addStakelessProvider(owner, owner, sender=creator)
 
 
 def test_migration_with_deauth(accounts, taco_application, child_application, threshold_staking):
