@@ -22,6 +22,8 @@ contract ChildApplicationForTACoApplicationMock {
 
     mapping(address => bool) public stakingProviderReleased;
 
+    bool public sendRelease;
+
     constructor(TACoApplication _rootApplication) {
         rootApplication = _rootApplication;
     }
@@ -48,8 +50,14 @@ contract ChildApplicationForTACoApplicationMock {
         rootApplication.confirmOperatorAddress(_operator);
     }
 
+    function setRelease(bool _release) external {
+        sendRelease = _release;
+    }
+
     function release(address _stakingProvider) external {
         stakingProviderReleased[_stakingProvider] = true;
-        rootApplication.release(_stakingProvider);
+        if (sendRelease) {
+            rootApplication.release(_stakingProvider);
+        }
     }
 }

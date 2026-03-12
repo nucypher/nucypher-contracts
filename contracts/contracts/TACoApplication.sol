@@ -89,7 +89,6 @@ contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
     /**
      * @notice Signals that the staking provider was released
      * @param stakingProvider Staking provider address
-     * @param stakeless Shows if authorization is backed up by tokens
      */
     event Released(address indexed stakingProvider);
 
@@ -139,10 +138,10 @@ contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
     // uint96 private _authorizedOverall;
 
     // address private _rewardContract;
-    uint256[6] private _gap;
+    uint256[8] private _gap;
 
-    mapping(address => bool) public stakingProviderReleased;
-    mapping(address => bool) public allowList;
+    // mapping(address => bool) public stakingProviderReleased;
+    // mapping(address => bool) public allowList;
 
     /**
      * @notice Constructor sets address of token contract and parameters for staking
@@ -195,6 +194,10 @@ contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
     ) external onlyOwner {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         require(info.authorized == 0 && info.owner == address(0), "Stake already initialized");
+        require(
+            _stakingProviderFromOperator[_stakingProvider] == address(0),
+            "Staker is an operator"
+        );
 
         info.owner = _owner;
         info.beneficiary = _beneficiary;
@@ -212,13 +215,24 @@ contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
         address _stakingProvider
     ) external onlyOwnerOrStakingProvider(_stakingProvider) {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
+        require(info.deauthorizing == 0, "Unstake already requested");
 
         info.deauthorizing = info.authorized;
-        info.authorized = 0;
-        stakingProviderReleased[_stakingProvider] = false;
         emit UnstakeRequested(_stakingProvider);
         _updateAuthorization(_stakingProvider, info);
         childApplication.release(_stakingProvider);
+    }
+
+    function release(address _stakingProvider) external override(ITACoChildToRoot) {
+        require(
+            msg.sender == address(childApplication),
+            "Only child application allowed to release"
+        );
+
+        if (_stakingProvider == address(0)) {
+            return;
+        }
+        approveUnstake(_stakingProvider);
     }
 
     /**
@@ -258,9 +272,6 @@ contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
      * @notice Get all tokens delegated to the staking provider
      */
     function authorizedStake(address _stakingProvider) external view returns (uint96) {
-        if (stakingProviderReleased[_stakingProvider]) {
-            return 0;
-        }
         return stakingProviderInfo[_stakingProvider].authorized;
     }
 
@@ -272,9 +283,6 @@ contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
      */
     function eligibleStake(address _stakingProvider) public view returns (uint96) {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
-        if (stakingProviderReleased[_stakingProvider]) {
-            return 0;
-        }
 
         uint96 eligibleAmount = info.authorized;
         if (eligibleAmount > info.deauthorizing) {
@@ -290,7 +298,6 @@ contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
      * @notice Get the value of authorized tokens for active providers as well as providers and their authorized tokens
      * @param _startIndex Start index for looking in providers array
      * @param _maxStakingProviders Max providers for looking, if set 0 then all will be used
-     * @param _cohortDuration Duration during which staking provider should be active. 0 means forever
      * @return allAuthorizedTokens Sum of authorized tokens for active providers
      * @return activeStakingProviders Array of providers and their authorized tokens.
      * Providers addresses stored together with amounts as bytes32
@@ -299,8 +306,7 @@ contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
      */
     function getActiveStakingProviders(
         uint256 _startIndex,
-        uint256 _maxStakingProviders,
-        uint32 _cohortDuration
+        uint256 _maxStakingProviders
     ) external view returns (uint256 allAuthorizedTokens, bytes32[] memory activeStakingProviders) {
         uint256 endIndex = stakingProviders.length;
         require(_startIndex < endIndex, "Wrong start index");
@@ -492,21 +498,6 @@ contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
         childApplication.updateOperator(_stakingProvider, info.operator);
     }
 
-    function release(address _stakingProvider) external override(ITACoChildToRoot) {
-        require(
-            msg.sender == address(childApplication),
-            "Only child application allowed to release"
-        );
-
-        if (_stakingProvider == address(0)) {
-            return;
-        }
-
-        stakingProviderReleased[_stakingProvider] = true;
-        emit Released(_stakingProvider);
-        approveUnstake(_stakingProvider);
-    }
-
     function penalize(address) external override {
         revert("Deprecated");
     }
@@ -533,7 +524,6 @@ contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
         );
 
         info.authorized = minimumAuthorization;
-        stakingProviderReleased[_stakingProvider] = false;
         info.owner = _owner;
         info.stakeless = true;
         emit StakelessProviderAdded(_stakingProvider);

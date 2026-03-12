@@ -123,14 +123,18 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
      *         is going to be made during this period, the returned amount will
      *         be the staked amount minus the deauthorizing amount.
      */
-    function eligibleStake(address _stakingProvider, uint256) public view returns (uint96) {
+    function eligibleStake(address _stakingProvider) public view returns (uint96) {
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         if (info.released) {
             return 0;
         }
 
         uint96 eligibleAmount = info.authorized;
-        eligibleAmount -= info.deauthorizing;
+        if (eligibleAmount > info.deauthorizing) {
+            eligibleAmount -= info.deauthorizing;
+        } else {
+            eligibleAmount = 0;
+        }
 
         return eligibleAmount;
     }
@@ -244,7 +248,6 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
      * @notice Get the value of authorized tokens for active providers as well as providers and their authorized tokens
      * @param _startIndex Start index for looking in providers array
      * @param _maxStakingProviders Max providers for looking, if set 0 then all will be used
-     * @param _cohortDuration Duration during which staking provider should be active. 0 means forever
      * @return allAuthorizedTokens Sum of authorized tokens for active providers
      * @return activeStakingProviders Array of providers and their authorized tokens.
      * Providers addresses stored together with amounts as bytes32
@@ -253,8 +256,7 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
      */
     function getActiveStakingProviders(
         uint256 _startIndex,
-        uint256 _maxStakingProviders,
-        uint32 _cohortDuration
+        uint256 _maxStakingProviders
     ) public view returns (uint96 allAuthorizedTokens, bytes32[] memory activeStakingProviders) {
         uint256 endIndex = stakingProviders.length;
         require(_startIndex < endIndex, "Wrong start index");
@@ -263,15 +265,12 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         }
         activeStakingProviders = new bytes32[](endIndex - _startIndex);
         allAuthorizedTokens = 0;
-        uint256 endDate = _cohortDuration == 0
-            ? type(uint256).max
-            : block.timestamp + _cohortDuration;
 
         uint256 resultIndex = 0;
         for (uint256 i = _startIndex; i < endIndex; i++) {
             address stakingProvider = stakingProviders[i];
             StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
-            uint96 eligibleAmount = eligibleStake(stakingProvider, endDate);
+            uint96 eligibleAmount = eligibleStake(stakingProvider);
             if (eligibleAmount < minimumAuthorization || !info.operatorConfirmed) {
                 continue;
             }
@@ -287,14 +286,6 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
         }
     }
 
-    // TODO only for backward compatibility
-    function getActiveStakingProviders(
-        uint256 _startIndex,
-        uint256 _maxStakingProviders
-    ) external view returns (uint96 allAuthorizedTokens, bytes32[] memory activeStakingProviders) {
-        return getActiveStakingProviders(_startIndex, _maxStakingProviders, 0);
-    }
-
     function release(
         address _stakingProvider
     ) external override(ITACoRootToChild, ITACoChildToRoot) {
@@ -306,7 +297,7 @@ contract TACoChildApplication is ITACoRootToChild, ITACoChildApplication, Initia
                 msg.sender == coordinator,
             "Can't call release"
         );
-        if (info.released || eligibleStake(_stakingProvider, 0) >= minimumAuthorization) {
+        if (info.released || eligibleStake(_stakingProvider) >= minimumAuthorization) {
             return;
         }
         // check all active rituals
