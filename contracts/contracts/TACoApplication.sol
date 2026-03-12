@@ -146,7 +146,7 @@ contract TACoApplication is
      * @notice Signals that the staking provider was added without stake
      * @param stakingProvider Staking provider address
      */
-    event StakelessProvderAdded(address indexed stakingProvider);
+    event StakelessProviderAdded(address indexed stakingProvider);
 
     struct StakingProviderInfo {
         address operator;
@@ -815,7 +815,7 @@ contract TACoApplication is
         stakingProviderReleased[_stakingProvider] = false;
         info.owner = _owner;
         info.stakeless = true;
-        emit StakelessProvderAdded(_stakingProvider);
+        emit StakelessProviderAdded(_stakingProvider);
         _updateAuthorization(_stakingProvider, info);
     }
 }

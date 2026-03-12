@@ -1114,8 +1114,8 @@ def test_add_stakeless_provider(accounts, taco_application, child_application, c
     assert taco_application.isAuthorized(staking_provider)
 
     # Check that all events are emitted
-    events = [event for event in tx.events if event.event_name == "StakelessProvderAdded"]
-    assert events == [taco_application.StakelessProvderAdded(stakingProvider=staking_provider)]
+    events = [event for event in tx.events if event.event_name == "StakelessProviderAdded"]
+    assert events == [taco_application.StakelessProviderAdded(stakingProvider=staking_provider)]
 
     with ape.reverts("Staker already exists"):
         taco_application.addStakelessProvider(staking_provider, staking_provider, sender=creator)
