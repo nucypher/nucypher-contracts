@@ -326,7 +326,7 @@ def test_signing_multisig_update_parameters_bulk_change_no_replacement(
 
     # signature mix of old and new signers still valid
     all_signers = [*initial_signers, *new_signers]
-    random_signers = random.sample(all_signers, NUM_SIGNERS)
+    random_signers = random.sample(all_signers, new_threshold)
     random_signers = sorted(random_signers, key=lambda x: int(x.address, 16))
     mixed_signatures = b""
     for signer in random_signers:

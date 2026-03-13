@@ -66,7 +66,7 @@ contract ThresholdSigningMultisig is
         bytes memory signature
     ) public view override returns (bytes4) {
         // split up signature bytes into array
-        require(signature.length >= (threshold * 65), "Invalid signature length for threshold");
+        require(signature.length == (threshold * 65), "Invalid signature length for threshold");
 
         address lastSigner = address(0);
         for (uint16 i = 0; i < threshold; i++) {

@@ -368,7 +368,7 @@ def test_signing_ritual(
     )
 
     assert (
-        cohort_multisig.isValidSignature(data_hash, b"".join(submitted_signatures))
+        cohort_multisig.isValidSignature(data_hash, b"".join(submitted_signatures[:threshold]))
         == ERC1271_MAGIC_VALUE_BYTES
     )
 
