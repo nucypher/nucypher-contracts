@@ -9,7 +9,7 @@ from web3 import Web3
 from tests.conftest import ERC1271_INVALID_SIGNATURE, ERC1271_MAGIC_VALUE_BYTES, SigningRitualState
 
 TIMEOUT = 1000
-MAX_DKG_SIZE = 31
+MAX_DKG_SIZE = 20
 DURATION = 48 * 60 * 60
 
 OTHER_CHAIN_ID_FOR_BRIDGE = 112233445566
@@ -368,7 +368,7 @@ def test_signing_ritual(
     )
 
     assert (
-        cohort_multisig.isValidSignature(data_hash, b"".join(submitted_signatures))
+        cohort_multisig.isValidSignature(data_hash, b"".join(submitted_signatures[:threshold]))
         == ERC1271_MAGIC_VALUE_BYTES
     )
 

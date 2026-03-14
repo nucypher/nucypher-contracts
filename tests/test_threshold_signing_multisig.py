@@ -4,6 +4,7 @@ import random
 import ape
 import pytest
 from eth_account.messages import _hash_eip191_message, encode_defunct
+from eth_utils import to_checksum_address
 
 from tests.conftest import ERC1271_INVALID_SIGNATURE, ERC1271_MAGIC_VALUE_BYTES
 
@@ -34,6 +35,7 @@ def deployer(accounts):
 @pytest.fixture()
 def threshold_signing_multisig(project, deployer, initial_signers):
     multisig = project.ThresholdSigningMultisig.deploy(sender=deployer)
+
     multisig.initialize(
         [signer.address for signer in initial_signers],
         INITIAL_THRESHOLD,
@@ -56,6 +58,23 @@ def test_signing_multisig_initialization(
     assert multisig.owner() == deployer.address
 
 
+def test_signing_multisig_initialization_too_many_signers(
+    project, threshold_signing_multisig, deployer
+):
+    multisig = project.ThresholdSigningMultisig.deploy(sender=deployer)
+
+    max_signers = threshold_signing_multisig.MAX_SIGNER_COUNT()
+    too_many_signers = [to_checksum_address(os.urandom(20)) for _ in range(max_signers + 1)]
+    too_many_signers = sorted(too_many_signers, key=lambda x: int(x, 16))
+    with ape.reverts("Invalid arguments"):
+        multisig.initialize(
+            too_many_signers,
+            INITIAL_THRESHOLD,
+            deployer.address,
+            sender=deployer,
+        )
+
+
 def test_signing_multisig_add_signer(
     threshold_signing_multisig,
     initial_signers,
@@ -70,6 +89,13 @@ def test_signing_multisig_add_signer(
     assert new_signer.address in multisig.getSigners()
     assert multisig.isSigner(new_signer.address) is True
     assert len(multisig.getSigners()) == len(initial_signers) + 1
+
+    max_signers = multisig.MAX_SIGNER_COUNT()
+    while len(multisig.getSigners()) < max_signers:
+        multisig.addSigner(to_checksum_address(os.urandom(20)), sender=deployer)
+
+    with ape.reverts("At max signers"):
+        multisig.addSigner(to_checksum_address(os.urandom(20)), sender=deployer)
 
 
 def test_signing_multisig_remove_signer(
@@ -181,7 +207,7 @@ def test_signing_multisig_is_valid_signature(
     is_valid = multisig.isValidSignature(data_hash, signatures)
     assert is_valid == ERC1271_MAGIC_VALUE_BYTES
 
-    with ape.reverts("Invalid threshold of signatures"):
+    with ape.reverts("Invalid signature length for threshold"):
         insufficient_threshold_signatures = signatures[:-65]
         _ = multisig.isValidSignature(data_hash, insufficient_threshold_signatures)
 
@@ -222,7 +248,7 @@ def test_signing_multisig_update_parameters_bulk_replacement(
     for signer in initial_signers[:INITIAL_THRESHOLD]:
         signature = signer.sign_message(signable_message).encode_rsv()
         old_signatures += signature
-    with ape.reverts("Invalid threshold of signatures"):
+    with ape.reverts("Invalid signature length for threshold"):
         _ = threshold_signing_multisig.isValidSignature(data_hash, old_signatures)
 
     # try again with updated threshold - should still fail
@@ -279,7 +305,7 @@ def test_signing_multisig_update_parameters_bulk_change_no_replacement(
     for signer in initial_signers[:INITIAL_THRESHOLD]:
         signature = signer.sign_message(signable_message).encode_rsv()
         original_signatures += signature
-    with ape.reverts("Invalid threshold of signatures"):
+    with ape.reverts("Invalid signature length for threshold"):
         _ = threshold_signing_multisig.isValidSignature(data_hash, original_signatures)
 
     # try again with updated threshold - should pass
@@ -300,7 +326,7 @@ def test_signing_multisig_update_parameters_bulk_change_no_replacement(
 
     # signature mix of old and new signers still valid
     all_signers = [*initial_signers, *new_signers]
-    random_signers = random.sample(all_signers, NUM_SIGNERS)
+    random_signers = random.sample(all_signers, new_threshold)
     random_signers = sorted(random_signers, key=lambda x: int(x.address, 16))
     mixed_signatures = b""
     for signer in random_signers:
@@ -308,3 +334,41 @@ def test_signing_multisig_update_parameters_bulk_change_no_replacement(
         mixed_signatures += signature
     is_valid = threshold_signing_multisig.isValidSignature(data_hash, mixed_signatures)
     assert is_valid == ERC1271_MAGIC_VALUE_BYTES
+
+
+def test_signing_multisig_update_parameters_bulk_replacement_too_many_signers(
+    threshold_signing_multisig,
+    deployer,
+):
+    new_threshold = INITIAL_THRESHOLD + 1
+    max_signers = threshold_signing_multisig.MAX_SIGNER_COUNT()
+    too_many_signers = [to_checksum_address(os.urandom(20)) for _ in range(max_signers + 1)]
+    too_many_signers = sorted(too_many_signers, key=lambda x: int(x, 16))
+    with ape.reverts("Too Many Signers"):
+        threshold_signing_multisig.updateMultiSigParameters(
+            too_many_signers,
+            new_threshold,
+            True,  # totally replace old signers
+            sender=deployer,
+        )
+
+
+def test_signing_multisig_update_parameters_bulk_change_no_replacement_too_many_signers(
+    threshold_signing_multisig,
+    initial_signers,
+    deployer,
+):
+    new_threshold = INITIAL_THRESHOLD + 1
+    max_signers = threshold_signing_multisig.MAX_SIGNER_COUNT()
+    num_additional_signers = max_signers - len(initial_signers)
+    too_many_signers = [
+        to_checksum_address(os.urandom(20)) for _ in range(num_additional_signers + 1)
+    ]
+    too_many_signers = sorted(too_many_signers, key=lambda x: int(x, 16))
+    with ape.reverts("Too Many Signers"):
+        threshold_signing_multisig.updateMultiSigParameters(
+            too_many_signers,
+            new_threshold,
+            False,  # don't replace, bulk add
+            sender=deployer,
+        )
