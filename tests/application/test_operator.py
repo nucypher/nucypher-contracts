@@ -24,7 +24,7 @@ MIN_AUTHORIZATION = Web3.to_wei(40_000, "ether")
 MIN_OPERATOR_SECONDS = 24 * 60 * 60
 
 
-def test_bond_operator(accounts, threshold_staking, taco_application, child_application, chain):
+def test_bond_operator(accounts, token, taco_application, child_application, chain):
     (
         creator,
         staking_provider_1,
@@ -37,23 +37,28 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
         owner3,
         beneficiary,
     ) = accounts[:10]
-    authorizer = creator
     min_authorization = MIN_AUTHORIZATION
+    value = min_authorization
     min_operator_seconds = MIN_OPERATOR_SECONDS
 
     # Prepare staking providers
-    threshold_staking.setRoles(staking_provider_1, sender=creator)
-    threshold_staking.authorizationIncreased(
-        staking_provider_1, 0, min_authorization, sender=creator
+    token.transfer(staking_provider_1, value, sender=creator)
+    token.approve(taco_application.address, value, sender=staking_provider_1)
+    taco_application.initializeStake(
+        staking_provider_1, staking_provider_1, staking_provider_1, sender=creator
     )
-    threshold_staking.setRoles(staking_provider_2, sender=creator)
-    threshold_staking.setRoles(staking_provider_3, owner3, beneficiary, authorizer, sender=creator)
-    threshold_staking.authorizationIncreased(
-        staking_provider_3, 0, min_authorization, sender=creator
+    token.transfer(staking_provider_2, value, sender=creator)
+    token.approve(taco_application.address, value, sender=staking_provider_2)
+    taco_application.initializeStake(
+        staking_provider_2, staking_provider_2, staking_provider_2, sender=creator
     )
-    threshold_staking.setRoles(staking_provider_4, sender=creator)
-    threshold_staking.authorizationIncreased(
-        staking_provider_4, 0, min_authorization, sender=creator
+    token.transfer(owner3, value, sender=creator)
+    token.approve(taco_application.address, value, sender=owner3)
+    taco_application.initializeStake(staking_provider_3, owner3, beneficiary, sender=creator)
+    token.transfer(staking_provider_4, value, sender=creator)
+    token.approve(taco_application.address, value, sender=staking_provider_4)
+    taco_application.initializeStake(
+        staking_provider_4, staking_provider_4, staking_provider_4, sender=creator
     )
 
     assert taco_application.stakingProviderToOperator(staking_provider_1) == ZERO_ADDRESS
@@ -75,19 +80,11 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
             staking_provider_1, staking_provider_2, sender=staking_provider_1
         )
 
-    # Staking provider can't bond operator if stake is less than minimum
-    with ape.reverts():
-        taco_application.bondOperator(staking_provider_2, operator1, sender=staking_provider_2)
-
     # Only staking provider or stake owner can bond operator
     with ape.reverts():
         taco_application.bondOperator(staking_provider_3, operator1, sender=beneficiary)
     with ape.reverts():
-        taco_application.bondOperator(staking_provider_3, operator1, sender=authorizer)
-    with ape.reverts():
         taco_application.registerOperator(operator1, sender=beneficiary)
-    with ape.reverts():
-        taco_application.registerOperator(operator1, sender=authorizer)
 
     # Staking provider bonds operator and now operator can make a confirmation
     tx = taco_application.bondOperator(staking_provider_3, operator1, sender=owner3)
@@ -112,7 +109,7 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     ]
 
     # No active stakingProviders before confirmation
-    all_locked, staking_providers = taco_application.getActiveStakingProviders(0, 0, 0)
+    all_locked, staking_providers = taco_application.getActiveStakingProviders(0, 0)
     assert all_locked == 0
     assert len(staking_providers) == 0
 
@@ -123,7 +120,7 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     assert child_application.operatorToStakingProvider(operator1) == staking_provider_3
 
     # After confirmation operator is becoming active
-    all_locked, staking_providers = taco_application.getActiveStakingProviders(0, 0, 0)
+    all_locked, staking_providers = taco_application.getActiveStakingProviders(0, 0)
     assert all_locked == min_authorization
     assert len(staking_providers) == 1
     assert to_checksum_address(staking_providers[0][0:20]) == staking_provider_3
@@ -134,10 +131,10 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
         taco_application.bondOperator(staking_provider_4, operator1, sender=staking_provider_4)
 
     # Operator can't be a staking provider
-    threshold_staking.setRoles(operator1, sender=creator)
+    token.transfer(operator1, value, sender=creator)
+    token.approve(taco_application.address, value, sender=operator1)
     with ape.reverts():
-        threshold_staking.authorizationIncreased(operator1, 0, min_authorization, sender=operator1)
-    threshold_staking.setRoles(operator1, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, sender=creator)
+        taco_application.initializeStake(operator1, operator1, operator1, sender=creator)
 
     # Can't bond operator twice too soon
     with ape.reverts():
@@ -162,7 +159,7 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     assert child_application.operatorToStakingProvider(operator1) == ZERO_ADDRESS
 
     # Resetting operator removes from active list before next confirmation
-    all_locked, staking_providers = taco_application.getActiveStakingProviders(0, 0, 0)
+    all_locked, staking_providers = taco_application.getActiveStakingProviders(0, 0)
     assert all_locked == 0
     assert len(staking_providers) == 0
 
@@ -232,10 +229,8 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     ]
 
     # The first operator still can't be a staking provider
-    threshold_staking.setRoles(operator1, sender=creator)
     with ape.reverts():
-        threshold_staking.authorizationIncreased(operator1, 0, min_authorization, sender=operator1)
-    threshold_staking.setRoles(operator1, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, sender=creator)
+        taco_application.initializeStake(operator1, operator1, operator1, sender=creator)
 
     # Bond operator again
     child_application.confirmOperatorAddress(operator1, sender=operator1)
@@ -260,7 +255,7 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     assert child_application.operatorToStakingProvider(operator3) == staking_provider_4
 
     # Resetting operator removes from active list before next confirmation
-    all_locked, staking_providers = taco_application.getActiveStakingProviders(1, 0, 0)
+    all_locked, staking_providers = taco_application.getActiveStakingProviders(1, 0)
     assert all_locked == 0
     assert len(staking_providers) == 0
 
@@ -275,8 +270,7 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     ]
 
     # The first operator is free and can deposit tokens and become a staking provider
-    threshold_staking.setRoles(operator1, sender=creator)
-    threshold_staking.authorizationIncreased(operator1, 0, min_authorization, sender=operator1)
+    taco_application.initializeStake(operator1, operator1, operator1, sender=creator)
     assert taco_application.stakingProviderToOperator(operator1) == ZERO_ADDRESS
     assert taco_application.operatorToStakingProvider(operator1) == ZERO_ADDRESS
 
@@ -307,32 +301,6 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
         )
     ]
 
-    # If stake will be less than minimum then confirmation is still possible
-    threshold_staking.involuntaryAuthorizationDecrease(
-        staking_provider_1, min_authorization, min_authorization - 1, sender=creator
-    )
-    child_application.confirmOperatorAddress(staking_provider_1, sender=staking_provider_1)
-    assert child_application.stakingProviderToOperator(staking_provider_1) == staking_provider_1
-    assert child_application.operatorToStakingProvider(staking_provider_1) == staking_provider_1
-
-    # If stake will be less than minimum then provider is not active
-    threshold_staking.authorizationIncreased(
-        staking_provider_1, min_authorization - 1, min_authorization, sender=creator
-    )
-    all_locked, staking_providers = taco_application.getActiveStakingProviders(0, 0, 0)
-    assert all_locked == 2 * min_authorization
-    assert len(staking_providers) == 2
-    assert to_checksum_address(staking_providers[0][0:20]) == staking_provider_3
-    assert to_int(staking_providers[0][20:32]) == min_authorization
-    assert to_checksum_address(staking_providers[1][0:20]) == staking_provider_1
-    assert to_int(staking_providers[1][20:32]) == min_authorization
-    threshold_staking.involuntaryAuthorizationDecrease(
-        staking_provider_1, min_authorization, min_authorization - 1, sender=creator
-    )
-    all_locked, staking_providers = taco_application.getActiveStakingProviders(1, 0, 0)
-    assert all_locked == 0
-    assert len(staking_providers) == 0
-
     # Unbond and rebond oeprator
     taco_application.registerOperator(ZERO_ADDRESS, sender=staking_provider_3)
     taco_application.registerOperator(operator2, sender=staking_provider_3)
@@ -345,9 +313,8 @@ def test_bond_operator(accounts, threshold_staking, taco_application, child_appl
     assert taco_application.operatorToStakingProvider(operator2) == ZERO_ADDRESS
 
 
-def test_confirm_address(accounts, threshold_staking, taco_application, child_application, chain):
+def test_confirm_address(accounts, token, taco_application, child_application, chain):
     creator, staking_provider, operator, *everyone_else = accounts[0:]
-    min_authorization = MIN_AUTHORIZATION
     min_operator_seconds = MIN_OPERATOR_SECONDS
 
     with ape.reverts("Only child application allowed to confirm operator"):
@@ -357,8 +324,11 @@ def test_confirm_address(accounts, threshold_staking, taco_application, child_ap
     child_application.confirmOperatorAddress(staking_provider, sender=staking_provider)
     assert not taco_application.isOperatorConfirmed(staking_provider)
 
-    threshold_staking.setRoles(staking_provider, sender=creator)
-    threshold_staking.authorizationIncreased(staking_provider, 0, min_authorization, sender=creator)
+    token.transfer(staking_provider, MIN_AUTHORIZATION, sender=creator)
+    token.approve(taco_application.address, MIN_AUTHORIZATION, sender=staking_provider)
+    taco_application.initializeStake(
+        staking_provider, staking_provider, staking_provider, sender=creator
+    )
 
     # Bond operator and make confirmation
     chain.pending_timestamp += min_operator_seconds
@@ -373,25 +343,6 @@ def test_confirm_address(accounts, threshold_staking, taco_application, child_ap
     ]
 
     # Can confirm twice
-    earned = taco_application.availableRewards(staking_provider)
     child_application.confirmOperatorAddress(operator, sender=operator)
     assert taco_application.isOperatorConfirmed(operator)
     assert taco_application.stakingProviderInfo(staking_provider)[CONFIRMATION_SLOT]
-    assert taco_application.availableRewards(staking_provider) == earned
-
-
-def test_release(accounts, threshold_staking, taco_application, child_application, chain):
-    creator, staking_provider, *everyone_else = accounts[0:]
-
-    with ape.reverts("Only child application allowed to release"):
-        taco_application.release(staking_provider, sender=creator)
-
-    # Release staking provider
-    assert not taco_application.stakingProviderReleased(staking_provider)
-    tx = child_application.release(staking_provider, sender=staking_provider)
-    assert tx.events == [
-        taco_application.Released(
-            stakingProvider=staking_provider,
-        )
-    ]
-    assert taco_application.stakingProviderReleased(staking_provider)

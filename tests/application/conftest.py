@@ -32,12 +32,6 @@ def token(project, accounts):
     return token
 
 
-@pytest.fixture()
-def threshold_staking(project, accounts):
-    threshold_staking = accounts[0].deploy(project.ThresholdStakingForTACoApplicationMock)
-    return threshold_staking
-
-
 def encode_function_data(initializer=None, *args):
     """Encodes the function call so we can work with an initializer.
     Args:
@@ -59,11 +53,10 @@ def encode_function_data(initializer=None, *args):
 
 
 @pytest.fixture()
-def taco_application(project, creator, token, threshold_staking, oz_dependency):
+def taco_application(project, creator, token, oz_dependency):
     contract = creator.deploy(
         project.TACoApplication,
         token.address,
-        threshold_staking.address,
         MIN_AUTHORIZATION,
         MIN_OPERATOR_SECONDS,
     )
@@ -76,8 +69,6 @@ def taco_application(project, creator, token, threshold_staking, oz_dependency):
         sender=creator,
     )
     proxy_contract = project.TACoApplication.at(proxy.address)
-
-    threshold_staking.setApplication(proxy_contract.address, sender=creator)
     proxy_contract.initialize(sender=creator)
 
     return proxy_contract

@@ -14,6 +14,8 @@ DURATION = 48 * 60 * 60
 
 OTHER_CHAIN_ID_FOR_BRIDGE = 112233445566
 
+TOTAL_SUPPLY = Web3.to_wei(11_000_000_000, "ether")
+
 
 @pytest.fixture(scope="module")
 def nodes(accounts):
@@ -40,16 +42,18 @@ def deployer(accounts):
 
 
 @pytest.fixture()
-def application(project, oz_dependency, deployer, nodes):
-    threshold_staking = deployer.deploy(project.ThresholdStakingForTACoApplicationMock)
+def token(project, deployer):
+    # Create an ERC20 token
+    token = deployer.deploy(project.TestToken, TOTAL_SUPPLY)
+    return token
 
-    token = deployer.deploy(project.TestToken, 1_000_000)
 
+@pytest.fixture()
+def application(project, oz_dependency, deployer, token, nodes):
     min_auth = Web3.to_wei(40_000, "ether")
     taco_application_impl = deployer.deploy(
         project.TACoApplication,
         token.address,
-        threshold_staking.address,
         min_auth,
         60 * 60 * 24,
     )
@@ -61,7 +65,6 @@ def application(project, oz_dependency, deployer, nodes):
     )
     taco_application = project.TACoApplication.at(proxy.address)
 
-    threshold_staking.setApplication(taco_application.address, sender=deployer)
     taco_application.initialize(sender=deployer)
 
     child_application = project.ChildApplicationForTACoApplicationMock.deploy(
@@ -71,8 +74,9 @@ def application(project, oz_dependency, deployer, nodes):
 
     # setup stakes / nodes
     for n in nodes:
-        threshold_staking.setRoles(n, sender=n)
-        threshold_staking.authorizationIncreased(n, 0, min_auth, sender=n)
+        token.transfer(n, min_auth, sender=deployer)
+        token.approve(taco_application.address, min_auth, sender=n)
+        taco_application.initializeStake(n, n, n, sender=deployer)
         taco_application.bondOperator(n, n, sender=n)
         child_application.confirmOperatorAddress(n, sender=deployer)
 
