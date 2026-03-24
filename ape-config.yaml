@@ -22,9 +22,6 @@ dependencies:
   - name: fx-portal
     github: 0xPolygon/fx-portal
     version: 1.0.5
-  - name: threshold
-    github: threshold-network/solidity-contracts
-    ref: main
 
 solidity:
   version: 0.8.23

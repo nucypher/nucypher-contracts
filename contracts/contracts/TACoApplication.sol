@@ -114,7 +114,7 @@ contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
         // TODO check gap size and offset for deauthorizing
         uint256[10] _gap;
         address owner;
-        address payable beneficiary;
+        address beneficiary;
         bool stakeless;
     }
 
@@ -185,13 +185,17 @@ contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
         childApplication = _childApplication;
     }
 
-    //------------------------Authorization------------------------------
+    //------------------------Staking------------------------------
 
     function initializeStake(
         address _stakingProvider,
         address _owner,
-        address payable _beneficiary
+        address _beneficiary
     ) external onlyOwner {
+        require(
+            _stakingProvider != address(0) && _owner != address(0) && _beneficiary != address(0),
+            "Paramters are empty"
+        );
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         require(info.authorized == 0 && info.owner == address(0), "Stake already initialized");
         require(
@@ -250,7 +254,9 @@ contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
 
         _releaseOperator(_stakingProvider);
         _updateAuthorization(_stakingProvider, info);
-        token.safeTransfer(info.owner, authorized);
+        if (!info.stakeless) {
+            token.safeTransfer(info.owner, authorized);
+        }
     }
 
     //-------------------------Main-------------------------
@@ -339,9 +345,7 @@ contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
     /**
      * @notice Returns beneficiary related to the staking provider
      */
-    function getBeneficiary(
-        address _stakingProvider
-    ) public view returns (address payable beneficiary) {
+    function getBeneficiary(address _stakingProvider) public view returns (address beneficiary) {
         beneficiary = stakingProviderInfo[_stakingProvider].beneficiary;
     }
 

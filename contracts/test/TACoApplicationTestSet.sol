@@ -3,7 +3,6 @@
 pragma solidity ^0.8.0;
 
 import "../contracts/TACoApplication.sol";
-import "@threshold/contracts/staking/IApplication.sol";
 
 /**
  * @notice Contract for testing TACo application contract
