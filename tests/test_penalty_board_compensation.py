@@ -108,25 +108,25 @@ def registered_stakeless(mock_taco_app, stakeless_provider, owner, beneficiary, 
 
 
 def test_penalized_periods_by_staker_updated(penalty_board_comp, informer, staking_provider, other_account):
-    """setPenalizedProvidersForPeriod(provs, period) causes penalizedPeriodsByStaker[prov] to include period."""
+    """addPenalizedProvidersForPeriod(provs, period) causes penalizedPeriodsByStaker[prov] to include period."""
     current = penalty_board_comp.getCurrentPeriod()
     provs = [staking_provider.address]
-    penalty_board_comp.setPenalizedProvidersForPeriod(provs, current, sender=informer)
+    penalty_board_comp.addPenalizedProvidersForPeriod(provs, current, sender=informer)
     assert penalty_board_comp.getPenalizedPeriodsByStaker(staking_provider.address) == [current]
 
     provs = [other_account.address]
-    penalty_board_comp.setPenalizedProvidersForPeriod(provs, current, sender=informer)
+    penalty_board_comp.addPenalizedProvidersForPeriod(provs, current, sender=informer)
     assert penalty_board_comp.getPenalizedPeriodsByStaker(staking_provider.address) == [current]
 
 
 def test_penalized_periods_monotonic_append(penalty_board_comp, informer, staking_provider, chain):
-    """Calling setPenalizedProvidersForPeriod for different periods appends to each staker's list (monotonic)."""
+    """Calling addPenalizedProvidersForPeriod for different periods appends to each staker's list (monotonic)."""
     current = penalty_board_comp.getCurrentPeriod()
     provs = [staking_provider.address]
-    penalty_board_comp.setPenalizedProvidersForPeriod(provs, current, sender=informer)
+    penalty_board_comp.addPenalizedProvidersForPeriod(provs, current, sender=informer)
     chain.pending_timestamp += PERIOD_DURATION
     assert penalty_board_comp.getCurrentPeriod() == current + 1
-    penalty_board_comp.setPenalizedProvidersForPeriod(provs, current + 1, sender=informer)
+    penalty_board_comp.addPenalizedProvidersForPeriod(provs, current + 1, sender=informer)
     assert penalty_board_comp.getPenalizedPeriodsByStaker(staking_provider.address) == [
         current,
         current + 1,
@@ -344,7 +344,7 @@ def test_penalty_in_range_reduces_compensation(
             penalty_index < len(penalized_providers)
             and penalized_providers[penalty_index] == current_period
         ):
-            penalty_board_comp.setPenalizedProvidersForPeriod(
+            penalty_board_comp.addPenalizedProvidersForPeriod(
                 [staking_provider.address], current_period, sender=informer
             )
             penalty_index += 1

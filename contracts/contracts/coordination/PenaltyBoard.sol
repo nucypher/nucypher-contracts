@@ -85,11 +85,12 @@ contract PenaltyBoard is Periods, AccessControl {
     }
 
     /**
-     * @notice Set the list of penalized staking providers for a period.
+     * @notice Add the list of staking providers as penalized for a period.
      * @param provs Staking provider addresses to record as penalized for the period.
      * @param period Period index (must be current or previous period).
+     * @dev Note that passing an empty list doesn't clear penalties for that period; this is only additive.
      */
-    function setPenalizedProvidersForPeriod(
+    function addPenalizedProvidersForPeriod(
         address[] calldata provs,
         uint256 period
     ) external onlyRole(INFORMER_ROLE) {
