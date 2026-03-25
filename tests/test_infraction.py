@@ -277,7 +277,7 @@ def test_infraction_collector_and_penalty_board_together(
     # Same period still (period duration is 1 week; we advanced ~2000s). Informer records
     # penalized providers for this period on PenaltyBoard.
     current_period = penalty_board.getCurrentPeriod()
-    penalty_board.setPenalizedProvidersForPeriod(failing_providers, current_period, sender=informer)
+    penalty_board.addPenalizedProvidersForPeriod(failing_providers, current_period, sender=informer)
     for provider in failing_providers:
         periods = penalty_board.getPenalizedPeriodsByStaker(provider)
         assert periods == [current_period]
