@@ -39,13 +39,13 @@ def test_initialize_stake(accounts, token, taco_application, child_application):
             staking_provider, owner, beneficiary, sender=staking_provider
         )
 
-    with ape.reverts("Paramters are empty"):
+    with ape.reverts("Parameters are empty"):
         taco_application.initializeStake(staking_provider, owner, ZERO_ADDRESS, sender=creator)
-    with ape.reverts("Paramters are empty"):
+    with ape.reverts("Parameters are empty"):
         taco_application.initializeStake(
             staking_provider, ZERO_ADDRESS, beneficiary, sender=creator
         )
-    with ape.reverts("Paramters are empty"):
+    with ape.reverts("Parameters are empty"):
         taco_application.initializeStake(ZERO_ADDRESS, owner, beneficiary, sender=creator)
 
     token.transfer(owner, value, sender=creator)

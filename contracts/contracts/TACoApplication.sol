@@ -194,7 +194,7 @@ contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
     ) external onlyOwner {
         require(
             _stakingProvider != address(0) && _owner != address(0) && _beneficiary != address(0),
-            "Paramters are empty"
+            "Parameters are empty"
         );
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         require(info.authorized == 0 && info.owner == address(0), "Stake already initialized");
