@@ -2,8 +2,9 @@
 
 from ape import project
 
-from deployment.constants import CONSTRUCTOR_PARAMS_DIR
+from deployment.constants import ARTIFACTS_DIR, CONSTRUCTOR_PARAMS_DIR
 from deployment.params import Deployer
+from deployment.registry import contracts_from_registry
 
 VERIFY = False
 CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "lynx" / "upgrades-root.yml"
@@ -11,16 +12,24 @@ CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "lynx" / "upgrades-root.y
 
 def main():
     """
-    This script upgrades TACoApplication in Lynx Sepolia.
+    This script upgrades TACoApplication for Lynx on Eth Sepolia.
     """
 
     deployer = Deployer.from_yaml(filepath=CONSTRUCTOR_PARAMS_FILEPATH, verify=VERIFY)
+    instances = contracts_from_registry(filepath=ARTIFACTS_DIR / "lynx.json", chain_id=11155111)
 
-    taco_app_proxy_address = "0x329bc9Df0e45f360583374726ccaFF003264a136"
-    new_taco_app_implementation = deployer.upgrade(project.TACoApplication, taco_app_proxy_address)
+    taco_application_impl = deployer.deploy(project.LynxTACoApplication)
+
+    taco_application_address = instances[project.TACoApplication.contract_type.name].address
+
+    taco_application = deployer.upgradeTo(
+        taco_application_impl,
+        taco_application_address,
+        b"",
+    )
 
     deployments = [
-        new_taco_app_implementation,
+        taco_application,
     ]
 
     deployer.finalize(deployments=deployments)
