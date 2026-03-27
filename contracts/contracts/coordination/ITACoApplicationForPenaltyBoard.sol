@@ -30,4 +30,9 @@ interface ITACoApplicationForPenaltyBoard {
      *         If not present on TACoApplication, implementation may return false.
      */
     function isStakeless(address stakingProvider) external view returns (bool);
+
+    /**
+     * @notice Returns true if staking provider eligible for reward.
+     */
+    function isEligibleForReward(address _stakingProvider) external view returns (bool);
 }

@@ -13,6 +13,7 @@ contract MockTACoForPenaltyBoard is ITACoApplicationForPenaltyBoard {
         address owner;
         address payable beneficiary;
         bool isStakeless;
+        bool eligibleForReward;
     }
 
     mapping(address stakingProvider => StakerRoles) private _roles;
@@ -21,12 +22,14 @@ contract MockTACoForPenaltyBoard is ITACoApplicationForPenaltyBoard {
         address stakingProvider,
         address owner,
         address payable beneficiary,
-        bool isStakeless
+        bool isStakeless,
+        bool eligibleForReward
     ) external {
         _roles[stakingProvider] = StakerRoles({
             owner: owner,
             beneficiary: beneficiary,
-            isStakeless: isStakeless
+            isStakeless: isStakeless,
+            eligibleForReward: eligibleForReward
         });
     }
 
@@ -43,5 +46,9 @@ contract MockTACoForPenaltyBoard is ITACoApplicationForPenaltyBoard {
 
     function isStakeless(address stakingProvider) external view returns (bool) {
         return _roles[stakingProvider].isStakeless;
+    }
+
+    function isEligibleForReward(address stakingProvider) external view returns (bool) {
+        return _roles[stakingProvider].eligibleForReward;
     }
 }
