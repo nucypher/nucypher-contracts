@@ -45,6 +45,7 @@ contract TapirTACoApplication is TACoApplication {
         info.owner = _owner;
         info.beneficiary = _beneficiary;
         info.authorized = minimumAuthorization;
+        info.stakeless = false;
         emit Staked(_stakingProvider, _owner, _beneficiary, info.authorized);
         _updateAuthorization(_stakingProvider, info);
     }
@@ -58,6 +59,7 @@ contract TapirTACoApplication is TACoApplication {
 
         info.beneficiary = address(0);
         info.authorized = minimumAuthorization;
+        info.stakeless = true;
         _updateAuthorization(_stakingProvider, info);
     }
 }
