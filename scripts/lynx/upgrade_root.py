@@ -22,11 +22,10 @@ def main():
 
     taco_application_address = instances[project.TACoApplication.contract_type.name].address
 
-    taco_application = deployer.upgradeTo(
-        taco_application_impl,
-        taco_application_address,
-        b"",
-    )
+    taco_application = deployer.upgradeTo(taco_application_impl, taco_application_address)
+
+    # This line is a workaround to ensure that the contract registry for TACoApplication is updated, not LynxTACoApplication
+    taco_application = project.TACoApplication.at(taco_application_address)
 
     deployments = [
         taco_application,
