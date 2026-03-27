@@ -140,7 +140,7 @@ def test_update_authorization(accounts, root_application, child_application, cha
     tx = root_application.updateAuthorization(staking_provider, value, sender=creator)
     assert child_application.authorizedStake(staking_provider) == value
     assert child_application.pendingAuthorizationDecrease(staking_provider) == 0
-    assert child_application.eligibleStake(staking_provider, 0) == value
+    assert child_application.eligibleStake(staking_provider) == value
     assert tx.events == [
         child_application.AuthorizationUpdated(
             stakingProvider=staking_provider,
@@ -156,7 +156,7 @@ def test_update_authorization(accounts, root_application, child_application, cha
     )
     assert child_application.authorizedStake(staking_provider) == value
     assert child_application.pendingAuthorizationDecrease(staking_provider) == value // 3
-    assert child_application.eligibleStake(staking_provider, 0) == value - value // 3
+    assert child_application.eligibleStake(staking_provider) == value - value // 3
     assert tx.events == [
         child_application.AuthorizationUpdated(
             stakingProvider=staking_provider,
@@ -178,7 +178,7 @@ def test_update_authorization(accounts, root_application, child_application, cha
     tx = root_application.updateAuthorization(staking_provider, value, 0, 0, sender=creator)
     assert child_application.authorizedStake(staking_provider) == value
     assert child_application.pendingAuthorizationDecrease(staking_provider) == 0
-    assert child_application.eligibleStake(staking_provider, 0) == value
+    assert child_application.eligibleStake(staking_provider) == value
     assert tx.events == [
         child_application.AuthorizationUpdated(
             stakingProvider=staking_provider,
@@ -209,7 +209,6 @@ def test_confirm_address(accounts, root_application, child_application, coordina
         *everyone_else,
     ) = accounts[0:]
     value = Web3.to_wei(40_000, "ether")
-    deauthorization_duration = DEAUTHORIZATION_DURATION
 
     # Call to confirm operator address can be done only from coordinator
     with ape.reverts("Only Coordinator allowed to confirm operator"):
@@ -247,9 +246,7 @@ def test_confirm_address(accounts, root_application, child_application, coordina
     ]
 
     # After confirmation operator is becoming active
-    all_locked, staking_providers = child_application.getActiveStakingProviders(
-        0, 0, deauthorization_duration // 2
-    )
+    all_locked, staking_providers = child_application.getActiveStakingProviders(0, 0)
     assert all_locked == value
     assert len(staking_providers) == 1
     assert to_checksum_address(staking_providers[0][0:20]) == staking_provider
@@ -268,9 +265,7 @@ def test_confirm_address(accounts, root_application, child_application, coordina
     assert child_application.getStakingProvidersLength() == 2
 
     # After confirmation operator is becoming active
-    all_locked, staking_providers = child_application.getActiveStakingProviders(
-        0, 0, deauthorization_duration // 2
-    )
+    all_locked, staking_providers = child_application.getActiveStakingProviders(0, 0)
     assert all_locked == 2 * value
     assert len(staking_providers) == 2
     assert to_checksum_address(staking_providers[0][0:20]) == staking_provider
@@ -282,7 +277,7 @@ def test_confirm_address(accounts, root_application, child_application, coordina
     assert len(staking_providers) == 1
     assert to_checksum_address(staking_providers[0][0:20]) == other_staking_provider
     assert to_int(staking_providers[0][20:32]) == value
-    all_locked, staking_providers = child_application.getActiveStakingProviders(0, 0, 0)
+    all_locked, staking_providers = child_application.getActiveStakingProviders(0, 0)
     assert all_locked == 2 * value
     assert len(staking_providers) == 2
     assert to_checksum_address(staking_providers[0][0:20]) == staking_provider
@@ -350,7 +345,7 @@ def test_release(accounts, root_application, child_application, coordinator):
     tx = child_application.release(staking_provider, sender=staking_provider)
     assert not child_application.stakingProviderInfo(staking_provider)[RELEASED_SLOT]
     assert child_application.authorizedStake(staking_provider) == value
-    assert child_application.eligibleStake(staking_provider, 0) == value
+    assert child_application.eligibleStake(staking_provider) == value
     assert not root_application.releases(staking_provider)
 
     root_application.updateAuthorization(staking_provider, value, value, 0, sender=creator)
