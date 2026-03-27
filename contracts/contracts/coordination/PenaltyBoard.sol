@@ -33,19 +33,19 @@ contract PenaltyBoard is Periods, AccessControl {
     uint256 public immutable fixedCompensationPerPeriod2Penalties;
     uint256 public immutable fixedCompensationPerPeriod3Penalties;
 
-    /**
-     * @notice Staker-centric penalty storage: list of period indices this staker was penalized in
-     *         (monotonic append; periods are kept as uint256).
-     */
-    mapping(address staker => uint256[]) public penalizedPeriodsByStaker;
-
     /// Number of periods a penalty affects (penalty in period k affects k..k+PENALTY_WINDOW_PERIODS inclusive).
     uint256 private constant PENALTY_WINDOW_PERIODS = 3;
+    struct Staker {
+        uint256 accruedBalance;
+        // Accrued compensation state (lazy accrual via _computeAccruedSinceLast).
+        // _lastAccruedPeriodPlusOne: 0 = never accrued (start from period 0); else start next accrual at this period.
+        uint256 lastAccruedPeriodPlusOne;
+        // Staker-centric penalty storage: list of period indices this staker was penalized in
+        // (monotonic append; periods are kept as uint256).
+        uint256[] penalizedPeriods;
+    }
 
-    // Accrued compensation state (lazy accrual via _computeAccruedSinceLast).
-    // _lastAccruedPeriodPlusOne: 0 = never accrued (start from period 0); else start next accrual at this period.
-    mapping(address staker => uint256) private _accruedBalance;
-    mapping(address staker => uint256) private _lastAccruedPeriodPlusOne;
+    mapping(address staker => Staker stakerStruct) public stakers;
 
     /**
      * @param genesisTime Start of period 0.
@@ -77,11 +77,16 @@ contract PenaltyBoard is Periods, AccessControl {
         fixedCompensationPerPeriod3Penalties = _fixedCompensationPerPeriod3Penalties;
     }
 
+    modifier onlyTACoApplication() {
+        require(msg.sender == address(tacoApplication), "Not TACo app");
+        _;
+    }
+
     /**
      * @notice Returns the full list of period indices a staker was penalized in.
      */
     function getPenalizedPeriodsByStaker(address staker) external view returns (uint256[] memory) {
-        return penalizedPeriodsByStaker[staker];
+        return stakers[staker].penalizedPeriods;
     }
 
     /**
@@ -98,7 +103,7 @@ contract PenaltyBoard is Periods, AccessControl {
         require(period == current || (current > 0 && period == current - 1), "Invalid period");
 
         for (uint256 i = 0; i < provs.length; i++) {
-            penalizedPeriodsByStaker[provs[i]].push(period);
+            stakers[provs[i]].penalizedPeriods.push(period);
         }
 
         emit PenalizedProvidersSet(period, provs);
@@ -121,7 +126,7 @@ contract PenaltyBoard is Periods, AccessControl {
         uint256 delta = current >= 0
             ? _computeAccruedSinceLast(stakingProvider, uint256(current))
             : 0;
-        return _accruedBalance[stakingProvider] + delta;
+        return stakers[stakingProvider].accruedBalance + delta;
     }
 
     /**
@@ -152,18 +157,34 @@ contract PenaltyBoard is Periods, AccessControl {
 
         int256 current = getCurrentPaymentPeriod();
 
+        Staker storage staker = stakers[stakingProvider];
         uint256 delta = current >= 0
             ? _computeAccruedSinceLast(stakingProvider, uint256(current))
             : 0;
-        uint256 amount = _accruedBalance[stakingProvider] + delta;
+        uint256 amount = staker.accruedBalance + delta;
         require(amount > 0, "Nothing to withdraw");
 
-        _accruedBalance[stakingProvider] = 0;
-        _lastAccruedPeriodPlusOne[stakingProvider] = uint256(current) + 1;
+        staker.accruedBalance = 0;
+        staker.lastAccruedPeriodPlusOne = uint256(current) + 1;
 
         address beneficiary = beneficiaryAddress;
 
         compensationToken.safeTransferFrom(fundHolder, beneficiary, amount);
+    }
+
+    function computeRewards(address stakingProvider) external onlyTACoApplication {
+        int256 current = getCurrentPaymentPeriod();
+
+        Staker storage staker = stakers[stakingProvider];
+        uint256 delta = current >= 0
+            ? _computeAccruedSinceLast(stakingProvider, uint256(current))
+            : 0;
+        staker.accruedBalance += delta;
+        staker.lastAccruedPeriodPlusOne = uint256(current) + 1;
+    }
+
+    function enableRewards(address stakingProvider) external onlyTACoApplication {
+        stakers[stakingProvider].lastAccruedPeriodPlusOne = getCurrentPeriod();
     }
 
     function _computeAccruedSinceLast(
@@ -178,11 +199,11 @@ contract PenaltyBoard is Periods, AccessControl {
             return 0;
         }
 
-        if (tacoApplication.isStakeless(stakingProvider)) {
+        if (!tacoApplication.isEligibleForReward(stakingProvider)) {
             return 0;
         }
 
-        uint256 startPeriod = _lastAccruedPeriodPlusOne[stakingProvider]; // 0 = never accrued → start at 0
+        uint256 startPeriod = stakers[stakingProvider].lastAccruedPeriodPlusOne; // 0 = never accrued → start at 0
 
         if (startPeriod > currentPeriod) {
             return 0;
@@ -245,7 +266,7 @@ contract PenaltyBoard is Periods, AccessControl {
         uint256 fromPeriod,
         uint256 toPeriod
     ) internal view returns (uint256[] memory) {
-        uint256[] storage all = penalizedPeriodsByStaker[stakingProvider];
+        uint256[] storage all = stakers[stakingProvider].penalizedPeriods;
         uint256 len = all.length;
         if (len == 0 || fromPeriod > toPeriod) {
             return new uint256[](0);
