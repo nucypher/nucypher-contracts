@@ -122,6 +122,7 @@ contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
     uint256 public immutable minOperatorSeconds;
 
     IERC20 public immutable token;
+    // PenaltyBoard public immutable penaltyBoard;
 
     ITACoRootToChild public childApplication;
     address private _adjudicator;
