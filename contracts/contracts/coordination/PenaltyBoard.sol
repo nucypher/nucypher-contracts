@@ -32,6 +32,7 @@ contract PenaltyBoard is Periods, AccessControl {
     uint256 public immutable fixedCompensationPerPeriod;
     uint256 public immutable fixedCompensationPerPeriod2Penalties;
     uint256 public immutable fixedCompensationPerPeriod3Penalties;
+    uint256 public immutable startPeriodForRewards;
 
     /// Number of periods a penalty affects (penalty in period k affects k..k+PENALTY_WINDOW_PERIODS inclusive).
     uint256 private constant PENALTY_WINDOW_PERIODS = 3;
@@ -55,6 +56,7 @@ contract PenaltyBoard is Periods, AccessControl {
      * @param _token Compensation token. Pass address(0) when compensation disabled.
      * @param _fixedCompensationPerPeriod Fixed amount per period (0 when disabled).
      * @param _fundHolder Holder of tokens for payouts. Pass address(0) when compensation disabled.
+     * @param _startPeriodForRewards First period when rewards will be calculated.
      */
     constructor(
         uint256 genesisTime,
@@ -65,7 +67,8 @@ contract PenaltyBoard is Periods, AccessControl {
         uint256 _fixedCompensationPerPeriod,
         uint256 _fixedCompensationPerPeriod2Penalties,
         uint256 _fixedCompensationPerPeriod3Penalties,
-        address _fundHolder
+        address _fundHolder,
+        uint256 _startPeriodForRewards
     ) Periods(genesisTime, periodDuration) {
         require(admin != address(0), "Admin required");
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
@@ -75,6 +78,7 @@ contract PenaltyBoard is Periods, AccessControl {
         fixedCompensationPerPeriod = _fixedCompensationPerPeriod;
         fixedCompensationPerPeriod2Penalties = _fixedCompensationPerPeriod2Penalties;
         fixedCompensationPerPeriod3Penalties = _fixedCompensationPerPeriod3Penalties;
+        startPeriodForRewards = _startPeriodForRewards;
     }
 
     modifier onlyTACoApplication() {
@@ -100,7 +104,7 @@ contract PenaltyBoard is Periods, AccessControl {
         uint256 period
     ) external onlyRole(INFORMER_ROLE) {
         uint256 current = getCurrentPeriod();
-        require(period == current || (current > 0 && period == current - 1), "Invalid period");
+        require(period == current || period == current - 1, "Invalid period");
 
         for (uint256 i = 0; i < provs.length; i++) {
             stakers[provs[i]].penalizedPeriods.push(period);
@@ -122,10 +126,8 @@ contract PenaltyBoard is Periods, AccessControl {
             return 0;
         }
 
-        int256 current = getCurrentPaymentPeriod();
-        uint256 delta = current >= 0
-            ? _computeAccruedSinceLast(stakingProvider, uint256(current))
-            : 0;
+        uint256 current = getCurrentPaymentPeriod();
+        uint256 delta = _computeAccruedSinceLast(stakingProvider, current);
         return stakers[stakingProvider].accruedBalance + delta;
     }
 
@@ -155,34 +157,37 @@ contract PenaltyBoard is Periods, AccessControl {
             revert("Nothing to withdraw");
         }
 
-        int256 current = getCurrentPaymentPeriod();
+        uint256 current = getCurrentPaymentPeriod();
 
         Staker storage staker = stakers[stakingProvider];
-        uint256 delta = current >= 0
-            ? _computeAccruedSinceLast(stakingProvider, uint256(current))
-            : 0;
+        uint256 delta = _computeAccruedSinceLast(stakingProvider, current);
         uint256 amount = staker.accruedBalance + delta;
         require(amount > 0, "Nothing to withdraw");
 
         staker.accruedBalance = 0;
-        staker.lastAccruedPeriodPlusOne = uint256(current) + 1;
+        staker.lastAccruedPeriodPlusOne = current + 1;
 
         address beneficiary = beneficiaryAddress;
 
         compensationToken.safeTransferFrom(fundHolder, beneficiary, amount);
     }
 
+    /**
+     * @notice Compute and save rewards for the specified staker
+     * @dev Can be used anytime. It has to be called before turning off reward
+     */
     function computeRewards(address stakingProvider) external onlyTACoApplication {
-        int256 current = getCurrentPaymentPeriod();
+        uint256 current = getCurrentPaymentPeriod();
 
         Staker storage staker = stakers[stakingProvider];
-        uint256 delta = current >= 0
-            ? _computeAccruedSinceLast(stakingProvider, uint256(current))
-            : 0;
+        uint256 delta = _computeAccruedSinceLast(stakingProvider, current);
         staker.accruedBalance += delta;
-        staker.lastAccruedPeriodPlusOne = uint256(current) + 1;
+        staker.lastAccruedPeriodPlusOne = current + 1;
     }
 
+    /**
+     * @notice Enable rewards before turning on
+     */
     function enableRewards(address stakingProvider) external onlyTACoApplication {
         stakers[stakingProvider].lastAccruedPeriodPlusOne = getCurrentPeriod();
     }
@@ -204,6 +209,9 @@ contract PenaltyBoard is Periods, AccessControl {
         }
 
         uint256 startPeriod = stakers[stakingProvider].lastAccruedPeriodPlusOne; // 0 = never accrued → start at 0
+        if (startPeriod < startPeriodForRewards) {
+            startPeriod = startPeriodForRewards;
+        }
 
         if (startPeriod > currentPeriod) {
             return 0;

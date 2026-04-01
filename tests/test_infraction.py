@@ -136,7 +136,7 @@ def infraction_collector(project, deployer, coordinator):
 def penalty_board(project, deployer, informer, chain):
     """PenaltyBoard with genesis at current chain time and INFORMER_ROLE granted to informer.
     Period duration is one week so ritual timeout still lands in period 0. No compensation."""
-    genesis_time = chain.pending_timestamp
+    genesis_time = chain.pending_timestamp - 2 * PENALTY_BOARD_PERIOD_DURATION
     zero = "0x0000000000000000000000000000000000000000"
     contract = project.PenaltyBoard.deploy(
         genesis_time,
@@ -148,6 +148,7 @@ def penalty_board(project, deployer, informer, chain):
         0,
         0,
         zero,
+        0,
         sender=deployer,
     )
     contract.grantRole(contract.INFORMER_ROLE(), informer.address, sender=deployer)

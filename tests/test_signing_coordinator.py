@@ -72,6 +72,9 @@ def application(project, oz_dependency, deployer, token, nodes):
     )
     taco_application.setChildApplication(child_application.address, sender=deployer)
 
+    penalty_board = project.PenaltyBoardForTACoApplicationMock.deploy(sender=deployer)
+    taco_application.setPenaltyBoard(penalty_board.address, sender=deployer)
+
     # setup stakes / nodes
     for n in nodes:
         token.transfer(n, min_auth, sender=deployer)

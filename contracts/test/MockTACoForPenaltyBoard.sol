@@ -3,6 +3,7 @@
 pragma solidity ^0.8.0;
 
 import "../contracts/coordination/ITACoApplicationForPenaltyBoard.sol";
+import "../contracts/coordination/PenaltyBoard.sol";
 
 /**
  * @notice Mock TACoApplication for PenaltyBoard compensation tests.
@@ -17,6 +18,12 @@ contract MockTACoForPenaltyBoard is ITACoApplicationForPenaltyBoard {
     }
 
     mapping(address stakingProvider => StakerRoles) private _roles;
+
+    PenaltyBoard public penaltyBoard;
+
+    function setPenaltyBoard(PenaltyBoard _penaltyBoard) external {
+        penaltyBoard = _penaltyBoard;
+    }
 
     function setRoles(
         address stakingProvider,
@@ -50,5 +57,13 @@ contract MockTACoForPenaltyBoard is ITACoApplicationForPenaltyBoard {
 
     function isEligibleForReward(address stakingProvider) external view returns (bool) {
         return _roles[stakingProvider].eligibleForReward;
+    }
+
+    function computeRewards(address stakingProvider) external {
+        penaltyBoard.computeRewards(stakingProvider);
+    }
+
+    function enableRewards(address stakingProvider) external {
+        penaltyBoard.enableRewards(stakingProvider);
     }
 }
