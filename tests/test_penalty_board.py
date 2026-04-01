@@ -25,7 +25,7 @@ def other_account(accounts):
 @pytest.fixture
 def penalty_board(project, deployer, informer, chain):
     """PenaltyBoard with genesis at current chain time and INFORMER_ROLE granted to informer (no compensation)."""
-    genesis_time = chain.pending_timestamp
+    genesis_time = chain.pending_timestamp - 2 * PERIOD_DURATION
     contract = project.PenaltyBoard.deploy(
         genesis_time,
         PERIOD_DURATION,
@@ -36,6 +36,7 @@ def penalty_board(project, deployer, informer, chain):
         0,
         0,
         ZERO_ADDRESS,
+        0,
         sender=deployer,
     )
     contract.grantRole(contract.INFORMER_ROLE(), informer.address, sender=deployer)
@@ -43,7 +44,7 @@ def penalty_board(project, deployer, informer, chain):
 
 
 def test_constructor_admin_required(project, deployer, chain):
-    genesis_time = chain.pending_timestamp
+    genesis_time = chain.pending_timestamp - 2 * PERIOD_DURATION
     with ape.reverts("Admin required"):
         project.PenaltyBoard.deploy(
             genesis_time,
@@ -55,6 +56,7 @@ def test_constructor_admin_required(project, deployer, chain):
             0,
             0,
             ZERO_ADDRESS,
+            0,
             sender=deployer,
         )
 
@@ -85,18 +87,18 @@ def test_period_must_be_current_or_previous(penalty_board, chain, informer, othe
     penalty_board.addPenalizedProvidersForPeriod(provs, current, sender=informer)
     assert penalty_board.getPenalizedPeriodsByStaker(other_account.address) == [current]
 
-    # Advance into period 1; then both 0 and 1 are valid.
+    # Advance into period 1; then both 2 and 3 are valid.
     chain.pending_timestamp += PERIOD_DURATION
-    assert penalty_board.getCurrentPeriod() == 1
+    assert penalty_board.getCurrentPeriod() == 3
 
-    penalty_board.addPenalizedProvidersForPeriod(provs, 0, sender=informer)
-    penalty_board.addPenalizedProvidersForPeriod(provs, 1, sender=informer)
+    penalty_board.addPenalizedProvidersForPeriod(provs, 2, sender=informer)
+    penalty_board.addPenalizedProvidersForPeriod(provs, 3, sender=informer)
     periods = penalty_board.getPenalizedPeriodsByStaker(other_account.address)
-    assert periods == [current, 0, 1]
+    assert periods == [current, 2, 3]
 
-    # Period 2 is invalid (not current or previous).
+    # Period 4 is invalid (not current or previous).
     with ape.reverts("Invalid period"):
-        penalty_board.addPenalizedProvidersForPeriod(provs, 2, sender=informer)
+        penalty_board.addPenalizedProvidersForPeriod(provs, 4, sender=informer)
 
 
 def test_staker_penalty_list_updated_for_all_providers(

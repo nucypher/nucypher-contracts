@@ -24,7 +24,7 @@ AUTHORIZATION_SLOT = 3
 MIN_AUTHORIZATION = Web3.to_wei(40_000, "ether")
 
 
-def test_initialize_stake(accounts, token, taco_application, child_application):
+def test_initialize_stake(accounts, token, taco_application, child_application, penalty_board):
     """
     Tests for authorization method: initializeStake
     """
@@ -57,6 +57,8 @@ def test_initialize_stake(accounts, token, taco_application, child_application):
     assert taco_application.isAuthorized(staking_provider)
     assert token.balanceOf(taco_application.address) == value
     assert token.balanceOf(owner) == 0
+    assert not taco_application.isEligibleForReward(staking_provider)
+    assert not penalty_board.isRewardEnabled(staking_provider)
 
     # Check that all events are emitted
     events = [event for event in tx.events if event.event_name == "Staked"]
@@ -72,7 +74,7 @@ def test_initialize_stake(accounts, token, taco_application, child_application):
         taco_application.initializeStake(staking_provider, owner, beneficiary, sender=creator)
 
 
-def test_request_unstake(accounts, taco_application, child_application, token):
+def test_request_unstake(accounts, taco_application, child_application, token, penalty_board):
     """
     Tests for authorization method: requestUnstake
     """
@@ -137,7 +139,7 @@ def test_request_unstake(accounts, taco_application, child_application, token):
     assert child_application.stakingProviderReleased(staking_provider_2)
 
 
-def test_release(accounts, token, taco_application, child_application):
+def test_release(accounts, token, taco_application, child_application, penalty_board):
     """
     Tests for authorization method: release+approveUnstake
     """
@@ -225,7 +227,7 @@ def test_release(accounts, token, taco_application, child_application):
     assert token.balanceOf(staking_provider_3) == 0
 
 
-def test_child_sync(accounts, taco_application, child_application, token, chain):
+def test_child_sync(accounts, taco_application, child_application, token, penalty_board):
     """
     Tests for x-chain method: manualChildSynchronization
     """
@@ -278,7 +280,7 @@ def test_child_sync(accounts, taco_application, child_application, token, chain)
     ]
 
 
-def test_add_stakeless_provider(accounts, taco_application, child_application, chain):
+def test_add_stakeless_provider(accounts, taco_application, child_application, penalty_board):
     """
     Tests for authorization method: addStakelessProvider
     """
@@ -303,6 +305,8 @@ def test_add_stakeless_provider(accounts, taco_application, child_application, c
     assert taco_application.authorizedStake(staking_provider) == value
     assert child_application.stakingProviderInfo(staking_provider) == (value, 0)
     assert taco_application.isAuthorized(staking_provider)
+    assert not taco_application.isEligibleForReward(staking_provider)
+    assert not penalty_board.isRewardEnabled(staking_provider)
 
     # Check that all events are emitted
     events = [event for event in tx.events if event.event_name == "StakelessProviderAdded"]
@@ -313,6 +317,8 @@ def test_add_stakeless_provider(accounts, taco_application, child_application, c
 
     taco_application.bondOperator(staking_provider, owner, sender=staking_provider)
     child_application.confirmOperatorAddress(staking_provider, sender=owner)
+    assert not taco_application.isEligibleForReward(staking_provider)
+    assert not penalty_board.isRewardEnabled(staking_provider)
 
     with ape.reverts("A provider can't be an operator for another provider"):
         taco_application.addStakelessProvider(owner, owner, sender=creator)

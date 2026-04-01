@@ -123,7 +123,6 @@ contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
     uint256 public immutable minOperatorSeconds;
 
     IERC20 public immutable token;
-    PenaltyBoard public immutable penaltyBoard;
 
     ITACoRootToChild public childApplication;
     address private _adjudicator;
@@ -144,26 +143,20 @@ contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
 
     // mapping(address => bool) public stakingProviderReleased;
     // mapping(address => bool) public allowList;
+    PenaltyBoard public penaltyBoard;
 
     /**
      * @notice Constructor sets address of token contract and parameters for staking
      * @param _token T token contract
      * @param _minimumAuthorization Amount of minimum allowable authorization
      * @param _minOperatorSeconds Min amount of seconds while an operator can't be changed
-     * @param _penaltyBoard PenaltyBoard contract
      */
-    constructor(
-        IERC20 _token,
-        uint96 _minimumAuthorization,
-        uint256 _minOperatorSeconds,
-        PenaltyBoard _penaltyBoard
-    ) {
+    constructor(IERC20 _token, uint96 _minimumAuthorization, uint256 _minOperatorSeconds) {
         uint256 totalSupply = _token.totalSupply();
         require(totalSupply > 0, "Wrong input parameters");
         minimumAuthorization = _minimumAuthorization;
         token = _token;
         minOperatorSeconds = _minOperatorSeconds;
-        penaltyBoard = _penaltyBoard;
         _disableInitializers();
     }
 
@@ -192,6 +185,14 @@ contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
     function setChildApplication(ITACoRootToChild _childApplication) external onlyOwner {
         require(address(_childApplication).code.length > 0, "Child app must be contract");
         childApplication = _childApplication;
+    }
+
+    /**
+     * @notice Set contract for compensation
+     */
+    function setPenaltyBoard(PenaltyBoard _penaltyBoard) external onlyOwner {
+        require(address(_penaltyBoard).code.length > 0, "PenaltyBoard must be contract");
+        penaltyBoard = _penaltyBoard;
     }
 
     //------------------------Staking------------------------------

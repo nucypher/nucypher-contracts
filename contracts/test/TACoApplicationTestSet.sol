@@ -60,3 +60,15 @@ contract ChildApplicationForTACoApplicationMock {
         }
     }
 }
+
+contract PenaltyBoardForTACoApplicationMock {
+    mapping(address stakingProvider => bool isRewardEnabled) public isRewardEnabled;
+
+    function computeRewards(address stakingProvider) external {
+        isRewardEnabled[stakingProvider] = false;
+    }
+
+    function enableRewards(address stakingProvider) external {
+        isRewardEnabled[stakingProvider] = true;
+    }
+}
