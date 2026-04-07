@@ -2878,42 +2878,6 @@
                 },
                 {
                     "type": "function",
-                    "name": "adminSetExistingStake",
-                    "stateMutability": "nonpayable",
-                    "inputs": [
-                        {
-                            "name": "_stakingProvider",
-                            "type": "address",
-                            "internalType": "address"
-                        },
-                        {
-                            "name": "_owner",
-                            "type": "address",
-                            "internalType": "address"
-                        },
-                        {
-                            "name": "_beneficiary",
-                            "type": "address",
-                            "internalType": "address"
-                        }
-                    ],
-                    "outputs": []
-                },
-                {
-                    "type": "function",
-                    "name": "adminSetToStakeless",
-                    "stateMutability": "nonpayable",
-                    "inputs": [
-                        {
-                            "name": "_stakingProvider",
-                            "type": "address",
-                            "internalType": "address"
-                        }
-                    ],
-                    "outputs": []
-                },
-                {
-                    "type": "function",
                     "name": "authorizedStake",
                     "stateMutability": "view",
                     "inputs": [
