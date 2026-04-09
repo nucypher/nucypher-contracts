@@ -450,3 +450,46 @@ def test_signing_ritual(
     )
     updated_end_timestamp = signing_coordinator.signingCohorts(signing_cohort_id)["endTimestamp"]
     assert updated_end_timestamp == current_end + additional_duration
+
+    # transfer cohort authority
+    with ape.reverts("Cohort is not active"):
+        signing_coordinator.transferCohortAuthority(999, deployer.address, sender=initiator)
+
+    with ape.reverts("Sender not cohort authority"):
+        signing_coordinator.transferCohortAuthority(
+            signing_cohort_id, deployer.address, sender=deployer
+        )
+
+    tx = signing_coordinator.transferCohortAuthority(
+        signing_cohort_id, deployer.address, sender=initiator
+    )
+    events = [event for event in tx.events if event.event_name == "CohortAuthorityTransferred"]
+    assert events == [
+        signing_coordinator.CohortAuthorityTransferred(
+            cohortId=signing_cohort_id,
+            previousAuthority=initiator.address,
+            newAuthority=deployer.address,
+        )
+    ]
+    assert signing_coordinator.getAuthority(signing_cohort_id) == deployer.address
+    with ape.reverts("Sender not cohort authority"):
+        # initiator no longer authority and can't set conditions
+        tx = signing_coordinator.setSigningCohortConditions(
+            signing_cohort_id, chain.chain_id, time_condition, sender=initiator
+        )
+
+    tx = signing_coordinator.setSigningCohortConditions(
+        # deployer can set conditions
+        signing_cohort_id,
+        chain.chain_id,
+        time_condition,
+        sender=deployer,
+    )
+    events = [event for event in tx.events if event.event_name == "SigningCohortConditionsSet"]
+    assert events == [
+        signing_coordinator.SigningCohortConditionsSet(
+            cohortId=signing_cohort_id,
+            chainId=chain.chain_id,
+            conditions=time_condition,
+        )
+    ]

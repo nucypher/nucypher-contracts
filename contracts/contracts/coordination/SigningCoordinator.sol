@@ -38,6 +38,12 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     event TimeoutChanged(uint32 oldTimeout, uint32 newTimeout);
     event MaxCohortSizeChanged(uint16 oldSize, uint16 newSize);
 
+    event CohortAuthorityTransferred(
+        uint32 indexed cohortId,
+        address indexed previousAuthority,
+        address indexed newAuthority
+    );
+
     struct SigningCohortParticipant {
         address provider;
         address signerAddress;
@@ -189,6 +195,19 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         return cohort.chains;
     }
 
+    function getAuthority(uint32 cohortId) external view returns (address) {
+        return signingCohorts[cohortId].authority;
+    }
+
+    function transferCohortAuthority(uint32 cohortId, address newAuthority) external {
+        SigningCohort storage cohort = signingCohorts[cohortId];
+        require(isCohortActive(cohort), "Cohort is not active");
+        address previousAuthority = cohort.authority;
+        require(msg.sender == previousAuthority, "Sender not cohort authority");
+        cohort.authority = newAuthority;
+        emit CohortAuthorityTransferred(cohortId, previousAuthority, newAuthority);
+    }
+
     function initiateSigningCohort(
         uint256 chainId,
         address authority,
@@ -242,10 +261,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     ) external {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
         require(isCohortActive(signingCohort), "Cohort not active");
-        require(
-            signingCohort.authority == msg.sender,
-            "Only the cohort authority can set conditions"
-        );
+        require(signingCohort.authority == msg.sender, "Sender not cohort authority");
         // chainId must already be deployed for the cohort
         bool chainDeployed = false;
         for (uint256 i = 0; i < signingCohort.chains.length; i++) {
