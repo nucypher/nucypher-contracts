@@ -44,6 +44,8 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         address indexed newAuthority
     );
 
+    event SigningCohortExtended(uint32 indexed cohortId, uint32 endTimestamp);
+
     struct SigningCohortParticipant {
         address provider;
         address signerAddress;
@@ -411,11 +413,9 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         uint32 additionalDuration
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
-        // TODO: while it's good to check if the cohort is active, it is
-        // not necessary at the moment
-        // require(isCohortActive(signingCohort), "Cohort not active");
+        require(isCohortActive(signingCohort), "Cohort not active");
         require(additionalDuration > 0, "Invalid duration");
-        uint32 newEndTimestamp = signingCohort.endTimestamp + additionalDuration;
-        signingCohort.endTimestamp = newEndTimestamp;
+        signingCohort.endTimestamp += additionalDuration;
+        emit SigningCohortExtended(cohortId, signingCohort.endTimestamp);
     }
 }

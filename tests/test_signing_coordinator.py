@@ -444,12 +444,26 @@ def test_signing_ritual(
 
     # extend duration
     additional_duration = 60 * 60 * 24
+
+    with ape.reverts("Cohort not active"):
+        signing_coordinator.extendSigningCohortDuration(999, additional_duration, sender=deployer)
+
+    with ape.reverts("Invalid duration"):
+        signing_coordinator.extendSigningCohortDuration(signing_cohort_id, 0, sender=deployer)
+
     current_end = signing_coordinator.signingCohorts(signing_cohort_id)["endTimestamp"]
-    _ = signing_coordinator.extendSigningCohortDuration(
+    tx = signing_coordinator.extendSigningCohortDuration(
         signing_cohort_id, additional_duration, sender=deployer
     )
     updated_end_timestamp = signing_coordinator.signingCohorts(signing_cohort_id)["endTimestamp"]
     assert updated_end_timestamp == current_end + additional_duration
+    events = [event for event in tx.events if event.event_name == "SigningCohortExtended"]
+    assert events == [
+        signing_coordinator.SigningCohortExtended(
+            cohortId=signing_cohort_id,
+            endTimestamp=updated_end_timestamp,
+        )
+    ]
 
     # transfer cohort authority
     with ape.reverts("Cohort is not active"):
