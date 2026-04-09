@@ -469,6 +469,11 @@ def test_signing_ritual(
     with ape.reverts("Cohort is not active"):
         signing_coordinator.transferCohortAuthority(999, deployer.address, sender=initiator)
 
+    with ape.reverts("Invalid new authority"):
+        signing_coordinator.transferCohortAuthority(
+            signing_cohort_id, "0x" + "0" * 40, sender=initiator
+        )
+
     with ape.reverts("Sender not cohort authority"):
         signing_coordinator.transferCohortAuthority(
             signing_cohort_id, deployer.address, sender=deployer

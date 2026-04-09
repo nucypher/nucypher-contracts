@@ -204,6 +204,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     function transferCohortAuthority(uint32 cohortId, address newAuthority) external {
         SigningCohort storage cohort = signingCohorts[cohortId];
         require(isCohortActive(cohort), "Cohort is not active");
+        require(newAuthority != address(0), "Invalid new authority");
         address previousAuthority = cohort.authority;
         require(msg.sender == previousAuthority, "Sender not cohort authority");
         cohort.authority = newAuthority;
