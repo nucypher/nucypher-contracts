@@ -2108,11 +2108,6 @@
                             "internalType": "contract IERC20"
                         },
                         {
-                            "name": "_tStaking",
-                            "type": "address",
-                            "internalType": "contract IStaking"
-                        },
-                        {
                             "name": "_minimumAuthorization",
                             "type": "uint96",
                             "internalType": "uint96"
@@ -2123,6 +2118,33 @@
                             "internalType": "uint256"
                         }
                     ]
+                },
+                {
+                    "type": "error",
+                    "name": "AddressEmptyCode",
+                    "inputs": [
+                        {
+                            "name": "target",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ]
+                },
+                {
+                    "type": "error",
+                    "name": "AddressInsufficientBalance",
+                    "inputs": [
+                        {
+                            "name": "account",
+                            "type": "address",
+                            "internalType": "address"
+                        }
+                    ]
+                },
+                {
+                    "type": "error",
+                    "name": "FailedInnerCall",
+                    "inputs": []
                 },
                 {
                     "type": "error",
@@ -2158,144 +2180,14 @@
                 },
                 {
                     "type": "error",
-                    "name": "SafeCastOverflowedUintDowncast",
+                    "name": "SafeERC20FailedOperation",
                     "inputs": [
                         {
-                            "name": "bits",
-                            "type": "uint8",
-                            "internalType": "uint8"
-                        },
-                        {
-                            "name": "value",
-                            "type": "uint256",
-                            "internalType": "uint256"
+                            "name": "token",
+                            "type": "address",
+                            "internalType": "address"
                         }
                     ]
-                },
-                {
-                    "type": "event",
-                    "name": "AuthorizationDecreaseApproved",
-                    "inputs": [
-                        {
-                            "name": "stakingProvider",
-                            "type": "address",
-                            "internalType": "address",
-                            "indexed": true
-                        },
-                        {
-                            "name": "fromAmount",
-                            "type": "uint96",
-                            "internalType": "uint96",
-                            "indexed": false
-                        },
-                        {
-                            "name": "toAmount",
-                            "type": "uint96",
-                            "internalType": "uint96",
-                            "indexed": false
-                        }
-                    ],
-                    "anonymous": false
-                },
-                {
-                    "type": "event",
-                    "name": "AuthorizationDecreaseRequested",
-                    "inputs": [
-                        {
-                            "name": "stakingProvider",
-                            "type": "address",
-                            "internalType": "address",
-                            "indexed": true
-                        },
-                        {
-                            "name": "fromAmount",
-                            "type": "uint96",
-                            "internalType": "uint96",
-                            "indexed": false
-                        },
-                        {
-                            "name": "toAmount",
-                            "type": "uint96",
-                            "internalType": "uint96",
-                            "indexed": false
-                        }
-                    ],
-                    "anonymous": false
-                },
-                {
-                    "type": "event",
-                    "name": "AuthorizationIncreased",
-                    "inputs": [
-                        {
-                            "name": "stakingProvider",
-                            "type": "address",
-                            "internalType": "address",
-                            "indexed": true
-                        },
-                        {
-                            "name": "fromAmount",
-                            "type": "uint96",
-                            "internalType": "uint96",
-                            "indexed": false
-                        },
-                        {
-                            "name": "toAmount",
-                            "type": "uint96",
-                            "internalType": "uint96",
-                            "indexed": false
-                        }
-                    ],
-                    "anonymous": false
-                },
-                {
-                    "type": "event",
-                    "name": "AuthorizationInvoluntaryDecreased",
-                    "inputs": [
-                        {
-                            "name": "stakingProvider",
-                            "type": "address",
-                            "internalType": "address",
-                            "indexed": true
-                        },
-                        {
-                            "name": "fromAmount",
-                            "type": "uint96",
-                            "internalType": "uint96",
-                            "indexed": false
-                        },
-                        {
-                            "name": "toAmount",
-                            "type": "uint96",
-                            "internalType": "uint96",
-                            "indexed": false
-                        }
-                    ],
-                    "anonymous": false
-                },
-                {
-                    "type": "event",
-                    "name": "AuthorizationReSynchronized",
-                    "inputs": [
-                        {
-                            "name": "stakingProvider",
-                            "type": "address",
-                            "internalType": "address",
-                            "indexed": true
-                        },
-                        {
-                            "name": "fromAmount",
-                            "type": "uint96",
-                            "internalType": "uint96",
-                            "indexed": false
-                        },
-                        {
-                            "name": "toAmount",
-                            "type": "uint96",
-                            "internalType": "uint96",
-                            "indexed": false
-                        }
-                    ],
-                    "anonymous": false
                 },
                 {
                     "type": "event",
@@ -2342,31 +2234,6 @@
                             "name": "operator",
                             "type": "address",
                             "internalType": "address",
-                            "indexed": false
-                        }
-                    ],
-                    "anonymous": false
-                },
-                {
-                    "type": "event",
-                    "name": "Migrated",
-                    "inputs": [
-                        {
-                            "name": "stakingProvider",
-                            "type": "address",
-                            "internalType": "address",
-                            "indexed": true
-                        },
-                        {
-                            "name": "authorized",
-                            "type": "uint96",
-                            "internalType": "uint96",
-                            "indexed": false
-                        },
-                        {
-                            "name": "stakeless",
-                            "type": "bool",
-                            "internalType": "bool",
                             "indexed": false
                         }
                     ],
@@ -2456,25 +2323,6 @@
                 },
                 {
                     "type": "event",
-                    "name": "RewardsWithdrawn",
-                    "inputs": [
-                        {
-                            "name": "stakingProvider",
-                            "type": "address",
-                            "internalType": "address",
-                            "indexed": true
-                        },
-                        {
-                            "name": "amount",
-                            "type": "uint96",
-                            "internalType": "uint96",
-                            "indexed": false
-                        }
-                    ],
-                    "anonymous": false
-                },
-                {
-                    "type": "event",
                     "name": "Slashed",
                     "inputs": [
                         {
@@ -2506,7 +2354,64 @@
                 },
                 {
                     "type": "event",
+                    "name": "Staked",
+                    "inputs": [
+                        {
+                            "name": "stakingProvider",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        },
+                        {
+                            "name": "owner",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        },
+                        {
+                            "name": "beneficiary",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint96",
+                            "internalType": "uint96",
+                            "indexed": false
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
                     "name": "StakelessProviderAdded",
+                    "inputs": [
+                        {
+                            "name": "stakingProvider",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
+                    "name": "UnstakeApproved",
+                    "inputs": [
+                        {
+                            "name": "stakingProvider",
+                            "type": "address",
+                            "internalType": "address",
+                            "indexed": true
+                        }
+                    ],
+                    "anonymous": false
+                },
+                {
+                    "type": "event",
+                    "name": "UnstakeRequested",
                     "inputs": [
                         {
                             "name": "stakingProvider",
@@ -2537,107 +2442,6 @@
                 },
                 {
                     "type": "function",
-                    "name": "allowList",
-                    "stateMutability": "view",
-                    "inputs": [
-                        {
-                            "name": "",
-                            "type": "address",
-                            "internalType": "address"
-                        }
-                    ],
-                    "outputs": [
-                        {
-                            "name": "",
-                            "type": "bool",
-                            "internalType": "bool"
-                        }
-                    ]
-                },
-                {
-                    "type": "function",
-                    "name": "approveAuthorizationDecrease",
-                    "stateMutability": "nonpayable",
-                    "inputs": [
-                        {
-                            "name": "_stakingProvider",
-                            "type": "address",
-                            "internalType": "address"
-                        }
-                    ],
-                    "outputs": []
-                },
-                {
-                    "type": "function",
-                    "name": "authorizationDecreaseRequested",
-                    "stateMutability": "nonpayable",
-                    "inputs": [
-                        {
-                            "name": "_stakingProvider",
-                            "type": "address",
-                            "internalType": "address"
-                        },
-                        {
-                            "name": "_fromAmount",
-                            "type": "uint96",
-                            "internalType": "uint96"
-                        },
-                        {
-                            "name": "_toAmount",
-                            "type": "uint96",
-                            "internalType": "uint96"
-                        }
-                    ],
-                    "outputs": []
-                },
-                {
-                    "type": "function",
-                    "name": "authorizationIncreased",
-                    "stateMutability": "nonpayable",
-                    "inputs": [
-                        {
-                            "name": "_stakingProvider",
-                            "type": "address",
-                            "internalType": "address"
-                        },
-                        {
-                            "name": "_fromAmount",
-                            "type": "uint96",
-                            "internalType": "uint96"
-                        },
-                        {
-                            "name": "_toAmount",
-                            "type": "uint96",
-                            "internalType": "uint96"
-                        }
-                    ],
-                    "outputs": []
-                },
-                {
-                    "type": "function",
-                    "name": "authorizationParameters",
-                    "stateMutability": "view",
-                    "inputs": [],
-                    "outputs": [
-                        {
-                            "name": "_minimumAuthorization",
-                            "type": "uint96",
-                            "internalType": "uint96"
-                        },
-                        {
-                            "name": "authorizationDecreaseDelay",
-                            "type": "uint64",
-                            "internalType": "uint64"
-                        },
-                        {
-                            "name": "authorizationDecreaseChangePeriod",
-                            "type": "uint64",
-                            "internalType": "uint64"
-                        }
-                    ]
-                },
-                {
-                    "type": "function",
                     "name": "authorizedStake",
                     "stateMutability": "view",
                     "inputs": [
@@ -2654,38 +2458,6 @@
                             "internalType": "uint96"
                         }
                     ]
-                },
-                {
-                    "type": "function",
-                    "name": "availableRewards",
-                    "stateMutability": "view",
-                    "inputs": [
-                        {
-                            "name": "",
-                            "type": "address",
-                            "internalType": "address"
-                        }
-                    ],
-                    "outputs": [
-                        {
-                            "name": "",
-                            "type": "uint96",
-                            "internalType": "uint96"
-                        }
-                    ]
-                },
-                {
-                    "type": "function",
-                    "name": "batchMigrateFromThreshold",
-                    "stateMutability": "nonpayable",
-                    "inputs": [
-                        {
-                            "name": "_stakingProviders",
-                            "type": "address[]",
-                            "internalType": "address[]"
-                        }
-                    ],
-                    "outputs": []
                 },
                 {
                     "type": "function",
@@ -2740,11 +2512,6 @@
                             "name": "_stakingProvider",
                             "type": "address",
                             "internalType": "address"
-                        },
-                        {
-                            "name": "",
-                            "type": "uint256",
-                            "internalType": "uint256"
                         }
                     ],
                     "outputs": [
@@ -2769,11 +2536,6 @@
                             "name": "_maxStakingProviders",
                             "type": "uint256",
                             "internalType": "uint256"
-                        },
-                        {
-                            "name": "_cohortDuration",
-                            "type": "uint32",
-                            "internalType": "uint32"
                         }
                     ],
                     "outputs": [
@@ -2804,7 +2566,7 @@
                         {
                             "name": "beneficiary",
                             "type": "address",
-                            "internalType": "address payable"
+                            "internalType": "address"
                         }
                     ]
                 },
@@ -2830,7 +2592,7 @@
                 },
                 {
                     "type": "function",
-                    "name": "involuntaryAuthorizationDecrease",
+                    "name": "initializeStake",
                     "stateMutability": "nonpayable",
                     "inputs": [
                         {
@@ -2839,14 +2601,14 @@
                             "internalType": "address"
                         },
                         {
-                            "name": "_fromAmount",
-                            "type": "uint96",
-                            "internalType": "uint96"
+                            "name": "_owner",
+                            "type": "address",
+                            "internalType": "address"
                         },
                         {
-                            "name": "_toAmount",
-                            "type": "uint96",
-                            "internalType": "uint96"
+                            "name": "_beneficiary",
+                            "type": "address",
+                            "internalType": "address"
                         }
                     ],
                     "outputs": []
@@ -2975,25 +2737,6 @@
                 },
                 {
                     "type": "function",
-                    "name": "pendingAuthorizationDecrease",
-                    "stateMutability": "view",
-                    "inputs": [
-                        {
-                            "name": "_stakingProvider",
-                            "type": "address",
-                            "internalType": "address"
-                        }
-                    ],
-                    "outputs": [
-                        {
-                            "name": "",
-                            "type": "uint96",
-                            "internalType": "uint96"
-                        }
-                    ]
-                },
-                {
-                    "type": "function",
                     "name": "registerOperator",
                     "stateMutability": "nonpayable",
                     "inputs": [
@@ -3020,38 +2763,6 @@
                 },
                 {
                     "type": "function",
-                    "name": "releaseStakers",
-                    "stateMutability": "nonpayable",
-                    "inputs": [
-                        {
-                            "name": "_stakingProviders",
-                            "type": "address[]",
-                            "internalType": "address[]"
-                        }
-                    ],
-                    "outputs": []
-                },
-                {
-                    "type": "function",
-                    "name": "remainingAuthorizationDecreaseDelay",
-                    "stateMutability": "view",
-                    "inputs": [
-                        {
-                            "name": "",
-                            "type": "address",
-                            "internalType": "address"
-                        }
-                    ],
-                    "outputs": [
-                        {
-                            "name": "",
-                            "type": "uint64",
-                            "internalType": "uint64"
-                        }
-                    ]
-                },
-                {
-                    "type": "function",
                     "name": "renounceOwnership",
                     "stateMutability": "nonpayable",
                     "inputs": [],
@@ -3059,13 +2770,13 @@
                 },
                 {
                     "type": "function",
-                    "name": "resetDeauthorization",
+                    "name": "requestUnstake",
                     "stateMutability": "nonpayable",
                     "inputs": [
                         {
-                            "name": "_stakingProviders",
-                            "type": "address[]",
-                            "internalType": "address[]"
+                            "name": "_stakingProvider",
+                            "type": "address",
+                            "internalType": "address"
                         }
                     ],
                     "outputs": []
@@ -3163,25 +2874,6 @@
                 },
                 {
                     "type": "function",
-                    "name": "stakingProviderReleased",
-                    "stateMutability": "view",
-                    "inputs": [
-                        {
-                            "name": "",
-                            "type": "address",
-                            "internalType": "address"
-                        }
-                    ],
-                    "outputs": [
-                        {
-                            "name": "",
-                            "type": "bool",
-                            "internalType": "bool"
-                        }
-                    ]
-                },
-                {
-                    "type": "function",
                     "name": "stakingProviderToOperator",
                     "stateMutability": "view",
                     "inputs": [
@@ -3220,19 +2912,6 @@
                 },
                 {
                     "type": "function",
-                    "name": "tStaking",
-                    "stateMutability": "view",
-                    "inputs": [],
-                    "outputs": [
-                        {
-                            "name": "",
-                            "type": "address",
-                            "internalType": "contract IStaking"
-                        }
-                    ]
-                },
-                {
-                    "type": "function",
                     "name": "token",
                     "stateMutability": "view",
                     "inputs": [],
@@ -3256,23 +2935,10 @@
                         }
                     ],
                     "outputs": []
-                },
-                {
-                    "type": "function",
-                    "name": "withdrawRewards",
-                    "stateMutability": "nonpayable",
-                    "inputs": [
-                        {
-                            "name": "",
-                            "type": "address",
-                            "internalType": "address"
-                        }
-                    ],
-                    "outputs": []
                 }
             ],
-            "tx_hash": "0x9132b2cb49532d2283f865d1e74f713f6aca715355bd5b34089001a6efaef4e0",
-            "block_number": 24641960,
+            "tx_hash": "0xf2ca714ddcd465b3ad2ddb60b630b436604611599ef79ca86cf4ec86a7c7f648",
+            "block_number": 24842677,
             "deployer": "0x1591165F1BF8B73de7053A6BE6f239BC15076879"
         },
         "ThresholdSigningMultisigCloneFactory": {
