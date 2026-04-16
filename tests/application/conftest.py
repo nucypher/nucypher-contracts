@@ -81,3 +81,10 @@ def child_application(project, creator, taco_application):
     )
     taco_application.setChildApplication(contract.address, sender=creator)
     return contract
+
+
+@pytest.fixture()
+def penalty_board(project, creator, taco_application):
+    contract = project.PenaltyBoardForTACoApplicationMock.deploy(sender=creator)
+    taco_application.setPenaltyBoard(contract.address, sender=creator)
+    return contract

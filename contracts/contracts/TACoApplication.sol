@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import "./coordination/ITACoRootToChild.sol";
 import "./coordination/ITACoChildToRoot.sol";
+import "./coordination/PenaltyBoard.sol";
 
 /**
  * @title TACo Application
@@ -142,6 +143,7 @@ contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
 
     // mapping(address => bool) public stakingProviderReleased;
     // mapping(address => bool) public allowList;
+    PenaltyBoard public penaltyBoard;
 
     /**
      * @notice Constructor sets address of token contract and parameters for staking
@@ -183,6 +185,14 @@ contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
     function setChildApplication(ITACoRootToChild _childApplication) external onlyOwner {
         require(address(_childApplication).code.length > 0, "Child app must be contract");
         childApplication = _childApplication;
+    }
+
+    /**
+     * @notice Set contract for compensation
+     */
+    function setPenaltyBoard(PenaltyBoard _penaltyBoard) external onlyOwner {
+        require(address(_penaltyBoard).code.length > 0, "PenaltyBoard must be contract");
+        penaltyBoard = _penaltyBoard;
     }
 
     //------------------------Staking------------------------------
@@ -430,6 +440,7 @@ contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
         info.operatorStartTimestamp = uint64(block.timestamp);
         emit OperatorBonded(_stakingProvider, _operator, previousOperator, block.timestamp);
 
+        penaltyBoard.computeRewards(_stakingProvider);
         info.operatorConfirmed = false;
         childApplication.updateOperator(_stakingProvider, _operator);
     }
@@ -451,6 +462,7 @@ contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
 
         StakingProviderInfo storage info = stakingProviderInfo[stakingProvider];
         if (!info.operatorConfirmed) {
+            penaltyBoard.enableRewards(stakingProvider);
             info.operatorConfirmed = true;
             emit OperatorConfirmed(stakingProvider, _operator);
         }
@@ -462,6 +474,7 @@ contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
      * @notice Resets operator confirmation
      */
     function _releaseOperator(address _stakingProvider) internal {
+        penaltyBoard.computeRewards(_stakingProvider);
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         _stakingProviderFromOperator[info.operator] = address(0);
         info.operator = address(0);
@@ -532,5 +545,10 @@ contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
         info.stakeless = true;
         emit StakelessProviderAdded(_stakingProvider);
         _updateAuthorization(_stakingProvider, info);
+    }
+
+    function isEligibleForReward(address _stakingProvider) external view returns (bool) {
+        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
+        return !info.stakeless && info.operatorConfirmed;
     }
 }
