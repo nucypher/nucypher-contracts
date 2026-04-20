@@ -29,17 +29,16 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
     }
 
     uint32 public constant INACTIVE_RITUAL_ID = type(uint32).max;
-    uint256 public constant INCREASE_BASE = 10000;
 
     Coordinator public immutable coordinator;
     IEncryptionAuthorizer public immutable accessController;
     IERC20 public immutable feeToken;
 
-    uint32 public immutable subscriptionPeriodDuration;
+    uint32 public immutable subscriptionPackageDuration;
+    uint32 public immutable subscriptionPackageEncryptors;
     address public immutable adopterSetter;
 
-    uint256 public immutable initialBaseFeeRate;
-    uint256 public immutable baseFeeRateIncrease;
+    uint256 public immutable baseFeeRate;
     uint256 public immutable encryptorFeeRate;
 
     uint32 public activeRitualId;
@@ -94,20 +93,18 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
      * @param _accessController The address of the global allow list
      * @param _feeToken The address of the fee token contract
      * @param _adopterSetter Address that can set the adopter address
-     * @param _initialBaseFeeRate Fee rate per node per second
-     * @param _baseFeeRateIncrease Increase of base fee rate per each period (fraction of INCREASE_BASE)
+     * @param _baseFeeRate Fee rate per node per second
      * @param _encryptorFeeRate Fee rate per encryptor per second
-     * @param _subscriptionPeriodDuration Maximum duration of subscription period
+     * @param _subscriptionPackageDuration Duration of subscription package
      */
     constructor(
         Coordinator _coordinator,
         IEncryptionAuthorizer _accessController,
         IERC20 _feeToken,
         address _adopterSetter,
-        uint256 _initialBaseFeeRate,
-        uint256 _baseFeeRateIncrease,
+        uint256 _baseFeeRate,
         uint256 _encryptorFeeRate,
-        uint32 _subscriptionPeriodDuration
+        uint32 _subscriptionPackageDuration
     ) {
         require(address(_feeToken) != address(0), "Fee token cannot be the zero address");
         require(_adopterSetter != address(0), "Adopter setter cannot be the zero address");
@@ -115,19 +112,14 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
             address(_accessController) != address(0),
             "Access controller cannot be the zero address"
         );
-        require(
-            _baseFeeRateIncrease < INCREASE_BASE,
-            "Base fee rate increase must be fraction of INCREASE_BASE"
-        );
         require(address(_coordinator) != address(0), "Coordinator cannot be the zero address");
         coordinator = _coordinator;
         feeToken = _feeToken;
         adopterSetter = _adopterSetter;
-        initialBaseFeeRate = _initialBaseFeeRate;
-        baseFeeRateIncrease = _baseFeeRateIncrease;
+        baseFeeRate = _baseFeeRate;
         encryptorFeeRate = _encryptorFeeRate;
         accessController = _accessController;
-        subscriptionPeriodDuration = _subscriptionPeriodDuration;
+        subscriptionPackageDuration = _subscriptionPackageDuration;
         _disableInitializers();
     }
 
@@ -169,16 +161,9 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
         adopter = _adopter;
     }
 
-    function baseFees(address authAdmin) public view returns (uint256) {
-        uint256 currentPeriodNumber = getCurrentPeriodNumber(authAdmin);
-        return baseFees(currentPeriodNumber);
-    }
-
     /// @dev potential overflow after 15-16 periods
-    function baseFees(uint256 periodNumber) public view returns (uint256) {
-        uint256 baseFeeRate = initialBaseFeeRate *
-            (INCREASE_BASE + baseFeeRateIncrease) ** periodNumber;
-        return (baseFeeRate * subscriptionPeriodDuration) / (INCREASE_BASE ** periodNumber);
+    function baseFees() public view returns (uint256) {
+        return baseFeeRate * subscriptionPackageDuration;
     }
 
     function encryptorFees(uint128 encryptorSlots, uint32 duration) public view returns (uint256) {
@@ -199,20 +184,20 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
     /**
      *
      * @notice Pays for the closest unpaid subscription period (either the current or the next)
-     * @param encryptorSlots Number of slots for encryptors
+     * @param encryptorPackages Number of encryptor packages
      */
-    function payForSubscription(address authAdmin, uint128 encryptorSlots) external {
-        uint256 fees = processPaymentForSubscription(authAdmin, encryptorSlots);
+    function payForSubscription(address authAdmin, uint32 encryptorPackages) external {
+        uint256 fees = processPaymentForSubscription(authAdmin, encryptorPackages);
         feeToken.safeTransferFrom(msg.sender, address(this), fees);
     }
 
     /**
      * @notice Process payment for the closest unpaid subscription period (either the current or the next)
-     * @param encryptorSlots Number of slots for encryptors
+     * @param encryptorPackages Number of encryptor packages
      */
     function processPaymentForSubscription(
         address authAdmin,
-        uint128 encryptorSlots
+        uint32 encryptorPackages
     ) internal returns (uint256 fees) {
         uint256 currentPeriodNumber = getCurrentPeriodNumber(authAdmin);
         AuthAdminInfo storage authAdminStruct = authAdminInfo[authAdmin];
@@ -232,51 +217,53 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
         }
         Billing storage billing = authAdminStruct.billingInfo[periodNumber];
         billing.paid = true;
-        billing.encryptorSlots = encryptorSlots;
+        billing.encryptorSlots = encryptorPackages * subscriptionPackageEncryptors;
 
-        fees = baseFees(periodNumber) + encryptorFees(encryptorSlots, subscriptionPeriodDuration);
+        fees = baseFees() + encryptorFees(billing.encryptorSlots, subscriptionPackageDuration);
         emit SubscriptionPaid(
             msg.sender,
             authAdmin,
             fees,
-            encryptorSlots,
+            billing.encryptorSlots,
             getEndOfSubscription(authAdmin)
         );
     }
 
     /**
      * @notice Pays for additional encryptor slots in the current period
-     * @param additionalEncryptorSlots Additional number of slots for encryptors
+     * @param additionalEncryptorPackages Additional number of encryptor packages
      */
-    function payForEncryptorSlots(address authAdmin, uint128 additionalEncryptorSlots) external {
-        uint256 fees = processPaymentForEncryptorSlots(authAdmin, additionalEncryptorSlots);
+    function payForEncryptorSlots(address authAdmin, uint32 additionalEncryptorPackages) external {
+        uint256 fees = processPaymentForEncryptorSlots(authAdmin, additionalEncryptorPackages);
         feeToken.safeTransferFrom(msg.sender, address(this), fees);
     }
 
     /**
      * @notice Process payment for additional encryptor slots in the current period
-     * @param additionalEncryptorSlots Additional number of slots for encryptors
+     * @param additionalEncryptorPackages Additional number of encryptor packages
      */
     function processPaymentForEncryptorSlots(
         address authAdmin,
-        uint128 additionalEncryptorSlots
+        uint32 additionalEncryptorPackages
     ) internal returns (uint256 fees) {
         uint256 currentPeriodNumber = getCurrentPeriodNumber(authAdmin);
         AuthAdminInfo storage authAdminStruct = authAdminInfo[authAdmin];
         Billing storage billing = authAdminStruct.billingInfo[currentPeriodNumber];
         require(billing.paid, "Current billing period must be paid");
 
-        uint32 duration = subscriptionPeriodDuration;
+        uint32 duration = subscriptionPackageDuration;
         uint32 endOfCurrentPeriod = 0;
         if (authAdminStruct.startOfSubscription != 0) {
             endOfCurrentPeriod = uint32(
                 authAdminStruct.startOfSubscription +
                     (currentPeriodNumber + 1) *
-                    subscriptionPeriodDuration
+                    subscriptionPackageDuration
             );
             duration = endOfCurrentPeriod - uint32(block.timestamp);
         }
 
+        uint128 additionalEncryptorSlots = additionalEncryptorPackages *
+            subscriptionPackageEncryptors;
         uint256 fees = encryptorFees(additionalEncryptorSlots, duration);
         billing.encryptorSlots += additionalEncryptorSlots;
 
@@ -330,7 +317,8 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
         if (authAdminStruct.startOfSubscription == 0) {
             return 0;
         }
-        return (block.timestamp - authAdminStruct.startOfSubscription) / subscriptionPeriodDuration;
+        return
+            (block.timestamp - authAdminStruct.startOfSubscription) / subscriptionPackageDuration;
     }
 
     function getEndOfSubscription(
@@ -357,7 +345,7 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
             currentPeriodNumber++;
         }
         endOfSubscription = uint32(
-            authAdminStruct.startOfSubscription + currentPeriodNumber * subscriptionPeriodDuration
+            authAdminStruct.startOfSubscription + currentPeriodNumber * subscriptionPackageDuration
         );
     }
 
