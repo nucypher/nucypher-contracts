@@ -38,7 +38,6 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
     uint32 public immutable subscriptionPackageEncryptors;
     address public immutable adopterSetter;
 
-    uint256 public immutable baseFeeRate;
     uint256 public immutable encryptorFeeRate;
 
     uint32 public activeRitualId;
@@ -93,7 +92,6 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
      * @param _accessController The address of the global allow list
      * @param _feeToken The address of the fee token contract
      * @param _adopterSetter Address that can set the adopter address
-     * @param _baseFeeRate Fee rate per node per second
      * @param _encryptorFeeRate Fee rate per encryptor per second
      * @param _subscriptionPackageDuration Duration of subscription package
      */
@@ -102,7 +100,6 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
         IEncryptionAuthorizer _accessController,
         IERC20 _feeToken,
         address _adopterSetter,
-        uint256 _baseFeeRate,
         uint256 _encryptorFeeRate,
         uint32 _subscriptionPackageDuration
     ) {
@@ -116,7 +113,6 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
         coordinator = _coordinator;
         feeToken = _feeToken;
         adopterSetter = _adopterSetter;
-        baseFeeRate = _baseFeeRate;
         encryptorFeeRate = _encryptorFeeRate;
         accessController = _accessController;
         subscriptionPackageDuration = _subscriptionPackageDuration;
@@ -159,11 +155,6 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
             "Adopter can be set only once with not zero address"
         );
         adopter = _adopter;
-    }
-
-    /// @dev potential overflow after 15-16 periods
-    function baseFees() public view returns (uint256) {
-        return baseFeeRate * subscriptionPackageDuration;
     }
 
     function encryptorFees(uint128 encryptorSlots, uint32 duration) public view returns (uint256) {
@@ -219,7 +210,7 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
         billing.paid = true;
         billing.encryptorSlots = encryptorPackages * subscriptionPackageEncryptors;
 
-        fees = baseFees() + encryptorFees(billing.encryptorSlots, subscriptionPackageDuration);
+        fees = encryptorFees(billing.encryptorSlots, subscriptionPackageDuration);
         emit SubscriptionPaid(
             msg.sender,
             authAdmin,
