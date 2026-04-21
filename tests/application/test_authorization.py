@@ -21,6 +21,7 @@ from web3 import Web3
 
 OPERATOR_CONFIRMED_SLOT = 1
 AUTHORIZATION_SLOT = 3
+STAKELESS_SLOT = 7
 MIN_AUTHORIZATION = Web3.to_wei(40_000, "ether")
 
 
@@ -361,3 +362,42 @@ def test_add_stakeless_provider(accounts, taco_application, child_application, c
 
     with ape.reverts("A provider can't be an operator for another provider"):
         taco_application.addStakelessProvider(owner, owner, sender=creator)
+
+
+def test_convert_to_stakeless_provider(accounts, taco_application, child_application, chain, token):
+    """
+    Tests for authorization method: convertToStakelessProvider
+    """
+
+    creator, staking_provider, owner = accounts[0:3]
+    minimum_authorization = MIN_AUTHORIZATION
+    value = minimum_authorization
+
+    # Prepare staking providers
+    token.transfer(owner, value, sender=creator)
+    token.approve(taco_application.address, value, sender=owner)
+    taco_application.initializeStake(staking_provider, owner, staking_provider, sender=creator)
+
+    # Owner sent all their tokens after creating stake
+    assert token.balanceOf(owner) == 0
+
+    # Check that the staking provider is authorized
+    assert taco_application.isAuthorized(staking_provider)
+
+    # Check that the stake is not stakeless
+    assert not taco_application.stakingProviderInfo(staking_provider)[STAKELESS_SLOT]
+
+    # Only contract owner can call `convertToStakelessProvider`
+    with ape.reverts():
+        taco_application.convertToStakelessProvider(staking_provider, sender=owner)
+
+    taco_application.convertToStakelessProvider(staking_provider, sender=creator)
+
+    # Tokens are returned to the owner
+    assert token.balanceOf(owner) == value
+
+    # Check that the staking provider is still authorized
+    assert taco_application.isAuthorized(staking_provider)
+
+    # Check that the stake is now stakeless
+    assert taco_application.stakingProviderInfo(staking_provider)[STAKELESS_SLOT]

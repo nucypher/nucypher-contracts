@@ -226,7 +226,7 @@ contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
                 "Not owner or provider"
             );
         }
-        
+
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         require(info.deauthorizing == 0, "Unstake already requested");
 
@@ -541,5 +541,16 @@ contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
         info.stakeless = true;
         emit StakelessProviderAdded(_stakingProvider);
         _updateAuthorization(_stakingProvider, info);
+    }
+
+    function convertToStakelessProvider(address _stakingProvider) external onlyOwner {
+        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
+        uint96 authorized = info.authorized;
+        require(authorized > 0, "Not owner or provider");
+        require(info.deauthorizing == 0, "Unstake already requested");
+
+        info.stakeless = true;
+        emit StakelessProviderAdded(_stakingProvider);
+        token.safeTransfer(info.owner, authorized);
     }
 }
