@@ -215,9 +215,18 @@ contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
      * @notice Register request of unstaking
      * @param _stakingProvider Address of staking provider
      */
-    function requestUnstake(
-        address _stakingProvider
-    ) external onlyOwnerOrStakingProvider(_stakingProvider) {
+    function requestUnstake(address _stakingProvider) external {
+        require(isAuthorized(_stakingProvider), "Not owner or provider");
+        // Only staking provider, stake owner or contract owner can request unstaking
+        if (_stakingProvider != msg.sender) {
+            address stakeOwner = stakingProviderInfo[_stakingProvider].owner;
+            address contractOwner = owner();
+            require(
+                stakeOwner == msg.sender || contractOwner == msg.sender,
+                "Not owner or provider"
+            );
+        }
+        
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         require(info.deauthorizing == 0, "Unstake already requested");
 
