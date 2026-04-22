@@ -36,9 +36,7 @@ contract SigningCohortInitiator is Ownable {
     uint16 public defaultThreshold;
     uint32 public defaultDuration;
 
-    mapping(uint32 => InitiationRequest) public requests;
-    uint256 public totalPendingFees;
-    mapping(uint256 => uint256) public pendingFees;
+    mapping(uint32 => InitiationRequest) public requests; // cohortId -> Request
 
     constructor(
         SigningCoordinator _signingCoordinator,
@@ -75,67 +73,23 @@ contract SigningCohortInitiator is Ownable {
         return feeRatePerSecond * numberOfProviders * duration;
     }
 
-    function feeDeduction(uint256, uint256) public pure returns (uint256) {
-        return 0;
-    }
-
     function processPayment(
         address initiator,
-        uint32 cohortId,
         uint256 numberOfProviders,
         uint32 duration
     ) internal {
         uint256 cohortCost = getCohortCost(numberOfProviders, duration);
         require(cohortCost > 0, "Invalid cohort cost");
-        totalPendingFees += cohortCost;
-        pendingFees[cohortId] += cohortCost;
         currency.safeTransferFrom(initiator, address(this), cohortCost);
     }
 
-    function processPendingFee(uint32 cohortId) internal returns (uint256 refundableFee) {
-        SigningCoordinator.SigningCohortState state = signingCoordinator.getSigningCohortState(
-            cohortId
-        );
-        require(
-            state == SigningCoordinator.SigningCohortState.TIMEOUT ||
-                state == SigningCoordinator.SigningCohortState.ACTIVE ||
-                state == SigningCoordinator.SigningCohortState.EXPIRED,
-            "Ritual is not ended"
-        );
-        uint256 pending = pendingFees[cohortId];
-        require(pending > 0, "No pending fees for this ritual");
-
-        // Finalize fees for this ritual
-        totalPendingFees -= pending;
-        delete pendingFees[cohortId];
-        // Transfer fees back to initiator if failed
-        if (state == SigningCoordinator.SigningCohortState.TIMEOUT) {
-            // Refund everything minus cost of renting cohort for a day
-            address initiator = requests[cohortId].initiator;
-            (uint32 initTimestamp, uint32 endTimestamp) = signingCoordinator.getTimestamps(
-                cohortId
-            );
-            uint256 duration = endTimestamp - initTimestamp;
-            refundableFee = pending - feeDeduction(pending, duration);
-            currency.safeTransfer(initiator, refundableFee);
-        }
-        return refundableFee;
+    function withdrawFees() external onlyOwner {
+        uint256 fees = currency.balanceOf(address(this));
+        require(fees >= 0, "No fees to withdraw");
+        currency.safeTransfer(msg.sender, fees);
     }
 
-    function withdrawTokens(uint256 amount) external onlyOwner {
-        require(
-            amount <= currency.balanceOf(address(this)) - totalPendingFees,
-            "Can't withdraw pending fees"
-        );
-        currency.safeTransfer(msg.sender, amount);
-    }
-
-    function establishSigningCohort(
-        address authority,
-        uint256 chainId
-    ) external returns (uint32 cohortId) {
-        uint32 expectedCohortId = uint32(signingCoordinator.numberOfSigningCohorts());
-        processPayment(msg.sender, expectedCohortId, defaultProviders.length, defaultDuration);
+    function _createSigningCohort(address authority, uint256 chainId) internal returns (uint32) {
         uint32 cohortId = signingCoordinator.initiateSigningCohort(
             chainId,
             authority,
@@ -143,8 +97,6 @@ contract SigningCohortInitiator is Ownable {
             defaultThreshold,
             defaultDuration
         );
-        // TODO: a bit awkward
-        require(cohortId == expectedCohortId, "Cohort ID mismatch");
 
         InitiationRequest storage request = requests[cohortId];
         request.initiator = msg.sender;
@@ -153,6 +105,11 @@ contract SigningCohortInitiator is Ownable {
 
         emit RequestExecuted(cohortId, msg.sender, authority, chainId);
         return cohortId;
+    }
+
+    function establishSigningCohort(address authority, uint256 chainId) external returns (uint32) {
+        processPayment(msg.sender, defaultProviders.length, defaultDuration);
+        return _createSigningCohort(authority, chainId);
     }
 
     function deployAdditionalChain(uint32 cohortId, uint256 chainId) external {
@@ -168,26 +125,29 @@ contract SigningCohortInitiator is Ownable {
         signingCoordinator.deployAdditionalChainForSigningMultisig(chainId, cohortId);
     }
 
-    function refundFailedRequest(uint32 cohortId) external {
+    function retryFailedRequest(uint32 cohortId) external returns (uint32) {
         SigningCoordinator.SigningCohortState state = signingCoordinator.getSigningCohortState(
             cohortId
         );
         require(state == SigningCoordinator.SigningCohortState.TIMEOUT, "Request did not fail");
 
         InitiationRequest storage request = requests[cohortId];
-        require(msg.sender == request.initiator, "Only initiator can request refund");
+        require(msg.sender == request.initiator, "Only initiator can request retry");
 
-        // process pending fees before refunding to get the correct refund amount
-        uint256 refundableFee = processPendingFee(cohortId);
-        emit FailedRequestRefunded(cohortId, refundableFee);
-        // TODO consider gas refund by setting zero values
+        address authority = request.authority;
+        uint256 chainId = request.chainId;
+        delete requests[cohortId];
+
+        // we know that initiator already paid, so just try to create
+        //  cohort again without processing payment.
+        return _createSigningCohort(authority, chainId);
     }
 
     function extendSigningCohort(uint32 cohortId) external {
         require(signingCoordinator.isCohortActive(cohortId), "Cohort is not active");
         InitiationRequest storage request = requests[cohortId];
         require(msg.sender == request.initiator, "Only initiator can extend cohort duration");
-        processPayment(msg.sender, cohortId, defaultProviders.length, defaultDuration);
+        processPayment(msg.sender, defaultProviders.length, defaultDuration);
 
         signingCoordinator.extendSigningCohortDuration(cohortId, defaultDuration);
         emit ExtensionExecuted(cohortId, defaultDuration);
