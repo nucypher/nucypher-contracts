@@ -17,7 +17,7 @@ contract SigningCohortInitiator is Ownable {
         uint256 chainId
     );
 
-    event FailedRequestRefunded(uint32 indexed cohortId, uint256 refundAmount);
+    event RetryFailedRequest(uint32 indexed oldCohortId, uint32 indexed newCohortId);
 
     event ExtensionExecuted(uint32 indexed cohortId, uint32 additionalDuration);
 
@@ -25,8 +25,6 @@ contract SigningCohortInitiator is Ownable {
         address initiator;
         uint256 chainId;
     }
-
-    uint32 public constant NO_RITUAL = type(uint32).max;
 
     SigningCoordinator public immutable signingCoordinator;
     IERC20 public immutable currency;
@@ -138,7 +136,9 @@ contract SigningCohortInitiator is Ownable {
 
         // we know that initiator already paid, so just try to create
         //  cohort again without processing payment.
-        return _createSigningCohort(authority, chainId);
+        uint32 newCohortId = _createSigningCohort(authority, chainId);
+        emit RetryFailedRequest(cohortId, newCohortId);
+        return newCohortId;
     }
 
     function extendSigningCohort(uint32 cohortId) external {
