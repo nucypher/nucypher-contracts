@@ -82,7 +82,7 @@ contract SigningCohortInitiator is Ownable {
 
     function withdrawFees() external onlyOwner {
         uint256 fees = currency.balanceOf(address(this));
-        require(fees >= 0, "No fees to withdraw");
+        require(fees > 0, "No fees to withdraw");
         currency.safeTransfer(msg.sender, fees);
     }
 
