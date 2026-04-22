@@ -70,7 +70,7 @@ contract SigningCohortInitiator is Ownable {
         return feeRatePerSecond * numberOfProviders * duration;
     }
 
-    function processPayment(
+    function _processPayment(
         address initiator,
         uint256 numberOfProviders,
         uint32 duration
@@ -104,7 +104,7 @@ contract SigningCohortInitiator is Ownable {
     }
 
     function establishSigningCohort(address authority, uint256 chainId) external returns (uint32) {
-        processPayment(msg.sender, defaultProviders.length, defaultDuration);
+        _processPayment(msg.sender, defaultProviders.length, defaultDuration);
         return _createSigningCohort(authority, chainId);
     }
 
@@ -145,7 +145,7 @@ contract SigningCohortInitiator is Ownable {
         require(signingCoordinator.isCohortActive(cohortId), "Cohort is not active");
         InitiationRequest storage request = requests[cohortId];
         require(msg.sender == request.initiator, "Only initiator can extend cohort duration");
-        processPayment(msg.sender, defaultProviders.length, defaultDuration);
+        _processPayment(msg.sender, defaultProviders.length, defaultDuration);
 
         signingCoordinator.extendSigningCohortDuration(cohortId, defaultDuration);
         emit ExtensionExecuted(cohortId, defaultDuration);
