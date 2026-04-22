@@ -111,6 +111,7 @@ contract SigningCohortInitiator is Ownable {
     function deployAdditionalChain(uint32 cohortId, uint256 chainId) external {
         require(signingCoordinator.isCohortActive(cohortId), "Cohort is not active");
         InitiationRequest storage request = requests[cohortId];
+        require(request.initiator != address(0), "Invalid cohort ID");
         require(
             msg.sender == request.initiator ||
                 msg.sender == signingCoordinator.getAuthority(cohortId),
