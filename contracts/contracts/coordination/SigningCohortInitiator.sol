@@ -23,7 +23,6 @@ contract SigningCohortInitiator is Ownable {
 
     struct InitiationRequest {
         address initiator;
-        address authority;
         uint256 chainId;
     }
 
@@ -100,7 +99,6 @@ contract SigningCohortInitiator is Ownable {
 
         InitiationRequest storage request = requests[cohortId];
         request.initiator = msg.sender;
-        request.authority = authority;
         request.chainId = chainId;
 
         emit RequestExecuted(cohortId, msg.sender, authority, chainId);
@@ -116,7 +114,8 @@ contract SigningCohortInitiator is Ownable {
         require(signingCoordinator.isCohortActive(cohortId), "Cohort is not active");
         InitiationRequest storage request = requests[cohortId];
         require(
-            msg.sender == request.initiator || msg.sender == request.authority,
+            msg.sender == request.initiator ||
+                msg.sender == signingCoordinator.getAuthority(cohortId),
             "Only initiator or authority can deploy additional chain"
         );
         require(request.chainId != chainId, "Chain ID already exists for this cohort");
@@ -133,8 +132,7 @@ contract SigningCohortInitiator is Ownable {
 
         InitiationRequest storage request = requests[cohortId];
         require(msg.sender == request.initiator, "Only initiator can request retry");
-
-        address authority = request.authority;
+        address authority = signingCoordinator.getAuthority(cohortId);
         uint256 chainId = request.chainId;
         delete requests[cohortId];
 
