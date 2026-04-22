@@ -21,7 +21,7 @@ from web3 import Web3
 
 OPERATOR_CONFIRMED_SLOT = 1
 AUTHORIZATION_SLOT = 3
-STAKELESS_SLOT = 7
+STAKELESS_SLOT = -1
 MIN_AUTHORIZATION = Web3.to_wei(40_000, "ether")
 
 
@@ -378,6 +378,8 @@ def test_convert_to_stakeless_provider(accounts, taco_application, child_applica
     token.approve(taco_application.address, value, sender=owner)
     taco_application.initializeStake(staking_provider, owner, staking_provider, sender=creator)
 
+    token.transfer(taco_application, 10*value, sender=creator)
+
     # Owner sent all their tokens after creating stake
     assert token.balanceOf(owner) == 0
 
@@ -401,3 +403,7 @@ def test_convert_to_stakeless_provider(accounts, taco_application, child_applica
 
     # Check that the stake is now stakeless
     assert taco_application.stakingProviderInfo(staking_provider)[STAKELESS_SLOT]
+
+    # `convertToStakelessProvider` can only be called once
+    with ape.reverts("Provider is already stakeless"):
+        taco_application.convertToStakelessProvider(staking_provider, sender=creator)
