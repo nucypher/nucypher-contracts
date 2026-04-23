@@ -53,7 +53,7 @@ contract MockSigningCoordinatorForInitiator {
     function getSigningCohortState(
         uint32 _cohortId
     ) external view returns (SigningCoordinator.SigningCohortState) {
-        if (_cohortId > signingCohorts.length) {
+        if (_cohortId >= signingCohorts.length) {
             return SigningCoordinator.SigningCohortState.NON_INITIATED;
         }
         return cohortStates[_cohortId];
