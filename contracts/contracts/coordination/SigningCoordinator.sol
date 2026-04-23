@@ -201,14 +201,6 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
         return signingCohorts[cohortId].authority;
     }
 
-    function getTimestamps(
-        uint32 cohortId
-    ) external view returns (uint32 initTimestamp, uint32 endTimestamp) {
-        SigningCohort storage cohort = signingCohorts[cohortId];
-        initTimestamp = cohort.initTimestamp;
-        endTimestamp = cohort.endTimestamp;
-    }
-
     function transferCohortAuthority(uint32 cohortId, address newAuthority) external {
         SigningCohort storage cohort = signingCohorts[cohortId];
         require(isCohortActive(cohort), "Cohort is not active");
