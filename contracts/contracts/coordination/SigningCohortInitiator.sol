@@ -155,6 +155,7 @@ contract SigningCohortInitiator is Ownable {
     function extendSigningCohort(uint32 cohortId) external {
         require(signingCoordinator.isCohortActive(cohortId), "Cohort is not active");
         InitiationRequest storage request = requests[cohortId];
+        require(request.initiator != address(0), "Invalid cohort ID");
         require(msg.sender == request.initiator, "Only initiator can extend cohort duration");
         _processPayment(msg.sender, defaultProviders.length, defaultDuration);
 
