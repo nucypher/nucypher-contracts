@@ -19,6 +19,8 @@ contract SigningCohortInitiator is Ownable {
 
     event RetryFailedRequest(uint32 indexed oldCohortId, uint32 indexed newCohortId);
 
+    event AdditionalChainDeployed(uint32 indexed cohortId, uint256 chainId);
+
     event ExtensionExecuted(uint32 indexed cohortId, uint32 additionalDuration);
 
     struct InitiationRequest {
@@ -53,6 +55,9 @@ contract SigningCohortInitiator is Ownable {
         );
         require(_defaultDuration > 0, "Invalid default duration");
 
+        // ensure default providers are sorted
+        _ensureSortedProviders(_defaultProviders);
+
         signingCoordinator = _signingCoordinator;
         currency = _currency;
         feeRatePerSecond = _feeRatePerSecond;
@@ -61,13 +66,10 @@ contract SigningCohortInitiator is Ownable {
         defaultDuration = _defaultDuration;
     }
 
-    function getCohortCost(
-        uint256 numberOfProviders,
-        uint32 duration
-    ) public view returns (uint256) {
-        require(numberOfProviders > 0, "Invalid cohort size");
-        require(duration > 0, "Invalid cohort duration");
-        return feeRatePerSecond * numberOfProviders * duration;
+    function _ensureSortedProviders(address[] memory providers) internal pure {
+        for (uint256 i = 1; i < providers.length; i++) {
+            require(providers[i] > providers[i - 1], "Providers must be sorted");
+        }
     }
 
     function _processPayment(
@@ -78,12 +80,6 @@ contract SigningCohortInitiator is Ownable {
         uint256 cohortCost = getCohortCost(numberOfProviders, duration);
         require(cohortCost > 0, "Invalid cohort cost");
         currency.safeTransferFrom(initiator, address(this), cohortCost);
-    }
-
-    function withdrawFees() external onlyOwner {
-        uint256 fees = currency.balanceOf(address(this));
-        require(fees > 0, "No fees to withdraw");
-        currency.safeTransfer(msg.sender, fees);
     }
 
     function _createSigningCohort(address authority, uint256 chainId) internal returns (uint32) {
@@ -103,6 +99,21 @@ contract SigningCohortInitiator is Ownable {
         return cohortId;
     }
 
+    function getCohortCost(
+        uint256 numberOfProviders,
+        uint32 duration
+    ) public view returns (uint256) {
+        require(numberOfProviders > 0, "Invalid cohort size");
+        require(duration > 0, "Invalid cohort duration");
+        return feeRatePerSecond * numberOfProviders * duration;
+    }
+
+    function withdrawFees() external onlyOwner {
+        uint256 fees = currency.balanceOf(address(this));
+        require(fees > 0, "No fees to withdraw");
+        currency.safeTransfer(msg.sender, fees);
+    }
+
     function establishSigningCohort(address authority, uint256 chainId) external returns (uint32) {
         _processPayment(msg.sender, defaultProviders.length, defaultDuration);
         return _createSigningCohort(authority, chainId);
@@ -112,24 +123,23 @@ contract SigningCohortInitiator is Ownable {
         require(signingCoordinator.isCohortActive(cohortId), "Cohort is not active");
         InitiationRequest storage request = requests[cohortId];
         require(request.initiator != address(0), "Invalid cohort ID");
-        require(
-            msg.sender == request.initiator ||
-                msg.sender == signingCoordinator.getAuthority(cohortId),
-            "Only initiator or authority can deploy additional chain"
-        );
+        require(msg.sender == request.initiator, "Only initiator can deploy additional chain");
         require(request.chainId != chainId, "Chain ID already exists for this cohort");
 
         // TODO: do we want additional payment here?
         signingCoordinator.deployAdditionalChainForSigningMultisig(chainId, cohortId);
+        emit AdditionalChainDeployed(cohortId, chainId);
     }
 
     function retryFailedRequest(uint32 cohortId) external returns (uint32) {
+        InitiationRequest storage request = requests[cohortId];
+        require(request.initiator != address(0), "Invalid cohort ID");
+
         SigningCoordinator.SigningCohortState state = signingCoordinator.getSigningCohortState(
             cohortId
         );
         require(state == SigningCoordinator.SigningCohortState.TIMEOUT, "Request did not fail");
 
-        InitiationRequest storage request = requests[cohortId];
         require(msg.sender == request.initiator, "Only initiator can request retry");
         address authority = signingCoordinator.getAuthority(cohortId);
         uint256 chainId = request.chainId;
@@ -160,6 +170,7 @@ contract SigningCohortInitiator is Ownable {
         require(providers.length > 0, "Invalid default providers");
         require(threshold > 0 && threshold <= providers.length, "Invalid default threshold");
         require(duration > 0, "Invalid default duration");
+        _ensureSortedProviders(providers);
 
         defaultProviders = providers;
         defaultThreshold = threshold;
