@@ -17,15 +17,11 @@ import "../IFeeModel.sol";
 contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
     using SafeERC20 for IERC20;
 
-    struct AuthAdminInfo {
-        uint32 startOfSubscription;
-        uint256 usedEncryptorSlots;
-        mapping(uint256 periodNumber => Billing billing) billingInfo;
-    }
-
     struct Billing {
-        bool paid;
-        uint128 encryptorSlots; // pre-paid encryptor slots for the billing period
+        uint256 encryptorSlots;
+        uint256 usedEncryptorSlots;
+        uint256 endOfSubscription;
+        uint256 encryptorFeeRate;
     }
 
     uint32 public constant INACTIVE_RITUAL_ID = type(uint32).max;
@@ -34,14 +30,14 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
     IEncryptionAuthorizer public immutable accessController;
     IERC20 public immutable feeToken;
 
-    uint32 public immutable subscriptionPackageDuration;
-    uint32 public immutable subscriptionPackageEncryptors;
+    uint256 public immutable subscriptionPackageDuration;
+    uint256 public immutable subscriptionPackageEncryptors;
     address public immutable adopterSetter;
 
     uint256 public immutable encryptorFeeRate;
 
     uint32 public activeRitualId;
-    mapping(address authAdmin => AuthAdminInfo authAdminStruct) public authAdminInfo;
+    mapping(address authAdmin => Billing billingInfo) public billing;
     address public adopter;
 
     uint256[20] private gap;
@@ -65,24 +61,8 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
         address indexed subscriber,
         address indexed authAdmin,
         uint256 amount,
-        uint128 encryptorSlots,
-        uint32 endOfSubscription
-    );
-
-    /**
-     * @notice Emitted when additional encryptor slots are paid
-     * @param sponsor The address that paid for the slots
-     * @param authAdmin Autharization admin that was paid
-     * @param amount The amount paid
-     * @param encryptorSlots Number of encryptor slots
-     * @param endOfCurrentPeriod End timestamp of the current billing period
-     */
-    event EncryptorSlotsPaid(
-        address indexed sponsor,
-        address indexed authAdmin,
-        uint256 amount,
-        uint128 encryptorSlots,
-        uint32 endOfCurrentPeriod
+        uint256 encryptorSlots,
+        uint256 endOfSubscription
     );
 
     /**
@@ -101,7 +81,7 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
         IERC20 _feeToken,
         address _adopterSetter,
         uint256 _encryptorFeeRate,
-        uint32 _subscriptionPackageDuration
+        uint256 _subscriptionPackageDuration
     ) {
         require(address(_feeToken) != address(0), "Fee token cannot be the zero address");
         require(_adopterSetter != address(0), "Adopter setter cannot be the zero address");
@@ -157,115 +137,53 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
         adopter = _adopter;
     }
 
-    function encryptorFees(uint128 encryptorSlots, uint32 duration) public view returns (uint256) {
+    function encryptorFees(
+        uint256 encryptorFeeRate,
+        uint256 encryptorSlots,
+        uint256 duration
+    ) public view returns (uint256) {
         return encryptorFeeRate * duration * encryptorSlots;
     }
 
-    function isPeriodPaid(address authAdmin, uint256 periodNumber) public view returns (bool) {
-        return authAdminInfo[authAdmin].billingInfo[periodNumber].paid;
-    }
-
-    function getPaidEncryptorSlots(
-        address authAdmin,
-        uint256 periodNumber
-    ) public view returns (uint256) {
-        return authAdminInfo[authAdmin].billingInfo[periodNumber].encryptorSlots;
-    }
-
     /**
-     *
-     * @notice Pays for the closest unpaid subscription period (either the current or the next)
+     * @notice Process payment for the chosen package
+     * @param authAdmin Address of the admin
      * @param encryptorPackages Number of encryptor packages
      */
-    function payForSubscription(address authAdmin, uint32 encryptorPackages) external {
-        uint256 fees = processPaymentForSubscription(authAdmin, encryptorPackages);
-        feeToken.safeTransferFrom(msg.sender, address(this), fees);
-    }
-
-    /**
-     * @notice Process payment for the closest unpaid subscription period (either the current or the next)
-     * @param encryptorPackages Number of encryptor packages
-     */
-    function processPaymentForSubscription(
+    function payForSubscription(
         address authAdmin,
-        uint32 encryptorPackages
-    ) internal returns (uint256 fees) {
-        uint256 currentPeriodNumber = getCurrentPeriodNumber(authAdmin);
-        AuthAdminInfo storage authAdminStruct = authAdminInfo[authAdmin];
+        uint256 encryptorPackages
+    ) external returns (uint256 fees) {
+        uint256 duration = subscriptionPackageDuration;
+        Billing storage billingInfo = billing[authAdmin];
         require(
-            !authAdminStruct.billingInfo[currentPeriodNumber + 1].paid,
-            "Next billing period already paid"
-        ); // TODO until we will have refunds
-        require(
-            authAdminStruct.startOfSubscription == 0 ||
-                getEndOfSubscription(authAdmin) >= block.timestamp,
-            "Subscription is over"
+            billingInfo.endOfSubscription < block.timestamp + duration,
+            "Renewal allowed only to later end of subscription"
         );
 
-        uint256 periodNumber = currentPeriodNumber;
-        if (authAdminStruct.billingInfo[periodNumber].paid) {
-            periodNumber++;
+        uint256 discount = 0;
+        if (billingInfo.endOfSubscription > block.timestamp) {
+            uint256 restOfSubscription = billingInfo.endOfSubscription - block.timestamp;
+            discount = encryptorFees(
+                billingInfo.encryptorFeeRate,
+                billingInfo.encryptorSlots,
+                restOfSubscription
+            );
         }
-        Billing storage billing = authAdminStruct.billingInfo[periodNumber];
-        billing.paid = true;
-        billing.encryptorSlots = encryptorPackages * subscriptionPackageEncryptors;
 
-        fees = encryptorFees(billing.encryptorSlots, subscriptionPackageDuration);
+        billingInfo.encryptorSlots = encryptorPackages * subscriptionPackageEncryptors;
+        billingInfo.endOfSubscription = block.timestamp + duration;
+        billingInfo.encryptorFeeRate = encryptorFeeRate;
+
+        fees = encryptorFees(encryptorFeeRate, billingInfo.encryptorSlots, duration) - discount;
         emit SubscriptionPaid(
             msg.sender,
             authAdmin,
             fees,
-            billing.encryptorSlots,
-            getEndOfSubscription(authAdmin)
+            billingInfo.encryptorSlots,
+            billingInfo.endOfSubscription
         );
-    }
-
-    /**
-     * @notice Pays for additional encryptor slots in the current period
-     * @param additionalEncryptorPackages Additional number of encryptor packages
-     */
-    function payForEncryptorSlots(address authAdmin, uint32 additionalEncryptorPackages) external {
-        uint256 fees = processPaymentForEncryptorSlots(authAdmin, additionalEncryptorPackages);
         feeToken.safeTransferFrom(msg.sender, address(this), fees);
-    }
-
-    /**
-     * @notice Process payment for additional encryptor slots in the current period
-     * @param additionalEncryptorPackages Additional number of encryptor packages
-     */
-    function processPaymentForEncryptorSlots(
-        address authAdmin,
-        uint32 additionalEncryptorPackages
-    ) internal returns (uint256 fees) {
-        uint256 currentPeriodNumber = getCurrentPeriodNumber(authAdmin);
-        AuthAdminInfo storage authAdminStruct = authAdminInfo[authAdmin];
-        Billing storage billing = authAdminStruct.billingInfo[currentPeriodNumber];
-        require(billing.paid, "Current billing period must be paid");
-
-        uint32 duration = subscriptionPackageDuration;
-        uint32 endOfCurrentPeriod = 0;
-        if (authAdminStruct.startOfSubscription != 0) {
-            endOfCurrentPeriod = uint32(
-                authAdminStruct.startOfSubscription +
-                    (currentPeriodNumber + 1) *
-                    subscriptionPackageDuration
-            );
-            duration = endOfCurrentPeriod - uint32(block.timestamp);
-        }
-
-        uint128 additionalEncryptorSlots = additionalEncryptorPackages *
-            subscriptionPackageEncryptors;
-        uint256 fees = encryptorFees(additionalEncryptorSlots, duration);
-        billing.encryptorSlots += additionalEncryptorSlots;
-
-        emit EncryptorSlotsPaid(
-            msg.sender,
-            authAdmin,
-            fees,
-            additionalEncryptorSlots,
-            endOfCurrentPeriod
-        );
-        return fees;
     }
 
     /**
@@ -303,81 +221,37 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
         activeRitualId = ritualId;
     }
 
-    function getCurrentPeriodNumber(address authAdmin) public view returns (uint256) {
-        AuthAdminInfo storage authAdminStruct = authAdminInfo[authAdmin];
-        if (authAdminStruct.startOfSubscription == 0) {
-            return 0;
-        }
-        return
-            (block.timestamp - authAdminStruct.startOfSubscription) / subscriptionPackageDuration;
-    }
-
-    function getEndOfSubscription(
-        address authAdmin
-    ) public view returns (uint32 endOfSubscription) {
-        AuthAdminInfo storage authAdminStruct = authAdminInfo[authAdmin];
-        if (authAdminStruct.startOfSubscription == 0) {
-            return 0;
-        }
-
-        uint256 currentPeriodNumber = getCurrentPeriodNumber(authAdmin);
-        if (currentPeriodNumber == 0 && !isPeriodPaid(authAdmin, currentPeriodNumber)) {
-            return 0;
-        }
-
-        if (isPeriodPaid(authAdmin, currentPeriodNumber)) {
-            while (isPeriodPaid(authAdmin, currentPeriodNumber)) {
-                currentPeriodNumber++;
-            }
-        } else {
-            while (!isPeriodPaid(authAdmin, currentPeriodNumber)) {
-                currentPeriodNumber--;
-            }
-            currentPeriodNumber++;
-        }
-        endOfSubscription = uint32(
-            authAdminStruct.startOfSubscription + currentPeriodNumber * subscriptionPackageDuration
-        );
-    }
-
     function beforeSetAuthorization(
         address authAdmin,
         uint32,
         address[] calldata addresses,
         bool value
     ) public virtual {
-        require(block.timestamp <= getEndOfSubscription(authAdmin), "Subscription has expired");
-        AuthAdminInfo storage authAdminStruct = authAdminInfo[authAdmin];
+        Billing storage billingInfo = billing[authAdmin];
+        require(block.timestamp <= billingInfo.endOfSubscription, "Subscription has expired");
         if (value) {
-            uint256 currentPeriodNumber = getCurrentPeriodNumber(authAdmin);
-            uint256 encryptorSlots = isPeriodPaid(authAdmin, currentPeriodNumber)
-                ? getPaidEncryptorSlots(authAdmin, currentPeriodNumber)
-                : 0;
-            authAdminStruct.usedEncryptorSlots += addresses.length;
+            billingInfo.usedEncryptorSlots += addresses.length;
             require(
-                authAdminStruct.usedEncryptorSlots <= encryptorSlots,
+                billingInfo.usedEncryptorSlots <= billingInfo.encryptorSlots,
                 "Encryptors slots filled up"
             );
         } else {
-            if (authAdminStruct.usedEncryptorSlots >= addresses.length) {
-                authAdminStruct.usedEncryptorSlots -= addresses.length;
+            if (billingInfo.usedEncryptorSlots >= addresses.length) {
+                billingInfo.usedEncryptorSlots -= addresses.length;
             } else {
-                authAdminStruct.usedEncryptorSlots = 0;
+                billingInfo.usedEncryptorSlots = 0;
             }
         }
     }
 
     function beforeIsAuthorized(address authAdmin, uint32) public view virtual {
-        require(block.timestamp <= getEndOfSubscription(authAdmin), "Subscription has expired");
+        Billing storage billingInfo = billing[authAdmin];
+        require(block.timestamp <= billingInfo.endOfSubscription, "Subscription has expired");
         // used encryptor slots must be paid
-        if (block.timestamp <= getEndOfSubscription(authAdmin)) {
-            uint256 currentPeriodNumber = getCurrentPeriodNumber(authAdmin);
-            require(
-                authAdminInfo[authAdmin].usedEncryptorSlots <=
-                    getPaidEncryptorSlots(authAdmin, currentPeriodNumber),
-                "Encryptors slots filled up"
-            );
-        }
+        require(
+            billingInfo.usedEncryptorSlots <= billingInfo.encryptorSlots,
+            "Encryptors slots filled up"
+        );
     }
 
     /**
