@@ -30,12 +30,11 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
     IEncryptionAuthorizer public immutable accessController;
     IERC20 public immutable feeToken;
 
-    uint256 public immutable subscriptionPackageDuration;
-    uint256 public immutable subscriptionPackageEncryptors;
     address public immutable adopterSetter;
 
     uint256 public immutable encryptorFeeRate;
 
+    uint256[3][10] public feePackages;
     uint32 public activeRitualId;
     mapping(address authAdmin => Billing billingInfo) public billing;
     address public adopter;
@@ -72,16 +71,14 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
      * @param _accessController The address of the global allow list
      * @param _feeToken The address of the fee token contract
      * @param _adopterSetter Address that can set the adopter address
-     * @param _encryptorFeeRate Fee rate per encryptor per second
-     * @param _subscriptionPackageDuration Duration of subscription package
+     * @param _feePackages Fee packages [duration(sec), encryptors, feeRate]
      */
     constructor(
         Coordinator _coordinator,
         IEncryptionAuthorizer _accessController,
         IERC20 _feeToken,
         address _adopterSetter,
-        uint256 _encryptorFeeRate,
-        uint256 _subscriptionPackageDuration
+        uint256[3][10] memory _feePackages
     ) {
         require(address(_feeToken) != address(0), "Fee token cannot be the zero address");
         require(_adopterSetter != address(0), "Adopter setter cannot be the zero address");
@@ -93,9 +90,8 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
         coordinator = _coordinator;
         feeToken = _feeToken;
         adopterSetter = _adopterSetter;
-        encryptorFeeRate = _encryptorFeeRate;
         accessController = _accessController;
-        subscriptionPackageDuration = _subscriptionPackageDuration;
+        feePackages = _feePackages;
         _disableInitializers();
     }
 
@@ -137,6 +133,19 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
         adopter = _adopter;
     }
 
+    function getEncryptorFeeRate(
+        uint256 encryptorSlots,
+        uint256 duration
+    ) public view returns (uint256) {
+        for (uint256 i = 0; i < feePackages.length; i++) {
+            uint256[3] storage feePackage = feePackages[i];
+            if (feePackage[0] == duration && feePackage[1] == encryptorSlots) {
+                return feePackage[2];
+            }
+        }
+        revert("Fee package is not available");
+    }
+
     function encryptorFees(
         uint256 encryptorFeeRate,
         uint256 encryptorSlots,
@@ -148,16 +157,17 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
     /**
      * @notice Process payment for the chosen package
      * @param authAdmin Address of the admin
-     * @param encryptorPackages Number of encryptor packages
+     * @param encryptorSlots Number of encryptor slots
+     * @param packageDuration Requested duration
      */
     function payForSubscription(
         address authAdmin,
-        uint256 encryptorPackages
+        uint256 encryptorSlots,
+        uint256 packageDuration
     ) external returns (uint256 fees) {
-        uint256 duration = subscriptionPackageDuration;
         Billing storage billingInfo = billing[authAdmin];
         require(
-            billingInfo.endOfSubscription < block.timestamp + duration,
+            billingInfo.endOfSubscription < block.timestamp + packageDuration,
             "Renewal allowed only to later end of subscription"
         );
 
@@ -171,11 +181,13 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
             );
         }
 
-        billingInfo.encryptorSlots = encryptorPackages * subscriptionPackageEncryptors;
-        billingInfo.endOfSubscription = block.timestamp + duration;
-        billingInfo.encryptorFeeRate = encryptorFeeRate;
+        billingInfo.encryptorSlots = encryptorSlots;
+        billingInfo.endOfSubscription = block.timestamp + packageDuration;
+        billingInfo.encryptorFeeRate = getEncryptorFeeRate(encryptorSlots, packageDuration);
 
-        fees = encryptorFees(encryptorFeeRate, billingInfo.encryptorSlots, duration) - discount;
+        fees =
+            encryptorFees(billingInfo.encryptorFeeRate, encryptorSlots, packageDuration) -
+            discount;
         emit SubscriptionPaid(
             msg.sender,
             authAdmin,
