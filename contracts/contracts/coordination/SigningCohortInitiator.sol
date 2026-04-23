@@ -151,4 +151,18 @@ contract SigningCohortInitiator is Ownable {
         signingCoordinator.extendSigningCohortDuration(cohortId, defaultDuration);
         emit ExtensionExecuted(cohortId, defaultDuration);
     }
+
+    function setDefaultParameters(
+        address[] memory providers,
+        uint16 threshold,
+        uint32 duration
+    ) external onlyOwner {
+        require(providers.length > 0, "Invalid default providers");
+        require(threshold > 0 && threshold <= providers.length, "Invalid default threshold");
+        require(duration > 0, "Invalid default duration");
+
+        defaultProviders = providers;
+        defaultThreshold = threshold;
+        defaultDuration = duration;
+    }
 }
