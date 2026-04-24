@@ -171,23 +171,31 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
             "Renewal allowed only to later end of subscription"
         );
 
+        uint256 encryptorFeeRate = getEncryptorFeeRate(encryptorSlots, packageDuration);
         uint256 discount = 0;
-        if (billingInfo.endOfSubscription > block.timestamp) {
-            uint256 restOfSubscription = billingInfo.endOfSubscription - block.timestamp;
-            discount = encryptorFees(
-                billingInfo.encryptorFeeRate,
-                billingInfo.encryptorSlots,
-                restOfSubscription
-            );
+        if (
+            encryptorFeeRate == billingInfo.encryptorFeeRate &&
+            billingInfo.encryptorSlots == encryptorSlots
+        ) {
+            billingInfo.endOfSubscription += packageDuration;
+        } else {
+            if (billingInfo.endOfSubscription > block.timestamp) {
+                uint256 restOfSubscription = billingInfo.endOfSubscription - block.timestamp;
+                discount = encryptorFees(
+                    billingInfo.encryptorFeeRate,
+                    billingInfo.encryptorSlots,
+                    restOfSubscription
+                );
+            }
+
+            billingInfo.encryptorSlots = encryptorSlots;
+            billingInfo.endOfSubscription = block.timestamp + packageDuration;
+            billingInfo.encryptorFeeRate = encryptorFeeRate;
         }
 
-        billingInfo.encryptorSlots = encryptorSlots;
-        billingInfo.endOfSubscription = block.timestamp + packageDuration;
-        billingInfo.encryptorFeeRate = getEncryptorFeeRate(encryptorSlots, packageDuration);
-
-        fees =
-            encryptorFees(billingInfo.encryptorFeeRate, encryptorSlots, packageDuration) -
-            discount;
+        fees = encryptorFees(encryptorFeeRate, encryptorSlots, packageDuration);
+        require(discount < fees, "Discount can not be more than new package fees");
+        fees -= discount;
         emit SubscriptionPaid(
             msg.sender,
             authAdmin,
