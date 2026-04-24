@@ -215,9 +215,18 @@ contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
      * @notice Register request of unstaking
      * @param _stakingProvider Address of staking provider
      */
-    function requestUnstake(
-        address _stakingProvider
-    ) external onlyOwnerOrStakingProvider(_stakingProvider) {
+    function requestUnstake(address _stakingProvider) external {
+        require(isAuthorized(_stakingProvider), "Not enough authorization");
+        // Only staking provider, stake owner or contract owner can request unstaking
+        if (_stakingProvider != msg.sender) {
+            address stakeOwner = stakingProviderInfo[_stakingProvider].owner;
+            address contractOwner = owner();
+            require(
+                stakeOwner == msg.sender || contractOwner == msg.sender,
+                "Not owner or provider"
+            );
+        }
+
         StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
         require(info.deauthorizing == 0, "Unstake already requested");
 
@@ -532,5 +541,18 @@ contract TACoApplication is ITACoChildToRoot, OwnableUpgradeable {
         info.stakeless = true;
         emit StakelessProviderAdded(_stakingProvider);
         _updateAuthorization(_stakingProvider, info);
+    }
+
+    function convertToStakelessProvider(address _stakingProvider) external onlyOwner {
+        StakingProviderInfo storage info = stakingProviderInfo[_stakingProvider];
+        uint96 authorized = info.authorized;
+        require(!info.stakeless, "Provider is already stakeless");
+        require(authorized > 0, "Not enough authorization");
+        require(info.deauthorizing == 0, "Unstake already requested");
+
+        info.stakeless = true;
+        info.beneficiary = address(0);
+        emit StakelessProviderAdded(_stakingProvider);
+        token.safeTransfer(info.owner, authorized);
     }
 }

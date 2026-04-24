@@ -21,6 +21,7 @@ from web3 import Web3
 
 OPERATOR_CONFIRMED_SLOT = 1
 AUTHORIZATION_SLOT = 3
+STAKELESS_SLOT = -1
 MIN_AUTHORIZATION = Web3.to_wei(40_000, "ether")
 
 
@@ -72,6 +73,55 @@ def test_initialize_stake(accounts, token, taco_application, child_application):
         taco_application.initializeStake(staking_provider, owner, beneficiary, sender=creator)
 
 
+def test_request_unstake_callers(accounts, taco_application, token, child_application):
+    """
+    Tests for authorization method: requestUnstake
+    """
+
+    creator, staking_provider, owner, beneficiary, staking_provider_2, staking_provider_3 = accounts[0:6]
+    value = MIN_AUTHORIZATION
+
+    # Prepare staking providers
+    token.transfer(owner, value, sender=creator)
+    token.approve(taco_application.address, value, sender=owner)
+    taco_application.initializeStake(staking_provider, owner, beneficiary, sender=creator)
+
+    token.transfer(staking_provider_2, value, sender=creator)
+    token.approve(taco_application.address, value, sender=staking_provider_2)
+    taco_application.initializeStake(
+        staking_provider_2, staking_provider_2, staking_provider_2, sender=creator
+    )
+
+    token.transfer(staking_provider_3, value, sender=creator)
+    token.approve(taco_application.address, value, sender=staking_provider_3)
+    taco_application.initializeStake(
+        staking_provider_3, staking_provider_3, staking_provider_3, sender=creator
+    )
+
+    assert taco_application.eligibleStake(staking_provider) == value
+    assert taco_application.eligibleStake(staking_provider_2) == value
+    assert taco_application.eligibleStake(staking_provider_3) == value
+
+    # Only staking provider, stake owner or contract owner can call
+    with ape.reverts("Not owner or provider"):
+        taco_application.requestUnstake(staking_provider, sender=beneficiary)
+
+    with ape.reverts("Not owner or provider"):
+        taco_application.requestUnstake(staking_provider_2, sender=staking_provider_3)
+
+    # For the first staking provider, let's check that the stake owner can call
+    taco_application.requestUnstake(staking_provider, sender=owner)
+    assert taco_application.eligibleStake(staking_provider) == 0
+
+    # For the second staking provider, let's check that the staking provider can call
+    taco_application.requestUnstake(staking_provider_2, sender=staking_provider_2)
+    assert taco_application.eligibleStake(staking_provider_2) == 0
+
+    # For the third staking provider, let's check that the contract owner can call
+    taco_application.requestUnstake(staking_provider_3, sender=creator)
+    assert taco_application.eligibleStake(staking_provider_3) == 0
+
+
 def test_request_unstake(accounts, taco_application, child_application, token):
     """
     Tests for authorization method: requestUnstake
@@ -85,10 +135,6 @@ def test_request_unstake(accounts, taco_application, child_application, token):
     token.transfer(owner, value, sender=creator)
     token.approve(taco_application.address, value, sender=owner)
     taco_application.initializeStake(staking_provider, owner, beneficiary, sender=creator)
-
-    # Only staking provider or owner of stake can call
-    with ape.reverts("Not owner or provider"):
-        taco_application.requestUnstake(staking_provider, sender=creator)
 
     # Request of unstaking
     assert taco_application.stakingProviderInfo(staking_provider)[AUTHORIZATION_SLOT] == value
@@ -316,3 +362,48 @@ def test_add_stakeless_provider(accounts, taco_application, child_application, c
 
     with ape.reverts("A provider can't be an operator for another provider"):
         taco_application.addStakelessProvider(owner, owner, sender=creator)
+
+
+def test_convert_to_stakeless_provider(accounts, taco_application, child_application, chain, token):
+    """
+    Tests for authorization method: convertToStakelessProvider
+    """
+
+    creator, staking_provider, owner = accounts[0:3]
+    minimum_authorization = MIN_AUTHORIZATION
+    value = minimum_authorization
+
+    # Prepare staking providers
+    token.transfer(owner, value, sender=creator)
+    token.approve(taco_application.address, value, sender=owner)
+    taco_application.initializeStake(staking_provider, owner, staking_provider, sender=creator)
+
+    token.transfer(taco_application, 10*value, sender=creator)
+
+    # Owner sent all their tokens after creating stake
+    assert token.balanceOf(owner) == 0
+
+    # Check that the staking provider is authorized
+    assert taco_application.isAuthorized(staking_provider)
+
+    # Check that the stake is not stakeless
+    assert not taco_application.stakingProviderInfo(staking_provider)[STAKELESS_SLOT]
+
+    # Only contract owner can call `convertToStakelessProvider`
+    with ape.reverts():
+        taco_application.convertToStakelessProvider(staking_provider, sender=owner)
+
+    taco_application.convertToStakelessProvider(staking_provider, sender=creator)
+
+    # Tokens are returned to the owner
+    assert token.balanceOf(owner) == value
+
+    # Check that the staking provider is still authorized
+    assert taco_application.isAuthorized(staking_provider)
+
+    # Check that the stake is now stakeless
+    assert taco_application.stakingProviderInfo(staking_provider)[STAKELESS_SLOT]
+
+    # `convertToStakelessProvider` can only be called once
+    with ape.reverts("Provider is already stakeless"):
+        taco_application.convertToStakelessProvider(staking_provider, sender=creator)
