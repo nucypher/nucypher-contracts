@@ -2,12 +2,12 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import "./SigningCoordinator.sol";
 
-contract SigningCohortInitiator is Ownable {
+contract SigningCohortInitiator is OwnableUpgradeable {
     using SafeERC20 for IERC20;
 
     event RequestExecuted(
@@ -23,6 +23,10 @@ contract SigningCohortInitiator is Ownable {
 
     event ExtensionExecuted(uint32 indexed cohortId, uint32 additionalDuration);
 
+    event DefaultParametersUpdated(address[] providers, uint16 threshold, uint32 duration);
+
+    event FeeRateUpdated(uint256 oldFeeRate, uint256 newFeeRate);
+
     struct InitiationRequest {
         address initiator;
         uint256 chainId;
@@ -30,54 +34,38 @@ contract SigningCohortInitiator is Ownable {
 
     SigningCoordinator public immutable signingCoordinator;
     IERC20 public immutable currency;
-    uint256 public immutable feeRatePerSecond;
+
+    uint256 public feeRatePerSecond;
     address[] public defaultProviders;
     uint16 public defaultThreshold;
     uint32 public defaultDuration;
 
     mapping(uint32 => InitiationRequest) public requests; // cohortId -> Request
 
-    constructor(
-        SigningCoordinator _signingCoordinator,
-        IERC20 _currency,
-        uint256 _feeRatePerSecond,
-        address[] memory _defaultProviders,
-        uint16 _defaultThreshold,
-        uint32 _defaultDuration
-    ) Ownable(msg.sender) {
+    constructor(SigningCoordinator _signingCoordinator, IERC20 _currency) {
         require(address(_signingCoordinator) != address(0), "Invalid signing coordinator");
         require(address(_currency) != address(0), "Invalid currency");
-        require(_feeRatePerSecond > 0, "Invalid fee rate");
-        require(_defaultProviders.length > 0, "Invalid default providers");
-        require(
-            _defaultThreshold > 0 && _defaultThreshold <= _defaultProviders.length,
-            "Invalid default threshold"
-        );
-        require(_defaultDuration > 0, "Invalid default duration");
-
-        // ensure default providers are sorted
-        _ensureSortedProviders(_defaultProviders);
-
         signingCoordinator = _signingCoordinator;
         currency = _currency;
-        feeRatePerSecond = _feeRatePerSecond;
-        defaultProviders = _defaultProviders;
-        defaultThreshold = _defaultThreshold;
-        defaultDuration = _defaultDuration;
+        _disableInitializers();
+    }
+
+    /**
+     * @notice Initialize function for use with OpenZeppelin proxy
+     */
+    function initialize() external initializer {
+        __Ownable_init(msg.sender);
     }
 
     function _ensureSortedProviders(address[] memory providers) internal pure {
         for (uint256 i = 1; i < providers.length; i++) {
+            require(providers[i] != address(0), "Invalid provider address");
             require(providers[i] > providers[i - 1], "Providers must be sorted");
         }
     }
 
-    function _processPayment(
-        address initiator,
-        uint256 numberOfProviders,
-        uint32 duration
-    ) internal {
-        uint256 cohortCost = getCohortCost(numberOfProviders, duration);
+    function _processPayment(address initiator) internal {
+        uint256 cohortCost = getCohortCost();
         require(cohortCost > 0, "Invalid cohort cost");
         currency.safeTransferFrom(initiator, address(this), cohortCost);
     }
@@ -99,13 +87,8 @@ contract SigningCohortInitiator is Ownable {
         return cohortId;
     }
 
-    function getCohortCost(
-        uint256 numberOfProviders,
-        uint32 duration
-    ) public view returns (uint256) {
-        require(numberOfProviders > 0, "Invalid cohort size");
-        require(duration > 0, "Invalid cohort duration");
-        return feeRatePerSecond * numberOfProviders * duration;
+    function getCohortCost() public view returns (uint256) {
+        return feeRatePerSecond * defaultProviders.length * defaultDuration;
     }
 
     function withdrawFees() external onlyOwner {
@@ -115,14 +98,14 @@ contract SigningCohortInitiator is Ownable {
     }
 
     function establishSigningCohort(address authority, uint256 chainId) external returns (uint32) {
-        _processPayment(msg.sender, defaultProviders.length, defaultDuration);
+        _processPayment(msg.sender);
         return _createSigningCohort(authority, chainId);
     }
 
     function deployAdditionalChain(uint32 cohortId, uint256 chainId) external {
-        require(signingCoordinator.isCohortActive(cohortId), "Cohort is not active");
         InitiationRequest storage request = requests[cohortId];
         require(request.initiator != address(0), "Invalid cohort ID");
+        require(signingCoordinator.isCohortActive(cohortId), "Cohort is not active");
         require(msg.sender == request.initiator, "Only initiator can deploy additional chain");
         require(request.chainId != chainId, "Chain ID already exists for this cohort");
 
@@ -153,11 +136,12 @@ contract SigningCohortInitiator is Ownable {
     }
 
     function extendSigningCohort(uint32 cohortId) external {
-        require(signingCoordinator.isCohortActive(cohortId), "Cohort is not active");
         InitiationRequest storage request = requests[cohortId];
         require(request.initiator != address(0), "Invalid cohort ID");
+        require(signingCoordinator.isCohortActive(cohortId), "Cohort is not active");
         require(msg.sender == request.initiator, "Only initiator can extend cohort duration");
-        _processPayment(msg.sender, defaultProviders.length, defaultDuration);
+        // TODO: do we charge a different fee for extension?
+        _processPayment(msg.sender);
 
         signingCoordinator.extendSigningCohortDuration(cohortId, defaultDuration);
         emit ExtensionExecuted(cohortId, defaultDuration);
@@ -176,5 +160,12 @@ contract SigningCohortInitiator is Ownable {
         defaultProviders = providers;
         defaultThreshold = threshold;
         defaultDuration = duration;
+        emit DefaultParametersUpdated(providers, threshold, duration);
+    }
+
+    function setFeeRate(uint256 _feeRatePerSecond) external onlyOwner {
+        require(_feeRatePerSecond > 0, "Invalid fee rate");
+        emit FeeRateUpdated(feeRatePerSecond, _feeRatePerSecond);
+        feeRatePerSecond = _feeRatePerSecond;
     }
 }
