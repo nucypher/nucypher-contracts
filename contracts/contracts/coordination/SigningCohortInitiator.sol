@@ -58,9 +58,11 @@ contract SigningCohortInitiator is OwnableUpgradeable {
     }
 
     function _ensureSortedProviders(address[] memory providers) internal pure {
-        for (uint256 i = 1; i < providers.length; i++) {
+        address previous = address(0);
+        for (uint256 i = 0; i < providers.length; i++) {
             require(providers[i] != address(0), "Invalid provider address");
-            require(providers[i] > providers[i - 1], "Providers must be sorted");
+            require(providers[i] > previous, "Providers must be sorted");
+            previous = providers[i];
         }
     }
 
