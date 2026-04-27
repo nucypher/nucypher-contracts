@@ -120,6 +120,9 @@ contract MockSigningCoordinatorForInitiator {
 
     function deployAdditionalChainForSigningMultisig(uint256 chainId, uint32 cohortId) external {
         SigningCoordinator.SigningCohort storage signingCohort = signingCohorts[cohortId];
+        for (uint256 i = 0; i < signingCohort.chains.length; i++) {
+            require(signingCohort.chains[i] != chainId, "Already deployed for this chain");
+        }
         signingCohort.chains.push(chainId);
     }
 
