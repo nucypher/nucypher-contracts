@@ -1,19 +1,3 @@
-"""
-This file is part of nucypher.
-
-nucypher is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-nucypher is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with nucypher.  If not, see <https://www.gnu.org/licenses/>.
-"""
 from enum import IntEnum
 
 import ape
@@ -33,7 +17,8 @@ SigningCohortState = IntEnum(
 COHORT_SIZE = 8
 DEFAULT_THRESHOLD = COHORT_SIZE // 2
 DEFAULT_DURATION_IN_S = DAY_IN_SECONDS * 90  # 90 days
-FEE_RATE_PER_SECOND = 1000
+INIT_FEE_RATE_PER_SECOND = 1000
+EXTEND_FEE_RATE_PER_SECOND = 1500
 
 
 @pytest.fixture(scope="module")
@@ -81,7 +66,7 @@ def signing_cohort_initiator(project, oz_dependency, signing_coordinator, token,
     )
     contract = project.SigningCohortInitiator.at(proxy.address)
 
-    contract.setFeeRate(FEE_RATE_PER_SECOND, sender=deployer)
+    contract.setFeeRates(INIT_FEE_RATE_PER_SECOND, EXTEND_FEE_RATE_PER_SECOND, sender=deployer)
     contract.setDefaultParameters(
         nodes,
         DEFAULT_THRESHOLD,
@@ -92,9 +77,18 @@ def signing_cohort_initiator(project, oz_dependency, signing_coordinator, token,
     return contract
 
 
-def test_cohort_cost(nodes, signing_cohort_initiator):
-    cost = signing_cohort_initiator.getCohortCost()
-    assert cost == (len(nodes) * DEFAULT_DURATION_IN_S * FEE_RATE_PER_SECOND)
+@pytest.mark.parametrize(
+    "fee_rate_per_second, duration",
+    [
+        (39, DAY_IN_SECONDS * 30),
+        (60, DAY_IN_SECONDS * 90),
+        (120, DAY_IN_SECONDS * 180),
+        (1000, DAY_IN_SECONDS * 365),
+    ],
+)
+def test_cohort_cost(fee_rate_per_second, duration, nodes, signing_cohort_initiator):
+    cost = signing_cohort_initiator.getCohortCost(fee_rate_per_second, duration)
+    assert cost == (len(nodes) * duration * fee_rate_per_second)
 
 
 def test_establish_signing_cohort(
@@ -102,7 +96,9 @@ def test_establish_signing_cohort(
 ):
     initiator_1, initiator_2, authority_1, authority_2, *remaining = other_accounts
 
-    cohort_cost = signing_cohort_initiator.getCohortCost()
+    cohort_cost = signing_cohort_initiator.getCohortCost(
+        INIT_FEE_RATE_PER_SECOND, DEFAULT_DURATION_IN_S
+    )
 
     # Can't register request without token transfer approval
     with ape.reverts():
@@ -173,7 +169,9 @@ def test_deploy_additional_chain(
     chain_id = 10
     new_chain_id = 25
 
-    cohort_cost = signing_cohort_initiator.getCohortCost()
+    cohort_cost = signing_cohort_initiator.getCohortCost(
+        INIT_FEE_RATE_PER_SECOND, DEFAULT_DURATION_IN_S
+    )
     token.mint(initiator, 5 * cohort_cost, sender=initiator)
     token.approve(signing_cohort_initiator.address, 5 * cohort_cost, sender=initiator)
 
@@ -225,16 +223,19 @@ def test_extend_signing_cohort(
     signing_cohort_initiator, signing_coordinator, token, nodes, other_accounts, deployer
 ):
     initiator, authority, initiator_2, *remaining = other_accounts
+    extension_duration = 365 * DAY_IN_SECONDS
 
     # Can't extend non-existent cohort
     with ape.reverts("Invalid cohort ID"):
-        signing_cohort_initiator.extendSigningCohort(0, sender=initiator)
+        signing_cohort_initiator.extendSigningCohort(0, extension_duration, sender=initiator)
 
     # establish cohort
     initiator, authority, *remaining = other_accounts
     chain_id = 10
 
-    cohort_cost = signing_cohort_initiator.getCohortCost()
+    cohort_cost = signing_cohort_initiator.getCohortCost(
+        EXTEND_FEE_RATE_PER_SECOND, extension_duration
+    )
     token.mint(initiator, 5 * cohort_cost, sender=initiator)
     token.approve(signing_cohort_initiator.address, 5 * cohort_cost, sender=initiator)
 
@@ -253,7 +254,9 @@ def test_extend_signing_cohort(
         signing_coordinator.setCohortState(cohort_id, state, sender=initiator)
 
         with ape.reverts("Cohort is not active"):
-            signing_cohort_initiator.extendSigningCohort(cohort_id, sender=deployer)
+            signing_cohort_initiator.extendSigningCohort(
+                cohort_id, extension_duration, sender=deployer
+            )
 
     # mimic completion of ritual
     signing_coordinator.setCohortState(cohort_id, SigningCohortState.ACTIVE, sender=deployer)
@@ -262,19 +265,33 @@ def test_extend_signing_cohort(
 
     # must be original initiator to extend
     with ape.reverts("Only initiator can extend cohort duration"):
-        signing_cohort_initiator.extendSigningCohort(cohort_id, sender=initiator_2)
+        signing_cohort_initiator.extendSigningCohort(
+            cohort_id, extension_duration, sender=initiator_2
+        )
+
+    with ape.reverts("Invalid duration"):
+        # duration of 0
+        signing_cohort_initiator.extendSigningCohort(cohort_id, 0, sender=initiator)
+
+    with ape.reverts("Invalid duration"):
+        # duration > 1 year
+        signing_cohort_initiator.extendSigningCohort(
+            cohort_id, 366 * DAY_IN_SECONDS, sender=initiator
+        )
 
     # Extend cohort
-    tx = signing_cohort_initiator.extendSigningCohort(cohort_id, sender=initiator)
+    tx = signing_cohort_initiator.extendSigningCohort(
+        cohort_id, extension_duration, sender=initiator
+    )
 
     # Event emitted with correct values
     events = signing_cohort_initiator.ExtensionExecuted.from_receipt(tx)
     assert len(events) == 1
     event = events[0]
     assert event.cohortId == cohort_id
-    assert event.additionalDuration == DEFAULT_DURATION_IN_S
+    assert event.additionalDuration == extension_duration
     new_end_timestamp = signing_coordinator.signingCohorts(cohort_id).endTimestamp
-    assert new_end_timestamp == original_end_timestamp + DEFAULT_DURATION_IN_S
+    assert new_end_timestamp == original_end_timestamp + extension_duration
 
 
 def test_withdraw_fees(
@@ -292,7 +309,9 @@ def test_withdraw_fees(
     with ape.reverts("No fees to withdraw"):
         signing_cohort_initiator.withdrawFees(sender=owner)
 
-    cohort_cost = signing_cohort_initiator.getCohortCost()
+    cohort_cost = signing_cohort_initiator.getCohortCost(
+        INIT_FEE_RATE_PER_SECOND, DEFAULT_DURATION_IN_S
+    )
 
     num_cohorts = 5
 
@@ -329,7 +348,9 @@ def test_retry_failed_request(
 ):
     initiator, authority, initiator_2, *remaining = other_accounts
     chain_id = 23
-    cohort_cost = signing_cohort_initiator.getCohortCost()
+    cohort_cost = signing_cohort_initiator.getCohortCost(
+        INIT_FEE_RATE_PER_SECOND, DEFAULT_DURATION_IN_S
+    )
 
     token.mint(initiator, 5 * cohort_cost, sender=initiator)
     token.approve(signing_cohort_initiator.address, 5 * cohort_cost, sender=initiator)
@@ -415,7 +436,9 @@ def test_set_default_parameters(
 ):
     initiator, authority, authority_2, *remaining = other_accounts
     chain_id = 23
-    cohort_cost = signing_cohort_initiator.getCohortCost()
+    cohort_cost = signing_cohort_initiator.getCohortCost(
+        INIT_FEE_RATE_PER_SECOND, DEFAULT_DURATION_IN_S
+    )
 
     token.mint(initiator, 5 * cohort_cost, sender=initiator)
     token.approve(signing_cohort_initiator.address, 5 * cohort_cost, sender=initiator)
@@ -451,8 +474,8 @@ def test_set_default_parameters(
     assert event.threshold == new_threshold
     assert event.duration == new_duration
 
-    assert signing_cohort_initiator.getCohortCost() == (
-        len(new_nodes) * new_duration * FEE_RATE_PER_SECOND
+    assert signing_cohort_initiator.getCohortCost(INIT_FEE_RATE_PER_SECOND, new_duration) == (
+        len(new_nodes) * new_duration * INIT_FEE_RATE_PER_SECOND
     )
 
     # request new cohort
@@ -476,20 +499,100 @@ def test_set_default_parameters(
     assert signing_cohort.authority == authority
 
 
-def test_set_fee_rate_per_second(
-    signing_cohort_initiator, signing_coordinator, deployer, token, nodes
+def test_set_fee_rates_per_second(
+    signing_cohort_initiator, signing_coordinator, deployer, token, nodes, other_accounts
 ):
-    cohort_cost = signing_cohort_initiator.getCohortCost()
-    assert cohort_cost == len(nodes) * DEFAULT_DURATION_IN_S * FEE_RATE_PER_SECOND
+    init_cohort_cost = signing_cohort_initiator.getCohortCost(
+        INIT_FEE_RATE_PER_SECOND, DEFAULT_DURATION_IN_S
+    )
+    assert init_cohort_cost == len(nodes) * DEFAULT_DURATION_IN_S * INIT_FEE_RATE_PER_SECOND
 
-    newFeeRatePerSecond = FEE_RATE_PER_SECOND * 2
-    tx = signing_cohort_initiator.setFeeRate(newFeeRatePerSecond, sender=deployer)
-    events = signing_cohort_initiator.FeeRateUpdated.from_receipt(tx)
+    extend_cohort_cost = signing_cohort_initiator.getCohortCost(
+        EXTEND_FEE_RATE_PER_SECOND, DEFAULT_DURATION_IN_S
+    )
+    assert extend_cohort_cost == len(nodes) * DEFAULT_DURATION_IN_S * EXTEND_FEE_RATE_PER_SECOND
+    assert extend_cohort_cost != init_cohort_cost
+
+    with ape.reverts("Extension rate less than initiation rate"):
+        signing_cohort_initiator.setFeeRates(
+            INIT_FEE_RATE_PER_SECOND, INIT_FEE_RATE_PER_SECOND - 1, sender=deployer
+        )
+
+    new_init_fee_rate_per_second = INIT_FEE_RATE_PER_SECOND * 2
+    new_extend_fee_rate_per_second = EXTEND_FEE_RATE_PER_SECOND * 4
+    tx = signing_cohort_initiator.setFeeRates(
+        new_init_fee_rate_per_second, new_extend_fee_rate_per_second, sender=deployer
+    )
+
+    assert signing_cohort_initiator.initFeeRatePerSecond() == new_init_fee_rate_per_second
+    assert signing_cohort_initiator.extendFeeRatePerSecond() == new_extend_fee_rate_per_second
+
+    events = signing_cohort_initiator.InitFeeRateUpdated.from_receipt(tx)
     assert len(events) == 1
     event = events[0]
-    assert event.oldFeeRate == FEE_RATE_PER_SECOND
-    assert event.newFeeRate == newFeeRatePerSecond
+    assert event.oldFeeRate == INIT_FEE_RATE_PER_SECOND
+    assert event.newFeeRate == new_init_fee_rate_per_second
 
-    new_cohort_cost = signing_cohort_initiator.getCohortCost()
-    assert new_cohort_cost != cohort_cost
-    assert new_cohort_cost == len(nodes) * DEFAULT_DURATION_IN_S * newFeeRatePerSecond
+    # initiation fees
+    new_init_cohort_cost = signing_cohort_initiator.getCohortCost(
+        new_init_fee_rate_per_second, DEFAULT_DURATION_IN_S
+    )
+    assert new_init_cohort_cost != init_cohort_cost
+    assert new_init_cohort_cost == len(nodes) * DEFAULT_DURATION_IN_S * new_init_fee_rate_per_second
+
+    events = signing_cohort_initiator.ExtendFeeRateUpdated.from_receipt(tx)
+    assert len(events) == 1
+    event = events[0]
+    assert event.oldFeeRate == EXTEND_FEE_RATE_PER_SECOND
+    assert event.newFeeRate == new_extend_fee_rate_per_second
+
+    # extension fees
+    extension_duration = 360 * DAY_IN_SECONDS
+
+    new_extend_cohort_cost = signing_cohort_initiator.getCohortCost(
+        new_extend_fee_rate_per_second, extension_duration
+    )
+    assert new_extend_cohort_cost != new_init_cohort_cost
+    assert new_extend_cohort_cost != extend_cohort_cost
+    assert (
+        new_extend_cohort_cost == len(nodes) * extension_duration * new_extend_fee_rate_per_second
+    )
+
+    # try initiating and extending cohort with new fee rates
+    initiator, authority, *remaining = other_accounts
+    token.mint(initiator, 5 * new_extend_cohort_cost, sender=initiator)
+    token.approve(signing_cohort_initiator.address, 5 * new_extend_cohort_cost, sender=initiator)
+
+    initiator_balance_before = token.balanceOf(initiator)
+    signing_coordinator_initiator_balance_before = token.balanceOf(signing_cohort_initiator.address)
+
+    chain_id = 10
+    _ = signing_cohort_initiator.establishSigningCohort(authority, chain_id, sender=initiator)
+    cohort_id = 0
+
+    # initiation payment processed
+    assert token.balanceOf(initiator) == initiator_balance_before - new_init_cohort_cost
+    assert (
+        token.balanceOf(signing_cohort_initiator.address)
+        == signing_coordinator_initiator_balance_before + new_init_cohort_cost
+    )
+    assert (
+        signing_coordinator.getSigningCohortState(cohort_id)
+        == SigningCohortState.AWAITING_SIGNATURES
+    )
+    # mimic completion of ritual
+    signing_coordinator.setCohortState(cohort_id, SigningCohortState.ACTIVE, sender=deployer)
+
+    # Extend cohort
+    initiator_balance_before = token.balanceOf(initiator)
+    signing_coordinator_initiator_balance_before = token.balanceOf(signing_cohort_initiator.address)
+
+    _ = signing_cohort_initiator.extendSigningCohort(
+        cohort_id, extension_duration, sender=initiator
+    )
+    # extension payment processed
+    assert token.balanceOf(initiator) == initiator_balance_before - new_extend_cohort_cost
+    assert (
+        token.balanceOf(signing_cohort_initiator.address)
+        == signing_coordinator_initiator_balance_before + new_extend_cohort_cost
+    )
