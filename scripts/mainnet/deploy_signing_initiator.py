@@ -16,7 +16,9 @@ def main():
 
     # set parameters
     deployer.transact(
-        signing_cohort_initiator.setFeeRate, deployer.constants.FEE_RATE_PER_SECOND_WEI
+        signing_cohort_initiator.setFeeRates,
+        deployer.constants.INIT_FEE_RATE_PER_SECOND_WEI,
+        deployer.constants.EXTEND_FEE_RATE_PER_SECOND_WEI,
     )
     deployer.transact(
         signing_cohort_initiator.setDefaultParameters,
