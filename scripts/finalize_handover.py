@@ -11,13 +11,16 @@ from deployment.types import ChecksumAddress
 from deployment.utils import check_plugins
 
 
-def validate_handover_data(coordinator, ritual_id, departing_provider):
+def validate_handover_data(coordinator, ritual_id, departing_provider, incoming_provider=None):
     """Validate the handover data for the ritual."""
     handover_key = coordinator.getHandoverKey(ritual_id, departing_provider)
     handover = coordinator.handovers(handover_key)
     assert (
         HandoverTranscript.from_bytes(handover.transcript) is not None
     ), "Handover transcript should be valid"
+
+    if incoming_provider:
+        assert handover.incomingProvider.lower() == incoming_provider.lower(), "Incoming provider should match"
 
     ritual = coordinator.rituals(ritual_id)
     existing_aggregated_transcript = ritual.aggregatedTranscript
@@ -76,6 +79,13 @@ def validate_handover_data(coordinator, ritual_id, departing_provider):
     type=ChecksumAddress(),
 )
 @click.option(
+    "--incoming-provider",
+    "-ip",
+    help="The ethereum address of the incoming staking provider.",
+    required=True,
+    type=ChecksumAddress(),
+)
+@click.option(
     "--auto",
     help="Automatically sign transactions.",
     is_flag=True,
@@ -86,6 +96,7 @@ def cli(
     network,
     ritual_id,
     departing_provider,
+    incoming_provider,
     auto,
 ):
     """Finalize the handover."""

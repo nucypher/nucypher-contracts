@@ -30,6 +30,7 @@ def check_incoming_provider(incoming_provider: str) -> bool:
                 node_status_data = node_response.json()
 
                 version = node_status_data["version"]
+                click.echo(f"Incoming provider {incoming_provider} is active with version {version}.")
                 if version.startswith("7.7") or version.startswith("7.6.1"):
                     return True
                 else:
