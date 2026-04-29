@@ -1,0 +1,37 @@
+deployment:
+  name: mainnet-signing-initiator
+  chain_id: 1  # Ethereum Mainnet
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: mainnet-signing-initiator.json
+
+constants:
+  # Constants used in script
+  NUCO_MULTISIG: "0x861aa915C785dEe04684444560fC7A2AB43a1543"
+  SIGNING_COORDINATOR: "0x281EEE1e2261F895857Cc1eF5Bcc954E1F907386"
+  USDC_TOKEN: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+  INIT_FEE_RATE_PER_SECOND_WEI: 39 #  ($100/month / (60 * 60 * 24 * 30)) * 10**6 (USDC has 6 decimals)
+  EXTEND_FEE_RATE_PER_SECOND_WEI: 116 # TBD $300/month?
+  DEFAULT_THRESHOLD: 4
+  DEFAULT_PROVIDERS: [
+    "0x0000000000000000000000000000000000000001",
+    "0x0000000000000000000000000000000000000002",
+    "0x0000000000000000000000000000000000000003",
+    "0x0000000000000000000000000000000000000004",
+    "0x0000000000000000000000000000000000000005",
+    "0x0000000000000000000000000000000000000006",
+    "0x0000000000000000000000000000000000000007",
+    "0x0000000000000000000000000000000000000008"
+  ]  # expected size of 8 (based on threshold) and must be sorted in ascending order
+  DEFAULT_COHORT_DURATION: 7776000  # 90 days in seconds
+
+contracts:
+  - SigningCohortInitiator:
+      proxy:
+        constructor:
+          initialOwner: $NUCO_MULTISIG
+          _data: $encode:initialize
+      constructor:
+        _signingCoordinator: $SIGNING_COORDINATOR
+        _currency: $USDC_TOKEN

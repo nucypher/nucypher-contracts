@@ -412,7 +412,7 @@ contract SigningCoordinator is Initializable, AccessControlDefaultAdminRulesUpgr
     function extendSigningCohortDuration(
         uint32 cohortId,
         uint32 additionalDuration
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    ) external onlyRole(INITIATOR_ROLE) {
         SigningCohort storage signingCohort = signingCohorts[cohortId];
         require(isCohortActive(signingCohort), "Cohort not active");
         require(additionalDuration > 0, "Invalid duration");
