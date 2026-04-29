@@ -78,7 +78,7 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
         IEncryptionAuthorizer _accessController,
         IERC20 _feeToken,
         address _adopterSetter,
-        uint256[3][10] memory _feePackages
+        uint256[3][] memory _feePackages
     ) {
         require(address(_feeToken) != address(0), "Fee token cannot be the zero address");
         require(_adopterSetter != address(0), "Adopter setter cannot be the zero address");
@@ -91,7 +91,9 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
         feeToken = _feeToken;
         adopterSetter = _adopterSetter;
         accessController = _accessController;
-        feePackages = _feePackages;
+        for (uint256 i = 0; i < _feePackages.length && i < feePackages.length; i++) {
+            feePackages[i] = _feePackages[i];
+        }
         _disableInitializers();
     }
 

@@ -19,8 +19,7 @@ contract SharedAllowList is IEncryptionAuthorizer, Initializable {
 
     Coordinator public immutable coordinator;
     uint32 public constant MAX_AUTH_ACTIONS = 100;
-    mapping(address authAdmin => mapping(bytes32 lookupKey => bool)) public authAdmins;
-    mapping(bytes32 lookupKey => address authAdmin) internal lookupKeys;
+    mapping(bytes32 lookupKey => address authAdmin) internal authAdmins;
 
     /**
      * @notice Emitted when an address authorization is set
@@ -48,6 +47,11 @@ contract SharedAllowList is IEncryptionAuthorizer, Initializable {
         _disableInitializers();
     }
 
+    function getAuthAdmin(uint32 ritualId, address encryptor) public view returns (address) {
+        bytes32 lookupKey = LookupKey.lookupKey(ritualId, encryptor);
+        return authAdmins[lookupKey];
+    }
+
     /**
      * @notice Authorizes a list of addresses for a ritual
      * @param ritualId The ID of the ritual
@@ -63,13 +67,6 @@ contract SharedAllowList is IEncryptionAuthorizer, Initializable {
      * @param addresses The addresses to be deauthorized
      */
     function deauthorize(uint32 ritualId, address[] calldata addresses) external {
-        for (uint256 i = 0; i < addresses.length; i++) {
-            bytes32 lookupKey = LookupKey.lookupKey(ritualId, addresses[i]);
-            require(
-                authAdmins[msg.sender][lookupKey],
-                "Encryptor has not been previously authorized by the sender"
-            );
-        }
         setAuthorizations(ritualId, addresses, false);
     }
 
@@ -88,12 +85,15 @@ contract SharedAllowList is IEncryptionAuthorizer, Initializable {
         address recoveredAddress = digest.toEthSignedMessageHash().recover(evidence);
 
         bytes32 lookupKey = LookupKey.lookupKey(ritualId, recoveredAddress);
-        address authAdmin = lookupKeys[lookupKey];
+        address authAdmin = authAdmins[lookupKey];
+        if (authAdmin == address(0)) {
+            return false;
+        }
 
         IFeeModel feeModel = coordinator.getFeeModel(ritualId);
         SharedSubscription(address(feeModel)).beforeIsAuthorized(authAdmin, ritualId);
 
-        return authAdmins[authAdmin][lookupKey];
+        return true;
     }
 
     function setAuthorizations(uint32 ritualId, address[] calldata addresses, bool value) internal {
@@ -112,20 +112,18 @@ contract SharedAllowList is IEncryptionAuthorizer, Initializable {
         for (uint256 i = 0; i < addresses.length; i++) {
             bytes32 lookupKey = LookupKey.lookupKey(ritualId, addresses[i]);
             // prevent reusing same address
-            require(authAdmins[msg.sender][lookupKey] != value, "Authorization already set");
-            authAdmins[msg.sender][lookupKey] = value;
             if (value) {
                 require(
-                    lookupKeys[lookupKey] == address(0),
+                    authAdmins[lookupKey] == address(0),
                     "Address authorized by different admin"
                 );
-                lookupKeys[lookupKey] = msg.sender;
+                authAdmins[lookupKey] = msg.sender;
             } else {
                 require(
-                    lookupKeys[lookupKey] == msg.sender,
+                    authAdmins[lookupKey] == msg.sender,
                     "Address authorized by different admin"
                 );
-                lookupKeys[lookupKey] = address(0);
+                authAdmins[lookupKey] = address(0);
             }
             emit AddressAuthorizationSet(msg.sender, ritualId, addresses[i], value);
         }
