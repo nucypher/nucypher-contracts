@@ -43,10 +43,10 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
 
     /**
      * @notice Emitted when a subscription is spent
-     * @param treasury The address of the treasury
+     * @param owner The address of the owner
      * @param amount The amount withdrawn
      */
-    event WithdrawalToTreasury(address indexed treasury, uint256 amount);
+    event WithdrawalTokens(address indexed owner, uint256 amount);
 
     /**
      * @notice Emitted when a subscription is paid
@@ -71,14 +71,12 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
      * @param _accessController The address of the global allow list
      * @param _feeToken The address of the fee token contract
      * @param _adopterSetter Address that can set the adopter address
-     * @param _feePackages Fee packages [duration(sec), encryptors, feeRate]
      */
     constructor(
         Coordinator _coordinator,
         IEncryptionAuthorizer _accessController,
         IERC20 _feeToken,
-        address _adopterSetter,
-        uint256[3][] memory _feePackages
+        address _adopterSetter
     ) {
         require(address(_feeToken) != address(0), "Fee token cannot be the zero address");
         require(_adopterSetter != address(0), "Adopter setter cannot be the zero address");
@@ -91,9 +89,6 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
         feeToken = _feeToken;
         adopterSetter = _adopterSetter;
         accessController = _accessController;
-        for (uint256 i = 0; i < _feePackages.length && i < feePackages.length; i++) {
-            feePackages[i] = _feePackages[i];
-        }
         _disableInitializers();
     }
 
@@ -120,10 +115,14 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
 
     /**
      * @notice Initialize function for using with OpenZeppelin proxy
+     * @param _feePackages Fee packages [duration(sec), encryptors, feeRate]
      */
-    function initialize(address _treasury) external initializer {
+    function initialize(address _owner, uint256[3][] memory _feePackages) external initializer {
         activeRitualId = INACTIVE_RITUAL_ID;
-        __Ownable_init(_treasury);
+        __Ownable_init(_owner);
+        for (uint256 i = 0; i < _feePackages.length && i < feePackages.length; i++) {
+            feePackages[i] = _feePackages[i];
+        }
     }
 
     function setAdopter(address _adopter) external {
@@ -177,7 +176,8 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
         uint256 discount = 0;
         if (
             encryptorFeeRate == billingInfo.encryptorFeeRate &&
-            billingInfo.encryptorSlots == encryptorSlots
+            billingInfo.encryptorSlots == encryptorSlots &&
+            billingInfo.endOfSubscription > block.timestamp
         ) {
             billingInfo.endOfSubscription += packageDuration;
         } else {
@@ -211,11 +211,11 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
     /**
      * @notice Withdraws the fees to the treasury
      */
-    function withdrawToTreasury() external {
+    function withdrawTokens() external {
         uint256 amount = feeToken.balanceOf(address(this));
         require(0 < amount, "Insufficient balance available");
         feeToken.safeTransfer(owner(), amount);
-        emit WithdrawalToTreasury(owner(), amount);
+        emit WithdrawalTokens(owner(), amount);
     }
 
     function processRitualPayment(
@@ -245,10 +245,10 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
 
     function beforeSetAuthorization(
         address authAdmin,
-        uint32,
+        uint32 ritualId,
         address[] calldata addresses,
         bool value
-    ) public virtual {
+    ) public virtual onlyAccessController onlyActiveRitual(ritualId) {
         Billing storage billingInfo = billing[authAdmin];
         require(block.timestamp <= billingInfo.endOfSubscription, "Subscription has expired");
         if (value) {
@@ -266,7 +266,10 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
         }
     }
 
-    function beforeIsAuthorized(address authAdmin, uint32) public view virtual {
+    function beforeIsAuthorized(
+        address authAdmin,
+        uint32 ritualId
+    ) public view virtual onlyAccessController onlyActiveRitual(ritualId) {
         Billing storage billingInfo = billing[authAdmin];
         require(block.timestamp <= billingInfo.endOfSubscription, "Subscription has expired");
         // used encryptor slots must be paid
