@@ -93,6 +93,7 @@ contract PenaltyBoard is Periods, AccessControl {
         return stakers[staker].penalizedPeriods;
     }
 
+// TODO: addPenalizedProvidersForThisPeriod
     /**
      * @notice Add the list of staking providers as penalized for a period.
      * @param provs Staking provider addresses to record as penalized for the period.
@@ -107,6 +108,11 @@ contract PenaltyBoard is Periods, AccessControl {
         require(period == current || period == current - 1, "Invalid period");
 
         for (uint256 i = 0; i < provs.length; i++) {
+            uint256 len = stakers[provs[i]].penalizedPeriods.length;
+            // Enforce monotonic append to staker's penalty list (no reordering or duplicates allowed).
+            if (len > 0) {
+                require(stakers[provs[i]].penalizedPeriods[len - 1] < period, "Periods must be added in order");
+            }
             stakers[provs[i]].penalizedPeriods.push(period);
         }
 
