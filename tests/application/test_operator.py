@@ -24,7 +24,7 @@ MIN_AUTHORIZATION = Web3.to_wei(40_000, "ether")
 MIN_OPERATOR_SECONDS = 24 * 60 * 60
 
 
-def test_bond_operator(accounts, token, taco_application, child_application, chain):
+def test_bond_operator(accounts, token, taco_application, child_application, penalty_board, chain):
     (
         creator,
         staking_provider_1,
@@ -97,6 +97,8 @@ def test_bond_operator(accounts, token, taco_application, child_application, cha
     assert taco_application.stakingProviders(0) == staking_provider_3
     assert child_application.stakingProviderToOperator(staking_provider_3) == operator1
     assert child_application.operatorToStakingProvider(operator1) == staking_provider_3
+    assert not taco_application.isEligibleForReward(staking_provider_3)
+    assert not penalty_board.isRewardEnabled(staking_provider_3)
 
     events = [event for event in tx.events if event.event_name == "OperatorBonded"]
     assert events == [
@@ -118,6 +120,8 @@ def test_bond_operator(accounts, token, taco_application, child_application, cha
     assert taco_application.isOperatorConfirmed(operator1)
     assert child_application.stakingProviderToOperator(staking_provider_3) == operator1
     assert child_application.operatorToStakingProvider(operator1) == staking_provider_3
+    assert taco_application.isEligibleForReward(staking_provider_3)
+    assert penalty_board.isRewardEnabled(staking_provider_3)
 
     # After confirmation operator is becoming active
     all_locked, staking_providers = taco_application.getActiveStakingProviders(0, 0)
@@ -157,6 +161,8 @@ def test_bond_operator(accounts, token, taco_application, child_application, cha
     assert taco_application.stakingProviders(0) == staking_provider_3
     assert child_application.stakingProviderToOperator(staking_provider_3) == ZERO_ADDRESS
     assert child_application.operatorToStakingProvider(operator1) == ZERO_ADDRESS
+    assert not taco_application.isEligibleForReward(staking_provider_3)
+    assert not penalty_board.isRewardEnabled(staking_provider_3)
 
     # Resetting operator removes from active list before next confirmation
     all_locked, staking_providers = taco_application.getActiveStakingProviders(0, 0)
@@ -184,6 +190,8 @@ def test_bond_operator(accounts, token, taco_application, child_application, cha
     assert taco_application.stakingProviders(0) == staking_provider_3
     assert child_application.stakingProviderToOperator(staking_provider_3) == operator2
     assert child_application.operatorToStakingProvider(operator2) == staking_provider_3
+    assert not taco_application.isEligibleForReward(staking_provider_3)
+    assert not penalty_board.isRewardEnabled(staking_provider_3)
 
     events = [event for event in tx.events if event.event_name == "OperatorBonded"]
     assert events == [
@@ -205,6 +213,8 @@ def test_bond_operator(accounts, token, taco_application, child_application, cha
     assert taco_application.stakingProviderInfo(staking_provider_3)[CONFIRMATION_SLOT]
     assert child_application.stakingProviderToOperator(staking_provider_3) == operator2
     assert child_application.operatorToStakingProvider(operator2) == staking_provider_3
+    assert taco_application.isEligibleForReward(staking_provider_3)
+    assert penalty_board.isRewardEnabled(staking_provider_3)
 
     # Another staking provider can bond a free operator
     tx = taco_application.bondOperator(staking_provider_4, operator1, sender=staking_provider_4)
@@ -217,6 +227,8 @@ def test_bond_operator(accounts, token, taco_application, child_application, cha
     assert taco_application.stakingProviders(1) == staking_provider_4
     assert child_application.stakingProviderToOperator(staking_provider_4) == operator1
     assert child_application.operatorToStakingProvider(operator1) == staking_provider_4
+    assert not taco_application.isEligibleForReward(staking_provider_4)
+    assert not penalty_board.isRewardEnabled(staking_provider_4)
 
     events = [event for event in tx.events if event.event_name == "OperatorBonded"]
     assert events == [
@@ -238,6 +250,8 @@ def test_bond_operator(accounts, token, taco_application, child_application, cha
     assert taco_application.stakingProviderInfo(staking_provider_4)[CONFIRMATION_SLOT]
     assert child_application.stakingProviderToOperator(staking_provider_4) == operator1
     assert child_application.operatorToStakingProvider(operator1) == staking_provider_4
+    assert taco_application.isEligibleForReward(staking_provider_4)
+    assert penalty_board.isRewardEnabled(staking_provider_4)
 
     chain.pending_timestamp += min_operator_seconds
     tx = taco_application.bondOperator(staking_provider_4, operator3, sender=staking_provider_4)
@@ -253,6 +267,8 @@ def test_bond_operator(accounts, token, taco_application, child_application, cha
     assert child_application.stakingProviderToOperator(staking_provider_4) == operator3
     assert child_application.operatorToStakingProvider(operator1) == ZERO_ADDRESS
     assert child_application.operatorToStakingProvider(operator3) == staking_provider_4
+    assert not taco_application.isEligibleForReward(staking_provider_4)
+    assert not penalty_board.isRewardEnabled(staking_provider_4)
 
     # Resetting operator removes from active list before next confirmation
     all_locked, staking_providers = taco_application.getActiveStakingProviders(1, 0)
@@ -313,7 +329,9 @@ def test_bond_operator(accounts, token, taco_application, child_application, cha
     assert taco_application.operatorToStakingProvider(operator2) == ZERO_ADDRESS
 
 
-def test_confirm_address(accounts, token, taco_application, child_application, chain):
+def test_confirm_address(
+    accounts, token, taco_application, child_application, penalty_board, chain
+):
     creator, staking_provider, operator, *everyone_else = accounts[0:]
     min_operator_seconds = MIN_OPERATOR_SECONDS
 
@@ -323,6 +341,8 @@ def test_confirm_address(accounts, token, taco_application, child_application, c
     # Skips confirmation if operator is not associated with staking provider
     child_application.confirmOperatorAddress(staking_provider, sender=staking_provider)
     assert not taco_application.isOperatorConfirmed(staking_provider)
+    assert not taco_application.isEligibleForReward(staking_provider)
+    assert not penalty_board.isRewardEnabled(staking_provider)
 
     token.transfer(staking_provider, MIN_AUTHORIZATION, sender=creator)
     token.approve(taco_application.address, MIN_AUTHORIZATION, sender=staking_provider)
@@ -333,9 +353,13 @@ def test_confirm_address(accounts, token, taco_application, child_application, c
     # Bond operator and make confirmation
     chain.pending_timestamp += min_operator_seconds
     taco_application.bondOperator(staking_provider, operator, sender=staking_provider)
+    assert not taco_application.isEligibleForReward(staking_provider)
+    assert not penalty_board.isRewardEnabled(staking_provider)
     tx = child_application.confirmOperatorAddress(operator, sender=operator)
     assert taco_application.isOperatorConfirmed(operator)
     assert taco_application.stakingProviderInfo(staking_provider)[CONFIRMATION_SLOT]
+    assert taco_application.isEligibleForReward(staking_provider)
+    assert penalty_board.isRewardEnabled(staking_provider)
 
     events = [event for event in tx.events if event.event_name == "OperatorConfirmed"]
     assert events == [
@@ -346,3 +370,5 @@ def test_confirm_address(accounts, token, taco_application, child_application, c
     child_application.confirmOperatorAddress(operator, sender=operator)
     assert taco_application.isOperatorConfirmed(operator)
     assert taco_application.stakingProviderInfo(staking_provider)[CONFIRMATION_SLOT]
+    assert taco_application.isEligibleForReward(staking_provider)
+    assert penalty_board.isRewardEnabled(staking_provider)

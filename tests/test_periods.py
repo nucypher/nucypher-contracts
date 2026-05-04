@@ -8,11 +8,13 @@ PERIOD_DURATION = 3600  # 1 hour
 def deployer(accounts):
     return accounts[0]
 
+
 @pytest.fixture(scope="module")
 def periods_deployment(chain, deployer, project):
-    genesis_time = chain.pending_timestamp
+    genesis_time = chain.pending_timestamp - 2 * PERIOD_DURATION
     contract = project.Periods.deploy(genesis_time, PERIOD_DURATION, sender=deployer)
     return genesis_time, contract
+
 
 @pytest.fixture(scope="module")
 def genesis(periods_deployment):
@@ -65,6 +67,6 @@ def test_get_current_period(periods, chain, genesis):
     # assert periods.getCurrentPeriod() == 0
 
     chain.pending_timestamp += duration
-    assert periods.getCurrentPeriod() == 1
-    chain.pending_timestamp += 2 * duration
     assert periods.getCurrentPeriod() == 3
+    chain.pending_timestamp += 2 * duration
+    assert periods.getCurrentPeriod() == 5

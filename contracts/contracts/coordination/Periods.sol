@@ -3,6 +3,8 @@
 pragma solidity ^0.8.0;
 
 contract Periods {
+    uint256 public constant REWARD_DELAY_PERIODS = 2;
+
     uint256 public immutable genesisTime;
     uint256 public immutable periodDuration;
 
@@ -10,6 +12,7 @@ contract Periods {
         require(_periodDuration > 0, "Invalid period duration");
         genesisTime = _genesisTime;
         periodDuration = _periodDuration;
+        require(getCurrentPeriod() >= REWARD_DELAY_PERIODS, "genesisTime must be in the past");
     }
 
     function getPeriodForTimestamp(uint256 timestamp) public view returns (uint256) {
@@ -19,5 +22,9 @@ contract Periods {
 
     function getCurrentPeriod() public view returns (uint256) {
         return getPeriodForTimestamp(block.timestamp);
+    }
+
+    function getCurrentPaymentPeriod() public view returns (uint256) {
+        return getCurrentPeriod() - REWARD_DELAY_PERIODS;
     }
 }
