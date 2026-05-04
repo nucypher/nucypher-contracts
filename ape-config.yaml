@@ -54,6 +54,13 @@ foundry:
       amoy:
         upstream_provider: infura
         cache: false
+    base:
+      mainnet:
+        upstream_provider: infura
+        cache: false
+      sepolia:
+        upstream_provider: infura
+        cache: false
 
 etherscan:
   ethereum:

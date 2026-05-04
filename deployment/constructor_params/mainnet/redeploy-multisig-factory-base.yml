@@ -1,0 +1,17 @@
+deployment:
+  name: redeploy-multisig-factory-base
+  chain_id: 8453  # base
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: redeploy-multisig-factory-base.json
+
+constants:
+  SIGNING_COORDINATOR_CHILD: "0xdecd7F2056fb1653300fc2Ba1CbFe6203E731Ad3"
+
+contracts:
+  - ThresholdSigningMultisig
+  - ThresholdSigningMultisigCloneFactory:
+      constructor:
+        _implementation: $ThresholdSigningMultisig
+        _signingCoordinatorChild: $SIGNING_COORDINATOR_CHILD

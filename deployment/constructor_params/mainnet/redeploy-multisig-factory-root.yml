@@ -1,0 +1,17 @@
+deployment:
+  name: redeploy-multisig-factory-root
+  chain_id: 1  # Ethereum Mainnet
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: redeploy-multisig-factory-root.json
+
+constants:
+  SIGNING_COORDINATOR_CHILD: "0x8543A95262AfAB66ebA77d6C23d9db9e53Ea6E1A"
+
+contracts:
+  - ThresholdSigningMultisig
+  - ThresholdSigningMultisigCloneFactory:
+      constructor:
+        _implementation: $ThresholdSigningMultisig
+        _signingCoordinatorChild: $SIGNING_COORDINATOR_CHILD
