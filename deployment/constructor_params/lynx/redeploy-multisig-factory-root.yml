@@ -1,0 +1,17 @@
+deployment:
+  name: lynx-redeploy-multisig-factory-root
+  chain_id: 11155111 # sepolia
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: lynx-redeploy-multisig-factory-root.json
+
+constants:
+  SIGNING_COORDINATOR_CHILD: "0xC3085b0feB8C348D0BD7fabF4299c93dc2aE11d7"
+
+contracts:
+  - ThresholdSigningMultisig
+  - ThresholdSigningMultisigCloneFactory:
+      constructor:
+        _implementation: $ThresholdSigningMultisig
+        _signingCoordinatorChild: $SIGNING_COORDINATOR_CHILD

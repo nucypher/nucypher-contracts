@@ -7,15 +7,14 @@ from deployment.params import Deployer
 from deployment.registry import contracts_from_registry, merge_registries
 
 VERIFY = False
-CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "lynx" / "upgrade-signing-coordinator.yml"
-LYNX_REGISTRY = ARTIFACTS_DIR / "lynx.json"
+CONSTRUCTOR_PARAMS_FILEPATH = CONSTRUCTOR_PARAMS_DIR / "mainnet" / "upgrade-signing-coordinator.yml"
+MAINNET_REGISTRY = ARTIFACTS_DIR / "mainnet.json"
 
 
 def main():
-    """This script upgrades SigningCoordinator on Lynx/Sepolia."""
-
+    """This script upgrades SigningCoordinator on Mainnet/Ethereum."""
     deployer = Deployer.from_yaml(filepath=CONSTRUCTOR_PARAMS_FILEPATH, verify=VERIFY)
-    instances = contracts_from_registry(filepath=LYNX_REGISTRY, chain_id=11155111)
+    instances = contracts_from_registry(filepath=MAINNET_REGISTRY, chain_id=1)
     signing_coordinator = deployer.upgrade(
         project.SigningCoordinator, instances[project.SigningCoordinator.contract_type.name].address
     )
@@ -26,7 +25,7 @@ def main():
 
     deployer.finalize(deployments=deployments)
     merge_registries(
-        registry_1_filepath=LYNX_REGISTRY,
+        registry_1_filepath=MAINNET_REGISTRY,
         registry_2_filepath=deployer.registry_filepath,
-        output_filepath=LYNX_REGISTRY,
+        output_filepath=MAINNET_REGISTRY,
     )

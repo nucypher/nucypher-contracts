@@ -1,0 +1,17 @@
+deployment:
+  name: lynx-redeploy-multisig-factory-base
+  chain_id: 84532  # base
+
+artifacts:
+  dir: ./deployment/artifacts/
+  filename: lynx-redeploy-multisig-factory-base.json
+
+constants:
+  SIGNING_COORDINATOR_CHILD: "0xcc537b292d142dABe2424277596d8FFCC3e6A12D"
+
+contracts:
+  - ThresholdSigningMultisig
+  - ThresholdSigningMultisigCloneFactory:
+      constructor:
+        _implementation: $ThresholdSigningMultisig
+        _signingCoordinatorChild: $SIGNING_COORDINATOR_CHILD
