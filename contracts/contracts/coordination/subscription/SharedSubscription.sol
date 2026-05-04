@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
-import "./EncryptorSlotsSubscription.sol";
+import "../Coordinator.sol";
 import "../IEncryptionAuthorizer.sol";
 import "../IFeeModel.sol";
 
@@ -32,8 +32,6 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
 
     address public immutable adopterSetter;
 
-    uint256 public immutable encryptorFeeRate;
-
     uint256[3][10] public feePackages;
     uint32 public activeRitualId;
     mapping(address authAdmin => Billing billingInfo) public billing;
@@ -46,12 +44,12 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
      * @param owner The address of the owner
      * @param amount The amount withdrawn
      */
-    event WithdrawalTokens(address indexed owner, uint256 amount);
+    event TokensWithdrawn(address indexed owner, uint256 amount);
 
     /**
      * @notice Emitted when a subscription is paid
      * @param subscriber The address of the subscriber
-     * @param authAdmin Autharization admin that was paid
+     * @param authAdmin Authorization admin that was paid
      * @param amount The amount paid
      * @param encryptorSlots Number of encryptor slots
      * @param endOfSubscription End timestamp of subscription
@@ -215,7 +213,7 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
         uint256 amount = feeToken.balanceOf(address(this));
         require(0 < amount, "Insufficient balance available");
         feeToken.safeTransfer(owner(), amount);
-        emit WithdrawalTokens(owner(), amount);
+        emit TokensWithdrawn(owner(), amount);
     }
 
     function processRitualPayment(
@@ -255,7 +253,7 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
             billingInfo.usedEncryptorSlots += addresses.length;
             require(
                 billingInfo.usedEncryptorSlots <= billingInfo.encryptorSlots,
-                "Encryptors slots filled up"
+                "Insufficient encryptor slots available"
             );
         } else {
             if (billingInfo.usedEncryptorSlots >= addresses.length) {
@@ -275,7 +273,7 @@ contract SharedSubscription is IFeeModel, Initializable, OwnableUpgradeable {
         // used encryptor slots must be paid
         require(
             billingInfo.usedEncryptorSlots <= billingInfo.encryptorSlots,
-            "Encryptors slots filled up"
+            "Encryptor slots full"
         );
     }
 

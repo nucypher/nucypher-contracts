@@ -27,7 +27,7 @@ contract SharedSubscriptionForSharedAllowListMock {
 }
 
 contract CoordinatorForSharedAllowListMock {
-    uint256 public numberOfRituals = 1; // for check in GlobalAllowLIst constructor
+    uint256 public numberOfRituals = 1; // for check in GlobalAllowList constructor
 
     mapping(uint32 ritualId => address authority) public authorities;
     address public feeModel;

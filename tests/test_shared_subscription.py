@@ -264,8 +264,8 @@ def test_withdraw(erc20, subscription, adopter, auth_admin, contract_owner):
     assert erc20.balanceOf(contract_owner) == fees
     assert erc20.balanceOf(subscription.address) == 0
 
-    events = [event for event in tx.events if event.event_name == "WithdrawalTokens"]
-    assert events == [subscription.WithdrawalTokens(owner=contract_owner, amount=fees)]
+    events = [event for event in tx.events if event.event_name == "TokensWithdrawn"]
+    assert events == [subscription.TokensWithdrawn(owner=contract_owner, amount=fees)]
 
 
 def test_process_ritual_payment(
@@ -430,14 +430,14 @@ def test_before_set_authorization(
     billing = subscription.billing(auth_admin)
     assert billing.usedEncryptorSlots == 1
 
-    with ape.reverts("Encryptors slots filled up"):
+    with ape.reverts("Insufficient encryptor slots available"):
         allow_list.authorize(ritual_id, [creator], sender=auth_admin)
 
     allow_list.deauthorize(ritual_id, [creator], sender=auth_admin)
     billing = subscription.billing(auth_admin)
     assert billing.usedEncryptorSlots == 0
 
-    with ape.reverts("Encryptors slots filled up"):
+    with ape.reverts("Insufficient encryptor slots available"):
         allow_list.authorize(ritual_id, [creator, adopter], sender=auth_admin)
 
     subscription.payForSubscription(auth_admin, 15, 14 * ONE_DAY, sender=adopter)
@@ -452,11 +452,11 @@ def test_before_set_authorization(
         allow_list.authorize(ritual_id, [creator], sender=adopter)
 
     subscription.payForSubscription(auth_admin, 1, ONE_DAY, sender=adopter)
-    with ape.reverts("Encryptors slots filled up"):
+    with ape.reverts("Insufficient encryptor slots available"):
         allow_list.authorize(ritual_id, [creator], sender=auth_admin)
 
     subscription.payForSubscription(auth_admin, 15, 14 * ONE_DAY, sender=adopter)
-    with ape.reverts("Encryptors slots filled up"):
+    with ape.reverts("Insufficient encryptor slots available"):
         allow_list.authorize(ritual_id, [contract_owner] * 14, sender=auth_admin)
     allow_list.authorize(ritual_id, [contract_owner], sender=auth_admin)
     billing = subscription.billing(auth_admin)
@@ -506,7 +506,7 @@ def test_before_is_authorized(
         allow_list.isAuthorized(ritual_id, bytes(signature), bytes(data))
 
     subscription.payForSubscription(auth_admin, 1, ONE_DAY, sender=adopter)
-    with ape.reverts("Encryptors slots filled up"):
+    with ape.reverts("Encryptor slots full"):
         allow_list.isAuthorized(ritual_id, bytes(signature), bytes(data))
 
     allow_list.deauthorize(ritual_id, [creator], sender=auth_admin)

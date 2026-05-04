@@ -41,7 +41,7 @@ contract SharedAllowList is IEncryptionAuthorizer, Initializable {
      * @param _coordinator The address of the coordinator contract
      */
     constructor(Coordinator _coordinator) {
-        require(address(_coordinator) != address(0), "Contracts cannot be zero addresses");
+        require(address(_coordinator) != address(0), "Contract cannot be zero addresses");
         require(_coordinator.numberOfRituals() >= 0, "Invalid coordinator");
         coordinator = _coordinator;
         _disableInitializers();
